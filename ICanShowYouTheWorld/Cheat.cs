@@ -38,7 +38,9 @@ namespace ICanShowYouTheWorld
         private void Update()
         {
             // Port to coordinates specified by mouse cursor
-            if (Input.GetKeyDown(KeyCode.Backspace))
+            // INS.
+            //
+            if (Input.GetKeyDown(KeyCode.Insert))
             {
                 Vector3 position = ScreenToWorldPoint(Input.mousePosition);
                 Chat.instance.SendPing(position);
@@ -54,14 +56,18 @@ namespace ICanShowYouTheWorld
                 }
             }
 
-            // Gate to somewhere safe. Prefer:
+            // Gate to somewhere safe.
+            // HOME
+            //
+            // Prefer:
             //  1. Custom Spawn Point (Bed)
             //  2. Home (stones?)
             //
-            if (Input.GetKeyDown(KeyCode.LeftControl))
+            if (Input.GetKeyDown(KeyCode.Home))
             {
                 // Get Spawn point.
                 //   Either Custom (bed) or home (stones?).
+                //   TODO: Dont teleport if home is same as current loc (or within some)
                 //
                 Vector3 dst = GetSpawnPoint();
                 if (!dst.Equals(Vector3.zero))
