@@ -11,6 +11,12 @@ https://shendrick.net/Gaming/2022/05/30/sshonsteamdeck.html
 
 # Usage
 
+There are two usage scenarios.
+1. Game is updated through Steam, updating assembly_valheim.dll, overriding your patched version, requiring a re-patch
+2. ICanShowYouTheWorld.dll requires an update based on new release
+
+<more here>
+
 Copy `assembly_valheim.dll` and `ICanShowYouTheWorld.dll` to...
 
 - Linux / Steam-deck:  `/home/deck/.local/share/Steam/steamapps`
