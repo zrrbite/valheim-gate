@@ -1,2 +1,6 @@
 Debug/
 Release/
+.vs/
+.DS_Store
+libararies/
+packages/
