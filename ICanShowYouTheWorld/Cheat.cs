@@ -79,7 +79,7 @@ namespace ICanShowYouTheWorld
                         "Teleporting home: " +
                         dst);
                     Console.instance.Print("Teleporting to: " + dst);
-                    Console.instance.AddString("Teleport", "Teleporting to " + dst.ToString("0.0"), (int)Talker.Type.Whisper);
+                    Console.instance.AddString("Teleport", "Teleporting to " + dst.ToString("0.0"), Talker.Type.Shout);
 
                     // Perform distant teleport to dst
                     //
