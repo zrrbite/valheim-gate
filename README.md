@@ -87,6 +87,17 @@ Copy `assembly_valheim.dll` and `ICanShowYouTheWorld.dll` to...
 
 After starting up the game go to the  Credits menu (If  the "Valheim" logo appears during game startup, the `assembly_valheim.dll` is compliant. Otherwise it may be corrupted somehow and you'll need to either repair or replace the patched version with your backup). This registers the patched assemblies / code to be called by the main game loop.
 
+Through SSH, example:
+```
+➜  valheim_patcher scp /Users/martinkjeldsen/Development/valheim_patcher/patched/assembly_valheim.dll deck@192.168.0.160:/home/deck/.local/share/Steam/steamapps/common/Valheim/valheim_Data/Managed/
+deck@192.168.0.160's password: 
+assembly_valheim.dll                                                                  100% 1314KB  19.1MB/s   00:00    
+➜  valheim_patcher cd ~/Projects/Valheim/ICanShowYouTheWorld/bin/Debug 
+➜  Debug git:(main) ✗ scp ICanShowYouTheWorld.dll deck@192.168.0.160:/home/deck/.local/share/Steam/steamapps/common/Valheim/valheim_Data/Managed/                                          
+deck@192.168.0.160's password: 
+ICanShowYouTheWorld.dll       
+```
+
 # Key-bindings
 
 - `HOME` =  "Gate" / Teleport to bind spot.
