@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace ICanShowYouTheWorld
@@ -95,23 +96,41 @@ namespace ICanShowYouTheWorld
                         "Could not find a good spot to port to!");
                 }
             }
+
+            //Port to "safe" pin on map
+            //
+            if (Input.GetKeyDown(KeyCode.End))
+            {
+                //Minimap.instance.
+                Console.instance.Print("Reading PinData");
+
+                List<Minimap.PinData> ourPins = Minimap.m_pins;
+                foreach (Minimap.PinData pin in ourPins)
+                {
+                    //TODO: Add some helpers for teleporting (incl. logging)
+                    Console.instance.Print("Pin = " + pin.m_name);
+                    if(pin.m_name.Equals("safe"))
+                    {
+                        Console.instance.AddString("Teleport", "Teleporting to " + pin.m_pos.ToString("0.0"), Talker.Type.Shout);
+
+                        // Perform distant teleport to dst
+                        //
+                        Player.m_localPlayer.TeleportTo(
+                            pin.m_pos,
+                            Player.m_localPlayer.transform.rotation,
+                            true);
+                    }
+                    else
+                    {
+                        Console.instance.AddString("No safe spot found. Add a pin called 'safe'.");
+                    }
+                }
+
+            }
         }
 
-//////////////////////////////////////////////////////////////////////////
-// Private static functions
-
-        private static void log(string _txt)
-        {
-
-/*            Player.m_localPlayer.Message(
-                MessageHud.MessageType.TopLeft,
-            "Teleporting home: " +
-                 dst);
-            Console.instance.Print("Teleporting to: " + dst);
-            Console.instance.AddString("Teleport", "Teleporting to " + dst.ToString("0.0"), (int)Talker.Type.Whisper);
-*/
-        }
-
+        // Private static functions
+        //
         private static Vector3 GetSpawnPoint()
         {
             PlayerProfile playerProfile = Game.instance.GetPlayerProfile();

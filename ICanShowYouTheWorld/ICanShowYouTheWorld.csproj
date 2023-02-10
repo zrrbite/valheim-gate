@@ -31,9 +31,6 @@
     <Reference Include="assembly_utils">
       <HintPath>..\libraries\assembly_utils.dll</HintPath>
     </Reference>
-    <Reference Include="assembly_valheim">
-      <HintPath>..\libraries\assembly_valheim.dll</HintPath>
-    </Reference>
     <Reference Include="Assembly-CSharp">
       <HintPath>..\libraries\Assembly-CSharp.dll</HintPath>
     </Reference>
@@ -135,6 +132,12 @@
     </Reference>
     <Reference Include="UnityEngine.XRModule">
       <HintPath>..\libraries\UnityEngine.XRModule.dll</HintPath>
+    </Reference>
+    <Reference Include="ICanShowYouTheWorld">
+      <HintPath>bin\Debug\ICanShowYouTheWorld.dll</HintPath>
+    </Reference>
+    <Reference Include="assembly_valheim">
+      <HintPath>bin\Debug\assembly_valheim.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
