@@ -80,7 +80,7 @@ namespace ICanShowYouTheWorld
                         "Teleporting home: " +
                         dst);
                     Console.instance.Print("Teleporting to: " + dst);
-                    Console.instance.AddString("Teleport", "Teleporting to " + dst.ToString("0.0"), Talker.Type.Shout);
+                    Console.instance.AddString("I'm out of here!", "Gate to " + dst.ToString("0.0"), Talker.Type.Shout);
 
                     // Perform distant teleport to dst
                     //
@@ -101,31 +101,44 @@ namespace ICanShowYouTheWorld
             //
             if (Input.GetKeyDown(KeyCode.End))
             {
-                //Minimap.instance.
-                Console.instance.Print("Reading PinData");
-
+                bool safePinFound = false;
+                int safeRadius = 5;
                 List<Minimap.PinData> ourPins = Minimap.m_pins;
+
                 foreach (Minimap.PinData pin in ourPins)
                 {
-                    //TODO: Add some helpers for teleporting (incl. logging)
-                    Console.instance.Print("Pin = " + pin.m_name);
+                    //TODO: Add some helpers for teleporting (incl. logging). Also checks radius.
+                    if(!pin.m_name.Equals("")) Console.instance.Print("Pin = " + pin.m_name);
                     if(pin.m_name.Equals("safe"))
                     {
-                        Console.instance.AddString("Teleport", "Teleporting to " + pin.m_pos.ToString("0.0"), Talker.Type.Shout);
+                        safePinFound = true;
 
-                        // Perform distant teleport to dst
+                        // Perform distant teleport to dst. Distance check.
                         //
+                        float distance = Utils.DistanceXZ(pin.m_pos, Player.m_localPlayer.transform.localPosition);
+                        Console.instance.Print("Distance to where you want to go: " + distance);
+
+                        if (distance < safeRadius)
+                        {
+                            Console.instance.AddString("You're already here!");
+                            break;
+                        }
+
+                        Console.instance.AddString("I'm out of here!", "Succor to " + pin.m_pos.ToString("0.0"), Talker.Type.Shout);
+
                         Player.m_localPlayer.TeleportTo(
                             pin.m_pos,
                             Player.m_localPlayer.transform.rotation,
                             true);
-                    }
-                    else
-                    {
-                        Console.instance.AddString("No safe spot found. Add a pin called 'safe'.");
+
+                        break; //exit on first safe pin
                     }
                 }
 
+                if(!safePinFound)
+                {
+                    Console.instance.AddString("No safe spot found. Add a pin called 'safe'.");
+                }
             }
         }
 
