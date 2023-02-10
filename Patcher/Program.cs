@@ -15,6 +15,18 @@ namespace Patcher
             var app = AssemblyDefinition.ReadAssembly(appPath);
             var inj = AssemblyDefinition.ReadAssembly(injPath);
 
+            // Set scope of m_pins on the minimap to public static
+            //
+            var fieldPin = app.MainModule.Types.Single(ct => ct.Name == "Minimap")
+           .Fields
+           .First(f => f.Name == "m_pins");
+
+            // Set field visibliy to public
+            fieldPin.IsPrivate = false;
+            fieldPin.IsPublic = true;
+            fieldPin.IsStatic = true;
+            //
+
             var injType = inj.MainModule.Types.Single(t => t.Name == "NotACheater");
             var injMethod = injType.Methods.Single(m => m.Name == "Run");
             var appType = app.MainModule.Types.Single(t => t.Name == "FejdStartup");
