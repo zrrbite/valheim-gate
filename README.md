@@ -98,6 +98,108 @@ deck@192.168.0.160's password:
 ICanShowYouTheWorld.dll       
 ```
 
+# Working with Unity
+
+In order to work with Unity you need the unstripped Unity assemblies.
+
+Find the version you need by inspecting the Valheim installation folder:
+
+```
+In folder: /home/deck/.local/share/Steam/steamapps/common/Valheim/valheim_Data
+
+(deck@steamdeck valheim_Data)$ strings globalgamemanagers | head -n1
+2020.3.33f1
+```
+
+Get the assemblies here:
+
+https://unity.bepinex.dev/corlibs/2020.3.33.zip
+https://unity.bepinex.dev/libraries/2020.3.33.zip
+
+Extract both into the same folder. They will contain the same files as in `/home/deck/.local/share/Steam/steamapps/common/Valheim/valheim_Data/Managed` just unstripped!
+
+Copy the libraries you extracted to the folder you currently have the Valheim libraries in, overwrite — restart Visual Studio so it’ll reload them. Now you should be able to use GUI. functions in VS.
+
+Copy the libraries you extracted to the Deck in `/home/deck/.local/share/Steam/steamapps/common/Valheim/valheim_Data` where you also copy your ICanShowYouTheWorld DLL, overwrite existing.
+
+## Examples
+
+https://docs.unity3d.com/ScriptReference/GUI.Window.html
+
+Some Simple GUI extension of `DiscoverThings` class for reference:
+
+```
+public class DiscoverThings : MonoBehaviour
+{
+	private Rect MainWindow;
+
+	public bool visible = true;
+
+	private void Start()
+	{
+		MainWindow = new Rect(10f, 10f, 250f, 150f);
+	}
+
+	private void Update()
+	{
+		if (Input.GetKeyDown(KeyCode.Backspace))
+		{
+			Console.instance.Print("Gui!");
+			visible = !visible;
+		}
+	}
+
+	private void OnGUI()
+	{
+		GUI.Label(new Rect(20, 20, 200, 60), "New label, haxor - always active as it's above the return statement below");
+
+		if (!visible)
+			return;
+
+		MainWindow = GUILayout.Window(0, MainWindow, new GUI.WindowFunction(RenderUI), "Haxor Menu", new GUILayoutOption[0]);
+	}
+
+	public void RenderUI(int id)
+	{
+		GUILayout.Box("Some box?");
+		GUILayout.Label("Some inner label", new GUILayoutOption[0]);
+
+		if (GUILayout.Button("Menu", new GUILayoutOption[0]))
+			visible = !visible;
+
+		if (GUILayout.Button("Test button"))
+			Console.instance.Print("Test!!");
+
+		GUILayout.Space(20f);
+		GUILayout.Label("Slide it?", new GUILayoutOption[0]);
+		int testSlider = (int)GUILayout.HorizontalSlider(10, 40, 120);
+
+		GUI.DragWindow();
+	}
+}
+```
+
+Other examples:
+
+https://github.com/Astropilot/ValheimTooler/blob/c48078ecc72fbddffd7398a37841f811020e78cb/ValheimTooler/Core/ESP.cs#L259
+
+Other functions to try:
+
+```
+Vector3 playerPos = Player.m_localPlayer.transform.position;
+
+foreach (Character toon in Character.GetAllCharacters()) {
+  float dist = Vector3.Distance(playerPos, toon.transform.position);
+  if (dist >= somenumber && !toon.isDead()) {
+     Label txt color: GUI.color = Color.red;
+     A label: GUILayout.Label("Name: " + toon.GetHoverName());
+     Health min/max: Mathf.RoundToInt(toon.GetHealth()) .. / .. toon.GetMaxHealth()
+     Enemy level: toon.GetLevel()
+     Distance to enemy: Mathf.RoundToInt(dist)
+  }
+}
+```
+
 # Key-bindings
 
 - `HOME` =  "Gate" / Teleport to bind spot.
