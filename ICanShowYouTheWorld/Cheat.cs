@@ -10,7 +10,7 @@ namespace ICanShowYouTheWorld
 
         public static void Run()
         {
-            UnifiedPopup.Push(new WarningPopup("Hackers", "Loaded (0.213.4)! Now start a game.", delegate
+            UnifiedPopup.Push(new WarningPopup("EverHeim", "Loaded (0.213.4)! Gate = HOME, Succor = END.", delegate
             {
                 UnifiedPopup.Pop();
             }));
@@ -80,7 +80,7 @@ namespace ICanShowYouTheWorld
                         "Teleporting home: " +
                         dst);
                     Console.instance.Print("Teleporting to: " + dst);
-                    Console.instance.AddString("I'm out of here!", "Gate to " + dst.ToString("0.0"), Talker.Type.Shout);
+//                    Console.instance.AddString("I'm out of here!", "Gate to " + dst.ToString("0.0"), Talker.Type.Shout);
 
                     // Perform distant teleport to dst
                     //
