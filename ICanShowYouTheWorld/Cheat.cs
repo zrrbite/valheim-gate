@@ -10,7 +10,8 @@ namespace ICanShowYouTheWorld
 
         public static void Run()
         {
-            UnifiedPopup.Push(new WarningPopup("EverHeim", "Loaded (0.213.4)! Gate = HOME, Succor = END.", delegate
+            UnifiedPopup.Push(new WarningPopup("EverHeim", "Loaded 0.213.4!"
+                , delegate
             {
                 UnifiedPopup.Pop();
             }));
@@ -26,6 +27,9 @@ namespace ICanShowYouTheWorld
 
     public class DiscoverThings : MonoBehaviour
     {
+        public static bool godMode = false;
+        public static int godPower = 0;
+
         private void Awake()
         {
             Console.instance.Print("Awake..");
@@ -38,21 +42,45 @@ namespace ICanShowYouTheWorld
 
         private void Update()
         {
+            //Add health / Stamina
+            //
+            if (Input.GetKeyDown(KeyCode.F3))
+            {
+                Player.m_localPlayer.AddStamina(Player.m_localPlayer.GetMaxStamina());
+                Player.m_localPlayer.Heal(Player.m_localPlayer.GetMaxHealth());
+                Player.m_localPlayer.AddEitr(Player.m_localPlayer.GetMaxEitr());
+
+                Player.m_localPlayer.Message(
+                    MessageHud.MessageType.TopLeft,
+                    "Invigorated.");
+            }
+
             // Toggle god mode
-            if (Input.GetKeyDown(KeyCode.PageUp))
+            //
+            if (Input.GetKeyDown(KeyCode.F4))
             {
-                Player.m_localPlayer.SetGodMode(true);
+                godMode = !godMode;
+
+                Player.m_localPlayer.SetGodMode(godMode);
                 Player.m_localPlayer.Message(
                     MessageHud.MessageType.TopLeft,
-                    "Agitated.");
+                    godMode? "Agitated." : "Calming down");
             }
-            if (Input.GetKeyDown(KeyCode.PageDown))
+
+            // Toggle God power
+            //
+            if (Input.GetKeyDown(KeyCode.F6))
             {
-                Player.m_localPlayer.SetGodMode(false);
-                Player.m_localPlayer.Message(
-                    MessageHud.MessageType.TopLeft,
-                    "Calming down.");
+                //GP_Eikthyr, GP_TheElder, GP_BoneMass, GP_Moder
+                string[] gods = { "GP_Eikthyr", "GP_Bonemass", "GP_Moder" };
+                Player.m_localPlayer.SetGuardianPower(gods[godPower]);
+
+                if (godPower == 2)
+                    godPower = 0;
+                else
+                    godPower++;
             }
+
 
             // Port to coordinates specified by mouse cursor
             // INS.
