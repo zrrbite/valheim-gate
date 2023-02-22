@@ -38,15 +38,31 @@ namespace ICanShowYouTheWorld
 
         private void Update()
         {
+            // Toggle god mode
+            if (Input.GetKeyDown(KeyCode.PageUp))
+            {
+                Player.m_localPlayer.SetGodMode(true);
+                Player.m_localPlayer.Message(
+                    MessageHud.MessageType.TopLeft,
+                    "Agitated.");
+            }
+            if (Input.GetKeyDown(KeyCode.PageDown))
+            {
+                Player.m_localPlayer.SetGodMode(false);
+                Player.m_localPlayer.Message(
+                    MessageHud.MessageType.TopLeft,
+                    "Calming down.");
+            }
+
             // Port to coordinates specified by mouse cursor
             // INS.
             //
             if (Input.GetKeyDown(KeyCode.Insert))
             {
                 Vector3 position = ScreenToWorldPoint(Input.mousePosition);
-                Chat.instance.SendPing(position);
 
-                Console.instance.AddString("Teleport", "Heading to " + position.ToString("0.0"), (int)Talker.Type.Whisper);
+                //Chat.instance.SendPing(position);
+                //Console.instance.AddString("Teleport", "Heading to " + position.ToString("0.0"), (int)Talker.Type.Whisper);
 
                 if (Player.m_localPlayer)
                 {
