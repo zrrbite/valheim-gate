@@ -72,7 +72,7 @@ namespace ICanShowYouTheWorld
             if (Input.GetKeyDown(KeyCode.F6))
             {
                 //GP_Eikthyr, GP_TheElder, GP_BoneMass, GP_Moder
-                string[] gods = { "GP_Eikthyr", "GP_Bonemass", "GP_Moder" };
+                string[] gods = { "GP_Eikthyr", "GP_Bonemass", "GP_Moder", "GP_Yagluth" };
                 Player.m_localPlayer.SetGuardianPower(gods[godPower]);
 
                 if (godPower == 2)
