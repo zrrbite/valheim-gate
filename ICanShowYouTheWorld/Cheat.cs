@@ -42,13 +42,15 @@ namespace ICanShowYouTheWorld
 
         private void Update()
         {
+            Player player = Player.m_localPlayer;
+
             //Add health / Stamina
             //
             if (Input.GetKeyDown(KeyCode.F3))
             {
-                Player.m_localPlayer.AddStamina(Player.m_localPlayer.GetMaxStamina());
-                Player.m_localPlayer.Heal(Player.m_localPlayer.GetMaxHealth());
-                Player.m_localPlayer.AddEitr(Player.m_localPlayer.GetMaxEitr());
+                Player.m_localPlayer.AddStamina( Player.m_localPlayer.GetMaxStamina() - player.GetStamina() );
+                Player.m_localPlayer.Heal( Player.m_localPlayer.GetMaxHealth() - player.GetHealth() );
+                Player.m_localPlayer.AddEitr( Player.m_localPlayer.GetMaxEitr() - player.GetEitr() );
 
                 Player.m_localPlayer.Message(
                     MessageHud.MessageType.TopLeft,
