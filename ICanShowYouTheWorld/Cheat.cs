@@ -40,21 +40,28 @@ namespace ICanShowYouTheWorld
             Console.instance.Print("Start..");
         }
 
+        private void ShowULMsg(string text)
+        {
+            Player.m_localPlayer.Message(
+                MessageHud.MessageType.TopLeft,
+                text);
+        }
+
         private void Update()
         {
             Player player = Player.m_localPlayer;
 
+            // TODO; Populate some player variables
+
             //Add health / Stamina
             //
-            if (Input.GetKeyDown(KeyCode.F3))
+            if (Input.GetKeyDown( KeyCode.F3))
             {
-                Player.m_localPlayer.AddStamina( Player.m_localPlayer.GetMaxStamina() - player.GetStamina() );
-                Player.m_localPlayer.Heal( Player.m_localPlayer.GetMaxHealth() - player.GetHealth() );
-                Player.m_localPlayer.AddEitr( Player.m_localPlayer.GetMaxEitr() - player.GetEitr() );
+                player.AddStamina   ( player.GetMaxStamina() - player.GetStamina() );
+                player.Heal         ( player.GetMaxHealth()  - player.GetHealth()  );
+                player.AddEitr      ( player.GetMaxEitr()    - player.GetEitr()    );
 
-                Player.m_localPlayer.Message(
-                    MessageHud.MessageType.TopLeft,
-                    "Invigorated.");
+                ShowULMsg("Invigorated!");
             }
 
             // Toggle god mode
@@ -62,11 +69,8 @@ namespace ICanShowYouTheWorld
             if (Input.GetKeyDown(KeyCode.F4))
             {
                 godMode = !godMode;
-
-                Player.m_localPlayer.SetGodMode(godMode);
-                Player.m_localPlayer.Message(
-                    MessageHud.MessageType.TopLeft,
-                    godMode? "Agitated." : "Calming down");
+                player.SetGodMode(godMode);
+                ShowULMsg(godMode ? "Agitated!" : "Calming down...");
             }
 
             // Toggle God power
@@ -77,12 +81,22 @@ namespace ICanShowYouTheWorld
                 string[] gods = { "GP_Eikthyr", "GP_Bonemass", "GP_Moder", "GP_Yagluth" };
                 Player.m_localPlayer.SetGuardianPower(gods[godPower]);
 
-                if (godPower == 2)
+                if ( godPower == gods.Length-1 )
+                {
                     godPower = 0;
+                }
                 else
+                {
                     godPower++;
+                }
             }
 
+            // Tame animals
+            //
+            if (Input.GetKeyDown(KeyCode.F7))
+            {
+                Tameable.TameAllInArea(player.transform.position, 5.0f);
+            }
 
             // Port to coordinates specified by mouse cursor
             // INS.
