@@ -25,6 +25,8 @@ namespace ICanShowYouTheWorld
         }
     }
 
+    //TODO:
+    // Load these commands from command line (some known command) instead of about menu?
     public class DiscoverThings : MonoBehaviour
     {
         public static bool godMode = false;
@@ -53,13 +55,21 @@ namespace ICanShowYouTheWorld
 
             // TODO; Populate some player variables
 
-            //Add health / Stamina
+            // Invigorate!
             //
             if (Input.GetKeyDown( KeyCode.F3))
             {
+                // Resources
                 player.AddStamina   ( player.GetMaxStamina() - player.GetStamina() );
                 player.Heal         ( player.GetMaxHealth()  - player.GetHealth()  );
                 player.AddEitr      ( player.GetMaxEitr()    - player.GetEitr()    );
+
+                // Status
+                //player.ClearHardDeath();
+                player.GetSEMan().RemoveAllStatusEffects(); //This also removes rested. Does it remove buffs?
+                player.GetSEMan().AddStatusEffect("Rested", resetTime: true, 10, 10);
+
+                // + ... ?
 
                 ShowULMsg("Invigorated!");
             }
@@ -91,12 +101,55 @@ namespace ICanShowYouTheWorld
                 }
             }
 
+
             // Tame animals
             //
             if (Input.GetKeyDown(KeyCode.F7))
             {
-                Tameable.TameAllInArea(player.transform.position, 5.0f);
+                Tameable.TameAllInArea(player.transform.position, 10.0f);
+                //Tameable.TameAllInArea(((Component)Player.m_localPlayer).get_transform().get_position(), 20f);
+
             }
+
+            // Rested Status
+            //
+            if (Input.GetKeyDown(KeyCode.F8))
+            {
+                player.GetSEMan().AddStatusEffect("Rested", resetTime: true, 10, 10); //skilllevel=0, ...
+            }
+
+
+            // Kill all monsters in radius 5f
+            //
+            if (Input.GetKeyDown(KeyCode.F9))
+            {
+                List<Character> list = new List<Character>();
+                Character.GetCharactersInRange(player.transform.position, 10f, list);
+
+                int amount = 0;
+
+                foreach (Character item in list)
+                {
+                    if (!item.IsPlayer() && !item.IsTamed())
+                    {
+                        player.StartEmote("headbang");
+                        item.Damage(new HitData
+                        {
+                            m_damage =
+                        {
+                            m_damage = 1E+10f
+                        }
+                        });
+                        amount++;
+                    }
+                }
+                Player.m_localPlayer.Message(MessageHud.MessageType.TopLeft, "Characters in range:" + list.Count);
+                Player.m_localPlayer.Message(MessageHud.MessageType.TopLeft, "Killing all the monsters:" + amount);
+            }
+
+            // Find boss-stones
+            //
+
 
             // Port to coordinates specified by mouse cursor
             // INS.
