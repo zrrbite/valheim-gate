@@ -32,6 +32,9 @@ namespace ICanShowYouTheWorld
         public static bool godMode = false;
         public static int godPower = 0;
 
+        private Rect MainWindow;
+        public bool visible = false;
+
         private void Awake()
         {
             Console.instance.Print("Awake..");
@@ -40,6 +43,66 @@ namespace ICanShowYouTheWorld
         private void Start()
         {
             Console.instance.Print("Start..");
+            MainWindow = new Rect(10f, 10f, 250f, 150f);
+        }
+
+        float lastDist = 0;
+        float currDist = 0;
+        GUIStyle style;
+        public void RenderUI(int id)
+        {
+//            GUILayout.Label("Monster:", new GUILayoutOption[0]);
+            GUILayout.Space(1f);
+
+            List<Character> list = new List<Character>();
+            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 50f, list);
+
+            //Unsorted
+            foreach (Character item in list)
+            {
+                if (!item.IsPlayer() && !item.IsTamed())
+                {
+                    float distance = Utils.DistanceXZ(item.transform.position, Player.m_localPlayer.transform.localPosition);
+                    GUILayout.Label(item.GetHoverName().ToString() + ": " + distance.ToString("0.0"), new GUILayoutOption[0]);
+                }
+            }
+
+            GUI.DragWindow();
+
+            /*
+                        Character ClosestEnemy = BaseAI.FindClosestEnemy(Player.m_localPlayer, Player.m_localPlayer.transform.position, 50);
+
+                        currDist = Utils.DistanceXZ(Player.m_localPlayer.transform.position, ClosestEnemy.transform.position);
+
+                        //Draw red if dist grows
+                        style.normal.textColor = lastDist > currDist? Color.red: Color.green;
+                        GUILayout.BeginHorizontal();
+
+                        //GUI.Label
+                        GUILayout.Label(
+                            ClosestEnemy.GetHoverName().ToString() + "(" +
+                            Utils.DistanceXZ(Player.m_localPlayer.transform.position, ClosestEnemy.transform.position).ToString("0.0") + ")", style, new GUILayoutOption[0]);
+
+                        GUILayout.Space(20);
+
+                        // Get direction
+                        //            Vector3 enemyLook = ClosestEnemy.GetLookDir();
+                        //            Vector3 myLook = Player.m_localPlayer.GetLookDir();
+
+                        lastDist = currDist;
+                        GUI.DragWindow();
+            */
+
+        }
+
+        private void OnGUI()
+        {
+            GUI.Label(new Rect(10, 5, 200, 60), "Everheim v.0.1");
+
+            if (!visible)
+                return;
+
+            MainWindow = GUILayout.Window(0, MainWindow, new GUI.WindowFunction(RenderUI), "Tracking", new GUILayoutOption[0]);
         }
 
         private void ShowULMsg(string text)
@@ -51,6 +114,13 @@ namespace ICanShowYouTheWorld
 
         private void Update()
         {
+            //Check gui
+            if (Input.GetKeyDown(KeyCode.F11))
+            {
+                Console.instance.Print("Gui!");
+                visible = !visible;
+            }
+
             Player player = Player.m_localPlayer;
 
             // TODO; Populate some player variables
@@ -68,6 +138,8 @@ namespace ICanShowYouTheWorld
                 //player.ClearHardDeath();
                 player.GetSEMan().RemoveAllStatusEffects(); //This also removes rested. Does it remove buffs?
                 player.GetSEMan().AddStatusEffect("Rested", resetTime: true, 10, 10);
+
+//                Player.m_localPlayer.StartEmote("dance");
 
                 // + ... ?
 
@@ -147,6 +219,12 @@ namespace ICanShowYouTheWorld
                 Player.m_localPlayer.Message(MessageHud.MessageType.TopLeft, "Killing all the monsters:" + amount);
             }
 
+            // 
+            //
+            if (Input.GetKeyDown(KeyCode.F10))
+            {
+
+            }
             // Find boss-stones
             //
 
