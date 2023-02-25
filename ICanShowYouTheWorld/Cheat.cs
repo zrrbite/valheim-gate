@@ -30,6 +30,7 @@ namespace ICanShowYouTheWorld
     public class DiscoverThings : MonoBehaviour
     {
         public static bool godMode = false;
+        public static bool noBuildCost = false;
         public static int godPower = 0;
 
         private Rect MainWindow;
@@ -219,13 +220,61 @@ namespace ICanShowYouTheWorld
                 Player.m_localPlayer.Message(MessageHud.MessageType.TopLeft, "Killing all the monsters:" + amount);
             }
 
-            // 
+            // Toggle No build cost
             //
             if (Input.GetKeyDown(KeyCode.F10))
             {
+                noBuildCost = !noBuildCost;
+                Player.m_localPlayer.SetNoPlacementCost(value: noBuildCost);
+                ShowULMsg(noBuildCost ? "Free!" : "At a cost...");
 
             }
-            // Find boss-stones
+
+            // Summon at mouse cursor
+            //
+            if (Input.GetKeyDown(KeyCode.F11))
+            {
+   /*             // Register mouse click
+                Vector3 position = ScreenToWorldPoint(Input.mousePosition);
+                ShowULMsg("Summoning players...");
+
+                if (Player.m_localPlayer)
+                {
+                    //Create vector based on mouse cursor
+                    Vector3 vector = new Vector3(position.x, Player.m_localPlayer.transform.position.y, position.z);
+
+                    Heightmap.GetHeight(vector, out var height);
+                    vector.y = Math.Max(0f, height);
+
+                    Player.m_localPlayer.TeleportTo(vector, Player.m_localPlayer.transform.rotation, distantTeleport: true);
+                }
+
+                // Find peers - but in radius of the mouse cursor only.
+                foreach (ZNetPeer peer in ZNet.instance.GetPeers())
+                {
+                    if (peer.m_playerName != Player.m_localPlayer.GetPlayerName() && (args.Length < 2 || peer.m_playerName.ToLower().Contains(args[1].ToLower())))
+                    {
+                        Chat.instance.TeleportPlayer(peer.m_uid, Player.m_localPlayer.transform.position, Player.m_localPlayer.transform.rotation, distantTeleport: true);
+                    }
+                }
+
+
+                // Find players in radius
+
+                // Summon them
+   */
+
+            }
+
+            if (Input.GetKeyDown(KeyCode.PageUp))
+            {
+
+            }
+            if (Input.GetKeyDown(KeyCode.PageDown))
+            {
+
+            }
+            // More:Find boss-stones
             //
 
 
