@@ -52,7 +52,12 @@ namespace ICanShowYouTheWorld
         GUIStyle style;
         public void RenderUI(int id)
         {
-//            GUILayout.Label("Monster:", new GUILayoutOption[0]);
+            string cansleep = string.Format(
+                "({0})",
+                EnvMan.instance.CanSleep() ? "night" : "day"
+                );
+
+            // Tracking UI
             GUILayout.Space(1f);
 
             List<Character> list = new List<Character>();
@@ -99,7 +104,7 @@ namespace ICanShowYouTheWorld
         private void OnGUI()
         {
             GUI.Label(new Rect(10, 5, 200, 60), "Everheim v.0.1");
-
+           
             if (!visible)
                 return;
 
@@ -226,53 +231,62 @@ namespace ICanShowYouTheWorld
             {
                 noBuildCost = !noBuildCost;
                 Player.m_localPlayer.SetNoPlacementCost(value: noBuildCost);
-                ShowULMsg(noBuildCost ? "Free!" : "At a cost...");
+                ShowULMsg(noBuildCost ? "Free!" : "At a premium.");
 
             }
 
-            // Summon at mouse cursor
+            // Summon all peers - Just the first you find.
             //
-            if (Input.GetKeyDown(KeyCode.F11))
-            {
-   /*             // Register mouse click
-                Vector3 position = ScreenToWorldPoint(Input.mousePosition);
-                ShowULMsg("Summoning players...");
-
-                if (Player.m_localPlayer)
-                {
-                    //Create vector based on mouse cursor
-                    Vector3 vector = new Vector3(position.x, Player.m_localPlayer.transform.position.y, position.z);
-
-                    Heightmap.GetHeight(vector, out var height);
-                    vector.y = Math.Max(0f, height);
-
-                    Player.m_localPlayer.TeleportTo(vector, Player.m_localPlayer.transform.rotation, distantTeleport: true);
-                }
-
-                // Find peers - but in radius of the mouse cursor only.
-                foreach (ZNetPeer peer in ZNet.instance.GetPeers())
-                {
-                    if (peer.m_playerName != Player.m_localPlayer.GetPlayerName() && (args.Length < 2 || peer.m_playerName.ToLower().Contains(args[1].ToLower())))
-                    {
-                        Chat.instance.TeleportPlayer(peer.m_uid, Player.m_localPlayer.transform.position, Player.m_localPlayer.transform.rotation, distantTeleport: true);
-                    }
-                }
-
-
-                // Find players in radius
-
-                // Summon them
-   */
-
-            }
-
             if (Input.GetKeyDown(KeyCode.PageUp))
             {
-
+                foreach (ZNetPeer peer in ZNet.instance.GetPeers())
+                {
+                    // If not me
+                    if (peer.m_playerName != Player.m_localPlayer.GetPlayerName())
+                    {
+                        ShowULMsg("Summoning: " + peer.m_playerName);
+                        Chat.instance.TeleportPlayer(peer.m_uid, Player.m_localPlayer.transform.position, Player.m_localPlayer.transform.rotation, distantTeleport: true);
+                        player.GetSEMan().AddStatusEffect("Burning", resetTime: true, 10, 10);
+                        return;
+                    }
+                }
             }
+
+            //Summon all characters.
+            //
             if (Input.GetKeyDown(KeyCode.PageDown))
             {
+                // Register mouse click - Not used for anything for now. Just summon all
+                Vector3 position = ScreenToWorldPoint(Input.mousePosition);
+                Chat.instance.SendPing(position);
 
+                List<Character> list = new List<Character>();
+                Character.GetCharactersInRange(position, 100f, list);
+                ShowULMsg("Found " + list.Count + " players at " + position + " within 100f meters!");
+
+                Vector3 mypos    = ((Component)Player.m_localPlayer).transform.position;
+                Quaternion myrot = ((Component)Player.m_localPlayer).transform.rotation;
+
+                foreach (Character friend in list)
+                {
+                    if(friend.IsPlayer() && friend.GetHoverName() != player.GetHoverName())
+                    { 
+                        ShowULMsg("Summoning: " + friend.GetHoverName());
+
+                        Chat.instance.TeleportPlayer(friend.GetZDOID().userID,
+                            mypos,
+                            myrot,
+                            distantTeleport: true);
+                        /*
+                        Chat.instance.TeleportPlayer(
+                            friend.GetZDOID().userID,
+                            Player.m_localPlayer.transform.position,
+                            Player.m_localPlayer.transform.rotation,
+                            distantTeleport: true);
+                        */
+                    }
+
+                }
             }
             // More:Find boss-stones
             //
