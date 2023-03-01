@@ -69,32 +69,6 @@ namespace ICanShowYouTheWorld
                 }
             }
             GUI.DragWindow();
-
-
-            /*
-                        Character ClosestEnemy = BaseAI.FindClosestEnemy(Player.m_localPlayer, Player.m_localPlayer.transform.position, 50);
-
-                        currDist = Utils.DistanceXZ(Player.m_localPlayer.transform.position, ClosestEnemy.transform.position);
-
-                        //Draw red if dist grows
-                        style.normal.textColor = lastDist > currDist? Color.red: Color.green;
-                        GUILayout.BeginHorizontal();
-
-                        //GUI.Label
-                        GUILayout.Label(
-                            ClosestEnemy.GetHoverName().ToString() + "(" +
-                            Utils.DistanceXZ(Player.m_localPlayer.transform.position, ClosestEnemy.transform.position).ToString("0.0") + ")", style, new GUILayoutOption[0]);
-
-                        GUILayout.Space(20);
-
-                        // Get direction
-                        //            Vector3 enemyLook = ClosestEnemy.GetLookDir();
-                        //            Vector3 myLook = Player.m_localPlayer.GetLookDir();
-
-                        lastDist = currDist;
-                        GUI.DragWindow();
-            */
-
         }
 
         private void OnGUI()
@@ -105,6 +79,8 @@ namespace ICanShowYouTheWorld
                 return;
 
             MainWindow = GUILayout.Window(0, MainWindow, new GUI.WindowFunction(RenderUI), "Tracking", new GUILayoutOption[0]);
+
+            //TODO: Add another window here to show state of configuration (gm mode, etc)
         }
 
         private void ShowULMsg(string text)
@@ -135,10 +111,16 @@ namespace ICanShowYouTheWorld
         bool crazyRegen = false;
 
 
+        //TODO: Sort these functions and also turn some into helpers
+        //      - e.g. mass teleport should be a helper so it can be done to
+        //      mouse cursor OR safe spot
+        //      Consider some sort of state machine?
+
         private void Update()
         {
             //Reveal bosses
-            if (Input.GetKeyDown(KeyCode.F1))
+            //
+            if (Input.GetKeyDown(KeyCode.F10))
             {
                 foreach(var name in bossNames)
                 {
@@ -153,9 +135,8 @@ namespace ICanShowYouTheWorld
             }
 
             //Check gui
-            if (Input.GetKeyDown(KeyCode.F11))
+            if (Input.GetKeyDown(KeyCode.F7))
             {
-                Console.instance.Print("Gui!");
                 visible = !visible;
             }
 
@@ -165,8 +146,8 @@ namespace ICanShowYouTheWorld
             // TODO: Remove cooldowns (pots, guardian power, ...)
 
             // Invigorate!
-            //
-            if (Input.GetKeyDown( KeyCode.F3))
+            //  Heal, remove debuffs, add rested
+            if (Input.GetKeyDown( KeyCode.F1))
             {
                 //todo: There's a whole bunch of "tolerate" variables
 
@@ -197,20 +178,24 @@ namespace ICanShowYouTheWorld
                 ShowULMsg("Invigorated!");
             }
 
-            // Toggle god mode
+            // Toggle GM mode
             //
-            if (Input.GetKeyDown(KeyCode.F4))
+            if (Input.GetKeyDown(KeyCode.F9))
             {
                 godMode = !godMode;
                 player.SetGodMode(godMode);
-                ShowULMsg(godMode ? "Agitated!" : "Calming down...");
+
+                //no build cost
+                Player.m_localPlayer.SetNoPlacementCost(value: godMode);
+
+                ShowULMsg(godMode ? "You're a GM." : "You're a player.");
             }
 
-            // Toggle God power
+            // Toggle Guardian power
             //
             if (Input.GetKeyDown(KeyCode.F6))
             {
-                //GP_Eikthyr, GP_TheElder, GP_BoneMass, GP_Moder
+                //GP_Eikthyr, GP_TheElder, GP_BoneMass, GP_Moder (seeker queen?)
                 string[] gods = { "GP_Eikthyr", "GP_Bonemass", "GP_Moder", "GP_Yagluth" };
                 Player.m_localPlayer.SetGuardianPower(gods[godPower]);
 
@@ -226,7 +211,7 @@ namespace ICanShowYouTheWorld
 
             // Toggle flying
             //
-            if (Input.GetKeyDown(KeyCode.F7))
+            if (Input.GetKeyDown(KeyCode.Pause))
             {
                 player.ToggleDebugFly();
             }
@@ -244,8 +229,6 @@ namespace ICanShowYouTheWorld
             //
             if (Input.GetKeyDown(KeyCode.F8))
             {
-                ShowULMsg("Feeling good.");
-
                 // Health regen
                 float regenMult = 5; // this helped.
                 float fallDmg = 0.2f;
@@ -278,17 +261,23 @@ namespace ICanShowYouTheWorld
 
                 //Max weight
                 player.m_maxCarryWeight = 10000.0f;
+
+                // Fungi tunic
+                crazyRegen = !crazyRegen;
+                counter = 0;
+
+                ShowULMsg("Feeling good. Fungi: " + crazyRegen.ToString());
             }
 
             // Crazy health regen when below 75% health
             //
-            if (Input.GetKeyDown(KeyCode.F9))
+/*            if (Input.GetKeyDown(KeyCode.F9))
             {
                 crazyRegen = !crazyRegen;
                 counter = 0;
                 ShowULMsg("Crazy regen: " + crazyRegen.ToString());
             }
-            
+*/            
             if (crazyRegen)
             {
                 counter++;
@@ -307,7 +296,7 @@ namespace ICanShowYouTheWorld
 
             // Kill all monsters in radius 15f. Move this to somewhere else!
             //
-            if (Input.GetKeyDown(KeyCode.Pause))
+            if (Input.GetKeyDown(KeyCode.ScrollLock))
             {
                 List<Character> list = new List<Character>();
                 Character.GetCharactersInRange(player.transform.position, 20f, list);
@@ -335,15 +324,17 @@ namespace ICanShowYouTheWorld
 
             // Toggle No build cost
             //
-            if (Input.GetKeyDown(KeyCode.F10))
+/*            if (Input.GetKeyDown(KeyCode.F10))
             {
                 noBuildCost = !noBuildCost;
                 Player.m_localPlayer.SetNoPlacementCost(value: noBuildCost);
                 ShowULMsg(noBuildCost ? "Free!" : "At a premium.");
 
-            }
+            }*/
 
-            if (Input.GetKeyDown(KeyCode.PageUp))
+            // Go faster
+            //
+            if (Input.GetKeyDown(KeyCode.F3))
             {
 
                 player.m_runSpeed += 2;
@@ -354,28 +345,11 @@ namespace ICanShowYouTheWorld
                 player.m_jumpForce += 1;
                 ShowULMsg("Faster: " + player.m_runSpeed);
 
-                // Summon all peers - Just the first you find.
-                //
-
-                /*
-                foreach (ZNetPeer peer in ZNet.instance.GetPeers())
-                {
-                    // If not me
-                    if (peer.m_playerName != Player.m_localPlayer.GetPlayerName())
-                    {
-                        ShowULMsg("Summoning: " + peer.m_playerName);
-                        Chat.instance.TeleportPlayer(peer.m_uid, Player.m_localPlayer.transform.position, Player.m_localPlayer.transform.rotation, distantTeleport: true);
-                        player.GetSEMan().AddStatusEffect("Burning", resetTime: true, 10, 10);
-                        return;
-                    }
-                }*/
             }
 
-            
-
-            //Summon all characters.
+            // Go slower
             //
-            if (Input.GetKeyDown(KeyCode.PageDown))
+            if (Input.GetKeyDown(KeyCode.F4))
             {
                 player.m_runSpeed -= 2;
                 player.m_acceleration -= 1;
@@ -386,9 +360,6 @@ namespace ICanShowYouTheWorld
                 ShowULMsg("Slower: " + player.m_runSpeed);
             }
 
-            // More:Find boss-stones
-            //
-
 
             // Port to coordinates specified by mouse cursor
             // INS.
@@ -396,9 +367,6 @@ namespace ICanShowYouTheWorld
             if (Input.GetKeyDown(KeyCode.Insert))
             {
                 Vector3 position = ScreenToWorldPoint(Input.mousePosition);
-
-                //Chat.instance.SendPing(position);
-                //Console.instance.AddString("Teleport", "Heading to " + position.ToString("0.0"), (int)Talker.Type.Whisper);
 
                 if (Player.m_localPlayer)
                 {
@@ -409,16 +377,16 @@ namespace ICanShowYouTheWorld
                 }
             }
 
-            // Port to coordinates specified by mouse cursor
-            // INS.
+            // Mass teleport
             //
             if (Input.GetKeyDown(KeyCode.Delete))
             {
                 Vector3 position = ScreenToWorldPoint(Input.mousePosition);
+                Chat.instance.SendPing(position);
+                Console.instance.AddString("Mass Teleport", "Heading to " + position.ToString("0.0"), (int)Talker.Type.Whisper);
 
                 if (Player.m_localPlayer)
                 {
-
                     List<Character> list = new List<Character>();
                     Character.GetCharactersInRange(player.transform.position, 50f, list);
                     ShowULMsg("Found " + list.Count + " characters within 50f meters!");
@@ -439,17 +407,10 @@ namespace ICanShowYouTheWorld
                         }
 
                     }
-
-                    //Teleport myself too?
-                    //Player.m_localPlayer.TeleportTo(vector, Player.m_localPlayer.transform.rotation, distantTeleport: true);
                 }
             }
-            // Gate to somewhere safe.
-            // HOME
-            //
-            // Prefer:
-            //  1. Custom Spawn Point (Bed)
-            //  2. Home (stones?)
+
+            // Gate - go to bindspot
             //
             if (Input.GetKeyDown(KeyCode.Home))
             {
@@ -487,6 +448,7 @@ namespace ICanShowYouTheWorld
 
 
             //Port to "safe" pin on map
+            // todo: take friends
             //
             if (Input.GetKeyDown(KeyCode.End))
             {
