@@ -1,5 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System;
 using UnityEngine;
 
 namespace ICanShowYouTheWorld
@@ -44,6 +44,7 @@ namespace ICanShowYouTheWorld
         private void Start()
         {
             Console.instance.Print("Start..");
+
             MainWindow = new Rect(10f, 10f, 250f, 150f);
         }
 
@@ -52,11 +53,6 @@ namespace ICanShowYouTheWorld
         GUIStyle style;
         public void RenderUI(int id)
         {
-            string cansleep = string.Format(
-                "({0})",
-                EnvMan.instance.CanSleep() ? "night" : "day"
-                );
-
             // Tracking UI
             GUILayout.Space(1f);
 
@@ -72,8 +68,8 @@ namespace ICanShowYouTheWorld
                     GUILayout.Label(item.GetHoverName().ToString() + ": " + distance.ToString("0.0"), new GUILayoutOption[0]);
                 }
             }
-
             GUI.DragWindow();
+
 
             /*
                         Character ClosestEnemy = BaseAI.FindClosestEnemy(Player.m_localPlayer, Player.m_localPlayer.transform.position, 50);
@@ -118,8 +114,44 @@ namespace ICanShowYouTheWorld
                 text);
         }
 
+        readonly List<Tuple<string, string>> bossNames = new List<Tuple<string, string>>
+        {
+            Tuple.Create<string, string>("Eikthyrnir","Eikthyr"),
+            Tuple.Create<string, string>("GDKing","The Elder"),
+            Tuple.Create<string, string>("Bonemass","Bonemass"),
+            Tuple.Create<string, string>("Dragonqueen","Moder"),
+            Tuple.Create<string, string>("SeekerQueen","Seeker Queen"),
+            Tuple.Create<string, string>("Seekerqueen","Seeker Queen"),
+            Tuple.Create<string, string>("Hive","Seeker Queen"),
+            Tuple.Create<string, string>("Queen","Queen"),
+            Tuple.Create<string, string>("GoblinKing","Yagluth"),
+            Tuple.Create<string, string>("Hive","Seeker Queen")
+        };
+
+        // Counters
+        UInt16 counter = 0;
+
+        // States
+        bool crazyRegen = false;
+
+
         private void Update()
         {
+            //Reveal bosses
+            if (Input.GetKeyDown(KeyCode.F1))
+            {
+                foreach(var name in bossNames)
+                {
+                    ShowULMsg("Revealing: " + name.Item2);
+                    Game.instance.DiscoverClosestLocation(
+                        name.Item1,
+                        Player.m_localPlayer.transform.position,
+                        name.Item2,
+                        (int)Minimap.PinType.Boss);
+
+                }
+            }
+
             //Check gui
             if (Input.GetKeyDown(KeyCode.F11))
             {
@@ -130,25 +162,38 @@ namespace ICanShowYouTheWorld
             Player player = Player.m_localPlayer;
 
             // TODO; Populate some player variables
+            // TODO: Remove cooldowns (pots, guardian power, ...)
 
             // Invigorate!
             //
             if (Input.GetKeyDown( KeyCode.F3))
             {
+                //todo: There's a whole bunch of "tolerate" variables
+
                 // Resources
+                //
                 player.AddStamina   ( player.GetMaxStamina() - player.GetStamina() );
                 player.Heal         ( player.GetMaxHealth()  - player.GetHealth()  );
                 player.AddEitr      ( player.GetMaxEitr()    - player.GetEitr()    );
 
                 // Status
-                //player.ClearHardDeath();
-                player.GetSEMan().RemoveAllStatusEffects(); //This also removes rested. Does it remove buffs?
-                player.GetSEMan().AddStatusEffect("Rested", resetTime: true, 10, 10);
 
-//                Player.m_localPlayer.StartEmote("dance");
+                // Remove bad effects
+                //
+                player.GetSEMan().RemoveStatusEffect("Encumbered"); // xD
+                player.GetSEMan().RemoveStatusEffect("Burning");
+                player.GetSEMan().RemoveStatusEffect("Spirit");
+                player.GetSEMan().RemoveStatusEffect("Poison");
+                player.GetSEMan().RemoveStatusEffect("Frost");
+                player.GetSEMan().RemoveStatusEffect("Lightning");
+                player.GetSEMan().RemoveStatusEffect("Burning");
 
+                // Add beneficial effects
+                //
+                player.GetSEMan().AddStatusEffect("Rested", resetTime: true, 10, 10); //this will add lvl1: 8mins
+
+                //
                 // + ... ?
-
                 ShowULMsg("Invigorated!");
             }
 
@@ -179,30 +224,93 @@ namespace ICanShowYouTheWorld
                 }
             }
 
-
-            // Tame animals
+            // Toggle flying
             //
             if (Input.GetKeyDown(KeyCode.F7))
             {
-                Tameable.TameAllInArea(player.transform.position, 10.0f);
+                player.ToggleDebugFly();
+            }
+
+            // Tame animals
+            //
+            if (Input.GetKeyDown(KeyCode.Print))
+            {
+                Tameable.TameAllInArea(player.transform.position, 30.0f);
                 //Tameable.TameAllInArea(((Component)Player.m_localPlayer).get_transform().get_position(), 20f);
 
             }
 
-            // Rested Status
+            // Boost!
             //
             if (Input.GetKeyDown(KeyCode.F8))
             {
-                player.GetSEMan().AddStatusEffect("Rested", resetTime: true, 10, 10); //skilllevel=0, ...
+                ShowULMsg("Feeling good.");
+
+                // Health regen
+                float regenMult = 5; // this helped.
+                float fallDmg = 0.2f;
+                float noise = 1;
+
+                
+                player.GetSEMan().ModifyHealthRegen(ref regenMult); //Seems that regen multiplier is applied to number of food items.                
+                player.GetSEMan().ModifyFallDamage(1, ref fallDmg);
+                player.GetSEMan().ModifyNoise(1f, ref noise); //Be very, very quiet. I'm hunting rabbits!
+
+                // Stamina drain
+                player.m_blockStaminaDrain  = 0.1f;
+                player.m_jumpStaminaUsage   = 5f;
+                player.m_staminaRegen       = 50f; //5f default
+                player.m_runStaminaDrain    = 0.1f;
+                player.m_staminaRegenDelay  = 0.5f; //1f default
+                player.m_eiterRegen         = 50f;
+                player.m_eitrRegenDelay     = 0.1f;
+                player.m_sneakStaminaDrain  = 0.1f;
+                player.m_jumpStaminaUsage   = 2.0f;
+
+                // Tolerate everything
+                player.m_tolerateFire = true;
+                player.m_tolerateTar = true;
+                player.m_tolerateSmoke = true;
+                player.m_tolerateWater = true; // What does this mean exactly?
+                
+                // I'm now a boss?
+//                player.m_boss = true;
+
+                //Max weight
+                player.m_maxCarryWeight = 10000.0f;
             }
 
-
-            // Kill all monsters in radius 5f
+            // Crazy health regen when below 75% health
             //
             if (Input.GetKeyDown(KeyCode.F9))
             {
+                crazyRegen = !crazyRegen;
+                counter = 0;
+                ShowULMsg("Crazy regen: " + crazyRegen.ToString());
+            }
+            
+            if (crazyRegen)
+            {
+                counter++;
+
+                if (counter % 150 == 0)
+                {
+                    if (player.GetHealthPercentage() < 0.75f)
+                    {
+                        ShowULMsg("Player at " + player.GetHealthPercentage() + ". Healing 12.5f.");
+                        player.Heal(12.5f, false);
+                    }
+                }
+            }
+            ////////////////////
+            ///
+
+            // Kill all monsters in radius 15f. Move this to somewhere else!
+            //
+            if (Input.GetKeyDown(KeyCode.Pause))
+            {
                 List<Character> list = new List<Character>();
-                Character.GetCharactersInRange(player.transform.position, 10f, list);
+                Character.GetCharactersInRange(player.transform.position, 20f, list);
 
                 int amount = 0;
 
@@ -235,10 +343,21 @@ namespace ICanShowYouTheWorld
 
             }
 
-            // Summon all peers - Just the first you find.
-            //
             if (Input.GetKeyDown(KeyCode.PageUp))
             {
+
+                player.m_runSpeed += 2;
+                player.m_swimSpeed += 2;
+                player.m_acceleration += 1;
+                player.m_crouchSpeed += 2;
+                player.m_walkSpeed += 2;
+                player.m_jumpForce += 1;
+                ShowULMsg("Faster: " + player.m_runSpeed);
+
+                // Summon all peers - Just the first you find.
+                //
+
+                /*
                 foreach (ZNetPeer peer in ZNet.instance.GetPeers())
                 {
                     // If not me
@@ -249,45 +368,24 @@ namespace ICanShowYouTheWorld
                         player.GetSEMan().AddStatusEffect("Burning", resetTime: true, 10, 10);
                         return;
                     }
-                }
+                }*/
             }
+
+            
 
             //Summon all characters.
             //
             if (Input.GetKeyDown(KeyCode.PageDown))
             {
-                // Register mouse click - Not used for anything for now. Just summon all
-                Vector3 position = ScreenToWorldPoint(Input.mousePosition);
-                Chat.instance.SendPing(position);
-
-                List<Character> list = new List<Character>();
-                Character.GetCharactersInRange(position, 100f, list);
-                ShowULMsg("Found " + list.Count + " players at " + position + " within 100f meters!");
-
-                Vector3 mypos    = ((Component)Player.m_localPlayer).transform.position;
-                Quaternion myrot = ((Component)Player.m_localPlayer).transform.rotation;
-
-                foreach (Character friend in list)
-                {
-                    if(friend.IsPlayer() && friend.GetHoverName() != player.GetHoverName())
-                    { 
-                        ShowULMsg("Summoning: " + friend.GetHoverName());
-
-                        Chat.instance.TeleportPlayer(friend.GetZDOID().userID,
-                            mypos,
-                            myrot,
-                            distantTeleport: true);
-                        /*
-                        Chat.instance.TeleportPlayer(
-                            friend.GetZDOID().userID,
-                            Player.m_localPlayer.transform.position,
-                            Player.m_localPlayer.transform.rotation,
-                            distantTeleport: true);
-                        */
-                    }
-
-                }
+                player.m_runSpeed -= 2;
+                player.m_acceleration -= 1;
+                player.m_swimSpeed -= 2;
+                player.m_crouchSpeed -= 2;
+                player.m_walkSpeed -= 2;
+                player.m_jumpForce -= 1f;
+                ShowULMsg("Slower: " + player.m_runSpeed);
             }
+
             // More:Find boss-stones
             //
 
@@ -311,6 +409,41 @@ namespace ICanShowYouTheWorld
                 }
             }
 
+            // Port to coordinates specified by mouse cursor
+            // INS.
+            //
+            if (Input.GetKeyDown(KeyCode.Delete))
+            {
+                Vector3 position = ScreenToWorldPoint(Input.mousePosition);
+
+                if (Player.m_localPlayer)
+                {
+
+                    List<Character> list = new List<Character>();
+                    Character.GetCharactersInRange(player.transform.position, 50f, list);
+                    ShowULMsg("Found " + list.Count + " characters within 50f meters!");
+
+                    Vector3 mypos = ((Component)Player.m_localPlayer).transform.position;
+                    Quaternion myrot = ((Component)Player.m_localPlayer).transform.rotation;
+
+                    foreach (Character friend in list)
+                    {
+                        if (friend.IsPlayer())
+                        {
+                            ShowULMsg("Teleporting: " + friend.GetHoverName());
+
+                            Chat.instance.TeleportPlayer(friend.GetZDOID().userID,
+                                position,
+                                player.transform.rotation, //??
+                                distantTeleport: true);
+                        }
+
+                    }
+
+                    //Teleport myself too?
+                    //Player.m_localPlayer.TeleportTo(vector, Player.m_localPlayer.transform.rotation, distantTeleport: true);
+                }
+            }
             // Gate to somewhere safe.
             // HOME
             //
@@ -350,6 +483,8 @@ namespace ICanShowYouTheWorld
                         "Could not find a good spot to port to!");
                 }
             }
+
+
 
             //Port to "safe" pin on map
             //
