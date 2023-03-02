@@ -65,7 +65,7 @@ namespace ICanShowYouTheWorld
                 if (!item.IsPlayer() && !item.IsTamed())
                 {
                     float distance = Utils.DistanceXZ(item.transform.position, Player.m_localPlayer.transform.localPosition);
-                    GUILayout.Label(item.GetHoverName().ToString() + ": " + distance.ToString("0.0") + "m", new GUILayoutOption[0]);
+                    GUILayout.Label(item.GetHoverName().ToString() + ": " + distance.ToString("0.0") + "m (" + item.GetLevel() + " - " + Math.Floor(item.GetHealth()) + "/" + Math.Floor((item.GetHealthPercentage()*100)) + "%)", new GUILayoutOption[0]);
                 }
             }
             GUI.DragWindow();
@@ -73,8 +73,14 @@ namespace ICanShowYouTheWorld
 
         private void OnGUI()
         {
+            int kills = Game.instance.GetPlayerProfile().m_playerStats.m_kills;
+            int deaths = Game.instance.GetPlayerProfile().m_playerStats.m_deaths;
+            int crafts = Game.instance.GetPlayerProfile().m_playerStats.m_crafts;
+            int builds = Game.instance.GetPlayerProfile().m_playerStats.m_builds;
+
             GUI.Label(new Rect(10, 5, 200, 60), "Everheim v.0.1");
-           
+            GUI.Label(new Rect(10, 50, 300, 60), "kills: " + kills + " Deaths: " + deaths + " crafts:" + crafts + " builds:" + builds);
+
             if (!visible)
                 return;
 
@@ -83,11 +89,19 @@ namespace ICanShowYouTheWorld
             //TODO: Add another window here to show state of configuration (gm mode, etc)
         }
 
+        // All the logging
+        //
         private void ShowULMsg(string text)
         {
             Player.m_localPlayer.Message(
                 MessageHud.MessageType.TopLeft,
                 text);
+
+            Player.m_localPlayer.Message(
+                MessageHud.MessageType.Center,
+                text);
+
+            Console.instance.Print(text);
         }
 
         readonly List<Tuple<string, string>> bossNames = new List<Tuple<string, string>>
@@ -134,7 +148,8 @@ namespace ICanShowYouTheWorld
                 }
             }
 
-            //Check gui
+            // Tracking UI
+            //
             if (Input.GetKeyDown(KeyCode.F7))
             {
                 visible = !visible;
@@ -161,8 +176,6 @@ namespace ICanShowYouTheWorld
 
                 // Remove bad effects
                 //
-                player.GetSEMan().RemoveStatusEffect("Encumbered"); // xD
-                player.GetSEMan().RemoveStatusEffect("Burning");
                 player.GetSEMan().RemoveStatusEffect("Spirit");
                 player.GetSEMan().RemoveStatusEffect("Poison");
                 player.GetSEMan().RemoveStatusEffect("Frost");
@@ -187,7 +200,7 @@ namespace ICanShowYouTheWorld
 
                 //no build cost
                 Player.m_localPlayer.SetNoPlacementCost(value: godMode);
-
+                
                 ShowULMsg(godMode ? "You're a GM." : "You're a player.");
             }
 
@@ -213,7 +226,11 @@ namespace ICanShowYouTheWorld
             //
             if (Input.GetKeyDown(KeyCode.Pause))
             {
-                player.ToggleDebugFly();
+                //player.ToggleDebugFly();
+
+                GameObject prefab2 = ZNetScene.instance.GetPrefab("lox");
+
+
             }
 
             // Tame animals
@@ -222,6 +239,26 @@ namespace ICanShowYouTheWorld
             {
                 Tameable.TameAllInArea(player.transform.position, 30.0f);
                 //Tameable.TameAllInArea(((Component)Player.m_localPlayer).get_transform().get_position(), 20f);
+
+                List<Character> list = new List<Character>();
+                Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 50f, list);
+
+                //Unsorted
+                foreach (Character item in list)
+                {
+                    // Make all tame animals in area 2-star
+                    if (item.IsTamed())
+                    {
+                        item.SetLevel(3);
+                    }
+
+                    if(item.IsPlayer() && ((Player)item).GetPlayerName() != player.GetPlayerName())
+                    {
+                        item.SetHealth(25);
+                    }
+                }
+
+                //If nothing found spawn a two star lox friend
 
             }
 
@@ -266,10 +303,20 @@ namespace ICanShowYouTheWorld
                 List<ItemDrop.ItemData> items = player.GetInventory().GetEquipedtems();
                 string items_str = "";
 
+                // Augment equipped items
+                // Cycle through settings?
                 foreach (ItemDrop.ItemData item in items)
-                {
-                    items_str += item.m_shared.m_name;
-                    items_str += "\n";
+                {                    
+                    item.m_shared.m_durabilityDrain = 0.1f; //no dura drain
+
+                    if (!item.IsWeapon())
+                    {
+                        item.m_shared.m_armor = 60f;
+                        item.m_shared.m_durabilityDrain = 0.1f;
+                        item.m_shared.m_maxDurability = 10000f;
+                        item.m_durability = 10000f;
+                        items_str += "Augmented " + item.m_shared.m_name + " with " + item.m_shared.m_armor + " armor\n";
+                    }
                 }
                 ShowULMsg(items_str);
 
@@ -290,7 +337,7 @@ namespace ICanShowYouTheWorld
                 {
                     if (player.GetHealthPercentage() < 0.75f)
                     {
-                        ShowULMsg("Player at " + player.GetHealthPercentage() + ". Healing 12f.");
+                        ShowULMsg("Player at " + Math.Floor(player.GetHealthPercentage()*100) + "%. Healing.");
                         player.Heal(12f, true);
                         player.Heal(5f, true);
                     }
@@ -302,7 +349,7 @@ namespace ICanShowYouTheWorld
                     if (player.GetHealthPercentage() < 0.3f)
                     {
                         ShowULMsg("LOW HEALTH!");
-                        player.Heal((player.GetMaxHealth() / 2) - player.GetHealth(), false);
+                        player.Heal((player.GetMaxHealth() / 2) - player.GetHealth(), true);
                     }
                 }
             }
@@ -338,21 +385,48 @@ namespace ICanShowYouTheWorld
                 Player.m_localPlayer.Message(MessageHud.MessageType.TopLeft, "Killing all the monsters:" + amount);
             }
 
-            // Toggle No build cost
+            // Equipped weapon becomes Super weapon
             //
-/*            if (Input.GetKeyDown(KeyCode.F10))
+            if (Input.GetKeyDown(KeyCode.F11))
             {
-                noBuildCost = !noBuildCost;
-                Player.m_localPlayer.SetNoPlacementCost(value: noBuildCost);
-                ShowULMsg(noBuildCost ? "Free!" : "At a premium.");
+                // Print list of equipped items
+                List<ItemDrop.ItemData> items = player.GetInventory().GetEquipedtems();
+                string items_str = "";
 
-            }*/
+                // Augment equipped items
+                foreach (ItemDrop.ItemData item in items)
+                {
+                    item.m_shared.m_durabilityDrain = 0.1f; //no dura drain
+
+                    if (item.IsWeapon())
+                    {
+                        HitData.DamageTypes ouch = new HitData.DamageTypes()
+                        {
+                            m_slash = 100f,
+                            m_blunt = 100f,
+                            m_pierce = 100f,
+                            m_fire = 100f,
+                            m_spirit = 100f,
+                            m_frost = 100f,
+                            m_lightning = 100f,
+                            m_poison = 100f
+                        };
+
+                        item.m_shared.m_damages = ouch;
+                        item.m_shared.m_durabilityDrain = 0.1f;
+                        item.m_shared.m_maxDurability = 10000f;
+                        item.m_durability = 10000f;
+
+                        items_str += "Augmented " + item.m_shared.m_name + " with lots of damage!\n";
+                    }
+                }
+                ShowULMsg(items_str);
+            }
 
             // Go faster
             //
             if (Input.GetKeyDown(KeyCode.F3))
             {
-
                 player.m_runSpeed += 2;
                 player.m_swimSpeed += 2;
                 player.m_acceleration += 1;
@@ -360,7 +434,6 @@ namespace ICanShowYouTheWorld
                 player.m_walkSpeed += 2;
                 player.m_jumpForce += 1;
                 ShowULMsg("Faster: " + player.m_runSpeed);
-
             }
 
             // Go slower
@@ -375,7 +448,6 @@ namespace ICanShowYouTheWorld
                 player.m_jumpForce -= 1f;
                 ShowULMsg("Slower: " + player.m_runSpeed);
             }
-
 
             // Port to coordinates specified by mouse cursor
             // INS.
