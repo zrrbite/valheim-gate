@@ -65,7 +65,7 @@ namespace ICanShowYouTheWorld
                 if (!item.IsPlayer() && !item.IsTamed())
                 {
                     float distance = Utils.DistanceXZ(item.transform.position, Player.m_localPlayer.transform.localPosition);
-                    GUILayout.Label(item.GetHoverName().ToString() + ": " + distance.ToString("0.0"), new GUILayoutOption[0]);
+                    GUILayout.Label(item.GetHoverName().ToString() + ": " + distance.ToString("0.0") + "m", new GUILayoutOption[0]);
                 }
             }
             GUI.DragWindow();
@@ -108,7 +108,7 @@ namespace ICanShowYouTheWorld
         UInt16 counter = 0;
 
         // States
-        bool crazyRegen = false;
+        bool fungiTunic = false;
 
 
         //TODO: Sort these functions and also turn some into helpers
@@ -218,7 +218,7 @@ namespace ICanShowYouTheWorld
 
             // Tame animals
             //
-            if (Input.GetKeyDown(KeyCode.Print))
+            if (Input.GetKeyDown(KeyCode.PageUp))
             {
                 Tameable.TameAllInArea(player.transform.position, 30.0f);
                 //Tameable.TameAllInArea(((Component)Player.m_localPlayer).get_transform().get_position(), 20f);
@@ -262,41 +262,57 @@ namespace ICanShowYouTheWorld
                 //Max weight
                 player.m_maxCarryWeight = 10000.0f;
 
+                // Print list of equipped items
+                List<ItemDrop.ItemData> items = player.GetInventory().GetEquipedtems();
+                string items_str = "";
+
+                foreach (ItemDrop.ItemData item in items)
+                {
+                    items_str += item.m_shared.m_name;
+                    items_str += "\n";
+                }
+                ShowULMsg(items_str);
+
                 // Fungi tunic
-                crazyRegen = !crazyRegen;
+                fungiTunic = !fungiTunic;
                 counter = 0;
 
-                ShowULMsg("Feeling good. Fungi: " + crazyRegen.ToString());
+                ShowULMsg("Boost stats. Fungi: " + fungiTunic.ToString());
             }
 
-            // Crazy health regen when below 75% health
-            //
-/*            if (Input.GetKeyDown(KeyCode.F9))
-            {
-                crazyRegen = !crazyRegen;
-                counter = 0;
-                ShowULMsg("Crazy regen: " + crazyRegen.ToString());
-            }
-*/            
-            if (crazyRegen)
+            //Fungi tunic - heal checks below 75, 50 and 25% (combined 45) ? 
+            if (fungiTunic)
             {
                 counter++;
 
+                // Soft healing timer
                 if (counter % 150 == 0)
                 {
                     if (player.GetHealthPercentage() < 0.75f)
                     {
-                        ShowULMsg("Player at " + player.GetHealthPercentage() + ". Healing 12.5f.");
-                        player.Heal(12.5f, false);
+                        ShowULMsg("Player at " + player.GetHealthPercentage() + ". Healing 12f.");
+                        player.Heal(12f, true);
+                        player.Heal(5f, true);
+                    }
+                }
+
+                // Imminent danger
+                if(counter % 25 == 0)
+                {
+                    if (player.GetHealthPercentage() < 0.3f)
+                    {
+                        ShowULMsg("LOW HEALTH!");
+                        player.Heal((player.GetMaxHealth() / 2) - player.GetHealth(), false);
                     }
                 }
             }
+
             ////////////////////
             ///
 
             // Kill all monsters in radius 15f. Move this to somewhere else!
             //
-            if (Input.GetKeyDown(KeyCode.ScrollLock))
+            if (Input.GetKeyDown(KeyCode.PageDown))
             {
                 List<Character> list = new List<Character>();
                 Character.GetCharactersInRange(player.transform.position, 20f, list);
