@@ -228,9 +228,33 @@ namespace ICanShowYouTheWorld
             {
                 //player.ToggleDebugFly();
 
-                GameObject prefab2 = ZNetScene.instance.GetPrefab("lox");
+                DateTime now = DateTime.Now;
+                GameObject prefab2 = ZNetScene.instance.GetPrefab("Lox");
+                if (!prefab2)
+                {
+                    Player.m_localPlayer.Message(MessageHud.MessageType.TopLeft, "Missing object lox");
+                }
+                else
+                {
+                    Player.m_localPlayer.Message(MessageHud.MessageType.TopLeft, "Spawning object lox");
+                    GameObject gameObject2 = UnityEngine.Object.Instantiate(prefab2, Player.m_localPlayer.transform.position + Player.m_localPlayer.transform.forward * 2f + Vector3.up, Quaternion.identity);
+                    ItemDrop component4 = gameObject2.GetComponent<ItemDrop>();
+                    gameObject2.GetComponent<Character>()?.SetLevel(3);
 
-
+                    //tame it
+                    Tameable.TameAllInArea(player.transform.position, 30.0f);
+                    //Name it
+                    List<Character> list = new List<Character>();
+                    Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 5f, list);
+                    foreach (Character item in list)
+                    {
+                        if(item.IsTamed())
+                        { 
+                            item.name = "Fluffy";
+                            item.m_name = "Fluffy";
+                        }
+                    }
+                }
             }
 
             // Tame animals
@@ -252,6 +276,7 @@ namespace ICanShowYouTheWorld
                         item.SetLevel(3);
                     }
 
+                    //TODO: REMOVE THIS
                     if(item.IsPlayer() && ((Player)item).GetPlayerName() != player.GetPlayerName())
                     {
                         item.SetHealth(25);
