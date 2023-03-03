@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System;
 using UnityEngine;
+using Random = System.Random;
 
 namespace ICanShowYouTheWorld
 {
@@ -48,9 +49,7 @@ namespace ICanShowYouTheWorld
             MainWindow = new Rect(10f, 10f, 250f, 150f);
         }
 
-        float lastDist = 0;
-        float currDist = 0;
-        GUIStyle style;
+//        GUIStyle style;
         public void RenderUI(int id)
         {
             // Tracking UI
@@ -78,8 +77,7 @@ namespace ICanShowYouTheWorld
             int crafts = Game.instance.GetPlayerProfile().m_playerStats.m_crafts;
             int builds = Game.instance.GetPlayerProfile().m_playerStats.m_builds;
 
-            GUI.Label(new Rect(10, 5, 200, 60), "Everheim v.0.1");
-            GUI.Label(new Rect(10, 50, 300, 60), "kills: " + kills + " Deaths: " + deaths + " crafts:" + crafts + " builds:" + builds);
+            GUI.Label(new Rect(10, 3, 400, 60), "Everheim v.0.1.  Deaths: " + deaths + "  Crafts: " + crafts + "  Builds: " + builds);
 
             if (!visible)
                 return;
@@ -222,22 +220,94 @@ namespace ICanShowYouTheWorld
                 }
             }
 
-            // Toggle flying
+            // Spawn pets
+            // TODO: Spawn a trio. Timon (boar), Misha (bear), some wolf
+            // TODO: Spawn a bit off the side.
             //
+            int pet_counter = 0;
             if (Input.GetKeyDown(KeyCode.Pause))
             {
                 //player.ToggleDebugFly();
 
+                int count = 1;
+                List<string> pets = new List<string> { "Boar", "Wolf", "Lox", "Hen", "Skeleton_Friendly" };
+                List<string> pet_names = new List<string> {
+                    "Bob",
+                    "Ralf",
+                    "Liam",
+                    "Olivia",
+                    "Elijah",
+                    "James",
+                    "William",
+                    "Benjamin",
+                    "Lucas",
+                    "Henry",
+                    "Theodore",
+                    "Emma",
+                    "Charlotte",
+                    "Amelia",
+                    "Sophia",
+                    "Isabella",
+                    "Mia",
+                    "Evelyn",
+                    "Harper",
+                    "Fluffy",
+                    "Max",
+                    "Sugar",
+                    "Cash",
+                    "Dusty",
+                    "Spirit",
+                    "Chief",
+                    "Sunshine",
+                    "Cisco",
+                    "Dakota",
+                    "Dash",
+                    "Magic",
+                    "Rebel",
+                    "Willow",
+                    "Lucky",
+                    "Gypsy",
+                    "Scout",
+                    "Cinnamon",
+                    "Toffee",
+                    "Ebony",
+                    "Onyx",
+                    "Chocolate",
+                    "Rusty",
+                    "Copper",
+                    "Brownie",
+                    "Noir",
+                    "Pepper",
+                    "Napoleon",
+                    "Dolly",
+                    "Lucy",
+                    "Princess",
+                    "Annie",
+                    "Sheriff",
+                    "Buckeye",
+                    "Merlin",
+                    "Amigo"
+                };
+
+
                 DateTime now = DateTime.Now;
-                GameObject prefab2 = ZNetScene.instance.GetPrefab("Lox");
+                Random rand = new Random();
+
+                int pet_index = rand.Next(pets.Count);
+                int name_index = rand.Next(pet_names.Count);
+
+                GameObject prefab2 = ZNetScene.instance.GetPrefab(pets[pet_index]);
+
                 if (!prefab2)
                 {
-                    Player.m_localPlayer.Message(MessageHud.MessageType.TopLeft, "Missing object lox");
+                    Player.m_localPlayer.Message(MessageHud.MessageType.TopLeft, "Missing object" + pets[pet_index] + " (" + pet_index + ")");
                 }
                 else
                 {
-                    Player.m_localPlayer.Message(MessageHud.MessageType.TopLeft, "Spawning object lox");
-                    GameObject gameObject2 = UnityEngine.Object.Instantiate(prefab2, Player.m_localPlayer.transform.position + Player.m_localPlayer.transform.forward * 2f + Vector3.up, Quaternion.identity);
+                    Vector3 vector = UnityEngine.Random.insideUnitSphere * ((count == 1) ? 0f : 0.5f);
+
+                    ShowULMsg("Spawning pet: " + pets[pet_index] + " (" + pet_index + ", " + pet_names[name_index] + ")");
+                    GameObject gameObject2 = UnityEngine.Object.Instantiate(prefab2, Player.m_localPlayer.transform.position + Player.m_localPlayer.transform.forward * 2f + Vector3.up + vector, Quaternion.identity);
                     ItemDrop component4 = gameObject2.GetComponent<ItemDrop>();
                     gameObject2.GetComponent<Character>()?.SetLevel(3);
 
@@ -250,11 +320,13 @@ namespace ICanShowYouTheWorld
                     {
                         if(item.IsTamed())
                         { 
-                            item.name = "Fluffy";
-                            item.m_name = "Fluffy";
+                            item.name = pet_names[name_index];
+                            item.m_name = pet_names[name_index];
                         }
                     }
                 }
+
+                pet_counter++;
             }
 
             // Tame animals
