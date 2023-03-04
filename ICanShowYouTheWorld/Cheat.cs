@@ -396,9 +396,10 @@ namespace ICanShowYouTheWorld
                 float regenMult = 5; // this helped.
                 float fallDmg = 0.2f;
                 float noise = 1;
-                
+                fungiTunic = true;
+
                 player.GetSEMan().ModifyHealthRegen(ref regenMult); //Seems that regen multiplier is applied to number of food items.                
-                player.GetSEMan().ModifyFallDamage(1, ref fallDmg);
+                player.GetSEMan().ModifyFallDamage(1, ref fallDmg); //todo: doesnt entirely work
                 player.GetSEMan().ModifyNoise(1f, ref noise); //Be very, very quiet. I'm hunting rabbits!
 
                 // Stamina drain
@@ -421,7 +422,7 @@ namespace ICanShowYouTheWorld
                 // I'm now a boss?
 
                 //Max weight
-                player.m_maxCarryWeight = 10000.0f;
+                player.m_maxCarryWeight = 99999.0f;
 
                 // Print list of equipped items
                 List<ItemDrop.ItemData> items = player.GetInventory().GetEquipedtems();
@@ -434,31 +435,30 @@ namespace ICanShowYouTheWorld
                     item.m_shared.m_durabilityDrain = 0.1f; //no dura drain
 
                     //Set max dura on everything
+                    item.m_shared.m_maxDurability = 10000f;
                     item.m_durability = 10000f;
                     item.m_shared.m_durabilityDrain = 0.1f;
-                    item.m_shared.m_maxDurability = 10000f;
-
-                    // Never run out
-                    if (item.m_shared.m_maxStackSize > 1)
-                    {
-                        items_str += "Boosting stacks.";
-                        item.m_shared.m_maxStackSize = 1000;
-                        item.m_stack = 1000;
-                    }
 
                     if (!item.IsWeapon())
                     {
-                        item.m_shared.m_armor = 65f;
-                        items_str += "Augmented " + item.m_shared.m_name + " with " + item.m_shared.m_armor + " armor.\n";
+                        item.m_shared.m_armor = 60f;
                     }
                 }
-                ShowULMsg(items_str);
+                ShowULMsg("Augmented. Fungi/ = " + fungiTunic.ToString());
 
-                // Fungi tunic
-                fungiTunic = !fungiTunic;
-                counter = 0;
+                //Boost stack sizes
+                List<ItemDrop.ItemData> all_items = player.GetInventory().GetAllItems();
 
-                ShowULMsg("Boost stats. Fungi: " + fungiTunic.ToString());
+                // Augment equipped items
+                // Cycle through settings?
+                foreach (ItemDrop.ItemData item in all_items)
+                {
+                    if(item.m_shared.m_maxStackSize > 1)
+                    {
+                        item.m_shared.m_maxStackSize = 100;
+                        item.m_stack = 100;
+                    }
+                }
             }
 
             //Fungi tunic - heal checks below 75, 50 and 25% (combined 45) ?
@@ -483,7 +483,7 @@ namespace ICanShowYouTheWorld
 
                     foreach (Character item in list)
                     {
-                        if (item.IsPlayer() && item.GetHealthPercentage() < 0.75f)
+                        if (item.IsPlayer() && item.GetHoverName() != player.GetHoverName() && item.GetHealthPercentage() < 0.75f)
                         {
                             ShowULMsg(item.GetHoverName() + " at " + Math.Floor(player.GetHealthPercentage() * 100) + "%. Healing.");
                             item.Heal(12.5f);
