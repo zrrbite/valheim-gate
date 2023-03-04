@@ -311,11 +311,13 @@ namespace ICanShowYouTheWorld
                     GameObject gameObject2 = UnityEngine.Object.Instantiate(prefab2, Player.m_localPlayer.transform.position + Player.m_localPlayer.transform.forward * 2f + Vector3.up + vector, Quaternion.identity);
                     ItemDrop component4 = gameObject2.GetComponent<ItemDrop>();
                     gameObject2.GetComponent<Character>()?.SetLevel(3);
+                    gameObject2.GetComponent<Character>().m_name = pet_names[name_index];
 
                     //tame it
                     Tameable.TameAllInArea(player.transform.position, 30.0f);
+
                     //Name it
-                    List<Character> list = new List<Character>();
+/*                    List<Character> list = new List<Character>();
                     Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 5f, list);
                     foreach (Character item in list)
                     {
@@ -325,6 +327,7 @@ namespace ICanShowYouTheWorld
                             item.m_name = pet_names[name_index];
                         }
                     }
+*/
                 }
 
                 pet_counter++;
