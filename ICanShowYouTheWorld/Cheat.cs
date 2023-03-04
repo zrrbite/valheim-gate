@@ -65,19 +65,21 @@ namespace ICanShowYouTheWorld
                 {
                     float distance = Utils.DistanceXZ(item.transform.position, Player.m_localPlayer.transform.localPosition);
                     GUILayout.Label(item.GetHoverName().ToString() + ": " + distance.ToString("0.0") + "m (" + item.GetLevel() + " - " + Math.Floor(item.GetHealth()) + "/" + Math.Floor((item.GetHealthPercentage()*100)) + "%)", new GUILayoutOption[0]);
+
                 }
             }
             GUI.DragWindow();
         }
 
+        bool saved = true; //don't save
         private void OnGUI()
         {
-            int kills = Game.instance.GetPlayerProfile().m_playerStats.m_kills;
+            int state = Game.instance.GetPlayerProfile().m_playerStats.m_kills;
             int deaths = Game.instance.GetPlayerProfile().m_playerStats.m_deaths;
             int crafts = Game.instance.GetPlayerProfile().m_playerStats.m_crafts;
             int builds = Game.instance.GetPlayerProfile().m_playerStats.m_builds;
 
-            GUI.Label(new Rect(10, 3, 400, 60), "Everheim v.0.1.  Deaths: " + deaths + "  Crafts: " + crafts + "  Builds: " + builds);
+            GUI.Label(new Rect(10, 3, 400, 70), "Everheim v.0.1.  Deaths: " + deaths + "  Crafts: " + crafts + "  Builds: " + builds + " State: " + state);
 
             if (!visible)
                 return;
@@ -85,6 +87,27 @@ namespace ICanShowYouTheWorld
             MainWindow = GUILayout.Window(0, MainWindow, new GUI.WindowFunction(RenderUI), "Tracking", new GUILayoutOption[0]);
 
             //TODO: Add another window here to show state of configuration (gm mode, etc)
+
+            /*
+            if(!saved)
+            { 
+                ShowULMsg("Saving state: " + state);
+                // Temp: just try to save something here.
+                int fungi = 0x1;
+                int boost = 0x2;
+                int spell_companion = 0x4;
+                int spell_tameall = 0x8;
+                int spell_killall = 0x10; //0x20, 0x40, 0x60 0x80, 0x100, 0x200, 0x400, 0x800, 0x1000
+
+                int active = fungi | boost | spell_companion | spell_killall | spell_tameall;
+                bool fungi_equipped = (active & fungi >> 3) != 0;
+                //Test if we can affect stats across game sessions. Are they saved on Save()? Then reload this state when new session starts.
+                Game.instance.GetPlayerProfile().m_playerStats.m_kills = active;
+                Game.instance.GetPlayerProfile().Save();
+
+                saved = true;
+            }*/
+
         }
 
         // All the logging
