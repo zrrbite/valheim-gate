@@ -195,11 +195,12 @@ namespace ICanShowYouTheWorld
             {
                 godMode = !godMode;
                 player.SetGodMode(godMode);
+                player.m_boss = godMode;
 
                 //no build cost
                 Player.m_localPlayer.SetNoPlacementCost(value: godMode);
                 
-                ShowULMsg(godMode ? "You're a GM." : "You're a player.");
+                ShowULMsg(godMode ? "You're a GM and a boss!" : "You're just a player.");
             }
 
             // Toggle Guardian power
