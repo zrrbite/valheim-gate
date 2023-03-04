@@ -324,7 +324,8 @@ namespace ICanShowYouTheWorld
 
                 if (!prefab2)
                 {
-                    Player.m_localPlayer.Message(MessageHud.MessageType.TopLeft, "Missing object" + pets[pet_index] + " (" + pet_index + ")");
+                    ShowULMsg("Missing object" + pets[pet_index] + " (" + pet_index + ")");
+//                    Player.m_localPlayer.Message(MessageHud.MessageType.TopLeft, "Missing object" + pets[pet_index] + " (" + pet_index + ")");
                 }
                 else
                 {
@@ -375,11 +376,12 @@ namespace ICanShowYouTheWorld
                         item.SetLevel(3);
                     }
 
+                    /*
                     //TODO: REMOVE THIS
                     if(item.IsPlayer() && ((Player)item).GetPlayerName() != player.GetPlayerName())
                     {
                         item.SetHealth(25);
-                    }
+                    }*/
                 }
 
                 //If nothing found spawn a two star lox friend
@@ -394,7 +396,6 @@ namespace ICanShowYouTheWorld
                 float regenMult = 5; // this helped.
                 float fallDmg = 0.2f;
                 float noise = 1;
-
                 
                 player.GetSEMan().ModifyHealthRegen(ref regenMult); //Seems that regen multiplier is applied to number of food items.                
                 player.GetSEMan().ModifyFallDamage(1, ref fallDmg);
@@ -418,7 +419,6 @@ namespace ICanShowYouTheWorld
                 player.m_tolerateWater = true; // What does this mean exactly?
                 
                 // I'm now a boss?
-//                player.m_boss = true;
 
                 //Max weight
                 player.m_maxCarryWeight = 10000.0f;
@@ -461,7 +461,8 @@ namespace ICanShowYouTheWorld
                 ShowULMsg("Boost stats. Fungi: " + fungiTunic.ToString());
             }
 
-            //Fungi tunic - heal checks below 75, 50 and 25% (combined 45) ? 
+            //Fungi tunic - heal checks below 75, 50 and 25% (combined 45) ?
+            // split this in twp - bard aoe
             if (fungiTunic)
             {
                 counter++;
@@ -475,18 +476,32 @@ namespace ICanShowYouTheWorld
                         player.Heal(12f, true);
                         player.Heal(5f, true);
                     }
+
+                    // Give a little bit to others (bard song)
+                    List<Character> list = new List<Character>();
+                    Character.GetCharactersInRange(player.transform.position, 20f, list);
+
+                    foreach (Character item in list)
+                    {
+                        if (item.IsPlayer() && item.GetHealthPercentage() < 0.75f)
+                        {
+                            ShowULMsg(item.GetHoverName() + " at " + Math.Floor(player.GetHealthPercentage() * 100) + "%. Healing.");
+                            item.Heal(12.5f);
+                        }
+                    }
                 }
 
-                // Imminent danger
-                if(counter % 25 == 0)
+                // Imminent danger timer
+                if (counter % 25 == 0)
                 {
                     if (player.GetHealthPercentage() < 0.3f)
                     {
                         ShowULMsg("LOW HEALTH!");
-                        player.Heal((player.GetMaxHealth() / 2) - player.GetHealth(), true);
+                        player.Heal((player.GetMaxHealth() / 2) - player.GetHealth(), false);
                     }
                 }
             }
+
 
             ////////////////////
             ///
@@ -515,8 +530,7 @@ namespace ICanShowYouTheWorld
                         amount++;
                     }
                 }
-                Player.m_localPlayer.Message(MessageHud.MessageType.TopLeft, "Characters in range:" + list.Count);
-                Player.m_localPlayer.Message(MessageHud.MessageType.TopLeft, "Killing all the monsters:" + amount);
+                ShowULMsg("Killing monsers in range:" + amount);
             }
 
             // Equipped weapon becomes Super weapon
@@ -567,6 +581,7 @@ namespace ICanShowYouTheWorld
                 player.m_crouchSpeed += 2;
                 player.m_walkSpeed += 2;
                 player.m_jumpForce += 1;
+                player.m_jumpForceForward += 1;
                 ShowULMsg("Faster: " + player.m_runSpeed);
             }
 
@@ -580,6 +595,7 @@ namespace ICanShowYouTheWorld
                 player.m_crouchSpeed -= 2;
                 player.m_walkSpeed -= 2;
                 player.m_jumpForce -= 1f;
+                player.m_jumpForceForward -= 1;
                 ShowULMsg("Slower: " + player.m_runSpeed);
             }
 
@@ -649,7 +665,7 @@ namespace ICanShowYouTheWorld
                         MessageHud.MessageType.TopLeft,
                         "Teleporting home: " +
                         dst);
-                    Console.instance.Print("Teleporting to: " + dst);
+                    ShowULMsg("Teleporting to: " + dst);
 //                    Console.instance.AddString("I'm out of here!", "Gate to " + dst.ToString("0.0"), Talker.Type.Shout);
 
                     // Perform distant teleport to dst
@@ -661,9 +677,7 @@ namespace ICanShowYouTheWorld
                 }
                 else
                 {
-                    Player.m_localPlayer.Message(
-                        MessageHud.MessageType.TopLeft,
-                        "Could not find a good spot to port to!");
+                    ShowULMsg("Could not find a good spot to port to!");
                 }
             }
 
