@@ -433,13 +433,23 @@ namespace ICanShowYouTheWorld
                 {                    
                     item.m_shared.m_durabilityDrain = 0.1f; //no dura drain
 
+                    //Set max dura on everything
+                    item.m_durability = 10000f;
+                    item.m_shared.m_durabilityDrain = 0.1f;
+                    item.m_shared.m_maxDurability = 10000f;
+
+                    // Never run out
+                    if (item.m_shared.m_maxStackSize > 1)
+                    {
+                        items_str += "Boosting stacks.";
+                        item.m_shared.m_maxStackSize = 1000;
+                        item.m_stack = 1000;
+                    }
+
                     if (!item.IsWeapon())
                     {
-                        item.m_shared.m_armor = 60f;
-                        item.m_shared.m_durabilityDrain = 0.1f;
-                        item.m_shared.m_maxDurability = 10000f;
-                        item.m_durability = 10000f;
-                        items_str += "Augmented " + item.m_shared.m_name + " with " + item.m_shared.m_armor + " armor\n";
+                        item.m_shared.m_armor = 65f;
+                        items_str += "Augmented " + item.m_shared.m_name + " with " + item.m_shared.m_armor + " armor.\n";
                     }
                 }
                 ShowULMsg(items_str);
