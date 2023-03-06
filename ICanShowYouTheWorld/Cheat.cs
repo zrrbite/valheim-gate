@@ -34,7 +34,15 @@ namespace ICanShowYouTheWorld
         public static bool noBuildCost = false;
         public static int godPower = 0;
 
+        // Counters
+        UInt16 counter = 0;
+
+        // States
+        public static bool fungiTunic = false;
+        public static bool ghostMode = false;
+
         private Rect MainWindow;
+        private Rect StatusWindow;
         public bool visible = false;
 
         private void Awake()
@@ -47,9 +55,62 @@ namespace ICanShowYouTheWorld
             Console.instance.Print("Start..");
 
             MainWindow = new Rect(10f, 10f, 250f, 150f);
+
+            float center_x = (Screen.width  / 2) - (250 / 2);
+            float center_y = (Screen.height / 2) - (300 / 2);
+
+            StatusWindow = new Rect(250f, 100f, 200f, 300f);
+
         }
 
-//        GUIStyle style;
+        private float w1 = 120f;
+        private float w2 = 40f;
+        private void AddHorizontalGridLine(string text, bool on)
+        {
+            GUILayout.BeginHorizontal();
+            GUI.contentColor = Color.white;
+            GUILayout.Label(text, GUILayout.Width(w1));
+            GUI.contentColor = on ? Color.green : Color.red;
+            GUILayout.Label(on.ToString(), GUILayout.Width(w2));
+            GUILayout.EndHorizontal();
+        }
+
+        // Links:
+        // https://answers.unity.com/questions/702499/what-is-a-guilayoutoption.html
+        // https://answers.unity.com/questions/12108/something-like-guitable-or-a-grid.html 
+        public void RenderModesUI(int id)
+        {
+            //To try: BeginArea /EndArea ?
+            //float w1 = 120f;
+            //float w2 = 40f;
+
+            //todo: Turn this into AddLine() helper
+
+            AddHorizontalGridLine("Boost stats", fungiTunic);
+            AddHorizontalGridLine("Fungi tunic", fungiTunic);
+            AddHorizontalGridLine("Hymn of resto", fungiTunic);
+            AddHorizontalGridLine("GodMode", godMode);
+            AddHorizontalGridLine("NoBuildCost", godMode /*nobuildcost*/);
+            AddHorizontalGridLine("Ghost Mode", ghostMode);
+
+            /*
+              
+                         GUILayout.Space(1f);
+                    GUILayout.Label("Armor buff: -",                        new GUILayoutOption[0]);
+                        GUILayout.Label("Resist buff: -",                       new GUILayoutOption[0]);
+                        GUILayout.Label("Fungi tunic: " + fungiTunic,           new GUILayoutOption[0]);
+                        GUILayout.Label("Hymn of Restauration: " + fungiTunic,  new GUILayoutOption[0]);
+
+                        // GM STUFF
+                        GUILayout.Space(1f);
+                        GUILayout.Label("Place things: " + noBuildCost,  new GUILayoutOption[0]);
+                        GUILayout.Label("God: " + godMode,          new GUILayoutOption[0]); //Align middle = 8 maybe.
+                        GUILayout.Label("Ghost: " + ghostMode,      new GUILayoutOption[0]);
+                        GUILayout.Label("Event active: -",          new GUILayoutOption[0]);
+            */
+            GUI.DragWindow();
+        }
+
         public void RenderUI(int id)
         {
             // Tracking UI
@@ -64,7 +125,7 @@ namespace ICanShowYouTheWorld
                 if (!item.IsPlayer() && !item.IsTamed())
                 {
                     float distance = Utils.DistanceXZ(item.transform.position, Player.m_localPlayer.transform.localPosition);
-                    GUILayout.Label(item.GetHoverName().ToString() + ": " + distance.ToString("0.0") + "m (" + item.GetLevel() + " - " + Math.Floor(item.GetHealth()) + "/" + Math.Floor((item.GetHealthPercentage()*100)) + "%)", new GUILayoutOption[0]);
+                    GUILayout.Label(item.GetHoverName().ToString() + ": " + distance.ToString("0.0") + "m (lvl " + item.GetLevel() + " - " + Math.Floor(item.GetHealth()) + " hp /" + Math.Floor((item.GetHealthPercentage()*100)) + "%)", new GUILayoutOption[0]);
 
                 }
             }
@@ -85,6 +146,7 @@ namespace ICanShowYouTheWorld
                 return;
 
             MainWindow = GUILayout.Window(0, MainWindow, new GUI.WindowFunction(RenderUI), "Tracking", new GUILayoutOption[0]);
+            StatusWindow = GUILayout.Window(1, StatusWindow, new GUI.WindowFunction(RenderModesUI), "Modes", new GUILayoutOption[0]);
 
             //TODO: Add another window here to show state of configuration (gm mode, etc)
 
@@ -139,11 +201,66 @@ namespace ICanShowYouTheWorld
             Tuple.Create<string, string>("Hive","Seeker Queen")
         };
 
-        // Counters
-        UInt16 counter = 0;
+        List<string> mistlands_mobs = new List<string> { "Seeker" };
+        List<string> pets = new List<string> { "Boar", "Wolf", "Lox", "Hen", "Skeleton_Friendly" };
+        List<string> pet_names = new List<string> {
+                    "Bob",
+                    "Ralf",
+                    "Liam",
+                    "Olivia",
+                    "Elijah",
+                    "James",
+                    "William",
+                    "Benjamin",
+                    "Lucas",
+                    "Henry",
+                    "Theodore",
+                    "Emma",
+                    "Charlotte",
+                    "Amelia",
+                    "Sophia",
+                    "Isabella",
+                    "Mia",
+                    "Evelyn",
+                    "Harper",
+                    "Fluffy",
+                    "Max",
+                    "Sugar",
+                    "Cash",
+                    "Dusty",
+                    "Spirit",
+                    "Chief",
+                    "Sunshine",
+                    "Cisco",
+                    "Dakota",
+                    "Dash",
+                    "Magic",
+                    "Rebel",
+                    "Willow",
+                    "Lucky",
+                    "Gypsy",
+                    "Scout",
+                    "Cinnamon",
+                    "Toffee",
+                    "Ebony",
+                    "Onyx",
+                    "Chocolate",
+                    "Rusty",
+                    "Copper",
+                    "Brownie",
+                    "Noir",
+                    "Pepper",
+                    "Napoleon",
+                    "Dolly",
+                    "Lucy",
+                    "Princess",
+                    "Annie",
+                    "Sheriff",
+                    "Buckeye",
+                    "Merlin",
+                    "Amigo"
+                };
 
-        // States
-        bool fungiTunic = false;
 
 
         //TODO: Sort these functions and also turn some into helpers
@@ -173,11 +290,11 @@ namespace ICanShowYouTheWorld
             //
             if (Input.GetKeyDown(KeyCode.F7))
             {
+                ShowULMsg("UI Active (Track, Modes)");
                 visible = !visible;
             }
 
             Player player = Player.m_localPlayer;
-
             // TODO; Populate some player variables
             // TODO: Remove cooldowns (pots, guardian power, ...)
 
@@ -254,65 +371,6 @@ namespace ICanShowYouTheWorld
                 //player.ToggleDebugFly();
 
                 int count = 1;
-                List<string> pets = new List<string> { "Boar", "Wolf", "Lox", "Hen", "Skeleton_Friendly" };
-                List<string> pet_names = new List<string> {
-                    "Bob",
-                    "Ralf",
-                    "Liam",
-                    "Olivia",
-                    "Elijah",
-                    "James",
-                    "William",
-                    "Benjamin",
-                    "Lucas",
-                    "Henry",
-                    "Theodore",
-                    "Emma",
-                    "Charlotte",
-                    "Amelia",
-                    "Sophia",
-                    "Isabella",
-                    "Mia",
-                    "Evelyn",
-                    "Harper",
-                    "Fluffy",
-                    "Max",
-                    "Sugar",
-                    "Cash",
-                    "Dusty",
-                    "Spirit",
-                    "Chief",
-                    "Sunshine",
-                    "Cisco",
-                    "Dakota",
-                    "Dash",
-                    "Magic",
-                    "Rebel",
-                    "Willow",
-                    "Lucky",
-                    "Gypsy",
-                    "Scout",
-                    "Cinnamon",
-                    "Toffee",
-                    "Ebony",
-                    "Onyx",
-                    "Chocolate",
-                    "Rusty",
-                    "Copper",
-                    "Brownie",
-                    "Noir",
-                    "Pepper",
-                    "Napoleon",
-                    "Dolly",
-                    "Lucy",
-                    "Princess",
-                    "Annie",
-                    "Sheriff",
-                    "Buckeye",
-                    "Merlin",
-                    "Amigo"
-                };
-
 
                 DateTime now = DateTime.Now;
                 Random rand = new Random();
@@ -325,7 +383,6 @@ namespace ICanShowYouTheWorld
                 if (!prefab2)
                 {
                     ShowULMsg("Missing object" + pets[pet_index] + " (" + pet_index + ")");
-//                    Player.m_localPlayer.Message(MessageHud.MessageType.TopLeft, "Missing object" + pets[pet_index] + " (" + pet_index + ")");
                 }
                 else
                 {
@@ -336,6 +393,8 @@ namespace ICanShowYouTheWorld
                     ItemDrop component4 = gameObject2.GetComponent<ItemDrop>();
                     gameObject2.GetComponent<Character>()?.SetLevel(3);
                     gameObject2.GetComponent<Character>().m_name = pet_names[name_index];
+                    gameObject2.GetComponent<Character>().SetMaxHealth(5000);
+                    gameObject2.GetComponent<Character>().SetHealth(5000);
 
                     //tame it
                     Tameable.TameAllInArea(player.transform.position, 30.0f);
@@ -355,6 +414,48 @@ namespace ICanShowYouTheWorld
                 }
 
                 pet_counter++;
+            }
+
+            // Ghostmode
+            //
+            if (Input.GetKeyDown(KeyCode.LeftAlt))
+            {
+                ghostMode = !ghostMode;
+                player.SetGhostMode(ghostMode);
+                ShowULMsg("GhostMode: " + ghostMode);
+            }
+
+            // spawn random event
+            //
+            if(Input.GetKeyDown(KeyCode.Alpha9))
+            {
+                // if start, then start, if !start then cancel
+                // !start?
+ //               RandEventSystem.instance.ResetRandomEvent();
+                RandEventSystem.instance.StartRandomEvent();
+                ShowULMsg("Spawning random event");
+            }
+
+            // Spawn seekers, some distance away
+            //
+            if (Input.GetKeyDown(KeyCode.LeftShift))
+            {
+
+                GameObject prefab2 = ZNetScene.instance.GetPrefab("Seeker");
+
+                if (!prefab2)
+                {
+                    ShowULMsg("Missing object: Seeker");
+                }
+                else
+                {
+                    Vector3 vector = UnityEngine.Random.insideUnitSphere; //10 times unit vector in my direction
+                    Random rand = new Random();
+                    GameObject gameObject2 = UnityEngine.Object.Instantiate(prefab2, Player.m_localPlayer.transform.position + Player.m_localPlayer.transform.forward * 10f + Vector3.up + vector, Quaternion.identity);
+                    ItemDrop component4 = gameObject2.GetComponent<ItemDrop>();
+                    gameObject2.GetComponent<Character>()?.SetLevel(rand.Next(0, 3)); //Set level 0-1
+                    ShowULMsg("Spawning seeker");
+                }
             }
 
             // Tame animals
@@ -434,29 +535,31 @@ namespace ICanShowYouTheWorld
                 {                    
                     item.m_shared.m_durabilityDrain = 0.1f; //no dura drain
 
-                    //Set max dura on everything
+                    //Set max dura on everything. todo: dont just do this on equipped items.
                     item.m_shared.m_maxDurability = 10000f;
                     item.m_durability = 10000f;
-                    item.m_shared.m_durabilityDrain = 0.1f;
 
                     if (!item.IsWeapon())
                     {
                         item.m_shared.m_armor = 60f;
                     }
                 }
-                ShowULMsg("Augmented. Fungi/ = " + fungiTunic.ToString());
+                ShowULMsg("Augmented. Fungi = " + fungiTunic.ToString());
 
-                //Boost stack sizes
+                //Boost stack sizes - todo: just do one loop for all items?
                 List<ItemDrop.ItemData> all_items = player.GetInventory().GetAllItems();
 
                 // Augment equipped items
                 // Cycle through settings?
                 foreach (ItemDrop.ItemData item in all_items)
                 {
+                    //TODO: Set durability here instead
+
+                    //If stackable, refill
                     if(item.m_shared.m_maxStackSize > 1)
                     {
-                        item.m_shared.m_maxStackSize = 100;
-                        item.m_stack = 100;
+                        //item.m_shared.m_maxStackSize = 100;
+                        item.m_stack = item.m_shared.m_maxStackSize;
                     }
                 }
             }
@@ -465,21 +568,21 @@ namespace ICanShowYouTheWorld
             // split this in twp - bard aoe
             if (fungiTunic)
             {
-                counter++;
+                counter++; // wrap is fine.
 
                 // Soft healing timer
                 if (counter % 150 == 0)
                 {
                     if (player.GetHealthPercentage() < 0.75f)
                     {
-                        ShowULMsg("Player at " + Math.Floor(player.GetHealthPercentage()*100) + "%. Healing.");
+                        ShowULMsg("Player at " + Math.Floor(player.GetHealthPercentage() * 100) + "%. Healing.");
                         player.Heal(12f, true);
                         player.Heal(5f, true);
                     }
 
-                    // Give a little bit to others (bard song)
+                    // take from monsters and give to players.
                     List<Character> list = new List<Character>();
-                    Character.GetCharactersInRange(player.transform.position, 20f, list);
+                    Character.GetCharactersInRange(player.transform.position, 15f, list);
 
                     foreach (Character item in list)
                     {
@@ -488,6 +591,20 @@ namespace ICanShowYouTheWorld
                             ShowULMsg(item.GetHoverName() + " at " + Math.Floor(player.GetHealthPercentage() * 100) + "%. Healing.");
                             item.Heal(12.5f);
                         }
+
+                        //Cloak of flames
+/*                        if(!item.IsPlayer() && item.IsMonsterFaction())
+                        {
+                            Console.instance.Print("Cloak of flames ticked");
+                            item.Damage(new HitData
+                            {
+                                m_damage =
+                                {
+                                    m_damage = 15f
+                                }
+                            });
+                        }
+*/
                     }
                 }
 
