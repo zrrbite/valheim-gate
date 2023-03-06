@@ -446,24 +446,34 @@ namespace ICanShowYouTheWorld
                 }
             }
 
-            // Spawn seekers, some distance away
+            // Clone++, some distance away
+            // todo: Do something with biome dependent spawning. player.m_currentBiome
+            
             //
             if (Input.GetKeyDown(KeyCode.LeftAlt))
             {
-                GameObject prefab2 = ZNetScene.instance.GetPrefab("Seeker");
+                List<Character> list = new List<Character>();
+                Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 20f, list);
+                list.Remove(player);
+                Console.instance.Print("Found " + list.Count);
+
+                Random rand = new Random();
+                Character c = list[rand.Next(0, list.Count)];
+                ShowULMsg("Looking up " + c.GetHoverName());
+                //                GameObject prefab2 = ZNetScene.instance.GetPrefab("Seeker");
+                GameObject prefab2 = ZNetScene.instance.GetPrefab(c.GetHoverName());
 
                 if (!prefab2)
                 {
-                    ShowULMsg("Missing object: Seeker");
+                    ShowULMsg("Missing object: " + prefab2.name);
                 }
                 else
                 {
                     Vector3 vector = UnityEngine.Random.insideUnitSphere; //10 times unit vector in my direction
-                    Random rand = new Random();
                     GameObject gameObject2 = UnityEngine.Object.Instantiate(prefab2, Player.m_localPlayer.transform.position + Player.m_localPlayer.transform.forward * 10f + Vector3.up + vector, Quaternion.identity);
                     ItemDrop component4 = gameObject2.GetComponent<ItemDrop>();
                     gameObject2.GetComponent<Character>()?.SetLevel(rand.Next(0, 3)); //Set level 0-1
-                    ShowULMsg("Spawning seeker");
+                    ShowULMsg("Spawning " + prefab2.name);
                 }
             }
 
