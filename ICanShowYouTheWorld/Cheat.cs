@@ -40,6 +40,8 @@ namespace ICanShowYouTheWorld
         // States
         public static bool fungiTunic = false;
         public static bool ghostMode = false;
+        public static bool RandomEvent = false;
+
 
         private Rect MainWindow;
         private Rect StatusWindow;
@@ -92,6 +94,7 @@ namespace ICanShowYouTheWorld
             AddHorizontalGridLine("GodMode", godMode);
             AddHorizontalGridLine("NoBuildCost", godMode /*nobuildcost*/);
             AddHorizontalGridLine("Ghost Mode", ghostMode);
+            AddHorizontalGridLine("RandomEventActive", RandomEvent);
 
             /*
               
@@ -418,7 +421,7 @@ namespace ICanShowYouTheWorld
 
             // Ghostmode
             //
-            if (Input.GetKeyDown(KeyCode.LeftAlt))
+            if (Input.GetKeyDown(KeyCode.Alpha9))
             {
                 ghostMode = !ghostMode;
                 player.SetGhostMode(ghostMode);
@@ -427,20 +430,26 @@ namespace ICanShowYouTheWorld
 
             // spawn random event
             //
-            if(Input.GetKeyDown(KeyCode.Alpha9))
+            if(Input.GetKeyDown(KeyCode.Alpha0))
             {
-                // if start, then start, if !start then cancel
-                // !start?
- //               RandEventSystem.instance.ResetRandomEvent();
-                RandEventSystem.instance.StartRandomEvent();
-                ShowULMsg("Spawning random event");
+                RandomEvent = !RandomEvent;
+
+                if(!RandomEvent)
+                {
+                    RandEventSystem.instance.ResetRandomEvent();
+                    ShowULMsg("Stopping random event");
+                }
+                else
+                {
+                    RandEventSystem.instance.StartRandomEvent();
+                    ShowULMsg("Spawning random event");
+                }
             }
 
             // Spawn seekers, some distance away
             //
-            if (Input.GetKeyDown(KeyCode.LeftShift))
+            if (Input.GetKeyDown(KeyCode.LeftAlt))
             {
-
                 GameObject prefab2 = ZNetScene.instance.GetPrefab("Seeker");
 
                 if (!prefab2)
@@ -651,6 +660,7 @@ namespace ICanShowYouTheWorld
             }
 
             // Equipped weapon becomes Super weapon
+            // todo: ability to revert back
             //
             if (Input.GetKeyDown(KeyCode.F11))
             {
