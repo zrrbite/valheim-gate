@@ -287,6 +287,9 @@ namespace ICanShowYouTheWorld
                         (int)Minimap.PinType.Boss);
 
                 }
+
+                //Finally, just explore everything. Hope this doesn't årevent revealing bosses.
+                Minimap.instance.ExploreAll();
             }
 
             // Tracking UI
