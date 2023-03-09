@@ -3,6 +3,12 @@ using System;
 using UnityEngine;
 using Random = System.Random;
 
+//todo:
+// 			BaseAI.AggravateAllInArea(Player.m_localPlayer.transform.position, 20f, BaseAI.AggravatedReason.Damage); + shout! Chat.instance.BroadcastMessage("Monsters become aggravated!");
+// 			Minimap.instance.ExploreAll();
+//          Minimap.instance.Reset();
+// 
+
 namespace ICanShowYouTheWorld
 {
     public class NotACheater : MonoBehaviour
@@ -188,13 +194,59 @@ namespace ICanShowYouTheWorld
             Tuple.Create<string, string>("Dragonqueen","Moder"),
             Tuple.Create<string, string>("SeekerQueen","Seeker Queen"),
             Tuple.Create<string, string>("Seekerqueen","Seeker Queen"),
-            Tuple.Create<string, string>("Hive","Seeker Queen"),
-            Tuple.Create<string, string>("Queen","Queen"),
             Tuple.Create<string, string>("GoblinKing","Yagluth"),
-            Tuple.Create<string, string>("Hive","Seeker Queen")
+        };
+        readonly List<Tuple<string, string>> dvergr_prefabs = new List<Tuple<string, string>>
+        {
+            //Seeker soldier? Etc.
+ //           Tuple.Create<string, string>("Seeker", "Seeker"),
+            Tuple.Create<string, string>("Dvergr mage",             "DvergerMage"),
+            Tuple.Create<string, string>("Dvergr mage (fire)",      "DvergerMageFire"),
+            Tuple.Create<string, string>("Dvergr mage (ice)",       "DvergerMageIce"),
+            Tuple.Create<string, string>("Dvergr mage (support)",   "DvergerMageSupport"),
+            Tuple.Create<string, string>("Dvergr mage (fire)",      "DvergerMageFire"),
+            Tuple.Create<string, string>("Dvergr",                  "Dverger"),
+            Tuple.Create<string, string>("Dvergr",                  "Dverger"),
+            Tuple.Create<string, string>("Dvergr",                  "Dverger"),
+            Tuple.Create<string, string>("Dvergr",                  "Dverger"),
+            Tuple.Create<string, string>("Dvergr",                  "Dverger"),
         };
 
-        List<string> mistlands_mobs = new List<string> { "Seeker" };
+        readonly List<Tuple<string, string>> seeker_prefabs = new List<Tuple<string, string>>
+        {
+            //Seeker soldier? Etc.
+            Tuple.Create<string, string>("Seeker",                  "Seeker"),
+            Tuple.Create<string, string>("Seeker",                  "Seeker"),
+            Tuple.Create<string, string>("Seeker",                  "Seeker"),
+            Tuple.Create<string, string>("Seeker",                  "Seeker"),
+            Tuple.Create<string, string>("Seeker",                  "Seeker"),
+            Tuple.Create<string, string>("Seeker",                  "Seeker"),
+            Tuple.Create<string, string>("Seeker",                  "Seeker"),
+            Tuple.Create<string, string>("Seeker",                  "Seeker"),
+            Tuple.Create<string, string>("Seeker",                  "Seeker"),
+            Tuple.Create<string, string>("Seeker",                  "Seeker"),
+            Tuple.Create<string, string>("Seeker",                  "Seeker"),
+            Tuple.Create<string, string>("Seeker",                  "Seeker"),
+            Tuple.Create<string, string>("Seeker",                  "Seeker"),
+            Tuple.Create<string, string>("Seeker",                  "Seeker"),
+            Tuple.Create<string, string>("Seeker",                  "Seeker"),
+            Tuple.Create<string, string>("Seeker Soldier",          "SeekerBrute"),
+        };
+        //todo: for infested mine
+        readonly List<Tuple<string, string>> infested_prefabs = new List<Tuple<string, string>>
+        {
+            Tuple.Create<string, string>("Tick",             "Tick"),
+            Tuple.Create<string, string>("Seeker",           "Seeker"),
+            Tuple.Create<string, string>("Dvergr mage (ice)",       "DvergerMageIce"),
+            Tuple.Create<string, string>("Dvergr mage (support)",   "DvergerMageSupport"),
+            Tuple.Create<string, string>("Dvergr mage (fire)",      "DvergerMageFire"),
+            Tuple.Create<string, string>("Dvergr",                  "Dverger"),
+            Tuple.Create<string, string>("Dvergr",                  "Dverger"),
+            Tuple.Create<string, string>("Dvergr",                  "Dverger"),
+            Tuple.Create<string, string>("Dvergr",                  "Dverger"),
+            Tuple.Create<string, string>("Dvergr",                  "Dverger"),
+        };
+
         List<string> pets = new List<string> { "Boar", "Wolf", "Lox", "Hen", "Skeleton_Friendly" };
         List<string> pet_names = new List<string> {
                     "Bob",
@@ -394,19 +446,6 @@ namespace ICanShowYouTheWorld
 
                     //tame it
                     Tameable.TameAllInArea(player.transform.position, 30.0f);
-
-                    //Name it
-/*                    List<Character> list = new List<Character>();
-                    Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 5f, list);
-                    foreach (Character item in list)
-                    {
-                        if(item.IsTamed())
-                        { 
-                            item.name = pet_names[name_index];
-                            item.m_name = pet_names[name_index];
-                        }
-                    }
-*/
                 }
 
                 pet_counter++;
@@ -414,7 +453,7 @@ namespace ICanShowYouTheWorld
 
             // Ghostmode
             //
-            if (Input.GetKeyDown(KeyCode.Alpha9))
+            if (Input.GetKeyDown(KeyCode.Alpha9) && !Console.IsVisible())
             {
                 ghostMode = !ghostMode;
                 player.SetGhostMode(ghostMode);
@@ -423,7 +462,7 @@ namespace ICanShowYouTheWorld
 
             // spawn random event
             //
-            if(Input.GetKeyDown(KeyCode.Alpha0))
+            if(Input.GetKeyDown(KeyCode.Alpha0) && !Console.IsVisible())
             {
                 RandomEvent = !RandomEvent;
 
@@ -439,20 +478,69 @@ namespace ICanShowYouTheWorld
                 }
             }
 
+            if (Input.GetKeyDown(KeyCode.Z) && !Console.IsVisible())
+            {
+                int[] chance = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 2 };
+                Random rand = new Random();
+                Tuple<string, string> prefab = seeker_prefabs[rand.Next(0, seeker_prefabs.Count)];
+                GameObject prefab2 = ZNetScene.instance.GetPrefab(prefab.Item2);
+                Console.instance.Print("Got: " + prefab.Item2);
+                if (!prefab2)
+                {
+                    ShowULMsg("Missing object: " + prefab2.name);
+                }
+                else
+                {
+                    Vector3 vector = UnityEngine.Random.insideUnitSphere; //10 times unit vector in my direction
+                    GameObject gameObject2 = UnityEngine.Object.Instantiate(prefab2, Player.m_localPlayer.transform.position + Player.m_localPlayer.transform.forward * 10f + Vector3.up + vector, Quaternion.identity);
+                    ItemDrop component4 = gameObject2.GetComponent<ItemDrop>();
+                    gameObject2.GetComponent<Character>()?.SetLevel(chance[rand.Next(0, chance.Length+1)]); //Set level 0-1
+                    ShowULMsg("Spawning " + prefab2.name);
+                }
+
+            }
+
+            //todo: Turn this into a function that takes a prefab list and a chance list.
+            if (Input.GetKeyDown(KeyCode.Backspace) && !Console.IsVisible())
+            {
+                int[] chance = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 2 };
+                Random rand = new Random();
+                Tuple<string,string> prefab = dvergr_prefabs[rand.Next(0, dvergr_prefabs.Count)];
+                GameObject prefab2 = ZNetScene.instance.GetPrefab(prefab.Item2);
+                Console.instance.Print("Got: " + prefab.Item2);
+                if (!prefab2)
+                {
+                    ShowULMsg("Missing object: " + prefab2.name);
+                }
+                else
+                {
+                    Vector3 vector = UnityEngine.Random.insideUnitSphere; //10 times unit vector in my direction
+                    GameObject gameObject2 = UnityEngine.Object.Instantiate(prefab2, Player.m_localPlayer.transform.position + Player.m_localPlayer.transform.forward * 10f + Vector3.up + vector, Quaternion.identity);
+                    ItemDrop component4 = gameObject2.GetComponent<ItemDrop>();
+                    gameObject2.GetComponent<Character>()?.SetLevel(chance[rand.Next(0, 15)]); //Set level 0-1
+                    ShowULMsg("Spawning " + prefab2.name);
+                }
+
+            }
+
             // Clone++, some distance away
             // todo: Do something with biome dependent spawning. player.m_currentBiome
-            
-            //
+            // todo: e,g, in mistlands - we could be spawning a monster into a dverger camp! :(
+            // todo: Could we just have the /spawn command?
+            // todo: only works for something like "seeker" where hovername = prefabname. e.g. only monsters. hare, wolf, seeker, gjall, tick. Need a tiple that matches the hovername to the prefab name.
+            //       does not work for something like "derger mage".
+            // todo:  maybe do [0,0,0,0,0,0,1 as a way to do a weighted randomization.
+            // 
             if (Input.GetKeyDown(KeyCode.LeftAlt))
             {
+                int[] chance = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 2 };
                 List<Character> list = new List<Character>();
-                Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 20f, list);
+                Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 50f, list);
                 list.Remove(player);
                 Console.instance.Print("Found " + list.Count);
 
                 Random rand = new Random();
                 Character c = list[rand.Next(0, list.Count)];
-                ShowULMsg("Looking up " + c.GetHoverName());
                 //                GameObject prefab2 = ZNetScene.instance.GetPrefab("Seeker");
                 GameObject prefab2 = ZNetScene.instance.GetPrefab(c.GetHoverName());
 
@@ -465,7 +553,7 @@ namespace ICanShowYouTheWorld
                     Vector3 vector = UnityEngine.Random.insideUnitSphere; //10 times unit vector in my direction
                     GameObject gameObject2 = UnityEngine.Object.Instantiate(prefab2, Player.m_localPlayer.transform.position + Player.m_localPlayer.transform.forward * 10f + Vector3.up + vector, Quaternion.identity);
                     ItemDrop component4 = gameObject2.GetComponent<ItemDrop>();
-                    gameObject2.GetComponent<Character>()?.SetLevel(rand.Next(0, 3)); //Set level 0-1
+                    gameObject2.GetComponent<Character>()?.SetLevel(chance[rand.Next(0, 15)]); //Set level 0-1
                     ShowULMsg("Spawning " + prefab2.name);
                 }
             }
@@ -488,13 +576,6 @@ namespace ICanShowYouTheWorld
                     {
                         item.SetLevel(3);
                     }
-
-                    /*
-                    //TODO: REMOVE THIS
-                    if(item.IsPlayer() && ((Player)item).GetPlayerName() != player.GetPlayerName())
-                    {
-                        item.SetHealth(25);
-                    }*/
                 }
 
                 //If nothing found spawn a two star lox friend
@@ -524,7 +605,9 @@ namespace ICanShowYouTheWorld
                 player.m_eiterRegen         = 50f;
                 player.m_eitrRegenDelay     = 0.1f;
                 player.m_sneakStaminaDrain  = 0.1f;
-                player.m_jumpStaminaUsage   = 2.0f;
+                player.m_jumpStaminaUsage   = 1.0f;
+                //player.m_baseHP = 400; //??
+                //player.m_baseStamina = 400;
 
                 // Tolerate everything
                 player.m_tolerateFire = true;
@@ -539,7 +622,6 @@ namespace ICanShowYouTheWorld
 
                 // Print list of equipped items
                 List<ItemDrop.ItemData> items = player.GetInventory().GetEquipedtems();
-                string items_str = "";
 
                 // Augment equipped items
                 // Cycle through settings?
@@ -706,13 +788,13 @@ namespace ICanShowYouTheWorld
             //
             if (Input.GetKeyDown(KeyCode.F3))
             {
-                player.m_runSpeed += 2;
-                player.m_swimSpeed += 2;
+                player.m_runSpeed += 1;
+                player.m_swimSpeed += 1;
                 player.m_acceleration += 1;
-                player.m_crouchSpeed += 2;
-                player.m_walkSpeed += 2;
-                player.m_jumpForce += 1;
-                player.m_jumpForceForward += 1;
+                player.m_crouchSpeed += 1;
+                player.m_walkSpeed += 1;
+                player.m_jumpForce += 0.5f;
+                player.m_jumpForceForward += 0.5f;
                 ShowULMsg("Faster: " + player.m_runSpeed);
             }
 
@@ -720,13 +802,13 @@ namespace ICanShowYouTheWorld
             //
             if (Input.GetKeyDown(KeyCode.F4))
             {
-                player.m_runSpeed -= 2;
+                player.m_runSpeed -= 1;
                 player.m_acceleration -= 1;
-                player.m_swimSpeed -= 2;
-                player.m_crouchSpeed -= 2;
-                player.m_walkSpeed -= 2;
-                player.m_jumpForce -= 1f;
-                player.m_jumpForceForward -= 1;
+                player.m_swimSpeed -= 1;
+                player.m_crouchSpeed -= 1;
+                player.m_walkSpeed -= 1;
+                player.m_jumpForce -= 0.5f;
+                player.m_jumpForceForward -= 0.5f;
                 ShowULMsg("Slower: " + player.m_runSpeed);
             }
 
