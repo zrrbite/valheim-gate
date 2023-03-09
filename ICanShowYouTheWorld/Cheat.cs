@@ -194,6 +194,7 @@ namespace ICanShowYouTheWorld
             Tuple.Create<string, string>("Dragonqueen","Moder"),
             Tuple.Create<string, string>("SeekerQueen","Seeker Queen"),
             Tuple.Create<string, string>("Seekerqueen","Seeker Queen"),
+            Tuple.Create<string, string>("Mistlands_DvergrBossEntrance1","Seeker Queen"),
             Tuple.Create<string, string>("GoblinKing","Yagluth"),
         };
         readonly List<Tuple<string, string>> dvergr_prefabs = new List<Tuple<string, string>>
