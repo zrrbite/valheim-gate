@@ -454,7 +454,7 @@ namespace ICanShowYouTheWorld
 
             // Ghostmode
             //
-            if (Input.GetKeyDown(KeyCode.Alpha9) && !Console.IsVisible())
+            if (Input.GetKeyDown(KeyCode.Alpha9)/* && !Console.IsVisible()*/)
             {
                 ghostMode = !ghostMode;
                 player.SetGhostMode(ghostMode);
@@ -463,7 +463,7 @@ namespace ICanShowYouTheWorld
 
             // spawn random event
             //
-            if(Input.GetKeyDown(KeyCode.Alpha0) && !Console.IsVisible())
+            if(Input.GetKeyDown(KeyCode.Alpha0)/* && !Console.IsVisible()*/)
             {
                 RandomEvent = !RandomEvent;
 
@@ -479,7 +479,7 @@ namespace ICanShowYouTheWorld
                 }
             }
 
-            if (Input.GetKeyDown(KeyCode.Z) && !Console.IsVisible())
+            if (Input.GetKeyDown(KeyCode.Z)/* && !Console.IsVisible()*/)
             {
                 int[] chance = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 2 };
                 Random rand = new Random();
