@@ -33,6 +33,7 @@ namespace ICanShowYouTheWorld
         public static bool godMode = false;
         public static bool noBuildCost = false;
         public static int godPower = 0;
+        public static bool godWeapon = false;
 
         // Counters
         UInt16 counter = 0;
@@ -88,29 +89,18 @@ namespace ICanShowYouTheWorld
 
             //todo: Turn this into AddLine() helper
 
-            AddHorizontalGridLine("Boost stats", fungiTunic);
-            AddHorizontalGridLine("Fungi tunic", fungiTunic);
-            AddHorizontalGridLine("Hymn of resto", fungiTunic);
-            AddHorizontalGridLine("GodMode", godMode);
-            AddHorizontalGridLine("NoBuildCost", godMode /*nobuildcost*/);
-            AddHorizontalGridLine("Ghost Mode", ghostMode);
-            AddHorizontalGridLine("RandomEventActive", RandomEvent);
+            AddHorizontalGridLine("Boost stats  (F8)",        fungiTunic);
+            AddHorizontalGridLine("Fungi tunic  (F8)",        fungiTunic);
+            AddHorizontalGridLine("Hymn of resto (F8)",      fungiTunic);
+            AddHorizontalGridLine("God (F9)",            godMode);
+            AddHorizontalGridLine("No Cost (F9)",        godMode /*nobuildcost*/);
+            AddHorizontalGridLine("Weapon++ (F11)",           godWeapon);
+            AddHorizontalGridLine("Ghost (9)",         ghostMode);
+            AddHorizontalGridLine("Random Evt (0)",        RandomEvent);
+            AddHorizontalGridLine("Sp. from rad. (LAlt)",   false);
+            AddHorizontalGridLine("Sp. Dvergr (Backsp)", RandomEvent);
 
-            /*
-              
-                         GUILayout.Space(1f);
-                    GUILayout.Label("Armor buff: -",                        new GUILayoutOption[0]);
-                        GUILayout.Label("Resist buff: -",                       new GUILayoutOption[0]);
-                        GUILayout.Label("Fungi tunic: " + fungiTunic,           new GUILayoutOption[0]);
-                        GUILayout.Label("Hymn of Restauration: " + fungiTunic,  new GUILayoutOption[0]);
 
-                        // GM STUFF
-                        GUILayout.Space(1f);
-                        GUILayout.Label("Place things: " + noBuildCost,  new GUILayoutOption[0]);
-                        GUILayout.Label("God: " + godMode,          new GUILayoutOption[0]); //Align middle = 8 maybe.
-                        GUILayout.Label("Ghost: " + ghostMode,      new GUILayoutOption[0]);
-                        GUILayout.Label("Event active: -",          new GUILayoutOption[0]);
-            */
             GUI.DragWindow();
         }
 
@@ -708,6 +698,7 @@ namespace ICanShowYouTheWorld
                         items_str += "Augmented " + item.m_shared.m_name + " with lots of damage!\n";
                     }
                 }
+                godWeapon = true;
                 ShowULMsg(items_str);
             }
 
