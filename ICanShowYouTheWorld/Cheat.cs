@@ -575,7 +575,7 @@ namespace ICanShowYouTheWorld
                     // Make all tame animals in area 2-star
                     if (item.IsTamed())
                     {
-                        item.SetLevel(3);
+//                        item.SetLevel(3);
                     }
                 }
 
