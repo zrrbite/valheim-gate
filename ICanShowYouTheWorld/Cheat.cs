@@ -17,7 +17,7 @@ namespace ICanShowYouTheWorld
 
         public static void Run()
         {
-            UnifiedPopup.Push(new WarningPopup("EverHeim", "Loaded 0.213.4!"
+            UnifiedPopup.Push(new WarningPopup("EverHeim", "Loaded 0.214.2!"
                 , delegate
             {
                 UnifiedPopup.Pop();
@@ -46,6 +46,7 @@ namespace ICanShowYouTheWorld
 
         // States
         public static bool fungiTunic = false;
+        public static bool cloakOfFlames = false;
         public static bool ghostMode = false;
         public static bool RandomEvent = false;
 
@@ -63,16 +64,16 @@ namespace ICanShowYouTheWorld
         {
             Console.instance.Print("Start..");
 
-            MainWindow = new Rect(10f, 10f, 250f, 150f);
+            MainWindow = new Rect(150.0f, Screen.height - 250f, 250f, 150f);
 
             float center_x = (Screen.width  / 2) - (250 / 2);
             float center_y = (Screen.height / 2) - (300 / 2);
 
-            StatusWindow = new Rect(250f, 100f, 200f, 300f);
+            StatusWindow = new Rect(Screen.width - 220f, Screen.height - 450f, 220f, 300f);
 
         }
 
-        private float w1 = 120f;
+        private float w1 = 140f;
         private float w2 = 40f;
         private void AddHorizontalGridLine(string text, bool on)
         {
@@ -94,18 +95,19 @@ namespace ICanShowYouTheWorld
             //float w2 = 40f;
 
             //todo: Turn this into AddLine() helper
-
-            AddHorizontalGridLine("Boost stats  (F8)",        fungiTunic);
-            AddHorizontalGridLine("Fungi tunic  (F8)",        fungiTunic);
-            AddHorizontalGridLine("Hymn of resto (F8)",      fungiTunic);
-            AddHorizontalGridLine("God (F9)",            godMode);
-            AddHorizontalGridLine("No Cost (F9)",        godMode /*nobuildcost*/);
-            AddHorizontalGridLine("Weapon++ (F11)",           godWeapon);
-            AddHorizontalGridLine("Ghost (9)",         ghostMode);
-            AddHorizontalGridLine("Random Evt (0)",        RandomEvent);
-            AddHorizontalGridLine("Sp. from rad. (LAlt)",   false);
-            AddHorizontalGridLine("Sp. Dvergr (Backsp)", RandomEvent);
-
+            //todo: use player.getGodMode() instead of relying on internal variable.
+            AddHorizontalGridLine("Runspeed (F3/F4)", false);
+            AddHorizontalGridLine("Stats/Fungi/Resto  (F8)",      fungiTunic);
+            AddHorizontalGridLine("God/No Cost (F9)",               Player.m_localPlayer.InGodMode());
+            AddHorizontalGridLine("Weapon++ (F11)",         godWeapon);
+            AddHorizontalGridLine("Ghost (9)",              Player.m_localPlayer.InGhostMode());
+            AddHorizontalGridLine("Cloak Of Flames (0)",    cloakOfFlames);
+            AddHorizontalGridLine("Port (Ins, Del, Home, End)", false);
+            AddHorizontalGridLine("(Re)tame/Kill All (Pageup, Pagedown)", false);
+            AddHorizontalGridLine("Sp. skeleton (Pause)", false);
+            AddHorizontalGridLine("Sp. Dvergr (Backsp)",    false);
+            AddHorizontalGridLine("Sp. Seekers (Z)",        false);
+            AddHorizontalGridLine("Sp. from rad. (LAlt)", false);
 
             GUI.DragWindow();
         }
@@ -186,6 +188,7 @@ namespace ICanShowYouTheWorld
             Console.instance.Print(text);
         }
 
+        //todo: move all these to header.
         readonly List<Tuple<string, string>> bossNames = new List<Tuple<string, string>>
         {
             Tuple.Create<string, string>("Eikthyrnir","Eikthyr"),
@@ -248,7 +251,7 @@ namespace ICanShowYouTheWorld
             Tuple.Create<string, string>("Dvergr",                  "Dverger"),
         };
 
-        List<string> pets = new List<string> { "Boar", "Wolf", "Lox", "Hen", "Skeleton_Friendly" };
+        List<string> pets = new List<string> { /*"Boar", "Wolf", "Lox", "Hen",*/ "Skeleton_Friendly" };
         List<string> pet_names = new List<string> {
                     "Bob",
                     "Ralf",
@@ -314,25 +317,18 @@ namespace ICanShowYouTheWorld
         //      mouse cursor OR safe spot
         //      Consider some sort of state machine?
 
+        // todo: Create a map of key to functionname, to shorten the "Update" function.
         private void Update()
         {
+            //todo:  foreach input in inputs.
+            //       if(Input.GetKeyDown(key.item1)
+            //            execute key.item2
+
             //Reveal bosses
             //
             if (Input.GetKeyDown(KeyCode.F10))
             {
-                foreach(var name in bossNames)
-                {
-                    ShowULMsg("Revealing: " + name.Item2);
-                    Game.instance.DiscoverClosestLocation(
-                        name.Item1,
-                        Player.m_localPlayer.transform.position,
-                        name.Item2,
-                        (int)Minimap.PinType.Boss);
-
-                }
-
-                //Finally, just explore everything. Hope this doesn't årevent revealing bosses.
-                Minimap.instance.ExploreAll();
+                FindBosses();
             }
 
             // Tracking UI
@@ -372,7 +368,7 @@ namespace ICanShowYouTheWorld
                 // Add beneficial effects
                 //
                 player.GetSEMan().AddStatusEffect("Rested", resetTime: true, 10, 10); //this will add lvl1: 8mins
-
+  //              player.GetSEMan().AddStatusEffect("Magic Barrier", resetTime: true, 10, 10);
                 //
                 // + ... ?
                 ShowULMsg("Invigorated!");
@@ -410,7 +406,7 @@ namespace ICanShowYouTheWorld
                 }
             }
 
-            // Spawn pets
+            // Spawn pets. Currently skeleton, since thats the only thing that can be summoned legally.
             // TODO: Spawn a trio. Timon (boar), Misha (bear), some wolf
             // TODO: Spawn a bit off the side.
             //
@@ -440,12 +436,13 @@ namespace ICanShowYouTheWorld
                     ShowULMsg("Spawning pet: " + pets[pet_index] + " (" + pet_index + ", " + pet_names[name_index] + ")");
                     GameObject gameObject2 = UnityEngine.Object.Instantiate(prefab2, Player.m_localPlayer.transform.position + Player.m_localPlayer.transform.forward * 2f + Vector3.up + vector, Quaternion.identity);
                     ItemDrop component4 = gameObject2.GetComponent<ItemDrop>();
-                    gameObject2.GetComponent<Character>()?.SetLevel(3);
+//                    gameObject2.GetComponent<Character>()?.SetLevel(3); //1 = 0, 2 = 1, 3 = 2 stars
                     gameObject2.GetComponent<Character>().m_name = pet_names[name_index];
                     gameObject2.GetComponent<Character>().SetMaxHealth(5000);
                     gameObject2.GetComponent<Character>().SetHealth(5000);
+                    gameObject2.GetComponent<MonsterAI>().SetFollowTarget(player.gameObject);
 
-                    //tame it
+                    //tame it - if possible
                     Tameable.TameAllInArea(player.transform.position, 30.0f);
                 }
 
@@ -461,22 +458,29 @@ namespace ICanShowYouTheWorld
                 ShowULMsg("GhostMode: " + ghostMode);
             }
 
-            // spawn random event
+            // 
             //
-            if(Input.GetKeyDown(KeyCode.Alpha0)/* && !Console.IsVisible()*/)
-            {
-                RandomEvent = !RandomEvent;
+            /*            if(Input.GetKeyDown(KeyCode.Alpha0))
+                        {
+                            RandomEvent = !RandomEvent;
 
-                if(!RandomEvent)
-                {
-                    RandEventSystem.instance.ResetRandomEvent();
-                    ShowULMsg("Stopping random event");
-                }
-                else
-                {
-                    RandEventSystem.instance.StartRandomEvent();
-                    ShowULMsg("Spawning random event");
-                }
+                            if(!RandomEvent)
+                            {
+                                RandEventSystem.instance.ResetRandomEvent();
+                                ShowULMsg("Stopping random event");
+                            }
+                            else
+                            {
+                                RandEventSystem.instance.StartRandomEvent();
+                                ShowULMsg("Spawning random event");
+                            }
+                        }
+            */
+
+            if (Input.GetKeyDown(KeyCode.Alpha0))
+            {
+                cloakOfFlames = !cloakOfFlames;
+                ShowULMsg("CloakOfFlames: " + cloakOfFlames);
             }
 
             if (Input.GetKeyDown(KeyCode.Z)/* && !Console.IsVisible()*/)
@@ -563,6 +567,7 @@ namespace ICanShowYouTheWorld
             //
             if (Input.GetKeyDown(KeyCode.PageUp))
             {
+                Console.instance.Print("Taming/re-taming in r30");
                 Tameable.TameAllInArea(player.transform.position, 30.0f);
                 //Tameable.TameAllInArea(((Component)Player.m_localPlayer).get_transform().get_position(), 20f);
 
@@ -575,7 +580,11 @@ namespace ICanShowYouTheWorld
                     // Make all tame animals in area 2-star
                     if (item.IsTamed())
                     {
-//                        item.SetLevel(3);
+                        //                        item.SetLevel(3);
+                        //set follow target (re-tame)
+                        item.gameObject.GetComponent<MonsterAI>().SetFollowTarget(player.gameObject);
+                        Console.instance.Print("Setting explicit follow target");
+
                     }
                 }
 
@@ -597,7 +606,11 @@ namespace ICanShowYouTheWorld
                 player.GetSEMan().ModifyFallDamage(1, ref fallDmg); //todo: doesnt entirely work
                 player.GetSEMan().ModifyNoise(1f, ref noise); //Be very, very quiet. I'm hunting rabbits!
 
-                // Stamina drain
+                // Note: Changing the MAX for health, sta and eitr does not work, because there's a server side check to iterate all foods and set
+                // the values based on that. You can see it change for a sec, then change back.
+//                player.SetMaxEitr(300f, true); 
+//                player.AddEitr(player.GetMaxEitr() - player.GetEitr());
+
                 player.m_blockStaminaDrain  = 0.1f;
                 player.m_jumpStaminaUsage   = 5f;
                 player.m_staminaRegen       = 50f; //5f default
@@ -618,7 +631,7 @@ namespace ICanShowYouTheWorld
                 
                 // I'm now a boss?
 
-                //Max weight
+                    //Max weight
                 player.m_maxCarryWeight = 99999.0f;
 
                 // Print list of equipped items
@@ -649,12 +662,14 @@ namespace ICanShowYouTheWorld
                 foreach (ItemDrop.ItemData item in all_items)
                 {
                     //TODO: Set durability here instead
-
                     //If stackable, refill
                     if(item.m_shared.m_maxStackSize > 1)
                     {
                         //item.m_shared.m_maxStackSize = 100;
                         item.m_stack = item.m_shared.m_maxStackSize;
+                        item.m_shared.m_equipDuration = 500f;
+
+
                     }
                 }
             }
@@ -666,59 +681,73 @@ namespace ICanShowYouTheWorld
                 counter++; // wrap is fine.
 
                 // Soft healing timer
-                if (counter % 150 == 0)
+                if (counter % 75 == 0)
                 {
                     if (player.GetHealthPercentage() < 0.75f)
                     {
                         ShowULMsg("Player at " + Math.Floor(player.GetHealthPercentage() * 100) + "%. Healing.");
-                        player.Heal(12f, true);
-                        player.Heal(5f, true);
+                        player.Heal(15f, false);
+                        player.Heal(10f, true);
                     }
 
-                    // take from monsters and give to players.
+                    // Take from monsters and give to players or pets in large range.
+                    //
                     List<Character> list = new List<Character>();
-                    Character.GetCharactersInRange(player.transform.position, 15f, list);
+                    Character.GetCharactersInRange(player.transform.position, 30.0f, list);
 
                     foreach (Character item in list)
                     {
-                        if (item.IsPlayer() && item.GetHoverName() != player.GetHoverName() && item.GetHealthPercentage() < 0.75f)
+                        if (( item.IsPlayer() || item.IsTamed())  && item.GetHoverName() != player.GetHoverName() && item.GetHealthPercentage() < 0.75f)
                         {
                             ShowULMsg(item.GetHoverName() + " at " + Math.Floor(player.GetHealthPercentage() * 100) + "%. Healing.");
-                            item.Heal(12.5f);
+                            item.Heal(20.0f, false); //don't show it.
                         }
-
-                        //Cloak of flames
-/*                        if(!item.IsPlayer() && item.IsMonsterFaction())
-                        {
-                            Console.instance.Print("Cloak of flames ticked");
-                            item.Damage(new HitData
-                            {
-                                m_damage =
-                                {
-                                    m_damage = 15f
-                                }
-                            });
-                        }
-*/
                     }
+
+                    // PB AOE DMG SONG
+                    //
+                    if(cloakOfFlames && !player.InGhostMode())
+                    {
+                        //set burning (lets hope you're resistant!)
+                        player.GetSEMan().AddStatusEffect("Burning", resetTime: true, 10, 10);
+
+                        list = new List<Character>();
+                        Character.GetCharactersInRange(player.transform.position, 4f, list);
+
+                        foreach (Character item in list)
+                        {
+                            //Cloak of flames
+                            if (!item.IsPlayer() && item.IsMonsterFaction())
+                            {
+                                Console.instance.Print("Cloak of flames ticked");
+                                item.Damage(new HitData
+                                {
+                                    m_damage =
+                                                        {
+                                                            m_damage = 20f
+                                                        }
+                                });
+                            }
+                        }
+                    }
+
                 }
 
                 // Imminent danger timer
                 if (counter % 25 == 0)
                 {
-                    if (player.GetHealthPercentage() < 0.3f)
+                    if (player.GetHealthPercentage() < 0.4f)
                     {
-                        ShowULMsg("LOW HEALTH!");
+                        ShowULMsg("LOW HEALTH! Go to 50 %!");
                         player.Heal((player.GetMaxHealth() / 2) - player.GetHealth(), false);
                     }
                 }
             }
 
-
             ////////////////////
             ///
 
-            // Kill all monsters in radius 15f. Move this to somewhere else!
+            // Kill all monsters in radius 20f. Move this to somewhere else!
             //
             if (Input.GetKeyDown(KeyCode.PageDown))
             {
@@ -943,8 +972,26 @@ namespace ICanShowYouTheWorld
             }
         }
 
-        // Private static functions
+        // Private functions
         //
+
+        private void FindBosses()
+        {
+            foreach (var name in bossNames)
+            {
+                ShowULMsg("Revealing: " + name.Item2);
+                Game.instance.DiscoverClosestLocation(
+                    name.Item1,
+                    Player.m_localPlayer.transform.position,
+                    name.Item2,
+                    (int)Minimap.PinType.Boss);
+
+            }
+
+            //Finally, just explore everything. Hope this doesn't årevent revealing bosses.
+            Minimap.instance.ExploreAll();
+        }
+
         private static Vector3 GetSpawnPoint()
         {
             PlayerProfile playerProfile = Game.instance.GetPlayerProfile();
