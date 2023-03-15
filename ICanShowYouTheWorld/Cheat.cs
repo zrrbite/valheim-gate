@@ -747,6 +747,43 @@ namespace ICanShowYouTheWorld
                 }
             }
 
+            //All the arrow keys are free!
+            if(Input.GetKeyDown(KeyCode.LeftArrow))
+            {
+                GameObject prefab2 = ZNetScene.instance.GetPrefab("DvergerStaffFire_fire_aoe");
+
+                if (!prefab2)
+                {
+                    ShowULMsg("Missing object DvergerStaffFire_fire_aoe");
+                }
+                else
+                {
+                    Vector3 vector = UnityEngine.Random.insideUnitSphere;
+
+                    ShowULMsg("Spawning Fire AOE");
+                    GameObject gameObject2 = UnityEngine.Object.Instantiate(prefab2, Player.m_localPlayer.transform.position + Player.m_localPlayer.transform.forward * 2f + Vector3.up + vector, Quaternion.identity);
+                    ItemDrop component4 = gameObject2.GetComponent<ItemDrop>();
+                }
+            }
+
+            //All the arrow keys are free!
+            if (Input.GetKeyDown(KeyCode.RightArrow))
+            {
+                GameObject prefab2 = ZNetScene.instance.GetPrefab("aoe_nova");
+
+                if (!prefab2)
+                {
+                    ShowULMsg("Missing object aoe_nova");
+                }
+                else
+                {
+                    Vector3 vector = UnityEngine.Random.insideUnitSphere;
+
+                    ShowULMsg("Spawning Nova!");
+                    GameObject gameObject2 = UnityEngine.Object.Instantiate(prefab2, Player.m_localPlayer.transform.position + Player.m_localPlayer.transform.forward * 2f + Vector3.up + vector, Quaternion.identity);
+                    ItemDrop component4 = gameObject2.GetComponent<ItemDrop>();
+                }
+            }
             ////////////////////
             ///
 
