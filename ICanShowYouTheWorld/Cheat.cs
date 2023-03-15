@@ -96,12 +96,13 @@ namespace ICanShowYouTheWorld
 
             //todo: Turn this into AddLine() helper
             //todo: use player.getGodMode() instead of relying on internal variable.
-            AddHorizontalGridLine("Runspeed (F3/F4)", false);
             AddHorizontalGridLine("Stats/Fungi/Resto  (F8)",      fungiTunic);
             AddHorizontalGridLine("God/No Cost (F9)",               Player.m_localPlayer.InGodMode());
             AddHorizontalGridLine("Weapon++ (F11)",         godWeapon);
             AddHorizontalGridLine("Ghost (9)",              Player.m_localPlayer.InGhostMode());
             AddHorizontalGridLine("Cloak Of Flames (0)",    cloakOfFlames);
+            AddHorizontalGridLine("Runspeed (F3/F4)", false);
+            AddHorizontalGridLine("Replenish stock (F12)", false);
             AddHorizontalGridLine("Port (Ins, Del, Home, End)", false);
             AddHorizontalGridLine("(Re)tame/Kill All (Pageup, Pagedown)", false);
             AddHorizontalGridLine("Sp. skeleton (Pause)", false);
@@ -592,6 +593,26 @@ namespace ICanShowYouTheWorld
 
             }
 
+            // Replenish stacks
+            //
+            if(Input.GetKeyDown(KeyCode.F12))
+            {
+                //Boost stack sizes - todo: just do one loop for all items?
+                List<ItemDrop.ItemData> all_items = player.GetInventory().GetAllItems();
+
+                foreach (ItemDrop.ItemData item in all_items)
+                {
+                    //TODO: Set durability here instead
+                    //If stackable, refill
+                    if (item.m_shared.m_maxStackSize > 1)
+                    {
+                        //item.m_shared.m_maxStackSize = 100;
+                        item.m_stack = item.m_shared.m_maxStackSize;
+                        item.m_shared.m_equipDuration = 500f;
+                    }
+                }
+            }
+
             // Boost!
             //
             if (Input.GetKeyDown(KeyCode.F8))
@@ -637,7 +658,7 @@ namespace ICanShowYouTheWorld
                 // Print list of equipped items
                 List<ItemDrop.ItemData> items = player.GetInventory().GetEquipedtems();
 
-                // Augment equipped items
+                // Augment equipped items - Its setting durability to 10000 for non equipped items still, for some reason.
                 // Cycle through settings?
                 foreach (ItemDrop.ItemData item in items)
                 {                    
@@ -652,26 +673,8 @@ namespace ICanShowYouTheWorld
                         item.m_shared.m_armor = 60f;
                     }
                 }
-                ShowULMsg("Augmented. Fungi = " + fungiTunic.ToString());
+                ShowULMsg("Stats augmented. Fungi = " + fungiTunic.ToString());
 
-                //Boost stack sizes - todo: just do one loop for all items?
-                List<ItemDrop.ItemData> all_items = player.GetInventory().GetAllItems();
-
-                // Augment equipped items
-                // Cycle through settings?
-                foreach (ItemDrop.ItemData item in all_items)
-                {
-                    //TODO: Set durability here instead
-                    //If stackable, refill
-                    if(item.m_shared.m_maxStackSize > 1)
-                    {
-                        //item.m_shared.m_maxStackSize = 100;
-                        item.m_stack = item.m_shared.m_maxStackSize;
-                        item.m_shared.m_equipDuration = 500f;
-
-
-                    }
-                }
             }
 
             //Fungi tunic - heal checks below 75, 50 and 25% (combined 45) ?
