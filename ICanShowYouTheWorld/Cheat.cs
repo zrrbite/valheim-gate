@@ -43,13 +43,14 @@ namespace ICanShowYouTheWorld
 
         // Counters
         UInt16 counter = 0;
+        UInt16 damageCounters = 0;
 
         // States
-        public static bool fungiTunic = false;
-        public static bool cloakOfFlames = false;
+        public static bool renewal = false;       //heal friends  
+        public static bool cloakOfFlames = false; //fire pbaoe
+        public static bool melodicBinding = false; //Slow movement + atk speed
         public static bool ghostMode = false;
         public static bool RandomEvent = false;
-
 
         private Rect MainWindow;
         private Rect StatusWindow;
@@ -67,21 +68,21 @@ namespace ICanShowYouTheWorld
             MainWindow = new Rect(150.0f, Screen.height - 250f, 250f, 150f);
 
             float center_x = (Screen.width  / 2) - (250 / 2);
-            float center_y = (Screen.height / 2) - (300 / 2);
+            float center_y = (Screen.height / 2) - (320 / 2);
 
-            StatusWindow = new Rect(Screen.width - 220f, Screen.height - 450f, 220f, 300f);
+            StatusWindow = new Rect(Screen.width - 220f, Screen.height - 500f, 220f, 350f);
 
         }
 
         private float w1 = 140f;
         private float w2 = 40f;
-        private void AddHorizontalGridLine(string text, bool on)
+        private void AddHorizontalGridLine(string text, bool on = false, bool notext = false)
         {
             GUILayout.BeginHorizontal();
             GUI.contentColor = Color.white;
             GUILayout.Label(text, GUILayout.Width(w1));
             GUI.contentColor = on ? Color.green : Color.red;
-            GUILayout.Label(on.ToString(), GUILayout.Width(w2));
+            GUILayout.Label(notext? "" : on.ToString(), GUILayout.Width(w2));
             GUILayout.EndHorizontal();
         }
 
@@ -96,19 +97,23 @@ namespace ICanShowYouTheWorld
 
             //todo: Turn this into AddLine() helper
             //todo: use player.getGodMode() instead of relying on internal variable.
-            AddHorizontalGridLine("Stats/Fungi/Resto  (F8)",      fungiTunic);
+            AddHorizontalGridLine("Stats + Renewal song (F8)",      renewal);
             AddHorizontalGridLine("God/No Cost (F9)",               Player.m_localPlayer.InGodMode());
-            AddHorizontalGridLine("Weapon++ (F11)",         godWeapon);
-            AddHorizontalGridLine("Ghost (9)",              Player.m_localPlayer.InGhostMode());
-            AddHorizontalGridLine("Cloak Of Flames (0)",    cloakOfFlames);
-            AddHorizontalGridLine("Runspeed (F3/F4)", false);
-            AddHorizontalGridLine("Replenish stock (F12)", false);
-            AddHorizontalGridLine("Port (Ins, Del, Home, End)", false);
-            AddHorizontalGridLine("(Re)tame/Kill All (Pageup, Pagedown)", false);
-            AddHorizontalGridLine("Sp. skeleton (Pause)", false);
-            AddHorizontalGridLine("Sp. Dvergr (Backsp)",    false);
-            AddHorizontalGridLine("Sp. Seekers (Z)",        false);
-            AddHorizontalGridLine("Sp. from rad. (LAlt)", false);
+            AddHorizontalGridLine("Weapon++ (F11)",                 godWeapon);
+            AddHorizontalGridLine("Boost/Worsen weapon (Up/Down)",  godWeapon);
+            AddHorizontalGridLine("Ghost (9)",                      Player.m_localPlayer.InGhostMode());
+            AddHorizontalGridLine("Cloak Of Flames (0)",            cloakOfFlames);
+            AddHorizontalGridLine("Melodic binding (B)",            melodicBinding);
+            AddHorizontalGridLine("Heal/remove (F1)");
+            AddHorizontalGridLine("Runspeed (F3/F4)");
+            AddHorizontalGridLine("Replenish stock (F12)");
+            AddHorizontalGridLine("Fire AOEs (Left/Right)");
+            AddHorizontalGridLine("Port (Ins, Del, Home, End)");
+            AddHorizontalGridLine("(Re)tame/Kill All (PUp, PDn)");
+            AddHorizontalGridLine("Sp. skeleton (Pause)");
+            AddHorizontalGridLine("Sp. Dvergr (Backsp)");
+            AddHorizontalGridLine("Sp. Seekers (Z)");
+            AddHorizontalGridLine("Sp. from rad. (LAlt)");
 
             GUI.DragWindow();
         }
@@ -450,6 +455,28 @@ namespace ICanShowYouTheWorld
                 pet_counter++;
             }
 
+            // Test other player modification
+            //
+/*            if (Input.GetKeyDown(KeyCode.Alpha1))
+            {
+                List<Character> list = new List<Character>();
+                Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 50f, list);
+
+                foreach(var pl in list)
+                {
+                    if(pl != player)
+                    { 
+                        List<Player.Food> foods = pl.GetComponent<Player>().GetFoods();
+                        foreach(Player.Food food in foods)
+                        {
+                            food.m_time = 10000f;
+                        }
+                    }
+                }
+
+                ShowULMsg("Testing changing player food");
+            }*/
+
             // Ghostmode
             //
             if (Input.GetKeyDown(KeyCode.Alpha9)/* && !Console.IsVisible()*/)
@@ -482,6 +509,12 @@ namespace ICanShowYouTheWorld
             {
                 cloakOfFlames = !cloakOfFlames;
                 ShowULMsg("CloakOfFlames: " + cloakOfFlames);
+            }
+
+            if (Input.GetKeyDown(KeyCode.B) && !Console.IsVisible())
+            {
+                melodicBinding = !melodicBinding;
+                ShowULMsg("MelodicBinding: " + melodicBinding);
             }
 
             if (Input.GetKeyDown(KeyCode.Z)/* && !Console.IsVisible()*/)
@@ -524,9 +557,9 @@ namespace ICanShowYouTheWorld
                     GameObject gameObject2 = UnityEngine.Object.Instantiate(prefab2, Player.m_localPlayer.transform.position + Player.m_localPlayer.transform.forward * 10f + Vector3.up + vector, Quaternion.identity);
                     ItemDrop component4 = gameObject2.GetComponent<ItemDrop>();
                     gameObject2.GetComponent<Character>()?.SetLevel(chance[rand.Next(0, 15)]); //Set level 0-1
+                    gameObject2.GetComponent<MonsterAI>()?.SetAggravated(true, BaseAI.AggravatedReason.Theif);
                     ShowULMsg("Spawning " + prefab2.name);
                 }
-
             }
 
             // Clone++, some distance away
@@ -575,22 +608,22 @@ namespace ICanShowYouTheWorld
                 List<Character> list = new List<Character>();
                 Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 50f, list);
 
-                //Unsorted
+                //todo: Do tamed animals lose their followtarget when you "zone" ?
+                //todo: Can you _only_ set follow target if the monster is a skeleton? Or should we seperate it?
                 foreach (Character item in list)
                 {
                     // Make all tame animals in area 2-star
                     if (item.IsTamed())
                     {
-                        //                        item.SetLevel(3);
-                        //set follow target (re-tame)
+                        //item.SetLevel(3);
+                        //set follow target (re-tame)'
                         item.gameObject.GetComponent<MonsterAI>().SetFollowTarget(player.gameObject);
                         Console.instance.Print("Setting explicit follow target");
 
                     }
                 }
 
-                //If nothing found spawn a two star lox friend
-
+                //If nothing found spawn a two star lox friend?
             }
 
             // Replenish stacks
@@ -613,7 +646,7 @@ namespace ICanShowYouTheWorld
                 }
             }
 
-            // Boost!
+            // Renewak song (and scret Boost that cant be undone).
             //
             if (Input.GetKeyDown(KeyCode.F8))
             {
@@ -621,7 +654,16 @@ namespace ICanShowYouTheWorld
                 float regenMult = 5; // this helped.
                 float fallDmg = 0.2f;
                 float noise = 1;
-                fungiTunic = true;
+                renewal = !renewal;
+
+                //todo: put this on a key? also needs puke! .ClearFood() - maybe alternate.
+                List<Player.Food> foods = player.GetFoods();
+                foreach(var food in foods)
+                {
+                    food.m_time = 10000f;
+                }
+
+                //try to alter abilities of magic weapons
 
                 player.GetSEMan().ModifyHealthRegen(ref regenMult); //Seems that regen multiplier is applied to number of food items.                
                 player.GetSEMan().ModifyFallDamage(1, ref fallDmg); //todo: doesnt entirely work
@@ -650,8 +692,6 @@ namespace ICanShowYouTheWorld
                 player.m_tolerateSmoke = true;
                 player.m_tolerateWater = true; // What does this mean exactly?
                 
-                // I'm now a boss?
-
                     //Max weight
                 player.m_maxCarryWeight = 99999.0f;
 
@@ -673,16 +713,63 @@ namespace ICanShowYouTheWorld
                         item.m_shared.m_armor = 60f;
                     }
                 }
-                ShowULMsg("Stats augmented. Fungi = " + fungiTunic.ToString());
-
+                ShowULMsg("Renewal song: " + renewal.ToString() + "! (and stats augmented.");
             }
 
-            //Fungi tunic - heal checks below 75, 50 and 25% (combined 45) ?
-            // split this in twp - bard aoe
-            if (fungiTunic)
-            {
-                counter++; // wrap is fine.
+            // TICK
+            //
+            counter++; // wrap is fine.
 
+            // SLOW!
+            if (melodicBinding && counter % 75 == 0)
+            {
+                List<Character> list = new List<Character>();
+                Character.GetCharactersInRange(player.transform.position, 30.0f, list);
+
+                foreach (Character item in list)
+                {
+                    if (item.IsMonsterFaction())
+                    {
+                        item.m_speed = 2f;
+                        item.m_runSpeed = 2f;
+                        item.m_turnSpeed = 2f;
+                        //                        ShowULMsg("Slowing " + item.m_name);
+                        Console.instance.Print("Slowing: " + item.m_name);
+                    }
+                }
+            }
+
+            // PB AOE DMG SONG
+            //
+            if (cloakOfFlames && !player.InGhostMode() && counter % 75 == 0)
+            {
+                List<Character> list = new List<Character>();
+                //set burning (lets hope you're resistant!)
+//                player.GetSEMan().AddStatusEffect("Burning", resetTime: true, 10, 10);
+
+                list = new List<Character>();
+                Character.GetCharactersInRange(player.transform.position, 5f, list);
+
+                foreach (Character item in list)
+                {
+                    //Cloak of flames
+                    if (!item.IsPlayer() && item.IsMonsterFaction())
+                    {
+                        Console.instance.Print("Cloak of flames ticked");
+                        item.Damage(new HitData
+                        {
+                            m_damage =
+                                                    {
+                                                        m_damage = 20f
+                                                    }
+                        });
+                    }
+                }
+            }
+
+            // HEAL !
+            if (renewal)
+            {
                 // Soft healing timer
                 if (counter % 75 == 0)
                 {
@@ -703,37 +790,10 @@ namespace ICanShowYouTheWorld
                         if (( item.IsPlayer() || item.IsTamed())  && item.GetHoverName() != player.GetHoverName() && item.GetHealthPercentage() < 0.75f)
                         {
                             ShowULMsg(item.GetHoverName() + " at " + Math.Floor(player.GetHealthPercentage() * 100) + "%. Healing.");
-                            item.Heal(20.0f, false); //don't show it.
+                            item.Heal(22.0f, false); //don't show it.
+                            //item.m_runSpeed = 1000;
                         }
                     }
-
-                    // PB AOE DMG SONG
-                    //
-                    if(cloakOfFlames && !player.InGhostMode())
-                    {
-                        //set burning (lets hope you're resistant!)
-                        player.GetSEMan().AddStatusEffect("Burning", resetTime: true, 10, 10);
-
-                        list = new List<Character>();
-                        Character.GetCharactersInRange(player.transform.position, 4f, list);
-
-                        foreach (Character item in list)
-                        {
-                            //Cloak of flames
-                            if (!item.IsPlayer() && item.IsMonsterFaction())
-                            {
-                                Console.instance.Print("Cloak of flames ticked");
-                                item.Damage(new HitData
-                                {
-                                    m_damage =
-                                                        {
-                                                            m_damage = 20f
-                                                        }
-                                });
-                            }
-                        }
-                    }
-
                 }
 
                 // Imminent danger timer
@@ -747,8 +807,83 @@ namespace ICanShowYouTheWorld
                 }
             }
 
+
+            //Boost equipped weapon
+            // This could be function called by both +/-
+            // todo: Maybe boost healing / damage shield / etc too?
+            if (Input.GetKeyDown(KeyCode.UpArrow))
+            {
+                damageCounters++;
+
+                // Print list of equipped items
+                List<ItemDrop.ItemData> items = player.GetInventory().GetEquipedtems();
+
+                // Augment equipped weapon
+                foreach (ItemDrop.ItemData item in items)
+                {
+                    item.m_shared.m_durabilityDrain = 0.1f; //no dura drain
+                    if (item.IsWeapon())
+                    {
+                        HitData.DamageTypes updated = new HitData.DamageTypes();
+                        HitData.DamageTypes current = item.GetDamage();
+
+                        // Boosting elemental types seems wonky
+                        //                        updated.m_blunt = current.m_blunt + (current.m_blunt != 0 ? 15f : 0);
+                        //                        updated.m_frost = current.m_frost + (current.m_frost != 0 ? 15f : 0);
+                        //                        updated.m_lightning = current.m_lightning + (current.m_lightning != 0 ? 15f : 0);
+                        //                        updated.m_pierce = current.m_pierce + (current.m_pierce != 0 ? 15f : 0);
+                        //                        updated.m_poison = current.m_poison + (current.m_poison != 0 ? 15f : 0);
+                        //                        updated.m_slash = current.m_slash + (current.m_slash != 0 ? 15f : 0);
+                        //                        updated.m_spirit = current.m_spirit + (current.m_spirit != 0 ? 15f : 0);
+
+                        updated.m_blunt = current.m_blunt > 0 ? damageCounters * 10 : 0;
+                        updated.m_frost = current.m_frost > 0 ? damageCounters * 10 : 0;
+                        updated.m_lightning = current.m_lightning > 0 ? damageCounters * 10 : 0;
+                        updated.m_pierce = current.m_pierce > 0 ? damageCounters * 10 : 0;
+                        updated.m_poison = current.m_poison > 0 ? damageCounters * 10 : 0;
+                        updated.m_slash = current.m_slash > 0 ? damageCounters * 10 : 0;
+                        updated.m_spirit = current.m_spirit > 0 ? damageCounters * 10 : 0;
+                        
+                        item.m_shared.m_damages = updated;
+                        ShowULMsg("Augmenting " + item.m_shared.m_name + "with " + damageCounters + " damage counters.");
+                    }
+                }
+            }
+
+                //Tone down equipped weapon (needed?)
+            if (Input.GetKeyDown(KeyCode.DownArrow))
+            {
+                if(damageCounters > 1)
+                    damageCounters--;
+
+                // Print list of equipped items
+                List<ItemDrop.ItemData> items = player.GetInventory().GetEquipedtems();
+
+                // Augment equipped weapon
+                foreach (ItemDrop.ItemData item in items)
+                {
+                    item.m_shared.m_durabilityDrain = 0.1f; //no dura drain
+                    if (item.IsWeapon())
+                    {
+                        HitData.DamageTypes updated = new HitData.DamageTypes();
+                        HitData.DamageTypes current = item.GetDamage();
+
+                        updated.m_blunt = current.m_blunt > 0 ? damageCounters * 10 : 0;
+                        updated.m_frost = current.m_frost > 0 ? damageCounters * 10 : 0;
+                        updated.m_lightning = current.m_lightning > 0 ? damageCounters * 10 : 0;
+                        updated.m_pierce = current.m_pierce > 0 ? damageCounters * 10 : 0;
+                        updated.m_poison = current.m_poison > 0 ? damageCounters * 10 : 0;
+                        updated.m_slash = current.m_slash > 0 ? damageCounters * 10 : 0;
+                        updated.m_spirit = current.m_spirit > 0 ? damageCounters * 10 : 0;
+
+                        item.m_shared.m_damages = updated;
+                        ShowULMsg("Augmenting " + item.m_shared.m_name + "with " + damageCounters + " damage counters.");
+                    }
+                }
+            }
+
             //All the arrow keys are free!
-            if(Input.GetKeyDown(KeyCode.LeftArrow))
+            if (Input.GetKeyDown(KeyCode.LeftArrow))
             {
                 GameObject prefab2 = ZNetScene.instance.GetPrefab("DvergerStaffFire_fire_aoe");
 
@@ -816,6 +951,7 @@ namespace ICanShowYouTheWorld
 
             // Equipped weapon becomes Super weapon
             // todo: ability to revert back
+            // todo:  if up 10 times, just go big?
             //
             if (Input.GetKeyDown(KeyCode.F11))
             {
@@ -832,14 +968,14 @@ namespace ICanShowYouTheWorld
                     {
                         HitData.DamageTypes ouch = new HitData.DamageTypes()
                         {
-                            m_slash = 100f,
-                            m_blunt = 100f,
-                            m_pierce = 100f,
-                            m_fire = 100f,
-                            m_spirit = 100f,
-                            m_frost = 100f,
-                            m_lightning = 100f,
-                            m_poison = 100f
+                            m_slash = 200f,
+                            m_blunt = 200f,
+                            m_pierce = 200f,
+                            m_fire = 200f,
+                            m_spirit = 200f,
+                            m_frost = 200f,
+                            m_lightning = 200f,
+                            m_poison = 200f
                         };
 
                         item.m_shared.m_damages = ouch;
@@ -865,6 +1001,23 @@ namespace ICanShowYouTheWorld
                 player.m_walkSpeed += 1;
                 player.m_jumpForce += 0.5f;
                 player.m_jumpForceForward += 0.5f;
+
+                List<Character> list = new List<Character>();
+                Character.GetCharactersInRange(player.transform.position, 30.0f, list);
+
+                //todo: set walk = snare?
+                //Increase runspeed (and attack speed?) for EEEVERYONE. Pets, players, ...
+                foreach (Character item in list)
+                {
+                    if(!item.IsMonsterFaction() && item!=player) //Does this include pets?
+                    {
+                        item.m_runSpeed += 1;
+                        item.m_speed += 1;               
+
+                        //Player.m_localPlayer.GetSkills().CheatRaiseSkill(args[1], value14);
+                        ShowULMsg("Increased speed for " + item.GetHoverName() + " to " + item.m_runSpeed);
+                    }
+                }
                 ShowULMsg("Faster: " + player.m_runSpeed);
             }
 
@@ -879,6 +1032,16 @@ namespace ICanShowYouTheWorld
                 player.m_walkSpeed -= 1;
                 player.m_jumpForce -= 0.5f;
                 player.m_jumpForceForward -= 0.5f;
+
+                List<Character> list = new List<Character>();
+                Character.GetCharactersInRange(player.transform.position, 30.0f, list);
+
+                foreach (Character item in list)
+                {
+                    item.m_runSpeed -= 1;
+                    item.m_speed -= 1;
+                }
+
                 ShowULMsg("Slower: " + player.m_runSpeed);
             }
 
