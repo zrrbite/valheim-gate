@@ -17,7 +17,7 @@ namespace ICanShowYouTheWorld
 
         public static void Run()
         {
-            UnifiedPopup.Push(new WarningPopup("EverHeim", "Loaded 0.214.2!"
+            UnifiedPopup.Push(new WarningPopup("EverHeim", "Loaded Cheat 1!"
                 , delegate
             {
                 UnifiedPopup.Pop();
@@ -71,7 +71,6 @@ namespace ICanShowYouTheWorld
             float center_y = (Screen.height / 2) - (320 / 2);
 
             StatusWindow = new Rect(Screen.width - 220f, Screen.height - 500f, 220f, 350f);
-
         }
 
         private float w1 = 140f;
@@ -107,7 +106,7 @@ namespace ICanShowYouTheWorld
             AddHorizontalGridLine("Heal/remove (F1)");
             AddHorizontalGridLine("Runspeed (F3/F4)");
             AddHorizontalGridLine("Replenish stock (F12)");
-            AddHorizontalGridLine("Fire AOEs (Left/Right)");
+            AddHorizontalGridLine("Heal/Nova (Left/Right)");
             AddHorizontalGridLine("Port (Ins, Del, Home, End)");
             AddHorizontalGridLine("(Re)tame/Kill All (PUp, PDn)");
             AddHorizontalGridLine("Sp. skeleton (Pause)");
@@ -142,10 +141,11 @@ namespace ICanShowYouTheWorld
         bool saved = true; //don't save
         private void OnGUI()
         {
-            int state = Game.instance.GetPlayerProfile().m_playerStats.m_kills;
-            int deaths = Game.instance.GetPlayerProfile().m_playerStats.m_deaths;
-            int crafts = Game.instance.GetPlayerProfile().m_playerStats.m_crafts;
-            int builds = Game.instance.GetPlayerProfile().m_playerStats.m_builds;
+            //todo: STATE! m_deaths etc are gone?
+            int state = 0; // Game.instance.GetPlayerProfile().m_playerStats.m_stats
+            int deaths = 0; // Game.instance.GetPlayerProfile().m_playerStats.m_deaths;
+            int crafts = 0; // Game.instance.GetPlayerProfile().m_playerStats.m_crafts;
+            int builds = 0; // Game.instance.GetPlayerProfile().m_playerStats.m_builds;
 
             GUI.Label(new Rect(10, 3, 400, 70), "Everheim v.0.1.  Deaths: " + deaths + "  Crafts: " + crafts + "  Builds: " + builds + " State: " + state);
 
@@ -365,15 +365,15 @@ namespace ICanShowYouTheWorld
 
                 // Remove bad effects
                 //
-                player.GetSEMan().RemoveStatusEffect("Spirit");
-                player.GetSEMan().RemoveStatusEffect("Poison");
-                player.GetSEMan().RemoveStatusEffect("Frost");
-                player.GetSEMan().RemoveStatusEffect("Lightning");
-                player.GetSEMan().RemoveStatusEffect("Burning");
+//                player.GetSEMan().RemoveStatusEffect("Spirit");
+//               player.GetSEMan().RemoveStatusEffect("Poison");
+//                player.GetSEMan().RemoveStatusEffect("Frost");
+//                player.GetSEMan().RemoveStatusEffect("Lightning");
+//                player.GetSEMan().RemoveStatusEffect("Burning");
 
                 // Add beneficial effects
                 //
-                player.GetSEMan().AddStatusEffect("Rested", resetTime: true, 10, 10); //this will add lvl1: 8mins
+ //               player.GetSEMan().AddStatusEffect("Rested", resetTime: true, 10, 10); //this will add lvl1: 8mins
   //              player.GetSEMan().AddStatusEffect("Magic Barrier", resetTime: true, 10, 10);
                 //
                 // + ... ?
@@ -382,7 +382,7 @@ namespace ICanShowYouTheWorld
 
             // Toggle GM mode
             //
-            if (Input.GetKeyDown(KeyCode.F9))
+            if (Input.GetKeyDown(KeyCode.RightArrow))
             {
                 godMode = !godMode;
                 player.SetGodMode(godMode);
@@ -646,7 +646,7 @@ namespace ICanShowYouTheWorld
                 }
             }
 
-            // Renewak song (and scret Boost that cant be undone).
+            // Renewal song (and scret Boost that cant be undone).
             //
             if (Input.GetKeyDown(KeyCode.F8))
             {
@@ -654,7 +654,9 @@ namespace ICanShowYouTheWorld
                 float regenMult = 5; // this helped.
                 float fallDmg = 0.2f;
                 float noise = 1;
-                renewal = !renewal;
+
+                // TODO: Set aoe renewal somewhere else
+                //renewal = !renewal;
 
                 //todo: put this on a key? also needs puke! .ClearFood() - maybe alternate.
                 List<Player.Food> foods = player.GetFoods();
@@ -696,7 +698,7 @@ namespace ICanShowYouTheWorld
                 player.m_maxCarryWeight = 99999.0f;
 
                 // Print list of equipped items
-                List<ItemDrop.ItemData> items = player.GetInventory().GetEquipedtems();
+                List<ItemDrop.ItemData> items = player.GetInventory().GetEquippedItems();
 
                 // Augment equipped items - Its setting durability to 10000 for non equipped items still, for some reason.
                 // Cycle through settings?
@@ -721,19 +723,18 @@ namespace ICanShowYouTheWorld
             counter++; // wrap is fine.
 
             // SLOW!
-            if (melodicBinding && counter % 75 == 0)
+            if (melodicBinding && counter % 150 == 0)
             {
                 List<Character> list = new List<Character>();
                 Character.GetCharactersInRange(player.transform.position, 30.0f, list);
 
                 foreach (Character item in list)
                 {
-                    if (item.IsMonsterFaction())
+                    if (item.IsMonsterFaction(10)) //   time?
                     {
-                        item.m_speed = 2f;
-                        item.m_runSpeed = 2f;
-                        item.m_turnSpeed = 2f;
-                        //                        ShowULMsg("Slowing " + item.m_name);
+                        item.m_speed = 1f;
+                        item.m_runSpeed = 1f;
+                        item.m_turnSpeed = 1f;
                         Console.instance.Print("Slowing: " + item.m_name);
                     }
                 }
@@ -753,14 +754,14 @@ namespace ICanShowYouTheWorld
                 foreach (Character item in list)
                 {
                     //Cloak of flames
-                    if (!item.IsPlayer() && item.IsMonsterFaction())
+                    if (!item.IsPlayer() && item.IsMonsterFaction(10)) //10 ?
                     {
                         Console.instance.Print("Cloak of flames ticked");
                         item.Damage(new HitData
                         {
                             m_damage =
                                                     {
-                                                        m_damage = 20f
+                                                        m_damage = 30f
                                                     }
                         });
                     }
@@ -790,7 +791,7 @@ namespace ICanShowYouTheWorld
                         if (( item.IsPlayer() || item.IsTamed())  && item.GetHoverName() != player.GetHoverName() && item.GetHealthPercentage() < 0.75f)
                         {
                             ShowULMsg(item.GetHoverName() + " at " + Math.Floor(player.GetHealthPercentage() * 100) + "%. Healing.");
-                            item.Heal(22.0f, false); //don't show it.
+                            item.Heal(25.0f, false); //don't show it.
                             //item.m_runSpeed = 1000;
                         }
                     }
@@ -811,12 +812,12 @@ namespace ICanShowYouTheWorld
             //Boost equipped weapon
             // This could be function called by both +/-
             // todo: Maybe boost healing / damage shield / etc too?
-            if (Input.GetKeyDown(KeyCode.UpArrow))
+            if (Input.GetKeyDown(KeyCode.UpArrow) && !Console.IsVisible())
             {
                 damageCounters++;
 
                 // Print list of equipped items
-                List<ItemDrop.ItemData> items = player.GetInventory().GetEquipedtems();
+                List<ItemDrop.ItemData> items = player.GetInventory().GetEquippedItems();
 
                 // Augment equipped weapon
                 foreach (ItemDrop.ItemData item in items)
@@ -826,15 +827,6 @@ namespace ICanShowYouTheWorld
                     {
                         HitData.DamageTypes updated = new HitData.DamageTypes();
                         HitData.DamageTypes current = item.GetDamage();
-
-                        // Boosting elemental types seems wonky
-                        //                        updated.m_blunt = current.m_blunt + (current.m_blunt != 0 ? 15f : 0);
-                        //                        updated.m_frost = current.m_frost + (current.m_frost != 0 ? 15f : 0);
-                        //                        updated.m_lightning = current.m_lightning + (current.m_lightning != 0 ? 15f : 0);
-                        //                        updated.m_pierce = current.m_pierce + (current.m_pierce != 0 ? 15f : 0);
-                        //                        updated.m_poison = current.m_poison + (current.m_poison != 0 ? 15f : 0);
-                        //                        updated.m_slash = current.m_slash + (current.m_slash != 0 ? 15f : 0);
-                        //                        updated.m_spirit = current.m_spirit + (current.m_spirit != 0 ? 15f : 0);
 
                         updated.m_blunt = current.m_blunt > 0 ? damageCounters * 10 : 0;
                         updated.m_frost = current.m_frost > 0 ? damageCounters * 10 : 0;
@@ -850,14 +842,14 @@ namespace ICanShowYouTheWorld
                 }
             }
 
-                //Tone down equipped weapon (needed?)
-            if (Input.GetKeyDown(KeyCode.DownArrow))
+            //Tone down equipped weapon (needed?)
+            if (Input.GetKeyDown(KeyCode.DownArrow) && !Console.IsVisible())
             {
                 if(damageCounters > 1)
                     damageCounters--;
 
                 // Print list of equipped items
-                List<ItemDrop.ItemData> items = player.GetInventory().GetEquipedtems();
+                List<ItemDrop.ItemData> items = player.GetInventory().GetEquippedItems();
 
                 // Augment equipped weapon
                 foreach (ItemDrop.ItemData item in items)
@@ -883,26 +875,27 @@ namespace ICanShowYouTheWorld
             }
 
             //All the arrow keys are free!
+            //Note: I think DVERGR are immune to fire. But AOE_NOVA works, and since its "spawned" it doesnt aggro
             if (Input.GetKeyDown(KeyCode.LeftArrow))
             {
-                GameObject prefab2 = ZNetScene.instance.GetPrefab("DvergerStaffFire_fire_aoe");
+                GameObject prefab2 = ZNetScene.instance.GetPrefab("DvergerStaffHeal_aoe");
 
                 if (!prefab2)
                 {
-                    ShowULMsg("Missing object DvergerStaffFire_fire_aoe");
+                    ShowULMsg("Missing object heal");
                 }
                 else
                 {
                     Vector3 vector = UnityEngine.Random.insideUnitSphere;
 
-                    ShowULMsg("Spawning Fire AOE");
+                    ShowULMsg("Spawning Heal");
                     GameObject gameObject2 = UnityEngine.Object.Instantiate(prefab2, Player.m_localPlayer.transform.position + Player.m_localPlayer.transform.forward * 2f + Vector3.up + vector, Quaternion.identity);
                     ItemDrop component4 = gameObject2.GetComponent<ItemDrop>();
                 }
             }
 
             //All the arrow keys are free!
-            if (Input.GetKeyDown(KeyCode.RightArrow))
+            if (false /*Input.GetKeyDown(KeyCode.RightArrow*/)
             {
                 GameObject prefab2 = ZNetScene.instance.GetPrefab("aoe_nova");
 
@@ -956,7 +949,7 @@ namespace ICanShowYouTheWorld
             if (Input.GetKeyDown(KeyCode.F11))
             {
                 // Print list of equipped items
-                List<ItemDrop.ItemData> items = player.GetInventory().GetEquipedtems();
+                List<ItemDrop.ItemData> items = player.GetInventory().GetEquippedItems();
                 string items_str = "";
 
                 // Augment equipped items
@@ -1009,7 +1002,7 @@ namespace ICanShowYouTheWorld
                 //Increase runspeed (and attack speed?) for EEEVERYONE. Pets, players, ...
                 foreach (Character item in list)
                 {
-                    if(!item.IsMonsterFaction() && item!=player) //Does this include pets?
+                    if(!item.IsMonsterFaction(10) && item!=player) //Does this include pets?
                     {
                         item.m_runSpeed += 1;
                         item.m_speed += 1;               
@@ -1038,8 +1031,12 @@ namespace ICanShowYouTheWorld
 
                 foreach (Character item in list)
                 {
-                    item.m_runSpeed -= 1;
-                    item.m_speed -= 1;
+                    if(!item.IsMonsterFaction(10) && item != player)
+                    {
+                        item.m_runSpeed -= 1;
+                        item.m_speed -= 1;
+                        ShowULMsg("Slowed speed for " + item.GetHoverName() + " to " + item.m_runSpeed);
+                    }
                 }
 
                 ShowULMsg("Slower: " + player.m_runSpeed);
@@ -1084,7 +1081,7 @@ namespace ICanShowYouTheWorld
                         {
                             ShowULMsg("Teleporting: " + friend.GetHoverName());
 
-                            Chat.instance.TeleportPlayer(friend.GetZDOID().userID,
+                            Chat.instance.TeleportPlayer(friend.GetZDOID().UserID,
                                 position,
                                 player.transform.rotation, //??
                                 distantTeleport: true);
@@ -1136,7 +1133,7 @@ namespace ICanShowYouTheWorld
             {
                 bool safePinFound = false;
                 int safeRadius = 5;
-                List<Minimap.PinData> ourPins = Minimap.m_pins;
+                List<Minimap.PinData> ourPins = Minimap.m_pins; //todo: we made this public somehow.
 
                 foreach (Minimap.PinData pin in ourPins)
                 {
@@ -1207,17 +1204,19 @@ namespace ICanShowYouTheWorld
 
         private static Vector3 ScreenToWorldPoint(Vector3 mousePos)
         {
-            Vector2 screenPoint = mousePos;
-            RectTransform rectTransform = Minimap.instance.m_mapImageLarge.transform as RectTransform;
-            if (RectTransformUtility.ScreenPointToLocalPointInRectangle(rectTransform, screenPoint, null, out var localPoint))
-            {
-                Vector2 vector = Rect.PointToNormalized(rectTransform.rect, localPoint);
-                Rect uvRect = Minimap.instance.m_mapImageLarge.uvRect;
-                float mx = uvRect.xMin + vector.x * uvRect.width;
-                float my = uvRect.yMin + vector.y * uvRect.height;
-                return MapPointToWorld(mx, my);
-            }
-            return Vector3.zero;
+            /*
+                        Vector2 screenPoint = mousePos;
+                        RectTransform rectTransform = Minimap.instance.m_mapImageLarge.transform as RectTransform;
+                        if (RectTransformUtility.ScreenPointToLocalPointInRectangle(rectTransform, screenPoint, null, out var localPoint))
+                        {
+                            Vector2 vector = Rect.PointToNormalized(rectTransform.rect, localPoint);
+                            Rect uvRect = Minimap.instance.m_mapImageLarge.uvRect;
+                            float mx = uvRect.xMin + vector.x * uvRect.width;
+                            float my = uvRect.yMin + vector.y * uvRect.height;
+                            return MapPointToWorld(mx, my);
+                        }
+                        return Vector3.zero;*/
+            return new Vector3();
         }
 
         private static Vector3 MapPointToWorld(float mx, float my)
