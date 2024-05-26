@@ -17,7 +17,7 @@ namespace ICanShowYouTheWorld
 
         public static void Run()
         {
-            UnifiedPopup.Push(new WarningPopup("EverHeim", "Loaded Cheat 052324!"
+            UnifiedPopup.Push(new WarningPopup("EverHeim", "Loaded Cheat 052524!"
                 , delegate
             {
                 UnifiedPopup.Pop();
@@ -141,20 +141,20 @@ namespace ICanShowYouTheWorld
         bool saved = true; //don't save
         private void OnGUI()
         {
-            //todo: STATE! m_deaths etc are gone?
             int state = 0;
             PlayerProfile.PlayerStats player_stats = Game.instance.GetPlayerProfile().m_playerStats;
             Dictionary<PlayerStatType, float> stats = player_stats.m_stats;
 
             float builds = stats[PlayerStatType.Builds];
-            float deaths = stats[PlayerStatType.DeathByEnemyHit];
-            float crafts = stats[PlayerStatType.Crafts];
+            float deaths = stats[PlayerStatType.Deaths];
+            float crafts = stats[PlayerStatType.CraftsOrUpgrades];
+            float bosses = stats[PlayerStatType.BossKills];
 
             //int deaths = 0; // Game.instance.GetPlayerProfile().m_playerStats.m_deaths;
             //int crafts = 0; // Game.instance.GetPlayerProfile().m_playerStats.m_crafts;
             //int builds = 0; // Game.instance.GetPlayerProfile().m_playerStats.m_builds;
 
-            GUI.Label(new Rect(10, 3, 400, 70), "Everheim v.0.1.  Death(hit): " + deaths + "  Crafts: " + crafts + "  Builds: " + builds + " State: " + state);
+            GUI.Label(new Rect(10, 3, 1000, 70), "Everheim v.0.1.  Death: " + deaths + "  Crafts: " + crafts + "  Builds: " + builds + "  Bosses: " + bosses + " State: " + state);
 
             if (!visible)
                 return;
@@ -357,17 +357,23 @@ namespace ICanShowYouTheWorld
         // Clone
         // Boost
         // Replenish stacks
-        // 
+        //
+        //todo:  foreach input in inputs.
+        //       if(Input.GetKeyDown(key.item1)
+        //            execute key.item2
+
+        Player player;
         private void Update()
         {
+            // ----------------------------------
+            // TICK
+            // ----------------------------------
+            counter++; // wrap is fine.
+
             // --------------------------------
             // Refresh player
             //
-            Player player = Player.m_localPlayer;
-
-            //todo:  foreach input in inputs.
-            //       if(Input.GetKeyDown(key.item1)
-            //            execute key.item2
+            player = Player.m_localPlayer;
 
             // ----------------------------------------------
             // F1: ShowUI
@@ -394,38 +400,7 @@ namespace ICanShowYouTheWorld
             //  Heal, remove debuffs, add rested
             if (Input.GetKeyDown( KeyCode.UpArrow)) //was F7
             {
-                //todo: There's a whole bunch of "tolerate" variables
-
-                // Resources
-                //
-                player.AddStamina   ( player.GetMaxStamina() - player.GetStamina() );
-                player.Heal         ( player.GetMaxHealth()  - player.GetHealth()  );
-                player.AddEitr      ( player.GetMaxEitr()    - player.GetEitr()    );
-
-                // Status
-
-                // Remove bad effects
-                //
-                List<StatusEffect> effects = player.GetSEMan().GetStatusEffects();
-                foreach (StatusEffect st in effects)
-                {
-                    SE_Burning burn = new SE_Burning();
-
-                    if (st.Equals(burn))
-                        player.GetSEMan().RemoveStatusEffect(st);
-                }
-                //                player.GetSEMan().RemoveStatusEffect("Spirit");
-                //               player.GetSEMan().RemoveStatusEffect("Poison");
-                //                player.GetSEMan().RemoveStatusEffect("Frost");
-                //                player.GetSEMan().RemoveStatusEffect("Lightning");
-                //                player.GetSEMan().RemoveStatusEffect("Burning");
-
-                // Add beneficial effects
-                //
-                //               player.GetSEMan().AddStatusEffect("Rested", resetTime: true, 10, 10); //this will add lvl1: 8mins
-                //              player.GetSEMan().AddStatusEffect("Magic Barrier", resetTime: true, 10, 10);
-                //
-                // + ... ?
+                Invigorate();
                 ShowULMsg("Invigorated!");
             }
 
@@ -786,11 +761,6 @@ namespace ICanShowYouTheWorld
                 ShowULMsg("Renewal song: " + renewal.ToString() + "! (and stats augmented.");
             }
 
-            // ----------------------------------
-            // TICK
-            // ----------------------------------
-            counter++; // wrap is fine.
-
             // --------------------------------------
             // SLOW!
             if (melodicBinding && counter % 150 == 0)
@@ -844,10 +814,18 @@ namespace ICanShowYouTheWorld
             // HEAL song
             // -------------------
             // is enabled then heal yourself
-            if (renewal)
+            if (counter % 50 == 0)
             {
-                // Soft healing timer
-                if (counter % 15 /*75*/ == 0)
+                //                ShowULMsg(player.GetHealthPercentage().ToString());
+                Console.instance.Print(player.GetHealthPercentage().ToString());
+
+                if (renewal && player.GetHealthPercentage() < 1.0f)
+                {
+                    Invigorate();
+
+                }
+/* // Soft healing timer
+                if (counter % 15  == 0)
                 {
                     if (player.GetHealthPercentage() < 0.75f)
                     {
@@ -878,11 +856,12 @@ namespace ICanShowYouTheWorld
                     if (player.GetHealthPercentage() < 0.4f)
                     {
                         ShowULMsg("LOW HEALTH! CHEAL");
-                        player.Heal((player.GetMaxHealth() /*/ 2*/) - player.GetHealth(), false);
+                        player.Heal((player.GetMaxHealth()) - player.GetHealth(), false);
                     }
                 }
-            }
 
+                */
+            }
 
             // -------------------------------------------------
             // UP: Add damage counter
@@ -1285,6 +1264,44 @@ namespace ICanShowYouTheWorld
         // ---------------------------------------------------------------------
         // Private functions
         //
+
+        private void Invigorate()
+        {
+            Player.m_localPlayer.Message(
+                MessageHud.MessageType.TopLeft,
+                "Invigorating (<100% hp)");
+
+            // CHeal on all player resources
+            //
+            player.AddStamina(player.GetMaxStamina() - player.GetStamina());
+            player.Heal(player.GetMaxHealth() - player.GetHealth());
+            player.AddEitr(player.GetMaxEitr() - player.GetEitr());
+
+            // Status
+            // ....
+
+            // Remove bad effects
+            //
+            // TODO: Does this only remove bad ones?
+            List<StatusEffect> effects = player.GetSEMan().GetStatusEffects();
+            foreach (StatusEffect st in effects)
+            {
+                player.GetSEMan().RemoveStatusEffect(st);
+            }
+
+            // Add beneficial effects
+            
+            player.GetSEMan().AddStatusEffect(new SE_Rested(), resetTime: true, 10, 10); //this will add lvl1: 8mins
+            player.GetSEMan().AddStatusEffect(new SE_Shield(), resetTime: true, 10, 10);
+        }
+
+        // Can be both positive and negative
+        private void ApplyDamageCounterToCurrentWeapon()
+        { }
+
+        private void SomethingTeleport()
+        { }
+
 
         private void FindBosses()
         {
