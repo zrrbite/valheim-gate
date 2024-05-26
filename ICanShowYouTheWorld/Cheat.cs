@@ -803,7 +803,7 @@ namespace ICanShowYouTheWorld
                         {
                             m_damage =
                                                     {
-                                                        m_damage = 30f
+                                                        m_damage = 50f
                                                     }
                         });
                     }
