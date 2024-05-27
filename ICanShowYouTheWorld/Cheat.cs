@@ -2,6 +2,7 @@
 using System;
 using UnityEngine;
 using Random = System.Random;
+using System.Diagnostics;
 
 //todo:
 // 			BaseAI.AggravateAllInArea(Player.m_localPlayer.transform.position, 20f, BaseAI.AggravatedReason.Damage); + shout! Chat.instance.BroadcastMessage("Monsters become aggravated!");
@@ -36,29 +37,42 @@ namespace ICanShowYouTheWorld
     // Load these commands from command line (some known command) instead of about menu?
     public class DiscoverThings : MonoBehaviour
     {
+        // Main player reference. Not really needed. Just access Player.m_localPlayer...
+        Player player;
+
+        // Player states
         public static bool godMode = false;
         public static bool noBuildCost = false;
         public static int godPower = 0;
         public static bool godWeapon = false;
-
-        // Counters
-        UInt16 counter = 0;
-        UInt16 damageCounters = 5;
-
-        // States
         public static bool renewal = false;       //heal friends  
         public static bool cloakOfFlames = false; //fire pbaoe
         public static bool melodicBinding = false; //Slow movement + atk speed
         public static bool ghostMode = false;
         public static bool RandomEvent = false;
 
+        // Counters
+        UInt16 counter = 0;
+        UInt16 damageCounters = 10;
+
+        // UI
         private Rect MainWindow;
         private Rect StatusWindow;
         public bool visible = false;
 
+        // Helper class
+        Helpers helpers = new Helpers();
+
+        // Time (register time when loading into a game, and then at various stages, like first boss Eikthyr).
+        DateTime time = System.DateTime.Now;
+        Stopwatch timer = new Stopwatch();
+      
         private void Awake()
         {
             Console.instance.Print("Awake..");
+
+            // Use static function. Pass in things like Player, etc.
+            Helpers.Test();
         }
 
         private void Start()
@@ -71,6 +85,8 @@ namespace ICanShowYouTheWorld
             float center_y = (Screen.height / 2) - (320 / 2);
 
             StatusWindow = new Rect(Screen.width - 220f, Screen.height - 500f, 220f, 350f);
+
+            timer.Start();
         }
 
         private float w1 = 140f;
@@ -150,11 +166,13 @@ namespace ICanShowYouTheWorld
             float crafts = stats[PlayerStatType.CraftsOrUpgrades];
             float bosses = stats[PlayerStatType.BossKills];
 
-            //int deaths = 0; // Game.instance.GetPlayerProfile().m_playerStats.m_deaths;
-            //int crafts = 0; // Game.instance.GetPlayerProfile().m_playerStats.m_crafts;
-            //int builds = 0; // Game.instance.GetPlayerProfile().m_playerStats.m_builds;
+            GUI.Label(new Rect(10, 3, 1000, 80), "Everheim v.0.1.  Death: " + deaths + "  Crafts: " + crafts + "  Builds: " + builds + "  Bosses: " + bosses + " State: " + state + "  time: " + timer.Elapsed.ToString(@"m\:ss\.fff") + "  key[0]: " + Player.m_localPlayer.GetUniqueKeys()[0].ToString() + /*"," + Player.m_localPlayer.GetUniqueKeys().Count +*/ "Boss keys:" + String.Join(", ", Player.m_localPlayer.GetUniqueKeys()));
 
-            GUI.Label(new Rect(10, 3, 1000, 70), "Everheim v.0.1.  Death: " + deaths + "  Crafts: " + crafts + "  Builds: " + builds + "  Bosses: " + bosses + " State: " + state);
+//            List<string> keys = Player.m_localPlayer.GetUniqueKeys();
+//            foreach (String key in keys)
+//            {
+//                ShowULMsg()
+//            }
 
             if (!visible)
                 return;
@@ -183,11 +201,10 @@ namespace ICanShowYouTheWorld
 
                 saved = true;
             }*/
-
         }
 
         // All the logging
-        //
+        // TODO: Move to helper.
         private void ShowULMsg(string text)
         {
             Player.m_localPlayer.Message(
@@ -201,7 +218,7 @@ namespace ICanShowYouTheWorld
             Console.instance.Print(text);
         }
 
-        //todo: move all these to header.
+        //todo: move all these to header / Helper.
         readonly List<Tuple<string, string>> bossNames = new List<Tuple<string, string>>
         {
             Tuple.Create<string, string>("Eikthyrnir","Eikthyr"),
@@ -362,16 +379,15 @@ namespace ICanShowYouTheWorld
         //       if(Input.GetKeyDown(key.item1)
         //            execute key.item2
 
-        Player player;
         private void Update()
         {
             // ----------------------------------
             // TICK
             // ----------------------------------
-            counter++; // wrap is fine.
+            counter++; // wrap is fine. Use Stopwatch instead?
 
             // --------------------------------
-            // Refresh player
+            // Refresh player todo:  not required, just access Player.
             //
             player = Player.m_localPlayer;
 
@@ -410,13 +426,14 @@ namespace ICanShowYouTheWorld
             if (Input.GetKeyDown(KeyCode.RightArrow))
             {
                 godMode = !godMode;
-                player.SetGodMode(godMode);
-                player.m_boss = godMode;
+                Player.m_localPlayer.SetGodMode(godMode); // new way of setting godmode
+                //player.SetGodMode(godMode);
+                player.m_boss = godMode; // ??
 
                 //no build cost
                 Player.m_localPlayer.SetNoPlacementCost(value: godMode);
                 
-                ShowULMsg(godMode ? "You're a GM and a boss!" : "You're just a player.");
+                ShowULMsg(godMode ? "You're a god!" : "You're just a player.");
             }
 
             // --------------------------------------------
@@ -474,7 +491,6 @@ namespace ICanShowYouTheWorld
                     gameObject2.GetComponent<Character>().SetMaxHealth(5000);
                     gameObject2.GetComponent<Character>().SetHealth(5000);
                     gameObject2.GetComponent<MonsterAI>().SetFollowTarget(player.gameObject);
-
                     //tame it - if possible
                     Tameable.TameAllInArea(player.transform.position, 30.0f);
                 }
@@ -510,7 +526,8 @@ namespace ICanShowYouTheWorld
             if (Input.GetKeyDown(KeyCode.Alpha9)/* && !Console.IsVisible()*/)
             {
                 ghostMode = !ghostMode;
-                player.SetGhostMode(ghostMode);
+                player.SetGhostMode(ghostMode); // this works too
+                //Player.m_localPlayer.SetGhostMode(ghostMode);
                 ShowULMsg("GhostMode: " + ghostMode);
             }
 
@@ -692,8 +709,8 @@ namespace ICanShowYouTheWorld
             if (Input.GetKeyDown(KeyCode.F8))
             {
                 // Health regen
-                float regenMult = 20; // this helped.
-                float fallDmg = 0.2f;
+                float regenMult = 100; // this helped.
+                float fallDmg = 0.1f;
                 float noise = 1;
 
                 // ------------------------
@@ -708,7 +725,7 @@ namespace ICanShowYouTheWorld
                     food.m_time = 10000f;
                 }
 
-                //try to alter abilities of magic weapons
+                // Try to alter abilities of magic weapons
 
                 player.GetSEMan().ModifyHealthRegen(ref regenMult); //Seems that regen multiplier is applied to number of food items.                
                 player.GetSEMan().ModifyFallDamage(1, ref fallDmg); //todo: doesnt entirely work
@@ -803,7 +820,7 @@ namespace ICanShowYouTheWorld
                         {
                             m_damage =
                                                     {
-                                                        m_damage = 50f
+                                                        m_damage = 75f
                                                     }
                         });
                     }
@@ -898,51 +915,40 @@ namespace ICanShowYouTheWorld
                 }
             }
 
-            /*TEST multikey*/
+            /* TEST multikey */
 
-            if (Input.GetKeyDown(KeyCode.LeftControl))
+            if (Input.GetKey(KeyCode.LeftControl))
             {
-                if(Input.GetKeyDown(KeyCode.Alpha1))
+                if (Input.GetKeyUp(KeyCode.Alpha1))
                 {
-                    ShowULMsg("Ctrl + 1");
+                    ShowULMsg("LCtrl + 1");
+                    
                 }
-                if (Input.GetKeyDown(KeyCode.Alpha2))
+                if (Input.GetKeyUp(KeyCode.Alpha2))
                 {
-                    ShowULMsg("Ctrl + 1");
+                    ShowULMsg("LCtrl + 2");
+
                 }
             }
+
             // -------------------------------------------------
-            // Down:  Remove active damage counter.
+            // Remove active damage counter.
             // ----------------------------------------------------
             if (false /*Input.GetKeyDown(KeyCode.DownArrow) && !Console.IsVisible()*/)
             {
                 if(damageCounters > 1)
-                    damageCounters--;
-
-                // Print list of equipped items
-                List<ItemDrop.ItemData> items = player.GetInventory().GetEquippedItems();
-
-                // Augment equipped weapon
-                foreach (ItemDrop.ItemData item in items)
                 {
-                    item.m_shared.m_durabilityDrain = 0.1f; //no dura drain
-                    if (item.IsWeapon())
-                    {
-                        HitData.DamageTypes updated = new HitData.DamageTypes();
-                        HitData.DamageTypes current = item.GetDamage();
-
-                        updated.m_blunt = current.m_blunt > 0 ? damageCounters * 10 : 0;
-                        updated.m_frost = current.m_frost > 0 ? damageCounters * 10 : 0;
-                        updated.m_lightning = current.m_lightning > 0 ? damageCounters * 10 : 0;
-                        updated.m_pierce = current.m_pierce > 0 ? damageCounters * 10 : 0;
-                        updated.m_poison = current.m_poison > 0 ? damageCounters * 10 : 0;
-                        updated.m_slash = current.m_slash > 0 ? damageCounters * 10 : 0;
-                        updated.m_spirit = current.m_spirit > 0 ? damageCounters * 10 : 0;
-
-                        item.m_shared.m_damages = updated;
-                        ShowULMsg("Augmenting " + item.m_shared.m_name + "with " + damageCounters + " damage counters.");
-                    }
+                    damageCounters--;
                 }
+                ApplyDamageCounterToCurrentWeapon(damageCounters);
+            }
+
+            // ---------------------------------------
+            // Apply Damage counters
+            // ---------------------------------------
+            if (Input.GetKeyDown(KeyCode.F11))
+            {
+                ApplyDamageCounterToCurrentWeapon(++damageCounters);
             }
 
             // ------------------------------------
@@ -968,7 +974,7 @@ namespace ICanShowYouTheWorld
             }
 
             // -------------------------------
-            // RIGHT: Wacky Heal AOE.
+            // RIGHT: Wacky dmg AOE.
             //All the arrow keys are free!
             if (false /*Input.GetKeyDown(KeyCode.RightArrow*/)
             {
@@ -1022,7 +1028,7 @@ namespace ICanShowYouTheWorld
             // todo: ability to revert back
             // todo:  if up 10 times, just go big?
             //
-            if (Input.GetKeyDown(KeyCode.F11))
+            if (false) //F11
             {
                 // Print list of equipped items
                 List<ItemDrop.ItemData> items = player.GetInventory().GetEquippedItems();
@@ -1060,35 +1066,12 @@ namespace ICanShowYouTheWorld
             }
 
             // ----------------------------------------
-            // F3: Go faster
+            // F3: Go faster Maybe CTRL + U/D
             //
             if (Input.GetKeyDown(KeyCode.F3))
             {
-                player.m_runSpeed += 1;
-                player.m_swimSpeed += 1;
-                player.m_acceleration += 1;
-                player.m_crouchSpeed += 1;
-                player.m_walkSpeed += 1;
-                player.m_jumpForce += 0.5f;
-                player.m_jumpForceForward += 0.5f;
-
-                List<Character> list = new List<Character>();
-                Character.GetCharactersInRange(player.transform.position, 30.0f, list);
-
-                //todo: set walk = snare?
-                //Increase runspeed (and attack speed?) for EEEVERYONE. Pets, players, ...
-                foreach (Character item in list)
-                {
-                    if(!item.IsMonsterFaction(10) && item!=player) //Does this include pets?
-                    {
-                        item.m_runSpeed += 1;
-                        item.m_speed += 1;               
-
-                        //Player.m_localPlayer.GetSkills().CheatRaiseSkill(args[1], value14);
-                        ShowULMsg("Increased speed for " + item.GetHoverName() + " to " + item.m_runSpeed);
-                    }
-                }
-                ShowULMsg("Faster: " + player.m_runSpeed);
+                float speed = player.m_runSpeed + 1;
+                SetSpeed(speed);
             }
 
             // -------------------------------------------------
@@ -1096,28 +1079,8 @@ namespace ICanShowYouTheWorld
             //
             if (Input.GetKeyDown(KeyCode.F4))
             {
-                player.m_runSpeed -= 1;
-                player.m_acceleration -= 1;
-                player.m_swimSpeed -= 1;
-                player.m_crouchSpeed -= 1;
-                player.m_walkSpeed -= 1;
-                player.m_jumpForce -= 0.5f;
-                player.m_jumpForceForward -= 0.5f;
-
-                List<Character> list = new List<Character>();
-                Character.GetCharactersInRange(player.transform.position, 30.0f, list);
-
-                foreach (Character item in list)
-                {
-                    if(!item.IsMonsterFaction(10) && item != player)
-                    {
-                        item.m_runSpeed -= 1;
-                        item.m_speed -= 1;
-                        ShowULMsg("Slowed speed for " + item.GetHoverName() + " to " + item.m_runSpeed);
-                    }
-                }
-
-                ShowULMsg("Slower: " + player.m_runSpeed);
+                float speed = player.m_runSpeed - 1;
+                SetSpeed(speed);
             }
 
             // ----------------------------------------------
@@ -1296,12 +1259,38 @@ namespace ICanShowYouTheWorld
         }
 
         // Can be both positive and negative
-        private void ApplyDamageCounterToCurrentWeapon()
-        { }
+        private void ApplyDamageCounterToCurrentWeapon(uint damage_counters)
+        {
+            // Print list of equipped items
+            List<ItemDrop.ItemData> items = player.GetInventory().GetEquippedItems();
+
+            // Augment equipped weapon
+            foreach (ItemDrop.ItemData item in items)
+            {
+                item.m_shared.m_durabilityDrain = 0.1f; //no dura drain
+                if (item.IsWeapon())
+                {
+                    HitData.DamageTypes updated = new HitData.DamageTypes();
+                    HitData.DamageTypes current = item.GetDamage();
+
+                    updated.m_blunt = current.m_blunt > 0 ? damage_counters * 10 : 0;
+                    updated.m_frost = current.m_frost > 0 ? damage_counters * 10 : 0;
+                    updated.m_lightning = current.m_lightning > 0 ? damage_counters * 10 : 0;
+                    updated.m_pierce = current.m_pierce > 0 ? damage_counters * 10 : 0;
+                    updated.m_poison = current.m_poison > 0 ? damage_counters * 10 : 0;
+                    updated.m_slash = current.m_slash > 0 ? damage_counters * 10 : 0;
+                    updated.m_spirit = current.m_spirit > 0 ? damage_counters * 10 : 0;
+
+                    item.m_shared.m_damages = updated;
+                    ShowULMsg("Augmenting " + item.m_shared.m_name + "with " + damageCounters + " damage counters.");
+                }
+            }
+        }
 
         private void SomethingTeleport()
-        { }
+        {
 
+        }
 
         private void FindBosses()
         {
@@ -1318,6 +1307,35 @@ namespace ICanShowYouTheWorld
 
             //Finally, just explore everything. Hope this doesn't årevent revealing bosses.
             Minimap.instance.ExploreAll();
+        }
+
+        private void SetSpeed(float speed)
+        {
+            player.m_runSpeed = speed;
+            player.m_swimSpeed = speed;
+            player.m_acceleration = speed;
+            player.m_crouchSpeed = speed;
+            player.m_walkSpeed = speed;
+            player.m_jumpForce = speed;
+            player.m_jumpForceForward = speed;
+
+            List<Character> list = new List<Character>();
+            Character.GetCharactersInRange(player.transform.position, 30.0f, list);
+
+            //todo: set walk = snare?
+            //Increase runspeed (and attack speed?) for EEEVERYONE. Pets, players, ...
+            foreach (Character item in list)
+            {
+                if (!item.IsMonsterFaction(10) && item != player) //Does this include pets?
+                {
+                    item.m_runSpeed = speed;
+                    item.m_speed = speed;
+
+                    //Player.m_localPlayer.GetSkills().CheatRaiseSkill(args[1], value14);
+                    ShowULMsg("Increased speed for " + item.GetHoverName() + " to " + item.m_runSpeed);
+                }
+            }
+            ShowULMsg("New player speed: " + player.m_runSpeed);
         }
 
         private static Vector3 GetSpawnPoint()
