@@ -18,7 +18,7 @@ namespace ICanShowYouTheWorld
 
         public static void Run()
         {
-            UnifiedPopup.Push(new WarningPopup("EverHeim", "Loaded Cheat 052524!"
+            UnifiedPopup.Push(new WarningPopup("EverHeim", "Loaded Cheat 052724!"
                 , delegate
             {
                 UnifiedPopup.Pop();
@@ -166,7 +166,7 @@ namespace ICanShowYouTheWorld
             float crafts = stats[PlayerStatType.CraftsOrUpgrades];
             float bosses = stats[PlayerStatType.BossKills];
 
-            GUI.Label(new Rect(10, 3, 1000, 80), "Everheim v.0.1.  Death: " + deaths + "  Crafts: " + crafts + "  Builds: " + builds + "  Bosses: " + bosses + " State: " + state + "  time: " + timer.Elapsed.ToString(@"m\:ss\.fff") + "  key[0]: " + Player.m_localPlayer.GetUniqueKeys()[0].ToString() + /*"," + Player.m_localPlayer.GetUniqueKeys().Count +*/ "Boss keys:" + String.Join(", ", Player.m_localPlayer.GetUniqueKeys()));
+            GUI.Label(new Rect(10, 3, 1000, 80), "Everheim v.0.1.  Death: " + deaths + "  Crafts: " + crafts + "  Builds: " + builds + "  Bosses: " + bosses + " State: " + state + "  time: " + timer.Elapsed.ToString(@"m\:ss\.fff") + "  key[0]: " + Player.m_localPlayer.GetUniqueKeys()[0].ToString() + "," + Player.m_localPlayer.GetUniqueKeys().Count + "  Boss keys:" + String.Join(", ", Player.m_localPlayer.GetUniqueKeys()));
 
 //            List<string> keys = Player.m_localPlayer.GetUniqueKeys();
 //            foreach (String key in keys)
@@ -1097,12 +1097,12 @@ namespace ICanShowYouTheWorld
                 {
                     Chat.instance.SendPing(position);
 
-                    //Vector3 vector = new Vector3(position.x, /*Player.m_localPlayer.transform.*/position.y, position.z);
-                    //Heightmap.GetHeight(vector, out var height);
-                    //vector.z = Math.Max(0f, height);
+//                    Vector3 vector = new Vector3(position.x, position.y, position.z);
+//                    Heightmap.GetHeight(vector, out var height);
+//                   vector.z = Math.Max(0f, height);
 
                     Console.instance.AddString("Solo teleport", "Heading to " + position.ToString("0.0"), (int)Talker.Type.Whisper);
-                    Player.m_localPlayer.TeleportTo(position/*vector*/, Player.m_localPlayer.transform.rotation, distantTeleport: true);
+                    Player.m_localPlayer.TeleportTo(position, Player.m_localPlayer.transform.rotation, distantTeleport: true);
                 }
             }
 
@@ -1305,8 +1305,8 @@ namespace ICanShowYouTheWorld
 
             }
 
-            //Finally, just explore everything. Hope this doesn't årevent revealing bosses.
-            Minimap.instance.ExploreAll();
+            //Finally, just explore everything. TODO: Make this a separate key.
+            //Minimap.instance.ExploreAll();
         }
 
         private void SetSpeed(float speed)
