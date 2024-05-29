@@ -165,8 +165,9 @@ namespace ICanShowYouTheWorld
             float deaths = stats[PlayerStatType.Deaths];
             float crafts = stats[PlayerStatType.CraftsOrUpgrades];
             float bosses = stats[PlayerStatType.BossKills];
+            String keys = String.Join(", ", Player.m_localPlayer.GetUniqueKeys());
 
-            GUI.Label(new Rect(10, 3, 1000, 80), "Everheim v.0.1.  Death: " + deaths + "  Crafts: " + crafts + "  Builds: " + builds + "  Bosses: " + bosses + " State: " + state + "  time: " + timer.Elapsed.ToString(@"m\:ss\.fff") + "  key[0]: " + Player.m_localPlayer.GetUniqueKeys()[0].ToString() + "," + Player.m_localPlayer.GetUniqueKeys().Count + "  Boss keys:" + String.Join(", ", Player.m_localPlayer.GetUniqueKeys()));
+            GUI.Label(new Rect(10, 3, 1000, 80), "Everheim v.0.1.  Death: " + deaths + "  Crafts: " + crafts + "  Builds: " + builds + "  Bosses: " + bosses + " State: " + state + "  time: " + timer.Elapsed.ToString(@"m\:ss\.fff") + "  Boss keys: " + keys);
 
 //            List<string> keys = Player.m_localPlayer.GetUniqueKeys();
 //            foreach (String key in keys)
@@ -229,7 +230,10 @@ namespace ICanShowYouTheWorld
             Tuple.Create<string, string>("Seekerqueen","Seeker Queen"),
             Tuple.Create<string, string>("Mistlands_DvergrBossEntrance1","Seeker Queen"),
             Tuple.Create<string, string>("GoblinKing","Yagluth"),
+            Tuple.Create<string, string>("FaderLocation","Fader")
+
         };
+
         readonly List<Tuple<string, string>> dvergr_prefabs = new List<Tuple<string, string>>
         {
             //Seeker soldier? Etc.
@@ -1294,6 +1298,7 @@ namespace ICanShowYouTheWorld
 
         private void FindBosses()
         {
+            //todo: Do something here that randomizes what we look for?
             foreach (var name in bossNames)
             {
                 ShowULMsg("Revealing: " + name.Item2);
@@ -1302,7 +1307,8 @@ namespace ICanShowYouTheWorld
                     Player.m_localPlayer.transform.position,
                     name.Item2,
                     (int)Minimap.PinType.Boss);
-
+                //shoemape = true
+                //discoverall = false
             }
 
             //Finally, just explore everything. TODO: Make this a separate key.
