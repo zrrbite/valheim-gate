@@ -11,12 +11,12 @@ https://shendrick.net/Gaming/2022/05/30/sshonsteamdeck.html
 
 # Usage
 
-There are two usage scenarios.
-1. Game is updated through Steam, updating assembly_valheim.dll, overriding your patched version, requiring a re-patch
-2. ICanShowYouTheWorld.dll requires an update based on new release
+There are some main usage scenarios.
+1. New release of Valheim is updated through Steam, updating assembly_valheim.dll, overriding your patched version, requiring a re-patch.
+2. ICanShowYouTheWorld project requires an update based on new release of Unity (Check here if version was updated: https://valheim.fandom.com/wiki/Version_History)
+3. ICanShowYouTheWorld project needs a modified version of assembly_valheim.dll (e.g. m_pins to be public)
+4. ...
 
-<more here>
-  
 ## Patcher
 <Create scripts to do all this automatically. Create Patched folder. setup.sh>
   1.
