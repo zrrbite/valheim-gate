@@ -9,15 +9,15 @@ https://shendrick.net/Gaming/2022/05/30/sshonsteamdeck.html
 * `sudo systemctl start sshd`
 * `Then: sudo systemctl enable sshd`
 
-# Usage
+# When and what to update
 
 _Simple scenario:_
 * New release of Valheim is updated through Steam, updating assembly_valheim.dll, overriding your patched version, requiring a re-patch. Sometimes it's a simple patch that can be done by a) copying `assembly_valheim.dll` and running it through `Patcher.exe`, b) Uploading the dll to steamdeck, leaving ICanShowYouTheWorld.dll in place.
 * New feature of ICanShowYouTheWorld.dll only requires a rebuild and upload of dll.
 
 _More complicated scenarios:_
-3. New release of Unity causes ICanShowYouTheWorld project to be relinked and possibly changed if breaking changes (check here if version was updated: https://valheim.fandom.com/wiki/Version_History)
-4. New feature in ICanShowYouTheWorld project needs a modified version of assembly_valheim.dll (e.g. due to `m_pins`)
+* New release of Unity causes ICanShowYouTheWorld project to be relinked and possibly changed if breaking changes (check here if version was updated: https://valheim.fandom.com/wiki/Version_History)
+* New feature in ICanShowYouTheWorld project needs a modified version of assembly_valheim.dll (e.g. due to `m_pins`)
 
 ## Commands
 From: $/Users/martinkjeldsen/Projects/Valheim 
