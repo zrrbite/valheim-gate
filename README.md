@@ -11,43 +11,22 @@ https://shendrick.net/Gaming/2022/05/30/sshonsteamdeck.html
 
 # Usage
 
-There are some main usage scenarios.
-1. New release of Valheim is updated through Steam, updating assembly_valheim.dll, overriding your patched version, requiring a re-patch.
-2. ICanShowYouTheWorld project requires an update based on new release of Unity (Check here if version was updated: https://valheim.fandom.com/wiki/Version_History)
-3. ICanShowYouTheWorld project needs a modified version of assembly_valheim.dll (e.g. m_pins to be public)
-4. ...
+_Simple scenario:_
+* New release of Valheim is updated through Steam, updating assembly_valheim.dll, overriding your patched version, requiring a re-patch. Sometimes it's a simple patch that can be done by a) copying `assembly_valheim.dll` and running it through `Patcher.exe`, b) Uploading the dll to steamdeck, leaving ICanShowYouTheWorld.dll in place.
+* New feature of ICanShowYouTheWorld.dll only requires a rebuild and upload of dll.
+
+_More complicated scenarios:_
+3. New release of Unity causes ICanShowYouTheWorld project to be relinked and possibly changed if breaking changes (check here if version was updated: https://valheim.fandom.com/wiki/Version_History)
+4. New feature in ICanShowYouTheWorld project needs a modified version of assembly_valheim.dll (e.g. due to `m_pins`)
+
+## Commands
+From: $/Users/martinkjeldsen/Projects/Valheim 
+`/Applications/"Visual Studio".app/Contents/MacOS/vstool build -t:Build -c:"Debug" "Valheim.sln";`
 
 ## Patcher
-<Create scripts to do all this automatically. Create Patched folder. setup.sh>
-  1.
-  
-TODO:  List of files in common folder, but this should really be done using scripts or something packaged up in a release?
-  
+     
   ```
-  total 4328
--rw-r--r--  1 martinkjeldsen  staff     0B Feb  7 20:02 0.213.4
--rwxr-xr-x@ 1 martinkjeldsen  staff    23K Feb  4 17:07 Assembly-CSharp.dll
--rw-r--r--@ 1 martinkjeldsen  staff   7.0K Feb  7 15:17 ICanShowYouTheWorld.dll
--rw-r--r--@ 1 martinkjeldsen  staff   3.8K Feb  7 15:17 ICanShowYouTheWorld.pdb
--rwxr--r--@ 1 martinkjeldsen  staff    42K Jul  1  2021 Mono.Cecil.Mdb.dll
--rwxr--r--@ 1 martinkjeldsen  staff    19K Jul  1  2021 Mono.Cecil.Mdb.pdb
--rwxr--r--@ 1 martinkjeldsen  staff    88K Jul  1  2021 Mono.Cecil.Pdb.dll
--rwxr--r--@ 1 martinkjeldsen  staff    26K Jul  1  2021 Mono.Cecil.Pdb.pdb
--rwxr--r--@ 1 martinkjeldsen  staff    27K Jul  1  2021 Mono.Cecil.Rocks.dll
--rwxr--r--@ 1 martinkjeldsen  staff   8.7K Jul  1  2021 Mono.Cecil.Rocks.pdb
--rwxr--r--@ 1 martinkjeldsen  staff   350K Jul  1  2021 Mono.Cecil.dll
--rwxr--r--@ 1 martinkjeldsen  staff   180K Jul  1  2021 Mono.Cecil.pdb
--rwxr-xr-x@ 1 martinkjeldsen  staff   7.0K Feb  7 12:42 Patcher.exe
--rw-r--r--@ 1 martinkjeldsen  staff   1.8K Feb  7 12:42 Patcher.pdb
--rwxr-xr-x@ 1 martinkjeldsen  staff    47K Feb  4 17:07 assembly_utils.dll
--rwxr-xr-x  1 martinkjeldsen  staff   1.3M Feb  7 16:09 assembly_valheim.dll.org
-drwxr-xr-x  2 martinkjeldsen  staff    64B Feb  7 11:01 deck_backup
-drwxr-xr-x  4 martinkjeldsen  staff   128B Feb  7 20:00 patched
-```
-  
-
-  ```
-   ➜  valheim_patcher mono Patcher.exe
+   ➜  mono Patcher.exe
 Patching FejdStartup->OnCredits.. done
 
 Instructions:
@@ -111,7 +90,7 @@ In folder: /home/deck/.local/share/Steam/steamapps/common/Valheim/valheim_Data
 2020.3.33f1
 ```
 
-Get the assemblies here:
+Get the assemblies here. e.g.:
 
 https://unity.bepinex.dev/corlibs/2020.3.33.zip
 https://unity.bepinex.dev/libraries/2020.3.33.zip
