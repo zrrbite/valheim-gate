@@ -18,7 +18,7 @@ namespace ICanShowYouTheWorld
 
         public static void Run()
         {
-            UnifiedPopup.Push(new WarningPopup("EverHeim", "Loaded Cheat 052724!"
+            UnifiedPopup.Push(new WarningPopup("EverHeim", "Loaded mod v0.218.21!"
                 , delegate
             {
                 UnifiedPopup.Pop();
