@@ -1,6 +1,13 @@
 # valheim-gate
 In Valheim, teleport to your bind spot or anywhere on the map. Binaries are cross-platform.
 
+# TODO
+* Better overview of various update scenarios
+* Scripts to automate various scenarios
+  * Standard update: dll fetch from deck, rebuild, dll push
+  * Auto-detect unity version change
+  * More...
+
 # Set up SSH on steamdeck
 https://shendrick.net/Gaming/2022/05/30/sshonsteamdeck.html
 
