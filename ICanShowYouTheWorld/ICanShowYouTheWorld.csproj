@@ -273,11 +273,11 @@
     <Reference Include="UnityEngine.WindModule">
       <HintPath>..\libraries\UnityEngine.WindModule.dll</HintPath>
     </Reference>
-    <Reference Include="assembly_valheim">
-      <HintPath>..\libraries\assembly_valheim.dll</HintPath>
-    </Reference>
     <Reference Include="UnityEngine.UI">
       <HintPath>..\UnityEngine.UI.dll</HintPath>
+    </Reference>
+    <Reference Include="assembly_valheim">
+      <HintPath>..\Patcher\bin\Debug\patched\assembly_valheim.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
