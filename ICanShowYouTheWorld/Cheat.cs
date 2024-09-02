@@ -460,7 +460,7 @@ namespace ICanShowYouTheWorld
             }
 
             // ----------------------------------------------------------------------------------------
-            // Spawn pets. Currently skeleton, since thats the only thing that can be summoned legally.
+            // Spawn pets.
             // TODO: Spawn a trio. Timon (boar), Misha (bear), some wolf
             // TODO: Spawn a bit off the side.
             //
