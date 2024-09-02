@@ -568,10 +568,13 @@ namespace ICanShowYouTheWorld
                 ShowULMsg("MelodicBinding: " + melodicBinding);
             }
 
+            // TODO: Only allow spawning in GhostMode(). Use that as an "alt" key. Or use "State" to toggle.
+            //       Print out current command list on screen.
+
             // ----------------------------
             // Z: Spawn Seeker
             // 
-            if (Input.GetKeyDown(KeyCode.Z)/* && !Console.IsVisible()*/)
+            if (player.InGhostMode() && Input.GetKeyDown(KeyCode.Z)/* && !Console.IsVisible()*/)
             {
                 int[] chance = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 2 };
                 Random rand = new Random();
@@ -594,10 +597,10 @@ namespace ICanShowYouTheWorld
             }
 
             // ---------------------------------------------------
-            // Backspace: Spawn Dvergr
+            // Backspace: "Spawn aggrevated" Dvergr (in ghost mode). Move to utility that takes "friend,foe".
             //
             //todo: Turn this into a function that takes a prefab list and a chance list.
-            if (Input.GetKeyDown(KeyCode.Backspace) && !Console.IsVisible())
+            if (player.InGhostMode() && Input.GetKeyDown(KeyCode.Backspace) && !Console.IsVisible())
             {
                 int[] chance = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 2 };
                 Random rand = new Random();
