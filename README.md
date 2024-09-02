@@ -27,7 +27,7 @@ _More complicated scenarios:_
 * New feature in ICanShowYouTheWorld project needs a modified version of assembly_valheim.dll (e.g. due to `m_pins`)
 
 ## Commands
-From: $/Users/martinkjeldsen/Projects/Valheim 
+* msvs cli build: e.g. $/Users/martinkjeldsen/Projects/Valheim 
 `/Applications/"Visual Studio".app/Contents/MacOS/vstool build -t:Build -c:"Debug" "Valheim.sln";`
 
 ## Patcher
