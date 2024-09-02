@@ -431,7 +431,7 @@ namespace ICanShowYouTheWorld
             {
                 godMode = !godMode;
                 Player.m_localPlayer.SetGodMode(godMode); // new way of setting godmode
-                //player.SetGodMode(godMode);
+                player.SetGodMode(godMode);
                 player.m_boss = godMode; // ??
 
                 //no build cost
@@ -660,6 +660,7 @@ namespace ICanShowYouTheWorld
             //
             if (Input.GetKeyDown(KeyCode.PageUp))
             {
+                ShowULMsg("Taming/re-taming in r30");
                 Console.instance.Print("Taming/re-taming in r30");
                 Tameable.TameAllInArea(player.transform.position, 30.0f);
                 //Tameable.TameAllInArea(((Component)Player.m_localPlayer).get_transform().get_position(), 20f);
