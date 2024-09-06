@@ -484,29 +484,45 @@ namespace ICanShowYouTheWorld
                 DateTime now = DateTime.Now;
                 Random rand = new Random();
 
-                int pet_index = rand.Next(pets.Count);
+                int pet_index = rand.Next(combat_pets.Count);
                 int name_index = rand.Next(pet_names.Count);
 
-                GameObject prefab2 = ZNetScene.instance.GetPrefab(pets[pet_index]);
+                GameObject prefab2 = ZNetScene.instance.GetPrefab(combat_pets[pet_index]);
 
                 if (!prefab2)
                 {
-                    ShowULMsg("Missing object" + pets[pet_index] + " (" + pet_index + ")");
+                    ShowULMsg("Missing object" + combat_pets[pet_index] + " (" + pet_index + ")");
                 }
                 else
                 {
                     Vector3 vector = UnityEngine.Random.insideUnitSphere * ((count == 1) ? 0f : 0.5f);
 
-                    ShowULMsg("Spawning pet: " + pets[pet_index] + " (" + pet_index + ", " + pet_names[name_index] + ")");
+                    ShowULMsg("Spawning fast pet: " + combat_pets[pet_index] + " (" + pet_index + ", " + pet_names[name_index] + ")");
                     GameObject gameObject2 = UnityEngine.Object.Instantiate(prefab2, Player.m_localPlayer.transform.position + Player.m_localPlayer.transform.forward * 2f + Vector3.up + vector, Quaternion.identity);
                     ItemDrop component4 = gameObject2.GetComponent<ItemDrop>();
-                    gameObject2.GetComponent<Character>()?.SetLevel(2); //1 = 0, 2 = 1, 3 = 2 stars
+                    gameObject2.GetComponent<Character>()?.SetLevel(3); //1 = 0, 2 = 1, 3 = 2 stars
                     gameObject2.GetComponent<Character>().m_name = pet_names[name_index];
-                    gameObject2.GetComponent<Character>().SetMaxHealth(5000);
-                    gameObject2.GetComponent<Character>().SetHealth(5000);
+                    gameObject2.GetComponent<Character>().SetMaxHealth(10000);
+                    gameObject2.GetComponent<Character>().SetHealth(10000);
                     gameObject2.GetComponent<MonsterAI>().SetFollowTarget(player.gameObject);
                     //tame it - if possible
                     Tameable.TameAllInArea(player.transform.position, 30.0f);
+
+                    //Set Speed
+                    List<Character> list = new List<Character>();
+                    Character.GetCharactersInRange(player.transform.position, 30.0f, list);
+
+                    // Set speed
+                    foreach (Character item in list)
+                    {
+                        if (!item.IsMonsterFaction(10) && item != player) // This includes pets
+                        {
+                            item.m_runSpeed = 14;
+                            item.m_speed = 14;
+
+                            
+                        }
+                    }
                 }
 
                 pet_counter++;
@@ -1100,6 +1116,8 @@ namespace ICanShowYouTheWorld
                 float speed = player.m_runSpeed - 1;
                 SetSpeed(speed);
             }
+
+            
 
             // ----------------------------------------------
             // Solo teleport
