@@ -285,7 +285,9 @@ namespace ICanShowYouTheWorld
             Tuple.Create<string, string>("Dvergr",                  "Dverger"),
         };
 
-        List<string> pets = new List<string> { "Boar", "Wolf", "Lox", "Hen", "Skeleton_Friendly" };
+        List<string> all_pets = new List<string> { "Boar", "Wolf", "Lox", "Hen", "Skeleton_Friendly" };
+        List<string> combat_pets = new List<string> { "Wolf", "DvergerMageSupport" };
+
         List<string> pet_names = new List<string> {
                     "Bob",
                     "Ralf",
