@@ -87,6 +87,7 @@ namespace ICanShowYouTheWorld
             StatusWindow = new Rect(Screen.width - 220f, Screen.height - 500f, 220f, 350f);
 
             timer.Start();
+            Player.m_localPlayer.m_onDamaged = somefunc;
         }
 
         private float w1 = 140f;
@@ -152,6 +153,13 @@ namespace ICanShowYouTheWorld
                 }
             }
             GUI.DragWindow();
+        }
+
+        public void somefunc(float dmg, Character c)
+        {
+            Player.m_localPlayer.Message(
+                 MessageHud.MessageType.Center,
+                 c.m_name.ToString() + " took " + dmg.ToString() + " dmg.");
         }
 
         bool saved = true; //don't save
