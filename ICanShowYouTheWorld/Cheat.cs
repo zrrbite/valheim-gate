@@ -1188,18 +1188,15 @@ namespace ICanShowYouTheWorld
             if (Input.GetKeyDown(KeyCode.Insert))
             {
                 Vector3 position = ScreenToWorldPoint(Input.mousePosition);
-
-                if (Player.m_localPlayer)
-                {
-                    Chat.instance.SendPing(position);
+                ShowULMsg("Trying to teleport...");
+                Chat.instance.SendPing(position);
 
 //                    Vector3 vector = new Vector3(position.x, position.y, position.z);
 //                    Heightmap.GetHeight(vector, out var height);
 //                   vector.z = Math.Max(0f, height);
 
-                    Console.instance.AddString("Solo teleport", "Heading to " + position.ToString("0.0"), (int)Talker.Type.Whisper);
-                    Player.m_localPlayer.TeleportTo(position, Player.m_localPlayer.transform.rotation, distantTeleport: true);
-                }
+                Console.instance.AddString("Solo teleport", "Heading to " + position.ToString("0.0"), (int)Talker.Type.Whisper);
+                Player.m_localPlayer.TeleportTo(position, Player.m_localPlayer.transform.rotation, distantTeleport: true);
             }
 
             // ----------------------------------------------
