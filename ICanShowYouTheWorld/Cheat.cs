@@ -1285,7 +1285,7 @@ namespace ICanShowYouTheWorld
                 {
                     //TODO: Add some helpers for teleporting (incl. logging). Also checks radius.
                     if(!pin.m_name.Equals("")) Console.instance.Print("Pin = " + pin.m_name);
-                    if(pin.m_name.Equals("safe"))
+                    if (pin.m_name.Equals("safe")) //"safe"//todo: This can be abused to teleport to a specific boss pin, but, might get stuck, so teleport a bit away? 
                     {
                         safePinFound = true;
 
