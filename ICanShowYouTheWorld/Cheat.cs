@@ -519,8 +519,6 @@ namespace ICanShowYouTheWorld
                         {
                             item.m_runSpeed = 14;
                             item.m_speed = 14;
-
-                            
                         }
                     }
                 }
@@ -556,8 +554,7 @@ namespace ICanShowYouTheWorld
             if (Input.GetKeyDown(KeyCode.Alpha9)/* && !Console.IsVisible()*/)
             {
                 ghostMode = !ghostMode;
-                player.SetGhostMode(ghostMode); // this works too
-                //Player.m_localPlayer.SetGhostMode(ghostMode);
+                player.SetGhostMode(ghostMode);
                 ShowULMsg("GhostMode: " + ghostMode);
             }
 
@@ -1273,8 +1270,6 @@ namespace ICanShowYouTheWorld
                 }
             }
 
-
-
             // --------------------------------------
             // END: Succor
             // Port to "safe" pin on map
@@ -1393,6 +1388,7 @@ namespace ICanShowYouTheWorld
 
         private void FindBosses()
         {
+
             //todo: Do something here that randomizes what we look for?
             foreach (var name in bossNames)
             {
@@ -1402,8 +1398,8 @@ namespace ICanShowYouTheWorld
                     Player.m_localPlayer.transform.position,
                     name.Item2,
                     (int)Minimap.PinType.Boss);
-                //shoemape = true
-                //discoverall = false
+                // Show map    = true
+                // Discoverall = false
             }
 
             //Finally, just explore everything. TODO: Make this a separate key.
