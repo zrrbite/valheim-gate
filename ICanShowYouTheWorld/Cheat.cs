@@ -1308,7 +1308,7 @@ namespace ICanShowYouTheWorld
                         Console.instance.AddString("I'm out of here!", "Succor to " + pin.m_pos.ToString("0.0"), Talker.Type.Shout);
 
                         Player.m_localPlayer.TeleportTo(
-                            pin.m_pos,
+                            pin.m_pos + UnityEngine.Random.insideUnitSphere * 5,
                             Player.m_localPlayer.transform.rotation,
                             true);
 
