@@ -26,6 +26,12 @@ _More complicated scenarios:_
 * New release of Unity causes ICanShowYouTheWorld project to be relinked and possibly changed if breaking changes (check here if version was updated: https://valheim.fandom.com/wiki/Version_History)
 * New feature in ICanShowYouTheWorld project needs a modified version of assembly_valheim.dll (e.g. due to `m_pins`)
 
+_TL;DR_ 
+* Complete all steps, no matter the scenario.
+  * Check patchnotes for new unity version. e.g. valheim 0.219.13 introduced uinity 2022.3.50.
+  * From deck, download valheim assembly and UnityEngine.UI.dll to the libraries folder. From bespinx, download new unity bianries and extract those in the 'binaries' folder to allow proper linking (these do not need to go to deck).
+  * Remember to patch assembly_valheim.dll so that it actually calls Icanshowyoutheworld
+
 ## Commands
 * msvs cli build: e.g. $/Users/martinkjeldsen/Projects/Valheim 
 `/Applications/"Visual Studio".app/Contents/MacOS/vstool build -t:Build -c:"Debug" "Valheim.sln";`
