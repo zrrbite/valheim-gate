@@ -18,7 +18,7 @@ namespace ICanShowYouTheWorld
 
         public static void Run()
         {
-            UnifiedPopup.Push(new WarningPopup("EverHeim", "Loaded mod v0.218.21!"
+            UnifiedPopup.Push(new WarningPopup("EverHeim", "Loaded mod v0.219.16!"
                 , delegate
             {
                 UnifiedPopup.Pop();
@@ -87,7 +87,7 @@ namespace ICanShowYouTheWorld
             StatusWindow = new Rect(Screen.width - 220f, Screen.height - 500f, 220f, 350f);
 
             timer.Start();
-            Player.m_localPlayer.m_onDamaged = somefunc;
+            Player.m_localPlayer.m_onDamaged += somefunc;
         }
 
         private float w1 = 140f;
@@ -152,6 +152,16 @@ namespace ICanShowYouTheWorld
 
                 }
             }
+            list = Character.GetAllCharacters();
+            foreach (Character item in list)
+            {
+                if (!item.IsPlayer() && !item.IsTamed())
+                {
+//                    item.gameObject.GetComponent<Character>()?.
+
+                }
+            }
+
             GUI.DragWindow();
         }
 
@@ -176,12 +186,6 @@ namespace ICanShowYouTheWorld
             String keys = String.Join(", ", Player.m_localPlayer.GetUniqueKeys());
 
             GUI.Label(new Rect(10, 3, 1000, 80), "Everheim v.0.1.  Death: " + deaths + "  Crafts: " + crafts + "  Builds: " + builds + "  Bosses: " + bosses + " State: " + state + "  time: " + timer.Elapsed.ToString(@"m\:ss\.fff") + "  Boss keys: " + keys);
-
-//            List<string> keys = Player.m_localPlayer.GetUniqueKeys();
-//            foreach (String key in keys)
-//            {
-//                ShowULMsg()
-//            }
 
             if (!visible)
                 return;
@@ -794,7 +798,7 @@ namespace ICanShowYouTheWorld
                 // Augment equipped items - Its setting durability to 10000 for non equipped items still, for some reason.
                 // Cycle through settings?
                 foreach (ItemDrop.ItemData item in items)
-                {                    
+                {
                     item.m_shared.m_durabilityDrain = 0.1f; //no dura drain
 
                     //Set max dura on everything. todo: dont just do this on equipped items.
@@ -927,8 +931,8 @@ namespace ICanShowYouTheWorld
             // is enabled then heal yourself
             if (counter % 50 == 0)
             {
-                //                ShowULMsg(player.GetHealthPercentage().ToString());
-                Console.instance.Print(player.GetHealthPercentage().ToString());
+                //ShowULMsg(player.GetHealthPercentage().ToString());
+                //Console.instance.Print(player.GetHealthPercentage().ToString());
 
                 if (renewal && player.GetHealthPercentage() < 1.0f)
                 {
