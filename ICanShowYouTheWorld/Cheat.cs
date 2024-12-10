@@ -242,7 +242,8 @@ namespace ICanShowYouTheWorld
             Tuple.Create<string, string>("Seekerqueen","Seeker Queen"),
             Tuple.Create<string, string>("Mistlands_DvergrBossEntrance1","Seeker Queen"),
             Tuple.Create<string, string>("GoblinKing","Yagluth"),
-            Tuple.Create<string, string>("FaderLocation","Fader")
+            Tuple.Create<string, string>("FaderLocation","Fader"),
+            Tuple.Create<string, string>("BogWitch","Bog Witch")
 
         };
 
