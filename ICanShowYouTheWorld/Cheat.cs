@@ -460,8 +460,7 @@ namespace ICanShowYouTheWorld
             //
             if (Input.GetKeyDown(KeyCode.F6))
             {
-                //GP_Eikthyr, GP_TheElder, GP_BoneMass, GP_Moder (seeker queen?)
-                string[] gods = { "GP_Eikthyr", "GP_Bonemass", "GP_Moder", "GP_Yagluth" };
+                string[] gods = { "GP_Eikthyr", "GP_Bonemass", "GP_Moder", "GP_Yagluth", "GP_Fader" };
                 Player.m_localPlayer.SetGuardianPower(gods[godPower]);
 
                 if ( godPower == gods.Length-1 )
@@ -1096,7 +1095,7 @@ namespace ICanShowYouTheWorld
             // ----------------------------------------------------------------------
             // PGDN:  Kill all monsters in radius 20f. Move this to somewhere else!
             //
-            if (Input.GetKeyDown(KeyCode.DownArrow)) /*Page down*/
+            if (Input.GetKeyDown(KeyCode.DownArrow))
             {
                 List<Character> list = new List<Character>();
                 Character.GetCharactersInRange(player.transform.position, 20f, list);
