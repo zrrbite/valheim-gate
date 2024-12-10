@@ -113,19 +113,19 @@ namespace ICanShowYouTheWorld
 
             //todo: Turn this into AddLine() helper
             //todo: use player.getGodMode() instead of relying on internal variable.
+            AddHorizontalGridLine("Runspeed (F3/F4)");
             AddHorizontalGridLine("Stats + Renewal song (F8)",      renewal);
             AddHorizontalGridLine("God/No Cost (F9)",               Player.m_localPlayer.InGodMode());
+            AddHorizontalGridLine("Show Bosses (F10)");
             AddHorizontalGridLine("Weapon++ (F11)",                 godWeapon);
-            AddHorizontalGridLine("Boost/Worsen weapon (Up/Down)",  godWeapon);
-            AddHorizontalGridLine("Ghost (9)",                      Player.m_localPlayer.InGhostMode());
-            AddHorizontalGridLine("Cloak Of Flames (0)",            cloakOfFlames);
+            AddHorizontalGridLine("Replenish stacks (F12)");
+            AddHorizontalGridLine("Invigorate/Kill (Up/Down)");
+            AddHorizontalGridLine("Heal/God (Left/Right)");
+            AddHorizontalGridLine("Ghost (9)", Player.m_localPlayer.InGhostMode());
+            AddHorizontalGridLine("Cloak Of Flames (0)", cloakOfFlames);
             AddHorizontalGridLine("Melodic binding (B)",            melodicBinding);
-            AddHorizontalGridLine("Heal/remove (F1)");
-            AddHorizontalGridLine("Runspeed (F3/F4)");
-            AddHorizontalGridLine("Replenish stock (F12)");
-            AddHorizontalGridLine("Heal/Nova (Left/Right)");
             AddHorizontalGridLine("Port (Ins, Del, Home, End)");
-            AddHorizontalGridLine("(Re)tame/Kill All (PUp, PDn)");
+            AddHorizontalGridLine("(Re)tame (PageUp)");
             AddHorizontalGridLine("Sp. skeleton (Pause)");
             AddHorizontalGridLine("Sp. Dvergr (Backsp)");
             AddHorizontalGridLine("Sp. Seekers (Z)");
