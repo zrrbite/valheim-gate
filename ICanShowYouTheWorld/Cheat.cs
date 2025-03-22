@@ -126,7 +126,7 @@ namespace ICanShowYouTheWorld
             AddHorizontalGridLine("Melodic binding (B)",            melodicBinding);
             AddHorizontalGridLine("Port (Ins, Del, Home, End)");
             AddHorizontalGridLine("(Re)tame (PageUp)");
-            AddHorizontalGridLine("Sp. skeleton (Pause)");
+            AddHorizontalGridLine("Sp. pet (Pause)");
             AddHorizontalGridLine("Sp. Dvergr (Backsp)");
             AddHorizontalGridLine("Sp. Seekers (Z)");
             AddHorizontalGridLine("Sp. from rad. (LAlt)");
@@ -243,8 +243,8 @@ namespace ICanShowYouTheWorld
             Tuple.Create<string, string>("Mistlands_DvergrBossEntrance1","Seeker Queen"),
             Tuple.Create<string, string>("GoblinKing","Yagluth"),
             Tuple.Create<string, string>("FaderLocation","Fader"),
-            Tuple.Create<string, string>("BogWitch","Bog Witch")
-
+            Tuple.Create<string, string>("BogWitch","Bog Witch"),
+            Tuple.Create<string, string>("BogWitch_camp","Bog Witch")
         };
 
         readonly List<Tuple<string, string>> dvergr_prefabs = new List<Tuple<string, string>>
@@ -433,12 +433,17 @@ namespace ICanShowYouTheWorld
             // Invigorate!
             // ----------------------------------------------
             //  Heal, remove debuffs, add rested
-            if (Input.GetKeyDown( KeyCode.UpArrow)) //was F7
+            if (Input.GetKeyDown( KeyCode.UpArrow))
             {
                 Invigorate();
                 ShowULMsg("Invigorated!");
             }
 
+            if (Input.GetKeyDown(KeyCode.F7))
+            {
+                Minimap.instance.ExploreAll();
+            }
+            
             // -----------------------------------
             // Toggle GM mode
             //
