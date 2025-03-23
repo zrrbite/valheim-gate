@@ -1122,7 +1122,7 @@ namespace ICanShowYouTheWorld
                         amount++;
                     }
                 }
-                ShowULMsg("Killing monsers in range:" + amount);
+                ShowULMsg("Killing monsters in range:" + amount);
             }
 
             // -------------------------------------------------
