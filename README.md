@@ -22,6 +22,14 @@ _Simple scenario:_
 * New release of Valheim is updated through Steam, updating assembly_valheim.dll, overriding your patched version, requiring a re-patch. Sometimes it's a simple patch that can be done by a) copying `assembly_valheim.dll` and running it through `Patcher.exe`, b) Uploading the dll to steamdeck, leaving ICanShowYouTheWorld.dll in place.
 * New feature of ICanShowYouTheWorld.dll only requires a rebuild and upload of dll.
 
+**Perform these steps:**
+1. Patcher/Scripts/download.sh
+2. Mono Patcher.exe
+3. Patcher/Scripts/copy.sh (copies to libraries)
+4. Rebuild hax against new valheim dll
+5. Scripts/upload_hax.sh
+6. Scripts/upload_valheim.sh
+
 _More complicated scenarios:_
 * New release of Unity causes ICanShowYouTheWorld project to be relinked and possibly changed if breaking changes (check here if version was updated: https://valheim.fandom.com/wiki/Version_History)
 * New feature in ICanShowYouTheWorld project needs a modified version of assembly_valheim.dll (e.g. due to `m_pins`)
