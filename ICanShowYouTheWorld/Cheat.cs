@@ -1131,7 +1131,7 @@ namespace ICanShowYouTheWorld
             // todo: ability to revert back
             // todo:  if up 10 times, just go big?
             //
-            if (false) //F11
+            if (Input.GetKeyDown(KeyCode.Keypad0)) //F11
             {
                 // Print list of equipped items
                 List<ItemDrop.ItemData> items = player.GetInventory().GetEquippedItems();
