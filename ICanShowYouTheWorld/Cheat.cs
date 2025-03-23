@@ -1204,7 +1204,7 @@ namespace ICanShowYouTheWorld
 //                    Heightmap.GetHeight(vector, out var height);
 //                   vector.z = Math.Max(0f, height);
 
-                Console.instance.AddString("Solo teleport", "Heading to " + position.ToString("0.0"), (int)Talker.Type.Whisper);
+                //Console.instance.AddString("Solo teleport", "Heading to " + position.ToString("0.0"), (int)Talker.Type.Whisper);
                 Player.m_localPlayer.TeleportTo(position, Player.m_localPlayer.transform.rotation, distantTeleport: true);
             }
 
@@ -1215,7 +1215,7 @@ namespace ICanShowYouTheWorld
             {
                 Vector3 position = ScreenToWorldPoint(Input.mousePosition);
                 Chat.instance.SendPing(position);
-                Console.instance.AddString("Mass Teleport", "Heading to " + position.ToString("0.0"), (int)Talker.Type.Whisper);
+                //Console.instance.AddString("Mass Teleport", "Heading to " + position.ToString("0.0"), (int)Talker.Type.Whisper);
 
                 if (Player.m_localPlayer)
                 {
@@ -1306,7 +1306,7 @@ namespace ICanShowYouTheWorld
                             break;
                         }
 
-                        Console.instance.AddString("I'm out of here!", "Succor to " + pin.m_pos.ToString("0.0"), Talker.Type.Shout);
+                        //Console.instance.AddString("I'm out of here!", "Succor to " + pin.m_pos.ToString("0.0"), Talker.Type.Shout);
 
                         Player.m_localPlayer.TeleportTo(
                             pin.m_pos + UnityEngine.Random.insideUnitSphere * 5,
