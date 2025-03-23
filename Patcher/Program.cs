@@ -6,8 +6,16 @@ namespace Patcher
 {
     class MainClass
     {
+        // -------------------------------------------------------------
+        // The only reason we're referencing ICanShowYou... is because we need the symbol names to patch into assembly_valheim.dll
+        // The procedure is to start with the patcher if there's been a STEAM PATCH, becausae your assembly_valheim.dll has been overwritten.
+        // 1. Scripts/Download.sh
+        // 2. mono Patcher.exe
+        // 3. Scripts/copy..
+        // 4. Rebuild ICanShowYou...
+        // 5. Scripts/Copy... (both assemblies to deck)
         static readonly string appPath = @"./assembly_valheim.dll.org";
-        static readonly string injPath = @"./ICanShowYouTheWorld.dll";
+        static readonly string injPath = @"./ICanShowYouTheWorld.dll"; // todo: You might say that this is a stale reference, but it mostly woirks because it already has the required symbols. Maybe change this.
         static readonly string donePath = @"./patched/assembly_valheim.dll";
 
         static void Main(string[] args)
