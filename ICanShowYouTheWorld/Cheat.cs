@@ -690,6 +690,27 @@ namespace ICanShowYouTheWorld
                 }
             }
 
+            if (Input.GetKeyDown(KeyCode.Keypad0))
+            {
+
+            }
+            if (Input.GetKeyDown(KeyCode.Keypad1))
+            {
+
+            }
+            if (Input.GetKeyDown(KeyCode.Keypad2))
+            {
+
+            }
+            if (Input.GetKeyDown(KeyCode.Keypad3))
+            {
+
+            }
+            if (Input.GetKeyDown(KeyCode.Keypad4))
+            {
+
+            }
+
             // ---------------------------------------------------
             // PGUP: Tame animals, set their level and make them follow you
             //
