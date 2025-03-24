@@ -18,7 +18,7 @@ https://shendrick.net/Gaming/2022/05/30/sshonsteamdeck.html
 
 # When and what to update
 
-![image](https://github.com/user-attachments/assets/d3bd8ac9-1929-4651-95a3-36957dfa2a68)
+![image](https://github.com/user-attachments/assets/eff56106-a208-4a8f-9ee0-758449b16fe9)
 
 _Simple scenario:_
 * New release of Valheim is updated through Steam, updating assembly_valheim.dll, overriding your patched version, requiring a re-patch. Sometimes it's a simple patch that can be done by a) copying `assembly_valheim.dll` and running it through `Patcher.exe`, b) Uploading the dll to steamdeck, leaving ICanShowYouTheWorld.dll in place.
