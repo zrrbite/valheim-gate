@@ -690,27 +690,104 @@ namespace ICanShowYouTheWorld
                 }
             }
 
-            if (Input.GetKeyDown(KeyCode.Keypad0))
-            {
-
-            }
+            // Play around with payment
+            // The goal is to get enough money to buy something from a vendor to win the game. Maybe from Hildir?
             if (Input.GetKeyDown(KeyCode.Keypad1))
             {
+                ShowULMsg("Keypad 1 - Give Coin, AncientSeed, Withered bone, Totems, Eggs.");
 
+                GameObject coins = ZNetScene.instance.GetPrefab("Coins");
+                GameObject seed = ZNetScene.instance.GetPrefab("AncientSeed");
+                GameObject bone = ZNetScene.instance.GetPrefab("WitheredBone");
+                GameObject totem = ZNetScene.instance.GetPrefab("GoblinTotem");
+                GameObject egg = ZNetScene.instance.GetPrefab("DragonEgg");
+
+                // TODO: Add starter money, and use this to pay for services.
+                player.GetInventory().AddItem(coins, 200);
+
+                player.GetInventory().AddItem(seed, 5);
+                player.GetInventory().AddItem(bone, 5);
+                player.GetInventory().AddItem(totem, 5);
+
+                //Eggs have to be given one at a time. 
+                player.GetInventory().AddItem(egg, 1);
+                player.GetInventory().AddItem(egg, 1);
+                player.GetInventory().AddItem(egg, 1);
+
+                ShowULMsg("Paying 20 gold");
+                ItemDrop coins_item_drop = coins.GetComponent<ItemDrop>();
+                //                player.GetInventory().RemoveItem(coins_item_drop.m_itemData, 20);
+                List<ItemDrop.ItemData> valuables = null;
+                valuables = player.GetInventory().GetAllItems();
+
+                int coins_amount = 0;
+                int price = 20;
+                foreach (ItemDrop.ItemData item in valuables)
+                {
+                    if (item.m_shared.m_name.Equals("$item_coins"))
+                    {
+                        ShowULMsg(item.ToString() + " " + item.GetValue());
+                        coins_amount = item.m_stack;
+                    }
+                }
+                player.GetInventory().RemoveItem(coins_item_drop.m_itemData);
+                player.GetInventory().AddItem(coins, coins_amount - price); // should leave us with 180
+                ShowULMsg("Do we have 180 gold left?");
+
+                //Crafted items = sealbreaker (queen) and bells (fader) = cost money.
+
+                //foreach (String trophy in player.GetTrophies())
+                //    ShowULMsg(trophy); //todo: this will list ALL the trophies that we've gotten. Search prefab list. Might be better than "unique keys".
+
+                List<ItemDrop.ItemData> items = player.GetInventory().GetAllItems();
+                foreach (ItemDrop.ItemData item in items) //not very efficient
+                {
+                    //ShowULMsg(item.m_shared.m_name); //What's the name of elders head?
+                    if (item.m_shared.m_name.Equals("$item_trophy_elder")) // Keep in list somewhere
+                    {
+                        ShowULMsg("You got the elder head! Reward: Money + items for next boss"); //Set state as "paid"
+                        player.GetInventory().AddItem(coins, 200);
+                    }
+
+                    // $item_trophy_bonemass
+                    // $item_trophy_goblinking
+                    // $item_trophy_dragonqueen
+                    // $item_trophy_seekerqueen
+                    // $item_trophy_fader
+                }
             }
             if (Input.GetKeyDown(KeyCode.Keypad2))
             {
-
+                ShowULMsg("Keypad 2");
             }
             if (Input.GetKeyDown(KeyCode.Keypad3))
             {
-
+                ShowULMsg("Keypad 3");
             }
             if (Input.GetKeyDown(KeyCode.Keypad4))
             {
-
+                ShowULMsg("Keypad 4");
             }
-
+            if (Input.GetKeyDown(KeyCode.Keypad5))
+            {
+                ShowULMsg("Keypad 5");
+            }
+            if (Input.GetKeyDown(KeyCode.Keypad6))
+            {
+                ShowULMsg("Keypad 6");
+            }
+            if (Input.GetKeyDown(KeyCode.Keypad7))
+            {
+                ShowULMsg("Keypad 7");
+            }
+            if (Input.GetKeyDown(KeyCode.Keypad8))
+            {
+                ShowULMsg("Keypad 8");
+            }
+            if (Input.GetKeyDown(KeyCode.Keypad9))
+            {
+                ShowULMsg("Keypad 9");
+            }
             // ---------------------------------------------------
             // PGUP: Tame animals, set their level and make them follow you
             //
@@ -835,65 +912,6 @@ namespace ICanShowYouTheWorld
                     {
                         item.m_shared.m_armor = 60f;
                     }
-                }
-
-                // TODO: Add starter money, and use this to pay for services.
-
-                GameObject coins = ZNetScene.instance.GetPrefab("Coins");
-                GameObject seed = ZNetScene.instance.GetPrefab("AncientSeed");
-                GameObject bone = ZNetScene.instance.GetPrefab("WitheredBone");
-                GameObject totem = ZNetScene.instance.GetPrefab("GoblinTotem");
-                GameObject egg = ZNetScene.instance.GetPrefab("DragonEgg");
-
-                player.GetInventory().AddItem(coins, 200);
-
-                player.GetInventory().AddItem(seed, 5);
-                player.GetInventory().AddItem(bone, 5);
-                player.GetInventory().AddItem(totem, 5);
-                //Eggs have to be given one at a time. 
-                player.GetInventory().AddItem(egg, 1);
-                player.GetInventory().AddItem(egg, 1);
-                player.GetInventory().AddItem(egg, 1);
-
-                ShowULMsg("Paying 20 gold");
-                ItemDrop coins_item_drop = coins.GetComponent<ItemDrop>();
-                //                player.GetInventory().RemoveItem(coins_item_drop.m_itemData, 20);
-                List<ItemDrop.ItemData> valuables = null;
-                valuables = player.GetInventory().GetAllItems();
-
-                int coins_amount = 0;
-                int price = 20;
-                foreach (ItemDrop.ItemData item in valuables)
-                {
-                    if(item.m_shared.m_name.Equals("$item_coins"))
-                    {
-                        ShowULMsg(item.ToString() + " " + item.GetValue());
-                        coins_amount = item.m_stack;
-                    }
-                }
-                player.GetInventory().RemoveItem(coins_item_drop.m_itemData);
-                player.GetInventory().AddItem(coins, coins_amount - price); // should leave us with 180
-
-
-                //Crafted items = sealbreaker (queen) and bells (fader) = cost money.
-
-                //foreach (String trophy in player.GetTrophies())
-                //    ShowULMsg(trophy); //todo: this will list ALL the trophies that we've gotten. Search prefab list. Might be better than "unique keys".
-
-                items = player.GetInventory().GetAllItems();
-                foreach (ItemDrop.ItemData item in items) //not very efficient
-                {
-                    //ShowULMsg(item.m_shared.m_name); //What's the name of elders head?
-                    if(item.m_shared.m_name.Equals("$item_trophy_elder")) // Keep in list somewhere
-                    {
-                        ShowULMsg("You got the elder head! Reward: Money + items for next boss"); //Set state as "paid"
-                        player.GetInventory().AddItem(coins, 200);
-                    }
-                    // $item_trophy_bonemass
-                    // $item_trophy_goblinking
-                    // $item_trophy_dragonqueen
-                    // $item_trophy_seekerqueen
-                    // $item_trophy_fader
                 }
 
                 // TODO: Check for boss items this way.
