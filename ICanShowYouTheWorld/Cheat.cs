@@ -701,22 +701,19 @@ namespace ICanShowYouTheWorld
                 GameObject bone = ZNetScene.instance.GetPrefab("WitheredBone");
                 GameObject totem = ZNetScene.instance.GetPrefab("GoblinTotem");
                 GameObject egg = ZNetScene.instance.GetPrefab("DragonEgg");
+                GameObject dvergrkey = ZNetScene.instance.GetPrefab("DvergrKey");
 
-                // TODO: Add starter money, and use this to pay for services.
-                player.GetInventory().AddItem(coins, 200);
-
-                player.GetInventory().AddItem(seed, 5);
-                player.GetInventory().AddItem(bone, 5);
-                player.GetInventory().AddItem(totem, 5);
+                // BOSS ITEMS
+                //player.GetInventory().AddItem(seed, 5);
+                //player.GetInventory().AddItem(bone, 5);
+                //player.GetInventory().AddItem(totem, 5);
 
                 //Eggs have to be given one at a time. 
-                player.GetInventory().AddItem(egg, 1);
-                player.GetInventory().AddItem(egg, 1);
-                player.GetInventory().AddItem(egg, 1);
+                //player.GetInventory().AddItem(egg, 1);
+                //player.GetInventory().AddItem(egg, 1);
+                //player.GetInventory().AddItem(egg, 1);
 
-                ShowULMsg("Paying 20 gold");
-                ItemDrop coins_item_drop = coins.GetComponent<ItemDrop>();
-                //                player.GetInventory().RemoveItem(coins_item_drop.m_itemData, 20);
+                // Count current cash
                 List<ItemDrop.ItemData> valuables = null;
                 valuables = player.GetInventory().GetAllItems();
 
@@ -730,9 +727,13 @@ namespace ICanShowYouTheWorld
                         coins_amount = item.m_stack;
                     }
                 }
+
+                // Pay 20 Gold
+                // player.GetInventory().RemoveItem(coins_item_drop.m_itemData, 20); // does not work?
+                ItemDrop coins_item_drop = coins.GetComponent<ItemDrop>();
                 player.GetInventory().RemoveItem(coins_item_drop.m_itemData);
                 player.GetInventory().AddItem(coins, coins_amount - price); // should leave us with 180
-                ShowULMsg("Do we have 180 gold left?");
+                ShowULMsg("We have " + coins_amount + ". Payting 20 gold!");
 
                 //Crafted items = sealbreaker (queen) and bells (fader) = cost money.
 
@@ -742,11 +743,51 @@ namespace ICanShowYouTheWorld
                 List<ItemDrop.ItemData> items = player.GetInventory().GetAllItems();
                 foreach (ItemDrop.ItemData item in items) //not very efficient
                 {
+                    // Reveal boss one by one?
+                    if (item.m_shared.m_name.Equals("$item_trophy_eikthyr")) // Keep in list somewhere
+                    {
+                        ShowULMsg("You got Eikthyr head! Reward: Money + items for next boss"); //Set state as "bounty paid"
+                        player.GetInventory().AddItem(coins, 200);
+                        player.GetInventory().AddItem(seed, 5);
+
+                        //Reveal next boss
+                        ShowULMsg("Revealing: The Elder");
+                        Game.instance.DiscoverClosestLocation(
+                            "GDKing",
+                            Player.m_localPlayer.transform.position,
+                            "The Elder",
+                            (int)Minimap.PinType.Boss);
+                    }
                     //ShowULMsg(item.m_shared.m_name); //What's the name of elders head?
                     if (item.m_shared.m_name.Equals("$item_trophy_elder")) // Keep in list somewhere
                     {
-                        ShowULMsg("You got the elder head! Reward: Money + items for next boss"); //Set state as "paid"
-                        player.GetInventory().AddItem(coins, 200);
+                        ShowULMsg("You got the elder head! Reward: Money + items for next boss"); //Set state as "bounty paid"
+                        player.GetInventory().AddItem(coins, 500);
+                        player.GetInventory().AddItem(bone, 10);
+                    }
+                    if (item.m_shared.m_name.Equals("$item_trophy_bonemass")) // Keep in list somewhere
+                    {
+                        ShowULMsg("You got tbe Bonemass .. thing! Reward: Money + items for next boss"); //Set state as "bounty paid"
+                        player.GetInventory().AddItem(coins, 1000);
+                        player.GetInventory().AddItem(egg, 1);
+                        player.GetInventory().AddItem(egg, 1);
+                        player.GetInventory().AddItem(egg, 1);
+                    }
+                    if (item.m_shared.m_name.Equals("$item_trophy_dragonqueen")) // Keep in list somewhere
+                    {
+                        ShowULMsg("You got tbe Dragon .. thing! Reward: Money + items for next boss"); //Set state as "bounty paid"
+                        player.GetInventory().AddItem(coins, 1000);
+                        player.GetInventory().AddItem(totem, 5);
+                    }
+                    if (item.m_shared.m_name.Equals("$item_trophy_goblinking")) // Keep in list somewhere
+                    {
+                        ShowULMsg("You got tbe Goblin king! Reward: Money + items for next boss"); //Set state as "bounty paid"
+                        player.GetInventory().AddItem(coins, 2000);
+                        player.GetInventory().AddItem(dvergrkey, 5);
+                    }
+                    if (item.m_shared.m_name.Equals("$item_trophy_fader"))
+                    {
+                        ShowULMsg("You've completed the game. Time: " + timer.Elapsed.ToString(@"m\:ss\.fff"));
                     }
 
                     // $item_trophy_bonemass
