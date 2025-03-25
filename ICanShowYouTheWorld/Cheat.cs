@@ -723,7 +723,7 @@ namespace ICanShowYouTheWorld
                 {
                     if (item.m_shared.m_name.Equals("$item_coins"))
                     {
-                        ShowULMsg(item.ToString() + " " + item.GetValue());
+                        //ShowULMsg(item.ToString() + " " + item.GetValue());
                         coins_amount = item.m_stack;
                     }
                 }
@@ -749,6 +749,7 @@ namespace ICanShowYouTheWorld
                         ShowULMsg("You got Eikthyr head! Reward: Money + items for next boss"); //Set state as "bounty paid"
                         player.GetInventory().AddItem(coins, 200);
                         player.GetInventory().AddItem(seed, 5);
+                        //todo: Add loot. and Message that you've received loot. Or, on trophy pickup spawn items.
 
                         //Reveal next boss
                         ShowULMsg("Revealing: The Elder");
@@ -758,6 +759,7 @@ namespace ICanShowYouTheWorld
                             "The Elder",
                             (int)Minimap.PinType.Boss);
                     }
+/*
                     //ShowULMsg(item.m_shared.m_name); //What's the name of elders head?
                     if (item.m_shared.m_name.Equals("$item_trophy_elder")) // Keep in list somewhere
                     {
@@ -788,7 +790,7 @@ namespace ICanShowYouTheWorld
                     if (item.m_shared.m_name.Equals("$item_trophy_fader"))
                     {
                         ShowULMsg("You've completed the game. Time: " + timer.Elapsed.ToString(@"m\:ss\.fff"));
-                    }
+ */
 
                     // $item_trophy_bonemass
                     // $item_trophy_goblinking
@@ -1240,6 +1242,9 @@ namespace ICanShowYouTheWorld
                         item.m_shared.m_durabilityDrain = 0.1f;
                         item.m_shared.m_maxDurability = 10000f;
                         item.m_durability = 10000f;
+                        item.m_shared.m_name = "My Weapon"; //todo: Can we spawn things on the ground?
+                        item.m_customData.Add("hej", "12");
+                        item.m_customData.Add("Name", "Cloak of Flames");
 
                         items_str += "Augmented " + item.m_shared.m_name + " with lots of damage!\n";
                     }
