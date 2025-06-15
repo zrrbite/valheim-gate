@@ -18,7 +18,7 @@ namespace ICanShowYouTheWorld
 
         public static void Run()
         {
-            UnifiedPopup.Push(new WarningPopup("EverHeim", "Loaded mod v0.220.4!"
+            UnifiedPopup.Push(new WarningPopup("EverHeim", "Loaded mod v0.220.5!"
                 , delegate
             {
                 UnifiedPopup.Pop();
@@ -51,6 +51,16 @@ namespace ICanShowYouTheWorld
         public static bool ghostMode = false;
         public static bool RandomEvent = false;
 
+        // Bosses. Affected by restore-state.
+        public static bool eikthyr_killed = false;
+        public static bool theelder_killed = false;
+        public static bool bonemass_killed = false;
+        public static bool moder_killed = false;
+        public static bool yagluth_killed = false;
+        public static bool queen_killed = false;
+        public static bool fader_killed = false;
+
+
         // Counters
         UInt16 counter = 0;
         UInt16 damageCounters = 10;
@@ -59,9 +69,6 @@ namespace ICanShowYouTheWorld
         private Rect MainWindow;
         private Rect StatusWindow;
         public bool visible = false;
-
-        // Helper class
-        Helpers helpers = new Helpers();
 
         // Time (register time when loading into a game, and then at various stages, like first boss Eikthyr).
         DateTime time = System.DateTime.Now;
@@ -185,10 +192,15 @@ namespace ICanShowYouTheWorld
             float bosses = stats[PlayerStatType.BossKills];
             String keys = String.Join(", ", Player.m_localPlayer.GetUniqueKeys());
 
-            GUI.Label(new Rect(10, 3, 1000, 80), "Everheim v.0.1.  Death: " + deaths + "  Crafts: " + crafts + "  Builds: " + builds + "  Bosses: " + bosses + " State: " + state + "  time: " + timer.Elapsed.ToString(@"m\:ss\.fff") + "  Boss keys: " + keys);
+            // Get state: Bosskills.
+            float newstate = Game.instance.GetPlayerProfile().m_playerStats.m_stats.GetValueOrDefault(PlayerStatType.PlayerKills);
+
+            // GUI.Label(new Rect(10, 3, 1000, 80), "Everheim v.0.1.  Death: " + deaths + "  Crafts: " + crafts + "  Builds: " + builds + "  Bosses: " + bosses + " State: " + state + "  time: " + timer.Elapsed.ToString(@"m\:ss\.fff") + "  Boss keys: " + keys);
+            GUI.Label(new Rect(10, 3, 1000, 80), " State: " + newstate + "  time: " + timer.Elapsed.ToString(@"m\:ss\.fff") );
 
             if (!visible)
                 return;
+
 
             MainWindow = GUILayout.Window(0, MainWindow, new GUI.WindowFunction(RenderUI), "Tracking", new GUILayoutOption[0]);
             StatusWindow = GUILayout.Window(1, StatusWindow, new GUI.WindowFunction(RenderModesUI), "Modes", new GUILayoutOption[0]);
@@ -702,6 +714,7 @@ namespace ICanShowYouTheWorld
                 GameObject totem = ZNetScene.instance.GetPrefab("GoblinTotem");
                 GameObject egg = ZNetScene.instance.GetPrefab("DragonEgg");
                 GameObject dvergrkey = ZNetScene.instance.GetPrefab("DvergrKey");
+                GameObject firesword = ZNetScene.instance.GetPrefab("SwordDyrnwyn");
 
                 // BOSS ITEMS
                 //player.GetInventory().AddItem(seed, 5);
@@ -728,7 +741,7 @@ namespace ICanShowYouTheWorld
                     }
                 }
 
-                // Pay 20 Gold
+                // Test: Pay 20 Gold
                 // player.GetInventory().RemoveItem(coins_item_drop.m_itemData, 20); // does not work?
                 ItemDrop coins_item_drop = coins.GetComponent<ItemDrop>();
                 player.GetInventory().RemoveItem(coins_item_drop.m_itemData);
@@ -740,57 +753,96 @@ namespace ICanShowYouTheWorld
                 //foreach (String trophy in player.GetTrophies())
                 //    ShowULMsg(trophy); //todo: this will list ALL the trophies that we've gotten. Search prefab list. Might be better than "unique keys".
 
+                // todo: Make this a state machine instead
+
                 List<ItemDrop.ItemData> items = player.GetInventory().GetAllItems();
                 foreach (ItemDrop.ItemData item in items) //not very efficient
                 {
                     // Reveal boss one by one?
-                    if (item.m_shared.m_name.Equals("$item_trophy_eikthyr")) // Keep in list somewhere
+                    if (!eikthyr_killed && item.m_shared.m_name.Equals("$item_trophy_eikthyr")) // Keep in list somewhere
                     {
-                        ShowULMsg("You got Eikthyr head! Reward: Money + items for next boss"); //Set state as "bounty paid"
-                        player.GetInventory().AddItem(coins, 200);
-                        player.GetInventory().AddItem(seed, 5);
+                        ShowULMsg("You killed Eikthyr!"); //Set state as "bounty paid"
+                        eikthyr_killed = true;
+
+                        Console.instance.Print("You killed Eikthyr! You win a prize.");
+
+                        // Get state
+                        float state = Game.instance.GetPlayerProfile().m_playerStats.m_stats.GetValueOrDefault(PlayerStatType.PlayerKills);
+
+                        // Save state
+                        Game.instance.GetPlayerProfile().m_playerStats.m_stats.IncrementOrSet(PlayerStatType.PlayerKills, 1);
+                        Game.instance.GetPlayerProfile().Save();
+                        Console.instance.Print("State: " + Game.instance.GetPlayerProfile().m_playerStats.m_stats.GetValueOrDefault(PlayerStatType.PlayerKills));
+
+                        //player.GetInventory().AddItem(coins, 200); //Dont need money.
+                        //player.GetInventory().AddItem(seed, 5);
                         //todo: Add loot. and Message that you've received loot. Or, on trophy pickup spawn items.
 
-                        //Reveal next boss
-                        ShowULMsg("Revealing: The Elder");
+                        // *********************************
+                        // REWARDS
+                        // *********************************
+
+                        // Sword
+                        player.GetInventory().AddItem(firesword, 1); // augment it? need to run through it again?
+                        //ItemDrop.ItemData item
+
+                        // Reveal next boss
+                        ShowULMsg("Revealing: The Elder!");
                         Game.instance.DiscoverClosestLocation(
                             "GDKing",
                             Player.m_localPlayer.transform.position,
                             "The Elder",
                             (int)Minimap.PinType.Boss);
+
+                        // Add some item to inventory. Change name and augment it.
+                        // todo: If we're loading a world, restore rewards based on state.
+
+                        // Add + to regen
                     }
-/*
+
                     //ShowULMsg(item.m_shared.m_name); //What's the name of elders head?
-                    if (item.m_shared.m_name.Equals("$item_trophy_elder")) // Keep in list somewhere
+                    if (!theelder_killed && item.m_shared.m_name.Equals("$item_trophy_elder")) // Keep in list somewhere
                     {
-                        ShowULMsg("You got the elder head! Reward: Money + items for next boss"); //Set state as "bounty paid"
-                        player.GetInventory().AddItem(coins, 500);
+                        // Save state
+                        int state = 0x01;
+                        state = 0x01 | 0x02;
+
+                        Game.instance.GetPlayerProfile().m_playerStats.m_stats.IncrementOrSet(PlayerStatType.PlayerKills, state);
+
+                        Game.instance.GetPlayerProfile().Save();
+                        ShowULMsg("State: " + Game.instance.GetPlayerProfile().m_playerStats.m_stats.GetValueOrDefault(PlayerStatType.PlayerKills));
+
+                        ShowULMsg("You got the elder head!"); //Set state as "bounty paid"
+//                        player.GetInventory().AddItem(coins, 500);
                         player.GetInventory().AddItem(bone, 10);
+
+                        theelder_killed = true;
                     }
-                    if (item.m_shared.m_name.Equals("$item_trophy_bonemass")) // Keep in list somewhere
-                    {
-                        ShowULMsg("You got tbe Bonemass .. thing! Reward: Money + items for next boss"); //Set state as "bounty paid"
-                        player.GetInventory().AddItem(coins, 1000);
-                        player.GetInventory().AddItem(egg, 1);
-                        player.GetInventory().AddItem(egg, 1);
-                        player.GetInventory().AddItem(egg, 1);
-                    }
-                    if (item.m_shared.m_name.Equals("$item_trophy_dragonqueen")) // Keep in list somewhere
-                    {
-                        ShowULMsg("You got tbe Dragon .. thing! Reward: Money + items for next boss"); //Set state as "bounty paid"
-                        player.GetInventory().AddItem(coins, 1000);
-                        player.GetInventory().AddItem(totem, 5);
-                    }
-                    if (item.m_shared.m_name.Equals("$item_trophy_goblinking")) // Keep in list somewhere
-                    {
-                        ShowULMsg("You got tbe Goblin king! Reward: Money + items for next boss"); //Set state as "bounty paid"
-                        player.GetInventory().AddItem(coins, 2000);
-                        player.GetInventory().AddItem(dvergrkey, 5);
-                    }
-                    if (item.m_shared.m_name.Equals("$item_trophy_fader"))
-                    {
-                        ShowULMsg("You've completed the game. Time: " + timer.Elapsed.ToString(@"m\:ss\.fff"));
- */
+                    /*
+                                        if (item.m_shared.m_name.Equals("$item_trophy_bonemass")) // Keep in list somewhere
+                                        {
+                                            ShowULMsg("You got tbe Bonemass .. thing! Reward: Money + items for next boss"); //Set state as "bounty paid"
+                                            player.GetInventory().AddItem(coins, 1000);
+                                            player.GetInventory().AddItem(egg, 1);
+                                            player.GetInventory().AddItem(egg, 1);
+                                            player.GetInventory().AddItem(egg, 1);
+                                        }
+                                        if (item.m_shared.m_name.Equals("$item_trophy_dragonqueen")) // Keep in list somewhere
+                                        {
+                                            ShowULMsg("You got tbe Dragon .. thing! Reward: Money + items for next boss"); //Set state as "bounty paid"
+                                            player.GetInventory().AddItem(coins, 1000);
+                                            player.GetInventory().AddItem(totem, 5);
+                                        }
+                                        if (item.m_shared.m_name.Equals("$item_trophy_goblinking")) // Keep in list somewhere
+                                        {
+                                            ShowULMsg("You got tbe Goblin king! Reward: Money + items for next boss"); //Set state as "bounty paid"
+                                            player.GetInventory().AddItem(coins, 2000);
+                                            player.GetInventory().AddItem(dvergrkey, 5);
+                                        }
+                                        if (item.m_shared.m_name.Equals("$item_trophy_fader"))
+                                        {
+                                            ShowULMsg("You've completed the game. Time: " + timer.Elapsed.ToString(@"m\:ss\.fff"));
+                     */
 
                     // $item_trophy_bonemass
                     // $item_trophy_goblinking
@@ -864,7 +916,7 @@ namespace ICanShowYouTheWorld
 
             // -----------------------------------------------------------------------
             // F12: Replenish stacks
-            //
+            // todo: Consider Adding items to an allowList table. 
             if(Input.GetKeyDown(KeyCode.F12))
             {
                 //Boost stack sizes - todo: just do one loop for all items?
@@ -960,6 +1012,7 @@ namespace ICanShowYouTheWorld
                 // TODO: Check for boss items this way.
                 // player.GetInventory().HaveItem("");
 
+                Game.instance.GetPlayerProfile().Save(); // Does this save items?
                 ShowULMsg("Renewal song: " + renewal.ToString() + "! (and stats augmented.");
             }
 
@@ -1235,14 +1288,25 @@ namespace ICanShowYouTheWorld
                             m_spirit = 200f,
                             m_frost = 200f,
                             m_lightning = 200f,
-                            m_poison = 200f
+                            m_poison = 200f,
+                            m_chop = 1000f,
+                            m_pickaxe = 1000f, //new
+                            m_damage = 1000f //new
                         };
 
                         item.m_shared.m_damages = ouch;
                         item.m_shared.m_durabilityDrain = 0.1f;
                         item.m_shared.m_maxDurability = 10000f;
                         item.m_durability = 10000f;
-                        item.m_shared.m_name = "My Weapon"; //todo: Can we spawn things on the ground?
+                        //new
+                        item.m_shared.m_movementModifier = 5; // x 100%
+                        item.m_shared.m_swimStaminaModifier = 5;
+                        item.m_shared.m_weight = 0.1f;
+
+                        item.m_shared.m_attackForce = 100;
+                        //item.m_shared.m_blockEffect = // Play around with new effects.
+
+                        item.m_shared.m_name = "My Weapon"; //todo: Can we spawn things on the ground? This actually triggers a "New Item" game popup
                         item.m_customData.Add("hej", "12");
                         item.m_customData.Add("Name", "Cloak of Flames");
 
