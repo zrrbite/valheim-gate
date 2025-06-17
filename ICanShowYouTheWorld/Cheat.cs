@@ -27,21 +27,50 @@ namespace ICanShowYouTheWorld
             // Instanciate a new GameObject instance attaching script component (class) 
             cheatObject = new GameObject();
             cheatObject.AddComponent<DiscoverThings>();
+            //add UIManager also
 
             // Avoid object destroyed when loading a level
             GameObject.DontDestroyOnLoad(cheatObject);
         }
     }
 
+    // Maps keys to actions
+    public class InputManager
+    {
+        private readonly Dictionary<KeyCode, Action> mappings = new Dictionary<KeyCode, Action>();
+
+        public void Register(KeyCode key, Action action)
+        {
+            mappings[key] = action;
+        }
+
+        public void HandleInput()
+        {
+            foreach (var kv in mappings)
+            {
+                if (Input.GetKeyDown(kv.Key))
+                    kv.Value.Invoke();
+            }
+        }
+    }
+
+
     //TODO:
     // Load these commands from command line (some known command) instead of about menu?
     public class DiscoverThings : MonoBehaviour
     {
+        private InputManager inputManager;
+
+
         // Main player reference. Not really needed. Just access Player.m_localPlayer...
         Player player;
 
         // Player states
         public static bool godMode = false;
+        public static bool playerMode = false; // semi-normal player
+        public static bool buildMode = false; // no placement cost.
+        public static bool gmMode = false; // = invis. Can spawn things.
+ 
         public static bool noBuildCost = false;
         public static int godPower = 0;
         public static bool godWeapon = false;
@@ -77,6 +106,10 @@ namespace ICanShowYouTheWorld
         private void Awake()
         {
             Console.instance.Print("Awake..");
+
+            inputManager = new InputManager();
+            // Configure inputman
+            inputManager.Register(KeyCode.LeftArrow, () => ShowULMsg("Works!!!"));
 
             // Use static function. Pass in things like Player, etc.
             Helpers.Test();
@@ -429,6 +462,8 @@ namespace ICanShowYouTheWorld
 
         private void Update()
         {
+            inputManager.HandleInput();
+
             // ----------------------------------
             // TICK
             // ----------------------------------
@@ -462,7 +497,7 @@ namespace ICanShowYouTheWorld
             // Invigorate!
             // ----------------------------------------------
             //  Heal, remove debuffs, add rested
-            if (Input.GetKeyDown( KeyCode.UpArrow))
+            if (Input.GetKeyDown( KeyCode.F3))
             {
                 Invigorate();
                 ShowULMsg("Invigorated!");
@@ -470,16 +505,19 @@ namespace ICanShowYouTheWorld
             // F7: Explore ALL
             if (Input.GetKeyDown(KeyCode.F7))
             {
-                Minimap.instance.ExploreAll();
+                if (godMode)
+                {
+                    Minimap.instance.ExploreAll();
+                }
             }
             
             // -----------------------------------
             // Toggle GM mode
             //
-            if (Input.GetKeyDown(KeyCode.RightArrow))
+            if (Input.GetKeyDown(KeyCode.Keypad0))
             {
                 godMode = !godMode;
-                Player.m_localPlayer.SetGodMode(godMode); // new way of setting godmode
+                Player.m_localPlayer.SetGodMode(godMode);
                 player.SetGodMode(godMode);
                 player.m_boss = godMode; // ??
 
@@ -515,53 +553,60 @@ namespace ICanShowYouTheWorld
             int pet_counter = 0;
             if (Input.GetKeyDown(KeyCode.Pause))
             {
-                //player.ToggleDebugFly();
-
-                int count = 1;
-
-                DateTime now = DateTime.Now;
-                Random rand = new Random();
-
-                int pet_index = rand.Next(combat_pets.Count);
-                int name_index = rand.Next(pet_names.Count);
-
-                GameObject prefab2 = ZNetScene.instance.GetPrefab(combat_pets[pet_index]);
-
-                if (!prefab2)
+                if (godMode)
                 {
-                    ShowULMsg("Missing object" + combat_pets[pet_index] + " (" + pet_index + ")");
+                    //player.ToggleDebugFly();
+
+                    int count = 1;
+
+                    DateTime now = DateTime.Now;
+                    Random rand = new Random();
+
+                    int pet_index = rand.Next(combat_pets.Count);
+                    int name_index = rand.Next(pet_names.Count);
+
+                    GameObject prefab2 = ZNetScene.instance.GetPrefab(combat_pets[pet_index]);
+
+                    if (!prefab2)
+                    {
+                        ShowULMsg("Missing object" + combat_pets[pet_index] + " (" + pet_index + ")");
+                    }
+                    else
+                    {
+                        Vector3 vector = UnityEngine.Random.insideUnitSphere * ((count == 1) ? 0f : 0.5f);
+
+                        ShowULMsg("Spawning fast pet: " + combat_pets[pet_index] + " (" + pet_index + ", " + pet_names[name_index] + ")");
+                        GameObject gameObject2 = UnityEngine.Object.Instantiate(prefab2, Player.m_localPlayer.transform.position + Player.m_localPlayer.transform.forward * 2f + Vector3.up + vector, Quaternion.identity);
+                        ItemDrop component4 = gameObject2.GetComponent<ItemDrop>();
+                        gameObject2.GetComponent<Character>()?.SetLevel(3); //1 = 0, 2 = 1, 3 = 2 stars
+                        gameObject2.GetComponent<Character>().m_name = pet_names[name_index];
+                        gameObject2.GetComponent<Character>().SetMaxHealth(10000);
+                        gameObject2.GetComponent<Character>().SetHealth(10000);
+                        gameObject2.GetComponent<MonsterAI>().SetFollowTarget(player.gameObject);
+                        //tame it - if possible
+                        Tameable.TameAllInArea(player.transform.position, 30.0f);
+
+                        //Set Speed
+                        List<Character> list = new List<Character>();
+                        Character.GetCharactersInRange(player.transform.position, 30.0f, list);
+
+                        // Set speed
+                        foreach (Character item in list)
+                        {
+                            if (!item.IsMonsterFaction(10) && item != player) // This includes pets
+                            {
+                                item.m_runSpeed = 14;
+                                item.m_speed = 14;
+                            }
+                        }
+                    }
+
+                    pet_counter++;
                 }
                 else
                 {
-                    Vector3 vector = UnityEngine.Random.insideUnitSphere * ((count == 1) ? 0f : 0.5f);
-
-                    ShowULMsg("Spawning fast pet: " + combat_pets[pet_index] + " (" + pet_index + ", " + pet_names[name_index] + ")");
-                    GameObject gameObject2 = UnityEngine.Object.Instantiate(prefab2, Player.m_localPlayer.transform.position + Player.m_localPlayer.transform.forward * 2f + Vector3.up + vector, Quaternion.identity);
-                    ItemDrop component4 = gameObject2.GetComponent<ItemDrop>();
-                    gameObject2.GetComponent<Character>()?.SetLevel(3); //1 = 0, 2 = 1, 3 = 2 stars
-                    gameObject2.GetComponent<Character>().m_name = pet_names[name_index];
-                    gameObject2.GetComponent<Character>().SetMaxHealth(10000);
-                    gameObject2.GetComponent<Character>().SetHealth(10000);
-                    gameObject2.GetComponent<MonsterAI>().SetFollowTarget(player.gameObject);
-                    //tame it - if possible
-                    Tameable.TameAllInArea(player.transform.position, 30.0f);
-
-                    //Set Speed
-                    List<Character> list = new List<Character>();
-                    Character.GetCharactersInRange(player.transform.position, 30.0f, list);
-
-                    // Set speed
-                    foreach (Character item in list)
-                    {
-                        if (!item.IsMonsterFaction(10) && item != player) // This includes pets
-                        {
-                            item.m_runSpeed = 14;
-                            item.m_speed = 14;
-                        }
-                    }
+                    ShowULMsg("Not a god");
                 }
-
-                pet_counter++;
             }
 
             // Test other player modification
@@ -721,7 +766,7 @@ namespace ICanShowYouTheWorld
 
             // Play around with payment
             // The goal is to get enough money to buy something from a vendor to win the game. Maybe from Hildir?
-            if (Input.GetKeyDown(KeyCode.Keypad1))
+            if (Input.GetKeyDown(KeyCode.Keypad7))
             {
                 ShowULMsg("Keypad 1 - Give Coin, AncientSeed, Withered bone, Totems, Eggs.");
 
@@ -905,30 +950,37 @@ namespace ICanShowYouTheWorld
             //
             if (Input.GetKeyDown(KeyCode.PageUp))
             {
-                ShowULMsg("Taming/re-taming in r30");
-                Console.instance.Print("Taming/re-taming in r30");
-                Tameable.TameAllInArea(player.transform.position, 30.0f);
-                //Tameable.TameAllInArea(((Component)Player.m_localPlayer).get_transform().get_position(), 20f);
-
-                List<Character> list = new List<Character>();
-                Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 50f, list);
-
-                //todo: Do tamed animals lose their followtarget when you "zone" ?
-                //todo: Can you _only_ set follow target if the monster is a skeleton? Or should we seperate it?
-                foreach (Character item in list)
+                if (godMode)
                 {
-                    // Make all tame animals in area 2-star
-                    if (item.IsTamed())
+                    ShowULMsg("Taming/re-taming in r30");
+                    Console.instance.Print("Taming/re-taming in r30");
+                    Tameable.TameAllInArea(player.transform.position, 30.0f);
+                    //Tameable.TameAllInArea(((Component)Player.m_localPlayer).get_transform().get_position(), 20f);
+
+                    List<Character> list = new List<Character>();
+                    Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 50f, list);
+
+                    //todo: Do tamed animals lose their followtarget when you "zone" ?
+                    //todo: Can you _only_ set follow target if the monster is a skeleton? Or should we seperate it?
+                    foreach (Character item in list)
                     {
-                        //item.SetLevel(3);
-                        //set follow target (re-tame)'
-                        item.gameObject.GetComponent<MonsterAI>().SetFollowTarget(player.gameObject);
-                        Console.instance.Print("Setting explicit follow target");
+                        // Make all tame animals in area 2-star
+                        if (item.IsTamed())
+                        {
+                            //item.SetLevel(3);
+                            //set follow target (re-tame)'
+                            item.gameObject.GetComponent<MonsterAI>().SetFollowTarget(player.gameObject);
+                            Console.instance.Print("Setting explicit follow target");
 
+                        }
                     }
-                }
 
-                //If nothing found spawn a two star lox friend?
+                    //If nothing found spawn a two star lox friend?
+                }
+                else
+                {
+                    ShowULMsg("Not a god");
+                }
             }
 
             // -----------------------------------------------------------------------
@@ -936,26 +988,33 @@ namespace ICanShowYouTheWorld
             // todo: Consider Adding items to an allowList table. 
             if(Input.GetKeyDown(KeyCode.F12))
             {
-                //Boost stack sizes - todo: just do one loop for all items?
-                List<ItemDrop.ItemData> all_items = player.GetInventory().GetAllItems();
-
-                foreach (ItemDrop.ItemData item in all_items)
+                if (godMode)
                 {
-                    //TODO: Set durability here instead
-                    //If stackable, refill
-                    if (item.m_shared.m_maxStackSize > 1)
+                    //Boost stack sizes - todo: just do one loop for all items?
+                    List<ItemDrop.ItemData> all_items = player.GetInventory().GetAllItems();
+
+                    foreach (ItemDrop.ItemData item in all_items)
                     {
-                        //item.m_shared.m_maxStackSize = 100;
-                        item.m_stack = item.m_shared.m_maxStackSize;
-                        item.m_shared.m_equipDuration = 500f;
+                        //TODO: Set durability here instead
+                        //If stackable, refill
+                        if (item.m_shared.m_maxStackSize > 1)
+                        {
+                            //item.m_shared.m_maxStackSize = 100;
+                            item.m_stack = item.m_shared.m_maxStackSize;
+                            item.m_shared.m_equipDuration = 500f;
+                        }
                     }
+                }
+                else
+                {
+                    ShowULMsg("Not a god");
                 }
             }
 
             // ------------------------------------------------------
             // F8: Boost
             // Renewal song (and scret Boost that cant be undone).
-            //
+            // todo: split this func
             if (Input.GetKeyDown(KeyCode.F8))
             {
                 // Health regen
@@ -1210,7 +1269,7 @@ namespace ICanShowYouTheWorld
             // LEFT: AoE HEAL (dvergr style)
             // --------------------------------------------------------
             //Note: I think DVERGR are immune to fire. But AOE_NOVA works, and since its "spawned" it doesnt aggro
-            if (Input.GetKeyDown(KeyCode.LeftArrow))
+            if (false /*Input.GetKeyDown(KeyCode.LeftArrow)*/)
             {
                 GameObject prefab2 = ZNetScene.instance.GetPrefab("DvergerStaffHeal_aoe");
 
@@ -1252,29 +1311,37 @@ namespace ICanShowYouTheWorld
             // ----------------------------------------------------------------------
             // down:  Kill all monsters in radius 20f. Move this to somewhere else!
             //
-            if (Input.GetKeyDown(KeyCode.DownArrow))
+            if (Input.GetKeyDown(KeyCode.F4))
             {
-                List<Character> list = new List<Character>();
-                Character.GetCharactersInRange(player.transform.position, 20f, list);
-
-                int amount = 0;
-
-                foreach (Character item in list)
+                if (godMode)
                 {
-                    if (!item.IsPlayer() && !item.IsTamed())
+                    List<Character> list = new List<Character>();
+                    Character.GetCharactersInRange(player.transform.position, 20f, list);
+
+                    int amount = 0;
+
+                    foreach (Character item in list)
                     {
-                        player.StartEmote("headbang");
-                        item.Damage(new HitData
+                        if (!item.IsPlayer() && !item.IsTamed())
                         {
-                            m_damage =
+                            player.StartEmote("headbang");
+                            item.Damage(new HitData
+                            {
+                                m_damage =
                         {
                             m_damage = 1E+10f
                         }
-                        });
-                        amount++;
+                            });
+                            amount++;
+                        }
                     }
+                    ShowULMsg("Killing monsters in range:" + amount);
                 }
-                ShowULMsg("Killing monsters in range:" + amount);
+                else
+                {
+                    ShowULMsg("Not a god.");
+                }
+
             }
 
             // -------------------------------------------------
@@ -1283,7 +1350,7 @@ namespace ICanShowYouTheWorld
             // todo: ability to revert back
             // todo:  if up 10 times, just go big?
             //
-            if (Input.GetKeyDown(KeyCode.Keypad0))
+            if (false)
             {
                 // Print list of equipped items
                 List<ItemDrop.ItemData> items = player.GetInventory().GetEquippedItems();
@@ -1337,7 +1404,7 @@ namespace ICanShowYouTheWorld
             // ----------------------------------------
             // F3: Go faster Maybe CTRL + U/D
             //
-            if (Input.GetKeyDown(KeyCode.F3))
+            if (Input.GetKeyDown(KeyCode.UpArrow))
             {
                 float speed = player.m_runSpeed + 1;
                 SetSpeed(speed);
@@ -1346,7 +1413,7 @@ namespace ICanShowYouTheWorld
             // -------------------------------------------------
             // F4: Go slower
             //
-            if (Input.GetKeyDown(KeyCode.F4))
+            if (Input.GetKeyDown(KeyCode.DownArrow))
             {
                 float speed = player.m_runSpeed - 1;
                 SetSpeed(speed);
