@@ -54,6 +54,43 @@ namespace ICanShowYouTheWorld
         }
     }
 
+    // Static cheat commands and states
+    public static class CheatCommands
+    {
+        public static bool GodMode { get; private set; }
+        public static bool RenewalActive { get; private set; }
+
+        public static void ToggleGodMode()
+        {
+            GodMode = !GodMode;
+            Player.m_localPlayer.SetGodMode(GodMode);
+            Show("God Mode " + (GodMode ? "ON" : "OFF"));
+        }
+
+        public static void RevealBosses()
+        {
+        
+        }
+
+        public static void HandlePeriodic()
+        {
+            if (RenewalActive && Time.frameCount % 50 == 0)
+                Invigorate();
+
+            // ... other periodic effects
+        }
+
+        private static void Invigorate()
+        {
+
+        }
+
+        private static void Show(string msg)
+        {
+            Player.m_localPlayer.Message(MessageHud.MessageType.Center, msg);
+            Console.instance.Print(msg);
+        }
+    }
 
     //TODO:
     // Load these commands from command line (some known command) instead of about menu?
@@ -107,9 +144,9 @@ namespace ICanShowYouTheWorld
         {
             Console.instance.Print("Awake..");
 
-            inputManager = new InputManager();
             // Configure inputman
-            inputManager.Register(KeyCode.LeftArrow, () => ShowULMsg("Works!!!"));
+            inputManager = new InputManager();
+            inputManager.Register(KeyCode.LeftArrow, () => CheatCommands.ToggleGodMode());
 
             // Use static function. Pass in things like Player, etc.
             Helpers.Test();
@@ -168,6 +205,10 @@ namespace ICanShowYouTheWorld
             //    Change power
             //
             // Where to put keys? Keep them in the same groups. But only allow them if certain mopde is enabled?
+            //
+            //
+            // TODO: First thing to do is move every function to CheatCommands and hook them into InputManager config.
+            // 
             // --------------------------
             AddHorizontalGridLine("Runspeed (F3/F4)");
             AddHorizontalGridLine("Stats + Renewal song (F8)",      renewal);
@@ -462,7 +503,10 @@ namespace ICanShowYouTheWorld
 
         private void Update()
         {
+            // Only these two lines
             inputManager.HandleInput();
+            CheatCommands.HandlePeriodic();
+
 
             // ----------------------------------
             // TICK
