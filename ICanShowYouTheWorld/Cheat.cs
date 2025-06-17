@@ -118,20 +118,37 @@ namespace ICanShowYouTheWorld
             //float w1 = 120f;
             //float w2 = 40f;
 
-            //todo: Turn this into AddLine() helper
             //todo: use player.getGodMode() instead of relying on internal variable.
+
+            // ---------------------
+            // States:
+            // 
+            //   Invis -> Spawner: Spawn x, y, z, tame
+            //   God -> Builder: Replenish Stacks. Kill all. Show bosses. Explore all. AoE heal. Teleport.
+            //  
+            //  Always enabled (Player - arrow keys):
+            // 
+            //    Boost weapon
+            //    Run speed +/- (up down)
+            //    Cof
+            //    Melodic binding
+            //    Change power
+            //
+            // Where to put keys? Keep them in the same groups. But only allow them if certain mopde is enabled?
+            // --------------------------
             AddHorizontalGridLine("Runspeed (F3/F4)");
             AddHorizontalGridLine("Stats + Renewal song (F8)",      renewal);
-            AddHorizontalGridLine("God/No Cost (F9)",               Player.m_localPlayer.InGodMode());
+            AddHorizontalGridLine("God/No Cost",               Player.m_localPlayer.InGodMode());
             AddHorizontalGridLine("Show Bosses (F10)");
             AddHorizontalGridLine("Weapon++ (F11)",                 godWeapon);
             AddHorizontalGridLine("Replenish stacks (F12)");
             AddHorizontalGridLine("Invigorate/Kill (Up/Down)");
-            AddHorizontalGridLine("Heal/God (Left/Right)");
+            AddHorizontalGridLine("aoe Heal/God (Left/Right)");
             AddHorizontalGridLine("Ghost (9)", Player.m_localPlayer.InGhostMode());
             AddHorizontalGridLine("Cloak Of Flames (0)", cloakOfFlames);
             AddHorizontalGridLine("Melodic binding (B)",            melodicBinding);
             AddHorizontalGridLine("Port (Ins, Del, Home, End)");
+            // Spawn
             AddHorizontalGridLine("(Re)tame (PageUp)");
             AddHorizontalGridLine("Sp. pet (Pause)");
             AddHorizontalGridLine("Sp. Dvergr (Backsp)");
@@ -387,14 +404,14 @@ namespace ICanShowYouTheWorld
         // F4: Run slower
         // F5:
         // F6: God power
-        // F7: Invigorate!
-        // F8: Boost stats
+        // F7: Exp[lore ALL!
+        // F8: Boost/regen
         // F9:
         // F10: Find bosses
         // F11: WEAPON++
         // F12: Replenish stacks
         //
-        // Up/Down: Weapon better or worse
+        // Up/Down: Invigorate / 
         // Left:  AOE Heal
         // Right: God mode
         // 
@@ -450,7 +467,7 @@ namespace ICanShowYouTheWorld
                 Invigorate();
                 ShowULMsg("Invigorated!");
             }
-
+            // F7: Explore ALL
             if (Input.GetKeyDown(KeyCode.F7))
             {
                 Minimap.instance.ExploreAll();
@@ -1233,7 +1250,7 @@ namespace ICanShowYouTheWorld
             }
 
             // ----------------------------------------------------------------------
-            // PGDN:  Kill all monsters in radius 20f. Move this to somewhere else!
+            // down:  Kill all monsters in radius 20f. Move this to somewhere else!
             //
             if (Input.GetKeyDown(KeyCode.DownArrow))
             {
@@ -1266,7 +1283,7 @@ namespace ICanShowYouTheWorld
             // todo: ability to revert back
             // todo:  if up 10 times, just go big?
             //
-            if (Input.GetKeyDown(KeyCode.Keypad0)) //F11
+            if (Input.GetKeyDown(KeyCode.Keypad0))
             {
                 // Print list of equipped items
                 List<ItemDrop.ItemData> items = player.GetInventory().GetEquippedItems();
