@@ -52,29 +52,15 @@ namespace ICanShowYouTheWorld
             inputManager.Register(KeyCode.F10, CheatCommands.RevealBosses);
             inputManager.Register(KeyCode.F7, CheatCommands.ExploreAll);
 
-            // Movement speed
-            inputManager.Register(KeyCode.F3, CheatCommands.SpeedUp);
-            inputManager.Register(KeyCode.F4, CheatCommands.SpeedDown);
-
-            // God modes & powers
-            inputManager.Register(KeyCode.RightArrow, CheatCommands.ToggleGodMode);
+           
+            // God modes & powers. Static ones use F keys
             inputManager.Register(KeyCode.F6, CheatCommands.ToggleGuardianPower);
             inputManager.Register(KeyCode.F12, CheatCommands.ReplenishStacks);
-            inputManager.Register(KeyCode.F11, CheatCommands.ApplySuperWeapon);
-
-            // Toggle effects
-            inputManager.Register(KeyCode.F8, CheatCommands.ToggleRenewal);
-            inputManager.Register(KeyCode.Alpha9, CheatCommands.ToggleGhostMode);
-            inputManager.Register(KeyCode.Alpha0, CheatCommands.ToggleCloakOfFlames);
-            inputManager.Register(KeyCode.B, CheatCommands.ToggleMelodicBinding);
-
-            // Pets & tames
-            inputManager.Register(KeyCode.Pause, CheatCommands.SpawnCombatPet);
-            inputManager.Register(KeyCode.PageUp, CheatCommands.TameAll);
 
             // Healing & damage
             inputManager.Register(KeyCode.UpArrow, CheatCommands.Invigorate);
-            inputManager.Register(KeyCode.LeftArrow, CheatCommands.CastHealAOE);
+            inputManager.Register(KeyCode.LeftArrow, CheatCommands.DecreaseDamageCounter);
+            inputManager.Register(KeyCode.RightArrow, CheatCommands.IncreaseDamageCounter);
             inputManager.Register(KeyCode.DownArrow, CheatCommands.KillAllMonsters);
 
             // Teleports
@@ -82,6 +68,29 @@ namespace ICanShowYouTheWorld
             inputManager.Register(KeyCode.Delete, CheatCommands.TeleportMass);
             inputManager.Register(KeyCode.Home, CheatCommands.TeleportHome);
             inputManager.Register(KeyCode.End, CheatCommands.TeleportSafe);
+            // Movement speed
+            inputManager.Register(KeyCode.PageUp, CheatCommands.SpeedUp);
+            inputManager.Register(KeyCode.PageDown, CheatCommands.SpeedDown);
+
+            /////////////////////
+            // Keypad
+            inputManager.Register(KeyCode.Keypad0, CheatCommands.ToggleGodMode);
+            //1-3
+            inputManager.Register(KeyCode.Keypad1, CheatCommands.ToggleGhostMode);
+            // inputManager.Register(KeyCode.Keypad2, CheatCommands.);
+            // inputManager.Register(KeyCode.Keypad3, CheatCommands.);
+            // Aoe heal?
+
+            //4-6
+            inputManager.Register(KeyCode.Keypad4, CheatCommands.GuardianGift);
+            inputManager.Register(KeyCode.Keypad5, CheatCommands.ToggleRenewal);
+            inputManager.Register(KeyCode.Keypad6, CheatCommands.ToggleCloakOfFlames);
+            // Melodic binding
+
+            //7-9
+            inputManager.Register(KeyCode.Keypad7, CheatCommands.SpawnCombatPet);
+            inputManager.Register(KeyCode.Keypad8, CheatCommands.TameAll);
+
         }
 
         void Update()
@@ -117,18 +126,38 @@ namespace ICanShowYouTheWorld
         // States
         public static bool GodMode { get; private set; }
         public static bool RenewalActive { get; private set; }
+        public static bool AOERenewalActive { get; private set; }
+
         public static bool GhostMode { get; private set; }
         public static bool CloakActive { get; private set; }
         public static bool MelodicActive { get; private set; }
         private static int guardianIndex = 0;
+        public static int DamageCounter { get; private set; }
+
         private static readonly string[] guardians = { "GP_Eikthyr", "GP_Bonemass", "GP_Moder", "GP_Yagluth", "GP_Fader" };
         private static readonly string[] combatPets = { "Wolf", "DvergerMageSupport" };
         private static readonly string[] petNames = { "Bob", "Ralf", "Liam", "Olivia", "Elijah" /*...*/ };
 
+        // Permission check
+        private static bool RequireGodMode(string ability)
+        {
+            if (!GodMode)
+            {
+                Show($"{ability} requires God Mode");
+                return false;
+            }
+            return true;
+        }
+
         // Periodic ticks (called each Update)
         public static void HandlePeriodic()
         {
-            if (RenewalActive && Time.frameCount % 50 == 0) Invigorate();
+            if (RenewalActive && Time.frameCount % 50 == 0)
+            {
+                Invigorate();
+                AoeRegen(); // todo: separate function?
+            }
+            // if AOERenewalActive AoeRegen();
             if (MelodicActive && Time.frameCount % 150 == 0) SlowMonsters();
             if (CloakActive && Time.frameCount % 75 == 0) DamageAoE();
         }
@@ -137,6 +166,7 @@ namespace ICanShowYouTheWorld
         {
             GodMode = !GodMode;
             Player.m_localPlayer.SetGodMode(GodMode);
+            Player.m_localPlayer.SetNoPlacementCost(value: GodMode);
             Show($"God Mode {(GodMode ? "ON" : "OFF")}");
         }
 
@@ -145,6 +175,19 @@ namespace ICanShowYouTheWorld
             Player.m_localPlayer.SetGuardianPower(guardians[guardianIndex]);
             Show($"Guardian Power: {guardians[guardianIndex]}");
             guardianIndex = (guardianIndex + 1) % guardians.Length;
+        }
+
+        public static void IncreaseDamageCounter()
+        {
+            DamageCounter++;
+            Show("Damage Counter: " + DamageCounter);
+            ApplySuperWeapon();
+        }
+        public static void DecreaseDamageCounter()
+        {
+            DamageCounter--;
+            Show("Damage Counter: " + DamageCounter);
+            ApplySuperWeapon();
         }
 
         public static void RevealBosses()
@@ -189,6 +232,7 @@ namespace ICanShowYouTheWorld
 
         public static void SpawnCombatPet()
         {
+            if (!RequireGodMode("Spawn Combat Pet")) return;
             var rnd = new System.Random();
             string prefab = combatPets[rnd.Next(combatPets.Length)];
             GameObject p = ZNetScene.instance.GetPrefab(prefab);
@@ -199,11 +243,15 @@ namespace ICanShowYouTheWorld
             var ch = inst.GetComponent<Character>();
             ch.SetLevel(3);
             ch.m_name = petNames[rnd.Next(petNames.Length)];
+            //tame it
+            Tameable.TameAllInArea(Player.m_localPlayer.transform.position, 30.0f);
+
             Show($"Spawned pet: {ch.m_name}");
         }
 
         public static void TameAll()
         {
+            if (!RequireGodMode("Tame all")) return;
             Tameable.TameAllInArea(Player.m_localPlayer.transform.position, 30f);
             Show("All nearby tamed");
         }
@@ -218,14 +266,53 @@ namespace ICanShowYouTheWorld
 
         public static void ApplySuperWeapon()
         {
+            // Apply current damage counter to equipped weapons
             foreach (var item in Player.m_localPlayer.GetInventory().GetEquippedItems())
             {
                 if (!item.IsWeapon()) continue;
-                var dmg = new HitData.DamageTypes();
-                dmg.m_slash = dmg.m_blunt = dmg.m_pierce = 1000f;
-                item.m_shared.m_damages = dmg;
+                // Get base damage types
+                var baseDamages = item.GetDamage();
+                var updated = new HitData.DamageTypes
+                {
+                    m_slash = baseDamages.m_slash + DamageCounter * 10,
+                    m_blunt = baseDamages.m_blunt + DamageCounter * 10,
+                    m_pierce = baseDamages.m_pierce + DamageCounter * 10,
+                    m_frost = baseDamages.m_frost + DamageCounter * 10,
+                    m_lightning = baseDamages.m_lightning + DamageCounter * 10,
+                    m_poison = baseDamages.m_poison + DamageCounter * 10,
+                    m_spirit = baseDamages.m_spirit + DamageCounter * 10
+                };
+                item.m_shared.m_damages = updated;
             }
-            Show("Weapons supercharged");
+            Show($"Applied {DamageCounter} damage counters to weapons");
+        }
+
+        // Guardian's Gift: major buff including Renewal
+        public static void GuardianGift()
+        {
+            if (!RequireGodMode("Guardian's Gift")) return;
+            RenewalActive = true;
+            var p = Player.m_localPlayer;
+            // Boost stats
+            float regen = 100f, fallDmg = 0.1f, noise = 1f;
+            p.GetSEMan().ModifyHealthRegen(ref regen);
+            p.GetSEMan().ModifyFallDamage(1, ref fallDmg);
+            p.GetSEMan().ModifyNoise(1, ref noise);
+            p.m_blockStaminaDrain = 0.1f;
+            p.m_runStaminaDrain = 0.1f;
+            p.m_staminaRegen = 50f;
+            p.m_staminaRegenDelay = 0.5f;
+            p.m_eiterRegen = 50f;
+            p.m_eitrRegenDelay = 0.1f;
+            p.m_maxCarryWeight = 99999f;
+            // Durability
+            foreach (var item in p.GetInventory().GetEquippedItems())
+            {
+                item.m_shared.m_durabilityDrain = 0.1f;
+                item.m_shared.m_maxDurability = 10000f;
+                item.m_durability = 10000f;
+            }
+            Show("Guardian's Gift activated: Renewal + full buff");
         }
 
         public static void Invigorate()
@@ -233,7 +320,21 @@ namespace ICanShowYouTheWorld
             var p = Player.m_localPlayer;
             p.Heal(p.GetMaxHealth(), true);
             p.AddStamina(p.GetMaxStamina());
-            Show("Invigorated");
+        }
+
+        public static void AoeRegen()
+        {
+            List<Character> list = new List<Character>();
+            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 30.0f, list);
+
+            foreach (Character entity in list)
+            {
+                if ((entity.IsPlayer() || entity.IsTamed()) && entity.GetHoverName() != Player.m_localPlayer.GetHoverName() && entity.GetHealthPercentage() < 0.75f)
+                {
+                    Show(entity.GetHoverName() + " at " + Math.Floor(entity.GetHealthPercentage() * 100) + "%. Healing.");
+                    entity.Heal(25.0f, false); // don't show it.
+                }
+            }
         }
 
         public static void CastHealAOE()
@@ -248,6 +349,7 @@ namespace ICanShowYouTheWorld
 
         public static void KillAllMonsters()
         {
+            if (!RequireGodMode("Kill all monsters")) return;
             var list = new List<Character>();
             Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 20f, list);
             int killed = 0;
@@ -262,6 +364,7 @@ namespace ICanShowYouTheWorld
 
         public static void TeleportSolo()
         {
+            if (!RequireGodMode("Teleport")) return;
             // use the old minimap-based conversion
             var pos = Utils.ScreenToWorldPoint(Input.mousePosition);
             Player.m_localPlayer.TeleportTo(pos, Player.m_localPlayer.transform.rotation, true);
@@ -353,16 +456,30 @@ namespace ICanShowYouTheWorld
 
         void DrawTracking(int id)
         {
-            GUILayout.Label("-- Tracked Entities --");
-            // populate tracking info
+            var player = Player.m_localPlayer;
+            var list = new List<Character>();
+            Character.GetCharactersInRange(player.transform.position, 50f, list);
+
+            foreach (var c in list)
+            {
+                if (!c.IsPlayer())
+                {
+                    float dist = Utils.DistanceXZ(c.transform.position, player.transform.position);
+                    float hpPct = c.GetHealthPercentage() * 100f;
+                    GUILayout.Label($"{c.GetHoverName()}: {dist:0.0}m ({hpPct:0.0}% HP)");
+                }
+            }
+
             GUI.DragWindow();
         }
 
         void DrawModes(int id)
         {
             GUILayout.Label("-- Mode States --");
-            GUILayout.Label($"GodMode: {CheatCommands.GodMode}");
-            // list other toggles
+            GUILayout.Label("God: " + CheatCommands.GodMode);
+            GUILayout.Label("Ghost: " + CheatCommands.GhostMode);
+            GUILayout.Label("Renewal: " + CheatCommands.RenewalActive);
+            GUILayout.Label("Damage Counter: " + CheatCommands.DamageCounter);
             GUI.DragWindow();
         }
     }
