@@ -28,7 +28,6 @@ namespace ICanShowYouTheWorld
             cheatObject = new GameObject();
 //            cheatObject.AddComponent<DiscoverThings>();
             cheatObject.AddComponent<CheatController>();
-
             cheatObject.AddComponent<UIManager>();
 
             // Avoid object destroyed when loading a level
@@ -37,6 +36,7 @@ namespace ICanShowYouTheWorld
     }
 
     // Central controller: sets up input mappings and triggers periodic cheats
+    // Central controller: registers hotkeys and drives per-frame updates
     public class CheatController : MonoBehaviour
     {
         private InputManager inputManager;
@@ -44,10 +44,44 @@ namespace ICanShowYouTheWorld
         void Awake()
         {
             inputManager = new InputManager();
-            // Register hotkeys to commands
+
+            // UI
             inputManager.Register(KeyCode.F1, () => UIManager.Instance.ToggleVisible());
+
+            // Bosses & exploration
             inputManager.Register(KeyCode.F10, CheatCommands.RevealBosses);
+            inputManager.Register(KeyCode.F7, CheatCommands.ExploreAll);
+
+            // Movement speed
+            inputManager.Register(KeyCode.F3, CheatCommands.SpeedUp);
+            inputManager.Register(KeyCode.F4, CheatCommands.SpeedDown);
+
+            // God modes & powers
             inputManager.Register(KeyCode.RightArrow, CheatCommands.ToggleGodMode);
+            inputManager.Register(KeyCode.F6, CheatCommands.ToggleGuardianPower);
+            inputManager.Register(KeyCode.F12, CheatCommands.ReplenishStacks);
+            inputManager.Register(KeyCode.F11, CheatCommands.ApplySuperWeapon);
+
+            // Toggle effects
+            inputManager.Register(KeyCode.F8, CheatCommands.ToggleRenewal);
+            inputManager.Register(KeyCode.Alpha9, CheatCommands.ToggleGhostMode);
+            inputManager.Register(KeyCode.Alpha0, CheatCommands.ToggleCloakOfFlames);
+            inputManager.Register(KeyCode.B, CheatCommands.ToggleMelodicBinding);
+
+            // Pets & tames
+            inputManager.Register(KeyCode.Pause, CheatCommands.SpawnCombatPet);
+            inputManager.Register(KeyCode.PageUp, CheatCommands.TameAll);
+
+            // Healing & damage
+            inputManager.Register(KeyCode.UpArrow, CheatCommands.Invigorate);
+            inputManager.Register(KeyCode.LeftArrow, CheatCommands.CastHealAOE);
+            inputManager.Register(KeyCode.DownArrow, CheatCommands.KillAllMonsters);
+
+            // Teleports
+            inputManager.Register(KeyCode.Insert, CheatCommands.TeleportSolo);
+            inputManager.Register(KeyCode.Delete, CheatCommands.TeleportMass);
+            inputManager.Register(KeyCode.Home, CheatCommands.TeleportHome);
+            inputManager.Register(KeyCode.End, CheatCommands.TeleportSafe);
         }
 
         void Update()
@@ -77,34 +111,216 @@ namespace ICanShowYouTheWorld
         }
     }
 
-    // Static cheat commands and states
+    // Static cheat commands and shared state
     public static class CheatCommands
     {
+        // States
         public static bool GodMode { get; private set; }
         public static bool RenewalActive { get; private set; }
+        public static bool GhostMode { get; private set; }
+        public static bool CloakActive { get; private set; }
+        public static bool MelodicActive { get; private set; }
+        private static int guardianIndex = 0;
+        private static readonly string[] guardians = { "GP_Eikthyr", "GP_Bonemass", "GP_Moder", "GP_Yagluth", "GP_Fader" };
+        private static readonly string[] combatPets = { "Wolf", "DvergerMageSupport" };
+        private static readonly string[] petNames = { "Bob", "Ralf", "Liam", "Olivia", "Elijah" /*...*/ };
+
+        // Periodic ticks (called each Update)
+        public static void HandlePeriodic()
+        {
+            if (RenewalActive && Time.frameCount % 50 == 0) Invigorate();
+            if (MelodicActive && Time.frameCount % 150 == 0) SlowMonsters();
+            if (CloakActive && Time.frameCount % 75 == 0) DamageAoE();
+        }
 
         public static void ToggleGodMode()
         {
             GodMode = !GodMode;
             Player.m_localPlayer.SetGodMode(GodMode);
-            Show("God Mode " + (GodMode ? "ON" : "OFF"));
+            Show($"God Mode {(GodMode ? "ON" : "OFF")}");
+        }
+
+        public static void ToggleGuardianPower()
+        {
+            Player.m_localPlayer.SetGuardianPower(guardians[guardianIndex]);
+            Show($"Guardian Power: {guardians[guardianIndex]}");
+            guardianIndex = (guardianIndex + 1) % guardians.Length;
         }
 
         public static void RevealBosses()
         {
-            Show("Reveal bosses!");
+            foreach (var b in BossData.All) BossData.Reveal(b);
+            Show("Bosses revealed");
         }
 
-        public static void HandlePeriodic()
+        public static void ExploreAll()
         {
-            if (RenewalActive && Time.frameCount % 50 == 0)
-                Invigorate();
-
+            Minimap.instance.ExploreAll();
+            Show("Map fully explored");
         }
 
-        private static void Invigorate()
+        public static void SpeedUp() => SetSpeed(Player.m_localPlayer.m_runSpeed + 1);
+        public static void SpeedDown() => SetSpeed(Player.m_localPlayer.m_runSpeed - 1);
+
+        public static void ToggleRenewal()
         {
-            Show("Invigorate!");
+            RenewalActive = !RenewalActive;
+            Show($"Renewal {(RenewalActive ? "Enabled" : "Disabled")}");
+        }
+
+        public static void ToggleGhostMode()
+        {
+            GhostMode = !GhostMode;
+            Player.m_localPlayer.SetGhostMode(GhostMode);
+            Show($"Ghost Mode {GhostMode}");
+        }
+
+        public static void ToggleCloakOfFlames()
+        {
+            CloakActive = !CloakActive;
+            Show($"Cloak of Flames {CloakActive}");
+        }
+
+        public static void ToggleMelodicBinding()
+        {
+            MelodicActive = !MelodicActive;
+            Show($"Melodic Binding {MelodicActive}");
+        }
+
+        public static void SpawnCombatPet()
+        {
+            var rnd = new System.Random();
+            string prefab = combatPets[rnd.Next(combatPets.Length)];
+            GameObject p = ZNetScene.instance.GetPrefab(prefab);
+            if (p == null) { Show($"Missing prefab: {prefab}"); return; }
+
+            Vector3 pos = Player.m_localPlayer.transform.position + Player.m_localPlayer.transform.forward * 2f;
+            var inst = UnityEngine.Object.Instantiate(p, pos, Quaternion.identity);
+            var ch = inst.GetComponent<Character>();
+            ch.SetLevel(3);
+            ch.m_name = petNames[rnd.Next(petNames.Length)];
+            Show($"Spawned pet: {ch.m_name}");
+        }
+
+        public static void TameAll()
+        {
+            Tameable.TameAllInArea(Player.m_localPlayer.transform.position, 30f);
+            Show("All nearby tamed");
+        }
+
+        public static void ReplenishStacks()
+        {
+            foreach (var item in Player.m_localPlayer.GetInventory().GetAllItems())
+                if (item.m_shared.m_maxStackSize > 1)
+                    item.m_stack = item.m_shared.m_maxStackSize;
+            Show("Stacks replenished");
+        }
+
+        public static void ApplySuperWeapon()
+        {
+            foreach (var item in Player.m_localPlayer.GetInventory().GetEquippedItems())
+            {
+                if (!item.IsWeapon()) continue;
+                var dmg = new HitData.DamageTypes();
+                dmg.m_slash = dmg.m_blunt = dmg.m_pierce = 1000f;
+                item.m_shared.m_damages = dmg;
+            }
+            Show("Weapons supercharged");
+        }
+
+        public static void Invigorate()
+        {
+            var p = Player.m_localPlayer;
+            p.Heal(p.GetMaxHealth(), true);
+            p.AddStamina(p.GetMaxStamina());
+            Show("Invigorated");
+        }
+
+        public static void CastHealAOE()
+        {
+            var prefab = ZNetScene.instance.GetPrefab("DvergerStaffHeal_aoe");
+            if (prefab == null) { Show("Missing heal prefab"); return; }
+            UnityEngine.Object.Instantiate(prefab,
+                Player.m_localPlayer.transform.position + Vector3.up,
+                Quaternion.identity);
+            Show("Heal AOE cast");
+        }
+
+        public static void KillAllMonsters()
+        {
+            var list = new List<Character>();
+            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 20f, list);
+            int killed = 0;
+            foreach (var c in list)
+                if (!c.IsPlayer() && !c.IsTamed())
+                {
+                    c.Damage(new HitData { m_damage = { m_damage = 1e10f } });
+                    killed++;
+                }
+            Show($"Monsters killed: {killed}");
+        }
+
+        public static void TeleportSolo()
+        {
+            // use the old minimap-based conversion
+            var pos = Utils.ScreenToWorldPoint(Input.mousePosition);
+            Player.m_localPlayer.TeleportTo(pos, Player.m_localPlayer.transform.rotation, true);
+            Show($"Teleported to {pos}");
+        }
+
+        public static void TeleportMass()
+        {
+            var pos = Utils.ScreenToWorldPoint(Input.mousePosition);
+            foreach (var pl in PlayerUtility.GetNearbyPlayers(50f))
+                Chat.instance.TeleportPlayer(pl.GetZDOID().UserID, pos, Quaternion.identity, true);
+            Show("Mass teleport executed");
+        }
+
+        public static void TeleportHome()
+        {
+            var dst = TeleportUtils.GetSpawnPoint();
+            Player.m_localPlayer.TeleportTo(dst, Quaternion.identity, true);
+            Show("Teleported home");
+        }
+
+        public static void TeleportSafe()
+        {
+            var pins = Minimap.m_pins;
+            foreach (var pin in pins)
+                if (pin.m_name.Equals("safe", StringComparison.OrdinalIgnoreCase))
+                {
+                    var dst = pin.m_pos + UnityEngine.Random.insideUnitSphere * 5f;
+                    Player.m_localPlayer.TeleportTo(dst, Quaternion.identity, true);
+                    Show("Teleported to safe spot");
+                    return;
+                }
+            Show("No safe pin found");
+        }
+
+        // Helpers
+        private static void SlowMonsters()
+        {
+            var list = new List<Character>();
+            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 30f, list);
+            foreach (var c in list)
+                if (c.IsMonsterFaction(10))
+                    c.m_runSpeed = c.m_speed = 1f;
+        }
+
+        private static void DamageAoE()
+        {
+            var list = new List<Character>();
+            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 5f, list);
+            foreach (var c in list)
+                if (!c.IsPlayer() && c.IsMonsterFaction(10))
+                    c.Damage(new HitData { m_damage = { m_damage = 75f } });
+        }
+
+        private static void SetSpeed(float speed)
+        {
+            var p = Player.m_localPlayer;
+            p.m_runSpeed = p.m_walkSpeed = speed;
+            Show($"Speed set: {speed}");
         }
 
         private static void Show(string msg)
@@ -148,6 +364,84 @@ namespace ICanShowYouTheWorld
             GUILayout.Label($"GodMode: {CheatCommands.GodMode}");
             // list other toggles
             GUI.DragWindow();
+        }
+    }
+
+    // Boss configuration and reveal logic
+    public static class BossData
+    {
+        public static readonly (string prefab, string name)[] All = {
+            ("Eikthyrnir","Eikthyr"),("GDKing","The Elder"),("Bonemass","Bonemass"),
+            ("Dragonqueen","Moder"),("GoblinKing","Yagluth"),("FaderLocation","Fader")
+        };
+        public static void Reveal((string prefab, string name) b)
+        {
+            Game.instance.DiscoverClosestLocation(
+                b.prefab,
+                Player.m_localPlayer.transform.position,
+                b.name,
+                (int)Minimap.PinType.Boss);
+        }
+    }
+
+    // Utility helpers for teleporting and input conversion
+    static class TeleportUtils
+    {
+        public static Vector3 GetSpawnPoint()
+        {
+            var profile = Game.instance.GetPlayerProfile();
+            return profile.HaveCustomSpawnPoint() ? profile.GetCustomSpawnPoint() : profile.GetHomePoint();
+        }
+    }
+
+    static class Utils
+    {
+        public static Vector3 MouseToWorldPoint()
+        {
+            var mp = Input.mousePosition;
+            // convert via Minimap; simplified here
+            return Camera.main.ScreenToWorldPoint(new Vector3(mp.x, mp.y, 10f));
+        }
+
+        // Converts screen/mouse position to world via the minimap logic
+        public static Vector3 ScreenToWorldPoint(Vector3 mousePos)
+        {
+            Vector2 screenPoint = mousePos;
+            RectTransform rectTransform = Minimap.instance.m_mapImageLarge.transform as RectTransform;
+            if (RectTransformUtility.ScreenPointToLocalPointInRectangle(rectTransform, screenPoint, null, out var localPoint))
+            {
+                Vector2 vector = Rect.PointToNormalized(rectTransform.rect, localPoint);
+                Rect uvRect = Minimap.instance.m_mapImageLarge.uvRect;
+                float mx = uvRect.xMin + vector.x * uvRect.width;
+                float my = uvRect.yMin + vector.y * uvRect.height;
+                return MapPointToWorld(mx, my);
+            }
+            return Vector3.zero;
+        }
+
+        private static Vector3 MapPointToWorld(float mx, float my)
+        {
+            int half = Minimap.instance.m_textureSize / 2;
+            mx = (mx * Minimap.instance.m_textureSize - half) * Minimap.instance.m_pixelSize;
+            my = (my * Minimap.instance.m_textureSize - half) * Minimap.instance.m_pixelSize;
+            return new Vector3(mx, 0f, my);
+        }
+
+        // Distance in XZ plane between two points
+        public static float DistanceXZ(Vector3 a, Vector3 b)
+        {
+            return Vector2.Distance(new Vector2(a.x, a.z), new Vector2(b.x, b.z));
+        }
+    }
+
+    static class PlayerUtility
+    {
+        public static IEnumerable<Player> GetNearbyPlayers(float radius)
+        {
+            var list = new List<Character>();
+            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, radius, list);
+            foreach (var c in list)
+                if (c.IsPlayer()) yield return c as Player;
         }
     }
 
