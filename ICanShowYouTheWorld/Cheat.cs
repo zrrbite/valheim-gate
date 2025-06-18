@@ -26,9 +26,22 @@ namespace ICanShowYouTheWorld
 
             // Instanciate a new GameObject instance attaching script component (class) 
             cheatObject = new GameObject();
-//            cheatObject.AddComponent<DiscoverThings>();
-            cheatObject.AddComponent<CheatController>();
-            cheatObject.AddComponent<UIManager>();
+            //            cheatObject.AddComponent<DiscoverThings>(); //old
+            // Initialize CheatController
+            var controller = cheatObject.AddComponent<CheatController>();
+            UnifiedPopup.Push(new WarningPopup(
+                "ICanShowYouTheWorld",
+                "CheatController loaded successfully!",
+                () => UnifiedPopup.Pop()
+            ));
+
+            // Initialize UIManager
+            var ui = cheatObject.AddComponent<UIManager>();
+            UnifiedPopup.Push(new WarningPopup(
+                "ICanShowYouTheWorld",
+                "UIManager loaded successfully!",
+                () => UnifiedPopup.Pop()
+            ));
 
             // Avoid object destroyed when loading a level
             GameObject.DontDestroyOnLoad(cheatObject);
@@ -50,12 +63,8 @@ namespace ICanShowYouTheWorld
 
             // Bosses & exploration
             inputManager.Register(KeyCode.F10, CheatCommands.RevealBosses);
-            inputManager.Register(KeyCode.F7, CheatCommands.ExploreAll);
-
-           
-            // God modes & powers. Static ones use F keys
             inputManager.Register(KeyCode.F6, CheatCommands.ToggleGuardianPower);
-            inputManager.Register(KeyCode.F12, CheatCommands.ReplenishStacks);
+            inputManager.Register(KeyCode.F7, CheatCommands.ExploreAll);
 
             // Healing & damage
             inputManager.Register(KeyCode.UpArrow, CheatCommands.Invigorate);
@@ -77,14 +86,14 @@ namespace ICanShowYouTheWorld
             inputManager.Register(KeyCode.Keypad0, CheatCommands.ToggleGodMode);
             //1-3
             inputManager.Register(KeyCode.Keypad1, CheatCommands.ToggleGhostMode);
-            // inputManager.Register(KeyCode.Keypad2, CheatCommands.);
-            // inputManager.Register(KeyCode.Keypad3, CheatCommands.);
+            inputManager.Register(KeyCode.Keypad2, CheatCommands.GuardianGift);
+            inputManager.Register(KeyCode.Keypad3, CheatCommands.ReplenishStacks);
             // Aoe heal?
 
             //4-6
-            inputManager.Register(KeyCode.Keypad4, CheatCommands.GuardianGift);
-            inputManager.Register(KeyCode.Keypad5, CheatCommands.ToggleRenewal);
-            inputManager.Register(KeyCode.Keypad6, CheatCommands.ToggleCloakOfFlames);
+            inputManager.Register(KeyCode.Keypad4, CheatCommands.ToggleRenewal);
+            inputManager.Register(KeyCode.Keypad5, CheatCommands.ToggleCloakOfFlames);
+            //inputManager.Register(KeyCode.Keypad4, CheatCommands.); // aoe renewal?
             // Melodic binding
 
             //7-9
@@ -192,12 +201,14 @@ namespace ICanShowYouTheWorld
 
         public static void RevealBosses()
         {
+            if (!RequireGodMode("Reveal Bosses")) return;
             foreach (var b in BossData.All) BossData.Reveal(b);
             Show("Bosses revealed");
         }
 
         public static void ExploreAll()
         {
+            if (!RequireGodMode("Explore")) return;
             Minimap.instance.ExploreAll();
             Show("Map fully explored");
         }
@@ -450,7 +461,14 @@ namespace ICanShowYouTheWorld
             GUI.Label(new Rect(10, 3, 200, 25), $"Cheats Active: {visible}");
             if (!visible) return;
 
-            trackWindow = GUILayout.Window(0, trackWindow, DrawTracking, "Tracking");
+            //trackWindow = GUILayout.Window(0, trackWindow, DrawTracking, "Tracking");
+            trackWindow = GUILayout.Window(
+                0,
+                trackWindow,
+                DrawTracking,
+                "Tracking",
+                GUILayout.Width(300)
+            );
             modeWindow = GUILayout.Window(1, modeWindow, DrawModes, "Modes");
         }
 
@@ -476,10 +494,14 @@ namespace ICanShowYouTheWorld
         void DrawModes(int id)
         {
             GUILayout.Label("-- Mode States --");
-            GUILayout.Label("God: " + CheatCommands.GodMode);
-            GUILayout.Label("Ghost: " + CheatCommands.GhostMode);
-            GUILayout.Label("Renewal: " + CheatCommands.RenewalActive);
-            GUILayout.Label("Damage Counter: " + CheatCommands.DamageCounter);
+            GUILayout.Label($"God Mode: {CheatCommands.GodMode}");
+            GUILayout.Label($"Renewal: {CheatCommands.RenewalActive}");
+            GUILayout.Label($"Ghost: {CheatCommands.GhostMode}");
+            GUILayout.Label($"Cloak: {CheatCommands.CloakActive}");
+            GUILayout.Label($"Melodic: {CheatCommands.MelodicActive}");
+            GUILayout.Label($"Damage Counters: {CheatCommands.DamageCounter}");
+            //GUILayout.Label($"Session Uptime: {CheatCommands.SessionTimer.Elapsed:mm\\:ss}");
+            GUILayout.Label($"FPS: {(int)(1f / Time.deltaTime)}");
             GUI.DragWindow();
         }
     }
