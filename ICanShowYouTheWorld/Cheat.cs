@@ -26,11 +26,34 @@ namespace ICanShowYouTheWorld
 
             // Instanciate a new GameObject instance attaching script component (class) 
             cheatObject = new GameObject();
-            cheatObject.AddComponent<DiscoverThings>();
-            //add UIManager also
+//            cheatObject.AddComponent<DiscoverThings>();
+            cheatObject.AddComponent<CheatController>();
+
+            cheatObject.AddComponent<UIManager>();
 
             // Avoid object destroyed when loading a level
             GameObject.DontDestroyOnLoad(cheatObject);
+        }
+    }
+
+    // Central controller: sets up input mappings and triggers periodic cheats
+    public class CheatController : MonoBehaviour
+    {
+        private InputManager inputManager;
+
+        void Awake()
+        {
+            inputManager = new InputManager();
+            // Register hotkeys to commands
+            inputManager.Register(KeyCode.F1, () => UIManager.Instance.ToggleVisible());
+            inputManager.Register(KeyCode.F10, CheatCommands.RevealBosses);
+            inputManager.Register(KeyCode.RightArrow, CheatCommands.ToggleGodMode);
+        }
+
+        void Update()
+        {
+            inputManager.HandleInput();
+            CheatCommands.HandlePeriodic();
         }
     }
 
@@ -69,7 +92,7 @@ namespace ICanShowYouTheWorld
 
         public static void RevealBosses()
         {
-        
+            Show("Reveal bosses!");
         }
 
         public static void HandlePeriodic()
@@ -77,12 +100,11 @@ namespace ICanShowYouTheWorld
             if (RenewalActive && Time.frameCount % 50 == 0)
                 Invigorate();
 
-            // ... other periodic effects
         }
 
         private static void Invigorate()
         {
-
+            Show("Invigorate!");
         }
 
         private static void Show(string msg)
@@ -91,6 +113,45 @@ namespace ICanShowYouTheWorld
             Console.instance.Print(msg);
         }
     }
+
+    // UI manager for tracking and modes windows
+    public class UIManager : MonoBehaviour
+    {
+        public static UIManager Instance { get; private set; }
+        private bool visible;
+        private Rect trackWindow = new Rect(150, Screen.height - 250, 250, 150);
+        private Rect modeWindow = new Rect(Screen.width - 220, Screen.height - 500, 220, 350);
+
+        void Awake() => Instance = this;
+
+        public void ToggleVisible() => visible = !visible;
+
+        void OnGUI()
+        {
+            GUI.Label(new Rect(10, 3, 200, 25), $"Cheats Active: {visible}");
+            if (!visible) return;
+
+            trackWindow = GUILayout.Window(0, trackWindow, DrawTracking, "Tracking");
+            modeWindow = GUILayout.Window(1, modeWindow, DrawModes, "Modes");
+        }
+
+        void DrawTracking(int id)
+        {
+            GUILayout.Label("-- Tracked Entities --");
+            // populate tracking info
+            GUI.DragWindow();
+        }
+
+        void DrawModes(int id)
+        {
+            GUILayout.Label("-- Mode States --");
+            GUILayout.Label($"GodMode: {CheatCommands.GodMode}");
+            // list other toggles
+            GUI.DragWindow();
+        }
+    }
+
+    // -------------------- OLD ----------------------------------------------------------
 
     //TODO:
     // Load these commands from command line (some known command) instead of about menu?
