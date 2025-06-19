@@ -92,8 +92,8 @@ namespace ICanShowYouTheWorld
 
             //4-6
             inputManager.Register(KeyCode.Keypad4, CheatCommands.ToggleRenewal);
-            inputManager.Register(KeyCode.Keypad5, CheatCommands.ToggleCloakOfFlames);
-            //inputManager.Register(KeyCode.Keypad4, CheatCommands.); // aoe renewal?
+            inputManager.Register(KeyCode.Keypad5, CheatCommands.ToggleAoeRenewal);
+            inputManager.Register(KeyCode.Keypad6, CheatCommands.ToggleCloakOfFlames);
             // Melodic binding
 
             //7-9
@@ -129,6 +129,35 @@ namespace ICanShowYouTheWorld
         }
     }
 
+    // Periodic task infrastructure
+    class PeriodicTask
+    {
+        public int Interval;
+        public Action Action;
+        public int LastFrame;
+    }
+
+    static class PeriodicManager
+    {
+        private static readonly List<PeriodicTask> tasks = new List<PeriodicTask>();
+        public static void Register(int interval, Action action)
+        {
+            tasks.Add(new PeriodicTask { Interval = interval, Action = action, LastFrame = 0 });
+        }
+        public static void HandlePeriodic()
+        {
+            int now = Time.frameCount;
+            foreach (var t in tasks)
+            {
+                if (now - t.LastFrame >= t.Interval)
+                {
+                    t.Action();
+                    t.LastFrame = now;
+                }
+            }
+        }
+    }
+
     // Static cheat commands and shared state
     public static class CheatCommands
     {
@@ -147,6 +176,17 @@ namespace ICanShowYouTheWorld
         private static readonly string[] combatPets = { "Wolf", "DvergerMageSupport" };
         private static readonly string[] petNames = { "Bob", "Ralf", "Liam", "Olivia", "Elijah" /*...*/ };
 
+        static CheatCommands()
+        {
+            // register periodic callbacks
+            PeriodicManager.Register(50, () => { if (RenewalActive) Invigorate(); });
+            PeriodicManager.Register(50, () => { if (AOERenewalActive) AoeRegen(); });
+            PeriodicManager.Register(150, () => { if (MelodicActive) SlowMonsters(); });
+            PeriodicManager.Register(75, () => { if (CloakActive) DamageAoE(); });
+        }
+
+        public static void HandlePeriodic() => PeriodicManager.HandlePeriodic();
+
         // Permission check
         private static bool RequireGodMode(string ability)
         {
@@ -159,17 +199,13 @@ namespace ICanShowYouTheWorld
         }
 
         // Periodic ticks (called each Update)
-        public static void HandlePeriodic()
+/*        public static void HandlePeriodic()
         {
-            if (RenewalActive && Time.frameCount % 50 == 0)
-            {
-                Invigorate();
-                AoeRegen(); // todo: separate function?
-            }
-            // if AOERenewalActive AoeRegen();
-            if (MelodicActive && Time.frameCount % 150 == 0) SlowMonsters();
-            if (CloakActive && Time.frameCount % 75 == 0) DamageAoE();
-        }
+            if (RenewalActive       && Time.frameCount % 50 == 0)   Invigorate();
+            if (AOERenewalActive    && Time.frameCount % 50 ==0)    AoeRegen();
+            if (MelodicActive       && Time.frameCount % 150 == 0)  SlowMonsters();
+            if (CloakActive         && Time.frameCount % 75 == 0)   DamageAoE();
+        } */
 
         public static void ToggleGodMode()
         {
@@ -220,6 +256,12 @@ namespace ICanShowYouTheWorld
         {
             RenewalActive = !RenewalActive;
             Show($"Renewal {(RenewalActive ? "Enabled" : "Disabled")}");
+        }
+
+        public static void ToggleAoeRenewal()
+        {
+            AOERenewalActive = !AOERenewalActive;
+            Show($"AoE Renewal {(AOERenewalActive ? "Enabled" : "Disabled")}");
         }
 
         public static void ToggleGhostMode()
