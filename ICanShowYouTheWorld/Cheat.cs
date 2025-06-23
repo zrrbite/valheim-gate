@@ -18,7 +18,7 @@ namespace ICanShowYouTheWorld
 
         public static void Run()
         {
-            UnifiedPopup.Push(new WarningPopup("EverHeim", "Loaded mod v0.220.5!"
+            UnifiedPopup.Push(new WarningPopup("ICanShowYouTheWorld", "Loaded mod v0.220.5!"
                 , delegate
             {
                 UnifiedPopup.Pop();
@@ -81,25 +81,33 @@ namespace ICanShowYouTheWorld
             inputManager.Register(KeyCode.PageUp, CheatCommands.SpeedUp);
             inputManager.Register(KeyCode.PageDown, CheatCommands.SpeedDown);
 
-            /////////////////////
-            // Keypad
-            inputManager.Register(KeyCode.Keypad0, CheatCommands.ToggleGodMode);
+            // ---------------------------------
+            // Keypad 
+            inputManager.Register(KeyCode.Keypad0, CheatCommands.ToggleGodMode); // Toggle Modes: God, Builder, Beast Master
             //1-3
-            inputManager.Register(KeyCode.Keypad1, CheatCommands.ToggleGhostMode);
-            inputManager.Register(KeyCode.Keypad2, CheatCommands.GuardianGift);
-            inputManager.Register(KeyCode.Keypad3, CheatCommands.ReplenishStacks);
-            // Aoe heal?
+
+            inputManager.Register(KeyCode.Keypad1, CheatCommands.GuardianGift);
+            inputManager.Register(KeyCode.Keypad2, CheatCommands.ToggleRenewal);
+            inputManager.Register(KeyCode.Keypad3, CheatCommands.ToggleAoeRenewal);
 
             //4-6
-            inputManager.Register(KeyCode.Keypad4, CheatCommands.ToggleRenewal);
-            inputManager.Register(KeyCode.Keypad5, CheatCommands.ToggleAoeRenewal);
-            inputManager.Register(KeyCode.Keypad6, CheatCommands.ToggleCloakOfFlames);
-            // Melodic binding
+            inputManager.Register(KeyCode.Keypad4, CheatCommands.ToggleCloakOfFlames);
+            //5
+            inputManager.Register(KeyCode.Keypad6, CheatCommands.ReplenishStacks);
 
             //7-9
-            inputManager.Register(KeyCode.Keypad7, CheatCommands.SpawnCombatPet);
-            inputManager.Register(KeyCode.Keypad8, CheatCommands.TameAll);
+            inputManager.Register(KeyCode.Keypad7, CheatCommands.ToggleGhostMode);
+            inputManager.Register(KeyCode.Keypad8, CheatCommands.SpawnCombatPet);
+            inputManager.Register(KeyCode.Keypad9, CheatCommands.TameAll);
 
+            // extra
+            inputManager.Register(KeyCode.KeypadEnter, CheatCommands.CastHealAOE);
+            inputManager.Register(KeyCode.KeypadPlus, CheatCommands.CastDmgAOE);
+            inputManager.Register(KeyCode.KeypadMinus, CheatCommands.CastHealAOE);
+            inputManager.Register(KeyCode.KeypadDivide, CheatCommands.ToggleGhostMode);
+            inputManager.Register(KeyCode.KeypadMultiply, CheatCommands.ToggleGhostMode);
+            inputManager.Register(KeyCode.KeypadPeriod, CheatCommands.ToggleGhostMode);
+            
         }
 
         void Update()
@@ -165,20 +173,20 @@ namespace ICanShowYouTheWorld
         public static bool GodMode { get; private set; }
         public static bool RenewalActive { get; private set; }
         public static bool AOERenewalActive { get; private set; }
-
         public static bool GhostMode { get; private set; }
         public static bool CloakActive { get; private set; }
         public static bool MelodicActive { get; private set; }
+
         private static int guardianIndex = 0;
         public static int DamageCounter { get; private set; }
-
+        public static string CurrentGuardianName => guardians[guardianIndex];
         private static readonly string[] guardians = { "GP_Eikthyr", "GP_Bonemass", "GP_Moder", "GP_Yagluth", "GP_Fader" };
         private static readonly string[] combatPets = { "Wolf", "DvergerMageSupport" };
         private static readonly string[] petNames = { "Bob", "Ralf", "Liam", "Olivia", "Elijah" /*...*/ };
 
         static CheatCommands()
         {
-            // register periodic callbacks
+            // register periodic callbacks - todo: can do this better
             PeriodicManager.Register(50, () => { if (RenewalActive) Invigorate(); });
             PeriodicManager.Register(50, () => { if (AOERenewalActive) AoeRegen(); });
             PeriodicManager.Register(150, () => { if (MelodicActive) SlowMonsters(); });
@@ -198,14 +206,36 @@ namespace ICanShowYouTheWorld
             return true;
         }
 
-        // Periodic ticks (called each Update)
-/*        public static void HandlePeriodic()
+        // ---------------------------------------------
+        // Periodic things - abstract this
+        // ---------------------------------------------
+        public static void ToggleRenewal()
         {
-            if (RenewalActive       && Time.frameCount % 50 == 0)   Invigorate();
-            if (AOERenewalActive    && Time.frameCount % 50 ==0)    AoeRegen();
-            if (MelodicActive       && Time.frameCount % 150 == 0)  SlowMonsters();
-            if (CloakActive         && Time.frameCount % 75 == 0)   DamageAoE();
-        } */
+            RenewalActive = !RenewalActive;
+            Show($"Renewal {(RenewalActive ? "Enabled" : "Disabled")}");
+        }
+
+        public static void ToggleAoeRenewal()
+        {
+            if (!RequireGodMode("AoE Renewal")) return;
+            AOERenewalActive = !AOERenewalActive;
+            Show($"AoE Renewal {(AOERenewalActive ? "Enabled" : "Disabled")}");
+        }
+
+        public static void ToggleCloakOfFlames()
+        {
+            if (!RequireGodMode("CoF")) return;
+            CloakActive = !CloakActive;
+            Show($"Cloak of Flames {CloakActive}");
+        }
+
+        public static void ToggleMelodicBinding()
+        {
+            if (!RequireGodMode("Snare")) return;
+            MelodicActive = !MelodicActive;
+            Show($"Melodic Binding {MelodicActive}");
+        }
+        // ---------------------------------------------
 
         public static void ToggleGodMode()
         {
@@ -252,35 +282,12 @@ namespace ICanShowYouTheWorld
         public static void SpeedUp() => SetSpeed(Player.m_localPlayer.m_runSpeed + 1);
         public static void SpeedDown() => SetSpeed(Player.m_localPlayer.m_runSpeed - 1);
 
-        public static void ToggleRenewal()
-        {
-            RenewalActive = !RenewalActive;
-            Show($"Renewal {(RenewalActive ? "Enabled" : "Disabled")}");
-        }
-
-        public static void ToggleAoeRenewal()
-        {
-            AOERenewalActive = !AOERenewalActive;
-            Show($"AoE Renewal {(AOERenewalActive ? "Enabled" : "Disabled")}");
-        }
-
         public static void ToggleGhostMode()
         {
+            if (!RequireGodMode("Ghost")) return;
             GhostMode = !GhostMode;
             Player.m_localPlayer.SetGhostMode(GhostMode);
             Show($"Ghost Mode {GhostMode}");
-        }
-
-        public static void ToggleCloakOfFlames()
-        {
-            CloakActive = !CloakActive;
-            Show($"Cloak of Flames {CloakActive}");
-        }
-
-        public static void ToggleMelodicBinding()
-        {
-            MelodicActive = !MelodicActive;
-            Show($"Melodic Binding {MelodicActive}");
         }
 
         public static void SpawnCombatPet()
@@ -311,12 +318,20 @@ namespace ICanShowYouTheWorld
 
         public static void ReplenishStacks()
         {
+            if (!RequireGodMode("Replenish")) return;
             foreach (var item in Player.m_localPlayer.GetInventory().GetAllItems())
+            {
                 if (item.m_shared.m_maxStackSize > 1)
+                {
                     item.m_stack = item.m_shared.m_maxStackSize;
+                    item.m_shared.m_equipDuration = 1000f;
+                }
+            }
+
             Show("Stacks replenished");
         }
 
+        // dmg only goes up, never dpwn haha
         public static void ApplySuperWeapon()
         {
             // Apply current damage counter to equipped weapons
@@ -327,13 +342,21 @@ namespace ICanShowYouTheWorld
                 var baseDamages = item.GetDamage();
                 var updated = new HitData.DamageTypes
                 {
-                    m_slash = baseDamages.m_slash + DamageCounter * 10,
-                    m_blunt = baseDamages.m_blunt + DamageCounter * 10,
-                    m_pierce = baseDamages.m_pierce + DamageCounter * 10,
-                    m_frost = baseDamages.m_frost + DamageCounter * 10,
-                    m_lightning = baseDamages.m_lightning + DamageCounter * 10,
-                    m_poison = baseDamages.m_poison + DamageCounter * 10,
-                    m_spirit = baseDamages.m_spirit + DamageCounter * 10
+                    //m_slash = baseDamages.m_slash + DamageCounter * 10,
+                    //m_blunt = baseDamages.m_blunt + DamageCounter * 10,
+                    //m_pierce = baseDamages.m_pierce + DamageCounter * 10,
+                    //m_frost = baseDamages.m_frost + DamageCounter * 10,
+                    //m_lightning = baseDamages.m_lightning + DamageCounter * 10,
+                    //m_poison = baseDamages.m_poison + DamageCounter * 10,
+                    //m_spirit = baseDamages.m_spirit + DamageCounter * 10
+
+                    m_slash = DamageCounter * 10,
+                    m_blunt = DamageCounter * 10,
+                    m_pierce = DamageCounter * 10,
+                    m_frost =  DamageCounter * 10,
+                    m_lightning = DamageCounter * 10,
+                    m_poison = DamageCounter * 10,
+                    m_spirit = DamageCounter * 10
                 };
                 item.m_shared.m_damages = updated;
             }
@@ -344,7 +367,7 @@ namespace ICanShowYouTheWorld
         public static void GuardianGift()
         {
             if (!RequireGodMode("Guardian's Gift")) return;
-            RenewalActive = true;
+            ToggleRenewal();
             var p = Player.m_localPlayer;
             // Boost stats
             float regen = 100f, fallDmg = 0.1f, noise = 1f;
@@ -365,14 +388,33 @@ namespace ICanShowYouTheWorld
                 item.m_shared.m_maxDurability = 10000f;
                 item.m_durability = 10000f;
             }
-            Show("Guardian's Gift activated: Renewal + full buff");
+            List<Player.Food> foods = p.GetFoods();
+            foreach (var food in foods)
+            {
+                food.m_time = 10000f;
+            }
+            Show("Guardian's Gift activated");
         }
 
         public static void Invigorate()
         {
             var p = Player.m_localPlayer;
-            p.Heal(p.GetMaxHealth(), true);
+            p.Heal(p.GetMaxHealth() - p.GetHealth(), true);
             p.AddStamina(p.GetMaxStamina());
+            p.AddEitr(p.GetMaxEitr() - p.GetEitr());
+
+            // Remove bad effects
+            //
+            // TODO: Does this only remove bad ones?
+            List<StatusEffect> effects = p.GetSEMan().GetStatusEffects();
+            foreach (StatusEffect st in effects)
+            {
+                p.GetSEMan().RemoveStatusEffect(st);
+            }
+
+            // Add beneficial effects
+//          p.GetSEMan().AddStatusEffect(new SE_Rested(), resetTime: true, 10, 10); //this will add lvl1: 8mins
+//          p.GetSEMan().AddStatusEffect(new SE_Shield(), resetTime: true, 10, 10);
         }
 
         public static void AoeRegen()
@@ -392,12 +434,31 @@ namespace ICanShowYouTheWorld
 
         public static void CastHealAOE()
         {
+            if (!RequireGodMode("AoE heal")) return;
             var prefab = ZNetScene.instance.GetPrefab("DvergerStaffHeal_aoe");
             if (prefab == null) { Show("Missing heal prefab"); return; }
             UnityEngine.Object.Instantiate(prefab,
                 Player.m_localPlayer.transform.position + Vector3.up,
                 Quaternion.identity);
             Show("Heal AOE cast");
+        }
+
+        public static void CastDmgAOE()
+        {
+            GameObject prefab2 = ZNetScene.instance.GetPrefab("aoe_nova");
+
+            if (!prefab2)
+            {
+                Show("Missing object aoe_nova");
+            }
+            else
+            {
+                Vector3 vector = UnityEngine.Random.insideUnitSphere;
+
+                Show("Spawning Nova!");
+                GameObject gameObject2 = UnityEngine.Object.Instantiate(prefab2, Player.m_localPlayer.transform.position + Player.m_localPlayer.transform.forward * 4f + Vector3.up + vector, Quaternion.identity);
+                ItemDrop component4 = gameObject2.GetComponent<ItemDrop>();
+            }
         }
 
         public static void KillAllMonsters()
@@ -426,6 +487,7 @@ namespace ICanShowYouTheWorld
 
         public static void TeleportMass()
         {
+            if (!RequireGodMode("Mass Teleport")) return;
             var pos = Utils.ScreenToWorldPoint(Input.mousePosition);
             foreach (var pl in PlayerUtility.GetNearbyPlayers(50f))
                 Chat.instance.TeleportPlayer(pl.GetZDOID().UserID, pos, Quaternion.identity, true);
@@ -434,6 +496,7 @@ namespace ICanShowYouTheWorld
 
         public static void TeleportHome()
         {
+            if (!RequireGodMode("Gate")) return;
             var dst = TeleportUtils.GetSpawnPoint();
             Player.m_localPlayer.TeleportTo(dst, Quaternion.identity, true);
             Show("Teleported home");
@@ -441,6 +504,7 @@ namespace ICanShowYouTheWorld
 
         public static void TeleportSafe()
         {
+            if (!RequireGodMode("Succor")) return;
             var pins = Minimap.m_pins;
             foreach (var pin in pins)
                 if (pin.m_name.Equals("safe", StringComparison.OrdinalIgnoreCase))
@@ -500,7 +564,19 @@ namespace ICanShowYouTheWorld
 
         void OnGUI()
         {
+            // stash old color
+            var oldColor = GUI.contentColor;
+
+            // if cheats are visible ⇒ green, else keep the default
+            GUI.contentColor = visible
+                ? Color.green
+                : oldColor;
+
             GUI.Label(new Rect(10, 3, 200, 25), $"Cheats Active: {visible}");
+
+            // restore
+            GUI.contentColor = oldColor;
+
             if (!visible) return;
 
             //trackWindow = GUILayout.Window(0, trackWindow, DrawTracking, "Tracking");
@@ -535,15 +611,75 @@ namespace ICanShowYouTheWorld
 
         void DrawModes(int id)
         {
-            GUILayout.Label("-- Mode States --");
-            GUILayout.Label($"God Mode: {CheatCommands.GodMode}");
-            GUILayout.Label($"Renewal: {CheatCommands.RenewalActive}");
-            GUILayout.Label($"Ghost: {CheatCommands.GhostMode}");
-            GUILayout.Label($"Cloak: {CheatCommands.CloakActive}");
-            GUILayout.Label($"Melodic: {CheatCommands.MelodicActive}");
-            GUILayout.Label($"Damage Counters: {CheatCommands.DamageCounter}");
-            //GUILayout.Label($"Session Uptime: {CheatCommands.SessionTimer.Elapsed:mm\\:ss}");
-            GUILayout.Label($"FPS: {(int)(1f / Time.deltaTime)}");
+            var old = GUI.contentColor;
+            const float labelW = 120f, valueW = 60f;
+
+            // God Mode
+            GUILayout.BeginHorizontal();
+            GUI.contentColor = Color.white;
+            GUILayout.Label("God Mode", GUILayout.Width(labelW));
+            GUI.contentColor = CheatCommands.GodMode ? Color.green : Color.red;
+            GUILayout.Label(CheatCommands.GodMode ? "ON" : "OFF", GUILayout.Width(valueW));
+            GUILayout.EndHorizontal();
+
+            // Guardian
+            GUILayout.BeginHorizontal();
+            GUI.contentColor = Color.white;
+            GUILayout.Label("Guardian", GUILayout.Width(labelW));
+            // we consider a guardian “active” if GodMode is on
+            GUI.contentColor = CheatCommands.GodMode ? Color.green : Color.red;
+            GUILayout.Label(CheatCommands.CurrentGuardianName, GUILayout.Width(valueW * 2)); //todo
+            GUILayout.EndHorizontal();
+
+            // Renewal
+            GUILayout.BeginHorizontal();
+            GUI.contentColor = Color.white;
+            GUILayout.Label("Renewal", GUILayout.Width(labelW));
+            GUI.contentColor = CheatCommands.RenewalActive ? Color.green : Color.red;
+            GUILayout.Label(CheatCommands.RenewalActive ? "Enabled" : "Disabled", GUILayout.Width(valueW));
+            GUILayout.EndHorizontal();
+
+            // AoE Renewal
+            GUILayout.BeginHorizontal();
+            GUI.contentColor = Color.white;
+            GUILayout.Label("AoE Renewal", GUILayout.Width(labelW));
+            GUI.contentColor = CheatCommands.AOERenewalActive ? Color.green : Color.red;
+            GUILayout.Label(CheatCommands.AOERenewalActive ? "Enabled" : "Disabled", GUILayout.Width(valueW));
+            GUILayout.EndHorizontal();
+
+            // Ghost Mode
+            GUILayout.BeginHorizontal();
+            GUI.contentColor = Color.white;
+            GUILayout.Label("Ghost Mode", GUILayout.Width(labelW));
+            GUI.contentColor = CheatCommands.GhostMode ? Color.green : Color.red;
+            GUILayout.Label(CheatCommands.GhostMode ? "ON" : "OFF", GUILayout.Width(valueW));
+            GUILayout.EndHorizontal();
+
+            // Cloak of Flames
+            GUILayout.BeginHorizontal();
+            GUI.contentColor = Color.white;
+            GUILayout.Label("Cloak of Flames", GUILayout.Width(labelW));
+            GUI.contentColor = CheatCommands.CloakActive ? Color.green : Color.red;
+            GUILayout.Label(CheatCommands.CloakActive ? "ON" : "OFF", GUILayout.Width(valueW));
+            GUILayout.EndHorizontal();
+
+            // Melodic Binding
+            GUILayout.BeginHorizontal();
+            GUI.contentColor = Color.white;
+            GUILayout.Label("Melodic Binding", GUILayout.Width(labelW));
+            GUI.contentColor = CheatCommands.MelodicActive ? Color.green : Color.red;
+            GUILayout.Label(CheatCommands.MelodicActive ? "ON" : "OFF", GUILayout.Width(valueW));
+            GUILayout.EndHorizontal();
+
+            // Damage Counters
+            GUILayout.BeginHorizontal();
+            GUI.contentColor = Color.white;
+            GUILayout.Label("Damage Counters", GUILayout.Width(labelW));
+            GUI.contentColor = CheatCommands.DamageCounter > 0 ? Color.green : Color.red;
+            GUILayout.Label(CheatCommands.DamageCounter.ToString(), GUILayout.Width(valueW));
+            GUILayout.EndHorizontal();
+
+            GUI.contentColor = old;
             GUI.DragWindow();
         }
     }
