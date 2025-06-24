@@ -48,6 +48,20 @@ namespace ICanShowYouTheWorld
         }
     }
 
+    public class CommandBinding
+    {
+        public KeyCode Key;          // the hotkey
+        public string Description;  // what appears in the UI
+        public Action Execute;      // what to run on keypress
+        public Func<bool> GetState;    // how to know if it’s “on” (optional)
+    }
+
+    public static class CommandRegistry
+    {
+        // The one-and-only list of all commands:
+        public static readonly List<CommandBinding> All = new List<CommandBinding>();
+    }
+
     // Central controller: sets up input mappings and triggers periodic cheats
     // Central controller: registers hotkeys and drives per-frame updates
     public class CheatController : MonoBehaviour
@@ -58,56 +72,106 @@ namespace ICanShowYouTheWorld
         {
             inputManager = new InputManager();
 
-            // UI
-            inputManager.Register(KeyCode.F1, () => UIManager.Instance.ToggleVisible());
+            // Build and register all your commands in one place:
+            var commands = new[]
+            {
+                new CommandBinding {
+                    Key         = KeyCode.F1,
+                    Description = "Toggle Cheat Window",
+                    Execute     = () => UIManager.Instance.ToggleVisible(),
+                    GetState    = () => true
+                },
+                new CommandBinding {
+                    Key         = KeyCode.Keypad0,
+                    Description = "God Mode",
+                    Execute     = CheatCommands.ToggleGodMode,
+                    GetState    = () => CheatCommands.GodMode
+                },
+                new CommandBinding {
+                    Key         = KeyCode.Keypad1,
+                    Description = "Guardian Gift",
+                    Execute     = CheatCommands.GuardianGift,
+                    GetState    = () => CheatCommands.GiftActive
+                },
+                new CommandBinding {
+                    Key         = KeyCode.Keypad2,
+                    Description = "Renewal",
+                    Execute     = CheatCommands.ToggleRenewal,
+                    GetState    = () => CheatCommands.RenewalActive
+                },
+                new CommandBinding {
+                    Key         = KeyCode.Keypad3,
+                    Description = "AoE Renewal",
+                    Execute     = CheatCommands.ToggleAoeRenewal,
+                    GetState    = () => CheatCommands.AOERenewalActive
+                },
+                new CommandBinding {
+                    Key         = KeyCode.Keypad4,
+                    Description = "Cloak of Flames",
+                    Execute     = CheatCommands.ToggleCloakOfFlames,
+                    GetState    = () => CheatCommands.CloakActive
+                },
+                new CommandBinding {
+                    Key         = KeyCode.Keypad6,
+                    Description = "Replenish Stacks",
+                    Execute     = CheatCommands.ReplenishStacks,
+                },
+                new CommandBinding {
+                    Key         = KeyCode.Keypad7,
+                    Description = "Ghost Mode",
+                    Execute     = CheatCommands.ToggleGhostMode,
+                    GetState    = () => CheatCommands.GhostMode
+                },
+                new CommandBinding {
+                    Key         = KeyCode.Keypad8,
+                    Description = "Combat pet",
+                    Execute     = CheatCommands.SpawnCombatPet
+                },
+                new CommandBinding {
+                    Key         = KeyCode.Keypad9,
+                    Description = "Tame All",
+                    Execute     = CheatCommands.TameAll
+                },
+                new CommandBinding {
+                    Key         = KeyCode.PageUp,
+                    Description = "+Speed",
+                    Execute     = CheatCommands.SpeedUp
+                },
+                new CommandBinding {
+                    Key         = KeyCode.PageDown,
+                    Description = "-Speed",
+                    Execute     = CheatCommands.SpeedDown
+                },
+                new CommandBinding {
+                    Key         = KeyCode.RightArrow,
+                    Description = "+Damage",
+                    Execute     = CheatCommands.IncreaseDamageCounter
+                },
+                new CommandBinding {
+                    Key         = KeyCode.LeftArrow,
+                    Description = "-Damage",
+                    Execute     = CheatCommands.DecreaseDamageCounter
+                }
 
-            // Bosses & exploration
-            inputManager.Register(KeyCode.F10, CheatCommands.RevealBosses);
-            inputManager.Register(KeyCode.F6, CheatCommands.ToggleGuardianPower);
-            inputManager.Register(KeyCode.F7, CheatCommands.ExploreAll);
-
-            // Healing & damage
-            inputManager.Register(KeyCode.UpArrow, CheatCommands.Invigorate);
-            inputManager.Register(KeyCode.LeftArrow, CheatCommands.DecreaseDamageCounter);
-            inputManager.Register(KeyCode.RightArrow, CheatCommands.IncreaseDamageCounter);
-            inputManager.Register(KeyCode.DownArrow, CheatCommands.KillAllMonsters);
-
-            // Teleports
-            inputManager.Register(KeyCode.Insert, CheatCommands.TeleportSolo);
-            inputManager.Register(KeyCode.Delete, CheatCommands.TeleportMass);
-            inputManager.Register(KeyCode.Home, CheatCommands.TeleportHome);
-            inputManager.Register(KeyCode.End, CheatCommands.TeleportSafe);
-            // Movement speed
-            inputManager.Register(KeyCode.PageUp, CheatCommands.SpeedUp);
-            inputManager.Register(KeyCode.PageDown, CheatCommands.SpeedDown);
-
-            // ---------------------------------
-            // Keypad 
-            inputManager.Register(KeyCode.Keypad0, CheatCommands.ToggleGodMode); // Toggle Modes: God, Builder, Beast Master
-            //1-3
-
-            inputManager.Register(KeyCode.Keypad1, CheatCommands.GuardianGift);
-            inputManager.Register(KeyCode.Keypad2, CheatCommands.ToggleRenewal);
-            inputManager.Register(KeyCode.Keypad3, CheatCommands.ToggleAoeRenewal);
-
-            //4-6
-            inputManager.Register(KeyCode.Keypad4, CheatCommands.ToggleCloakOfFlames);
-            //5
-            inputManager.Register(KeyCode.Keypad6, CheatCommands.ReplenishStacks);
-
-            //7-9
-            inputManager.Register(KeyCode.Keypad7, CheatCommands.ToggleGhostMode);
-            inputManager.Register(KeyCode.Keypad8, CheatCommands.SpawnCombatPet);
-            inputManager.Register(KeyCode.Keypad9, CheatCommands.TameAll);
-
-            // extra
+                /* 
+                  // extra
             inputManager.Register(KeyCode.KeypadEnter, CheatCommands.CastHealAOE);
             inputManager.Register(KeyCode.KeypadPlus, CheatCommands.CastDmgAOE);
             inputManager.Register(KeyCode.KeypadMinus, CheatCommands.CastHealAOE);
             inputManager.Register(KeyCode.KeypadDivide, CheatCommands.ToggleGhostMode);
             inputManager.Register(KeyCode.KeypadMultiply, CheatCommands.ToggleGhostMode);
-            inputManager.Register(KeyCode.KeypadPeriod, CheatCommands.ToggleGhostMode);
-            
+            inputManager.Register(KeyCode.KeypadPeriod, CheatCommands.ToggleGhostMode);                 
+                 */
+            };
+
+            foreach (var cmd in commands)
+            {
+                // register in the global registry…
+                CommandRegistry.All.Add(cmd);
+
+                // …and hook into input handling
+                inputManager.Register(cmd.Key, cmd.Execute);
+            }            
         }
 
         void Update()
@@ -176,12 +240,14 @@ namespace ICanShowYouTheWorld
         public static bool GhostMode { get; private set; }
         public static bool CloakActive { get; private set; }
         public static bool MelodicActive { get; private set; }
+        public static bool GiftActive { get; private set; }
 
         private static int guardianIndex = 0;
         public static int DamageCounter { get; private set; }
         public static string CurrentGuardianName => guardians[guardianIndex];
         private static readonly string[] guardians = { "GP_Eikthyr", "GP_Bonemass", "GP_Moder", "GP_Yagluth", "GP_Fader" };
-        private static readonly string[] combatPets = { "Wolf", "DvergerMageSupport" };
+        // private static readonly string[] combatPets = { "Wolf", "DvergerMageSupport" };
+        private static readonly string[] combatPets = { "Skeleton_Friendly" };
         private static readonly string[] petNames = { "Bob", "Ralf", "Liam", "Olivia", "Elijah" /*...*/ };
 
         static CheatCommands()
@@ -302,6 +368,9 @@ namespace ICanShowYouTheWorld
             var inst = UnityEngine.Object.Instantiate(p, pos, Quaternion.identity);
             var ch = inst.GetComponent<Character>();
             ch.SetLevel(3);
+            ch.GetComponent<Character>().SetMaxHealth(10000);
+            ch.GetComponent<Character>().SetHealth(10000);
+            ch.GetComponent<MonsterAI>().SetFollowTarget(Player.m_localPlayer.gameObject);
             ch.m_name = petNames[rnd.Next(petNames.Length)];
             //tame it
             Tameable.TameAllInArea(Player.m_localPlayer.transform.position, 30.0f);
@@ -342,14 +411,6 @@ namespace ICanShowYouTheWorld
                 var baseDamages = item.GetDamage();
                 var updated = new HitData.DamageTypes
                 {
-                    //m_slash = baseDamages.m_slash + DamageCounter * 10,
-                    //m_blunt = baseDamages.m_blunt + DamageCounter * 10,
-                    //m_pierce = baseDamages.m_pierce + DamageCounter * 10,
-                    //m_frost = baseDamages.m_frost + DamageCounter * 10,
-                    //m_lightning = baseDamages.m_lightning + DamageCounter * 10,
-                    //m_poison = baseDamages.m_poison + DamageCounter * 10,
-                    //m_spirit = baseDamages.m_spirit + DamageCounter * 10
-
                     m_slash = DamageCounter * 10,
                     m_blunt = DamageCounter * 10,
                     m_pierce = DamageCounter * 10,
@@ -366,6 +427,7 @@ namespace ICanShowYouTheWorld
         // Guardian's Gift: major buff including Renewal
         public static void GuardianGift()
         {
+            GiftActive = true; // can't disable
             if (!RequireGodMode("Guardian's Gift")) return;
             ToggleRenewal();
             var p = Player.m_localPlayer;
@@ -572,7 +634,7 @@ namespace ICanShowYouTheWorld
                 ? Color.green
                 : oldColor;
 
-            GUI.Label(new Rect(10, 3, 200, 25), $"Cheats Active: {visible}");
+//            GUI.Label(new Rect(10, 3, 200, 25), $"Cheats Active: {visible}");
 
             // restore
             GUI.contentColor = oldColor;
@@ -611,75 +673,28 @@ namespace ICanShowYouTheWorld
 
         void DrawModes(int id)
         {
-            var old = GUI.contentColor;
-            const float labelW = 120f, valueW = 60f;
+            var oldColor = GUI.contentColor;
+            const float labelW = 180f, valueW = 60f;
 
-            // God Mode
-            GUILayout.BeginHorizontal();
-            GUI.contentColor = Color.white;
-            GUILayout.Label("God Mode", GUILayout.Width(labelW));
-            GUI.contentColor = CheatCommands.GodMode ? Color.green : Color.red;
-            GUILayout.Label(CheatCommands.GodMode ? "ON" : "OFF", GUILayout.Width(valueW));
-            GUILayout.EndHorizontal();
+            foreach (var cmd in CommandRegistry.All)
+            {
+                bool isOn = cmd.GetState?.Invoke() ?? false;
 
-            // Guardian
-            GUILayout.BeginHorizontal();
-            GUI.contentColor = Color.white;
-            GUILayout.Label("Guardian", GUILayout.Width(labelW));
-            // we consider a guardian “active” if GodMode is on
-            GUI.contentColor = CheatCommands.GodMode ? Color.green : Color.red;
-            GUILayout.Label(CheatCommands.CurrentGuardianName, GUILayout.Width(valueW * 2)); //todo
-            GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                GUI.contentColor = Color.white;
+                GUILayout.Label($"{cmd.Description} ({cmd.Key})", GUILayout.Width(labelW));
 
-            // Renewal
-            GUILayout.BeginHorizontal();
-            GUI.contentColor = Color.white;
-            GUILayout.Label("Renewal", GUILayout.Width(labelW));
-            GUI.contentColor = CheatCommands.RenewalActive ? Color.green : Color.red;
-            GUILayout.Label(CheatCommands.RenewalActive ? "Enabled" : "Disabled", GUILayout.Width(valueW));
-            GUILayout.EndHorizontal();
+                // only draw an ON/OFF if GetState was provided
+                if (cmd.GetState != null)
+                {
+                    bool state = cmd.GetState();
+                    GUI.contentColor = state ? Color.green : Color.red;
+                    GUILayout.Label(state ? "ON" : "OFF", GUILayout.Width(valueW));
+                }
+                GUILayout.EndHorizontal();
+            }
 
-            // AoE Renewal
-            GUILayout.BeginHorizontal();
-            GUI.contentColor = Color.white;
-            GUILayout.Label("AoE Renewal", GUILayout.Width(labelW));
-            GUI.contentColor = CheatCommands.AOERenewalActive ? Color.green : Color.red;
-            GUILayout.Label(CheatCommands.AOERenewalActive ? "Enabled" : "Disabled", GUILayout.Width(valueW));
-            GUILayout.EndHorizontal();
-
-            // Ghost Mode
-            GUILayout.BeginHorizontal();
-            GUI.contentColor = Color.white;
-            GUILayout.Label("Ghost Mode", GUILayout.Width(labelW));
-            GUI.contentColor = CheatCommands.GhostMode ? Color.green : Color.red;
-            GUILayout.Label(CheatCommands.GhostMode ? "ON" : "OFF", GUILayout.Width(valueW));
-            GUILayout.EndHorizontal();
-
-            // Cloak of Flames
-            GUILayout.BeginHorizontal();
-            GUI.contentColor = Color.white;
-            GUILayout.Label("Cloak of Flames", GUILayout.Width(labelW));
-            GUI.contentColor = CheatCommands.CloakActive ? Color.green : Color.red;
-            GUILayout.Label(CheatCommands.CloakActive ? "ON" : "OFF", GUILayout.Width(valueW));
-            GUILayout.EndHorizontal();
-
-            // Melodic Binding
-            GUILayout.BeginHorizontal();
-            GUI.contentColor = Color.white;
-            GUILayout.Label("Melodic Binding", GUILayout.Width(labelW));
-            GUI.contentColor = CheatCommands.MelodicActive ? Color.green : Color.red;
-            GUILayout.Label(CheatCommands.MelodicActive ? "ON" : "OFF", GUILayout.Width(valueW));
-            GUILayout.EndHorizontal();
-
-            // Damage Counters
-            GUILayout.BeginHorizontal();
-            GUI.contentColor = Color.white;
-            GUILayout.Label("Damage Counters", GUILayout.Width(labelW));
-            GUI.contentColor = CheatCommands.DamageCounter > 0 ? Color.green : Color.red;
-            GUILayout.Label(CheatCommands.DamageCounter.ToString(), GUILayout.Width(valueW));
-            GUILayout.EndHorizontal();
-
-            GUI.contentColor = old;
+            GUI.contentColor = oldColor;
             GUI.DragWindow();
         }
     }
