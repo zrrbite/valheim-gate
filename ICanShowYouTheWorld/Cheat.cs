@@ -719,16 +719,24 @@ namespace ICanShowYouTheWorld
     {
         public static UIManager Instance { get; private set; }
         private bool visible;
-        private Rect trackWindow = new Rect(150, Screen.height - 250, 250, 150);
+        const float TW = 350f, TH = 250f;
         const float modeWidth = 350f;
         const float modeHeight = 550f;
+
+        //private Rect trackWindow = new Rect(250, Screen.height - 250, 250, 150);
+        private Rect trackWindow = new Rect(
+            250,
+            Screen.height - TH - 20f,
+            TW,
+            TH
+        );
+
         private Rect modeWindow = new Rect(
             Screen.width - modeWidth,  // x
-            Screen.height - modeHeight - 100f, // Margin from bottom
+            Screen.height - modeHeight - 200f, // Margin from bottom
             modeWidth,                  // width
             modeHeight                  // height
         );
-        private Rect actionWindow = new Rect(Screen.width - modeWidth, 460, 300, 200);
 
         void Awake() => Instance = this;
 
@@ -752,12 +760,15 @@ namespace ICanShowYouTheWorld
             if (!visible) return;
 
             //trackWindow = GUILayout.Window(0, trackWindow, DrawTracking, "Tracking");
+
+          
             trackWindow = GUILayout.Window(
                 0,
                 trackWindow,
                 DrawTracking,
                 "Tracking",
-                GUILayout.Width(300)
+                GUILayout.MinWidth(TW),
+                GUILayout.MinHeight(TH)
             );
             modeWindow = GUILayout.Window(
                 1,
@@ -776,7 +787,7 @@ namespace ICanShowYouTheWorld
 
             foreach (var c in list)
             {
-                if (!c.IsPlayer())
+                if (!c.IsPlayer() && !c.IsTamed())
                 {
                     float dist = Utils.DistanceXZ(c.transform.position, player.transform.position);
                     float hpPct = c.GetHealthPercentage() * 100f;
@@ -789,6 +800,11 @@ namespace ICanShowYouTheWorld
 
         void DrawModes(int id)
         {
+            // 1) Opaque dark backdrop
+            GUI.backgroundColor = new Color(0f, 0f, 0f, 0.8f);
+            GUI.Box(new Rect(0, 0, modeWindow.width, modeWindow.height), GUIContent.none);
+            GUI.backgroundColor = Color.white;
+
             // precompute styles
             var descStyle = new GUIStyle(GUI.skin.label)
             {
