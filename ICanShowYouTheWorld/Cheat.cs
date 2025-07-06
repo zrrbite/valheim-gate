@@ -802,9 +802,9 @@ namespace ICanShowYouTheWorld
             });
 
             // column widths (tweak as needed)
-            const float nameW = 120f;
-            const float distW = 60f;
-            const float hpW = 60f;
+            const float nameW = 160f;
+            const float distW = 50f;
+            const float hpW = 50f;
 
             var oldColor = GUI.contentColor;
             foreach (var c in list)
@@ -865,7 +865,7 @@ namespace ICanShowYouTheWorld
 
             // column widths
             const float descW = 160f;  // enough room for your longest description
-            const float keyW = 70f;   // enough room for "(RightArrow)" etc.
+            const float keyW = 85f;   // enough room for "(RightArrow)" etc.
             const float valueW = 50f;   // "ON"/"OFF"
 
             foreach (var cmd in CommandRegistry.All)
