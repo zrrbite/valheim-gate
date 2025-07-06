@@ -451,12 +451,12 @@ namespace ICanShowYouTheWorld
             var inst = UnityEngine.Object.Instantiate(p, pos, Quaternion.identity);
             var ch = inst.GetComponent<Character>();
             ch.SetLevel(3);
-            ch.GetComponent<Character>().SetMaxHealth(10000);
-            ch.GetComponent<Character>().SetHealth(10000);
+            ch.GetComponent<Character>().SetMaxHealth(2000);
+            ch.GetComponent<Character>().SetHealth(2000);
             ch.GetComponent<MonsterAI>().SetFollowTarget(Player.m_localPlayer.gameObject);
             ch.m_name = petNames[rnd.Next(petNames.Length)];
             //tame it
-            Tameable.TameAllInArea(Player.m_localPlayer.transform.position, 30.0f);
+            Tameable.TameAllInArea(Player.m_localPlayer.transform.position, 20.0f);
 
             Show($"Spawned pet: {ch.m_name}");
         }
