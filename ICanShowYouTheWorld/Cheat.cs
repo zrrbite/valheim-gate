@@ -475,9 +475,9 @@ namespace ICanShowYouTheWorld
                 if (item.IsPlayer()) continue;
                 if (!item.IsTamed()) continue;
 
-                item.SetLevel(3); //Hmm, its kind of interesting that we could runtime just increase the level of mobs already in the world.
-                item.GetComponent<Character>().SetMaxHealth(10000);
-                item.GetComponent<Character>().SetHealth(10000);
+                //item.SetLevel(3); //Hmm, its kind of interesting that we could runtime just increase the level of mobs already in the world.
+                //item.GetComponent<Character>().SetMaxHealth(10000);
+                //item.GetComponent<Character>().SetHealth(10000);
                 item.GetComponent<MonsterAI>().SetFollowTarget(Player.m_localPlayer.gameObject);
             }
 
