@@ -320,8 +320,8 @@ namespace ICanShowYouTheWorld
         public static int DamageCounter { get; private set; }
         public static string CurrentGuardianName => guardians[guardianIndex];
         private static readonly string[] guardians = { "GP_Eikthyr", "GP_Bonemass", "GP_Moder", "GP_Yagluth", "GP_Fader" };
-        // private static readonly string[] combatPets = { "Wolf", "DvergerMageSupport" }; //AskSvin
-        private static readonly string[] combatPets = { "Skeleton_Friendly", "Asksvin" };
+        // private static readonly string[] combatPets = { "Wolf", "DvergerMageSupport", "Asksvin" }; //AskSvin
+        private static readonly string[] combatPets = { "Skeleton_Friendly" };
         private static readonly string[] petNames = { "Bob", "Ralf", "Liam", "Olivia", "Elijah" /*...*/ };
 
         static CheatCommands()
@@ -716,7 +716,7 @@ namespace ICanShowYouTheWorld
         const float modeHeight = 550f;
         private Rect modeWindow = new Rect(
             Screen.width - modeWidth,  // x
-            Screen.height - modeHeight - 50f, // Margin from bottom
+            Screen.height - modeHeight - 100f, // Margin from bottom
             modeWidth,                  // width
             modeHeight                  // height
         );
