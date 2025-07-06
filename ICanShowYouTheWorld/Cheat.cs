@@ -464,15 +464,18 @@ namespace ICanShowYouTheWorld
         public static void TameAll()
         {
             if (!RequireGodMode("Tame all")) return;
-            Tameable.TameAllInArea(Player.m_localPlayer.transform.position, 30f);
+            Tameable.TameAllInArea(Player.m_localPlayer.transform.position, 100.0f);
 
             List<Character> list = new List<Character>();
-            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 30.0f, list);
+            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 100.0f, list);
 
             // set follow
             foreach (Character item in list)
             {
-                item.SetLevel(3);
+                if (item.IsPlayer()) continue;
+                if (!item.IsTamed()) continue;
+
+                item.SetLevel(3); //Hmm, its kind of interesting that we could runtime just increase the level of mobs already in the world.
                 item.GetComponent<Character>().SetMaxHealth(10000);
                 item.GetComponent<Character>().SetHealth(10000);
                 item.GetComponent<MonsterAI>().SetFollowTarget(Player.m_localPlayer.gameObject);
@@ -584,14 +587,14 @@ namespace ICanShowYouTheWorld
         public static void AoeRegen()
         {
             List<Character> list = new List<Character>();
-            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 30.0f, list);
+            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 100.0f, list);
 
             foreach (Character entity in list)
             {
                 if ((entity.IsPlayer() || entity.IsTamed()) && entity.GetHoverName() != Player.m_localPlayer.GetHoverName() && entity.GetHealthPercentage() < 0.75f)
                 {
                     Show(entity.GetHoverName() + " at " + Math.Floor(entity.GetHealthPercentage() * 100) + "%. Healing.");
-                    entity.Heal(25.0f, false); // don't show it.
+                    entity.Heal(25.0f, false); // don't show it. shh
                 }
             }
         }
