@@ -789,8 +789,32 @@ namespace ICanShowYouTheWorld
 
         void DrawModes(int id)
         {
+            // precompute styles
+            var descStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontStyle = FontStyle.Bold,
+                normal = { textColor = Color.grey }
+            };
+            var keyStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontStyle = FontStyle.Normal,
+                normal = { textColor = Color.yellow }
+            };
+            var onStyle = new GUIStyle(GUI.skin.label)
+            {
+                normal = { textColor = Color.green }
+            };
+            var offStyle = new GUIStyle(GUI.skin.label)
+            {
+                normal = { textColor = Color.red }
+            };
+
             var oldColor = GUI.contentColor;
-            const float labelW = 180f;
+
+            // column widths
+            const float descW = 160f;  // enough room for your longest description
+            const float keyW = 70f;   // enough room for "(RightArrow)" etc.
+            const float valueW = 50f;   // "ON"/"OFF"
 
             foreach (var cmd in CommandRegistry.All)
             {
@@ -799,22 +823,23 @@ namespace ICanShowYouTheWorld
 
                 GUILayout.BeginHorizontal();
 
-                // 1) description in white
-                GUI.contentColor = Color.white;
-                GUILayout.Label(cmd.Description, GUILayout.ExpandWidth(false));
+                // 1) Description
+                GUILayout.Label(cmd.Description, descStyle, GUILayout.Width(descW));
 
-                // 2) key in cyan, right after description
-                GUI.contentColor = Color.cyan;
-                GUILayout.Label($"({cmd.Key})", GUILayout.ExpandWidth(false));
+                // 2) Key
+                GUILayout.Label($"({cmd.Key})", keyStyle, GUILayout.Width(keyW));
 
-                // 3) push value to the right
+                // 3) push the value to the far right
                 GUILayout.FlexibleSpace();
 
-                // 4) ON/OFF only if you have a state-getter
+                // 4) ON/OFF only if there's a state-getter
                 if (hasState)
                 {
-                    GUI.contentColor = isOn ? Color.green : Color.red;
-                    GUILayout.Label(isOn ? "ON" : "OFF", GUILayout.ExpandWidth(false));
+                    GUILayout.Label(
+                        isOn ? "ON" : "OFF",
+                        isOn ? onStyle : offStyle,
+                        GUILayout.Width(valueW)
+                    );
                 }
 
                 GUILayout.EndHorizontal();
