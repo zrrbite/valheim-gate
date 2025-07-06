@@ -184,7 +184,16 @@ namespace ICanShowYouTheWorld
                     Description = "Guardian Power",
                     Execute     = CheatCommands.ToggleGuardianPower,
                 },
-
+                new CommandBinding {
+                    Key         = KeyCode.F7,
+                    Description = "Revea; bosses",
+                    Execute     = CheatCommands.RevealBosses,
+                },
+                new CommandBinding {
+                    Key         = KeyCode.F8,
+                    Description = "Reveal map",
+                    Execute     = CheatCommands.ExploreAll,
+                },
            // inputManager.Register(KeyCode.End, CheatCommands.TeleportSafe);
         // Bosses & exploration
        // /inputManager.Register(KeyCode.F10, CheatCommands.RevealBosses);
@@ -552,25 +561,24 @@ namespace ICanShowYouTheWorld
 
         public static void Invigorate()
         {
-            if (!RequireGodMode("Invigorate")) return;
-            Show("Invigorate");
-            var p = Player.m_localPlayer;
-            p.Heal(p.GetMaxHealth() - p.GetHealth(), true);
-            p.AddStamina(p.GetMaxStamina());
-            p.AddEitr(p.GetMaxEitr() - p.GetEitr());
+           
+                var p = Player.m_localPlayer;
+                p.Heal(p.GetMaxHealth() - p.GetHealth(), true);
+                p.AddStamina(p.GetMaxStamina());
+                p.AddEitr(p.GetMaxEitr() - p.GetEitr());
 
-            // Remove bad effects
-            //
-            // TODO: Does this only remove bad ones?
-            List<StatusEffect> effects = p.GetSEMan().GetStatusEffects();
-            foreach (StatusEffect st in effects)
-            {
-                p.GetSEMan().RemoveStatusEffect(st);
-            }
+                // Remove bad effects
+                //
+                // TODO: Does this only remove bad ones?
+                List<StatusEffect> effects = p.GetSEMan().GetStatusEffects();
+                foreach (StatusEffect st in effects)
+                {
+                    p.GetSEMan().RemoveStatusEffect(st);
+                }
 
-            // Add beneficial effects
-//          p.GetSEMan().AddStatusEffect(new SE_Rested(), resetTime: true, 10, 10); //this will add lvl1: 8mins
-//          p.GetSEMan().AddStatusEffect(new SE_Shield(), resetTime: true, 10, 10);
+                // Add beneficial effects
+                //          p.GetSEMan().AddStatusEffect(new SE_Rested(), resetTime: true, 10, 10); //this will add lvl1: 8mins
+                //          p.GetSEMan().AddStatusEffect(new SE_Shield(), resetTime: true, 10, 10);
         }
 
         public static void AoeRegen()
