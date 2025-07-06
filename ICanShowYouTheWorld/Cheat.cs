@@ -72,6 +72,7 @@ namespace ICanShowYouTheWorld
         {
             inputManager = new InputManager();
 
+            //TODO: We need two windows. one for modes and one for commands.
             // Build and register all your commands in one place:
             var commands = new[]
             {
@@ -154,7 +155,48 @@ namespace ICanShowYouTheWorld
                 }
 
                 /* 
-                  // extra
+                  
+            // Bosses & exploration
+            inputManager.Register(KeyCode.F10, CheatCommands.RevealBosses);
+            inputManager.Register(KeyCode.F6, CheatCommands.ToggleGuardianPower);
+            inputManager.Register(KeyCode.F7, CheatCommands.ExploreAll);
+
+            // Healing & damage
+            inputManager.Register(KeyCode.UpArrow, CheatCommands.Invigorate);
+            inputManager.Register(KeyCode.LeftArrow, CheatCommands.DecreaseDamageCounter);
+            inputManager.Register(KeyCode.RightArrow, CheatCommands.IncreaseDamageCounter);
+            inputManager.Register(KeyCode.DownArrow, CheatCommands.KillAllMonsters);
+
+            // Teleports
+            inputManager.Register(KeyCode.Insert, CheatCommands.TeleportSolo);
+            inputManager.Register(KeyCode.Delete, CheatCommands.TeleportMass);
+            inputManager.Register(KeyCode.Home, CheatCommands.TeleportHome);
+            inputManager.Register(KeyCode.End, CheatCommands.TeleportSafe);
+            // Movement speed
+            inputManager.Register(KeyCode.PageUp, CheatCommands.SpeedUp);
+            inputManager.Register(KeyCode.PageDown, CheatCommands.SpeedDown);
+
+            // ---------------------------------
+            // Keypad 
+            inputManager.Register(KeyCode.Keypad0, CheatCommands.ToggleGodMode); // Toggle Modes: God, Builder, Beast Master
+            //1-3
+
+            inputManager.Register(KeyCode.Keypad1, CheatCommands.GuardianGift);
+            inputManager.Register(KeyCode.Keypad2, CheatCommands.ToggleRenewal);
+            inputManager.Register(KeyCode.Keypad3, CheatCommands.ToggleAoeRenewal);
+
+            //4-6
+            inputManager.Register(KeyCode.Keypad4, CheatCommands.ToggleCloakOfFlames);
+            //5
+            inputManager.Register(KeyCode.Keypad6, CheatCommands.ReplenishStacks);
+
+            //7-9
+            inputManager.Register(KeyCode.Keypad7, CheatCommands.ToggleGhostMode);
+            inputManager.Register(KeyCode.Keypad8, CheatCommands.SpawnCombatPet);
+            inputManager.Register(KeyCode.Keypad9, CheatCommands.TameAll);
+
+            // extra
+
             inputManager.Register(KeyCode.KeypadEnter, CheatCommands.CastHealAOE);
             inputManager.Register(KeyCode.KeypadPlus, CheatCommands.CastDmgAOE);
             inputManager.Register(KeyCode.KeypadMinus, CheatCommands.CastHealAOE);
@@ -618,7 +660,15 @@ namespace ICanShowYouTheWorld
         public static UIManager Instance { get; private set; }
         private bool visible;
         private Rect trackWindow = new Rect(150, Screen.height - 250, 250, 150);
-        private Rect modeWindow = new Rect(Screen.width - 220, Screen.height - 500, 220, 350);
+        const float modeWidth = 350f;
+        const float modeHeight = 450f;
+        private Rect modeWindow = new Rect(
+            Screen.width - modeWidth,  // x
+            Screen.height - modeHeight - 10f, // y (10px margin from bottom, for example)
+            modeWidth,                  // width
+            modeHeight                  // height
+        );
+        private Rect actionWindow = new Rect(Screen.width - modeWidth, 460, 300, 200);
 
         void Awake() => Instance = this;
 
@@ -649,7 +699,13 @@ namespace ICanShowYouTheWorld
                 "Tracking",
                 GUILayout.Width(300)
             );
-            modeWindow = GUILayout.Window(1, modeWindow, DrawModes, "Modes");
+            modeWindow = GUILayout.Window(
+                1,
+                modeWindow,
+                DrawModes,
+                "Modes",
+                GUILayout.MinWidth(modeWidth)
+            );
         }
 
         void DrawTracking(int id)
@@ -674,23 +730,33 @@ namespace ICanShowYouTheWorld
         void DrawModes(int id)
         {
             var oldColor = GUI.contentColor;
-            const float labelW = 180f, valueW = 60f;
+            const float labelW = 180f;
 
             foreach (var cmd in CommandRegistry.All)
             {
-                bool isOn = cmd.GetState?.Invoke() ?? false;
+                bool hasState = cmd.GetState != null;
+                bool isOn = hasState && cmd.GetState();
 
                 GUILayout.BeginHorizontal();
-                GUI.contentColor = Color.white;
-                GUILayout.Label($"{cmd.Description} ({cmd.Key})", GUILayout.Width(labelW));
 
-                // only draw an ON/OFF if GetState was provided
-                if (cmd.GetState != null)
+                // 1) description in white
+                GUI.contentColor = Color.white;
+                GUILayout.Label(cmd.Description, GUILayout.ExpandWidth(false));
+
+                // 2) key in cyan, right after description
+                GUI.contentColor = Color.cyan;
+                GUILayout.Label($"({cmd.Key})", GUILayout.ExpandWidth(false));
+
+                // 3) push value to the right
+                GUILayout.FlexibleSpace();
+
+                // 4) ON/OFF only if you have a state-getter
+                if (hasState)
                 {
-                    bool state = cmd.GetState();
-                    GUI.contentColor = state ? Color.green : Color.red;
-                    GUILayout.Label(state ? "ON" : "OFF", GUILayout.Width(valueW));
+                    GUI.contentColor = isOn ? Color.green : Color.red;
+                    GUILayout.Label(isOn ? "ON" : "OFF", GUILayout.ExpandWidth(false));
                 }
+
                 GUILayout.EndHorizontal();
             }
 
