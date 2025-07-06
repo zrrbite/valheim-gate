@@ -124,6 +124,16 @@ namespace ICanShowYouTheWorld
                     GetState    = () => CheatCommands.GhostMode
                 },
                 new CommandBinding {
+                    Key         = KeyCode.UpArrow,
+                    Description = "Invigorate",
+                    Execute     = CheatCommands.Invigorate
+                },
+                new CommandBinding {
+                    Key         = KeyCode.DownArrow,
+                    Description = "Kill em' all!",
+                    Execute     = CheatCommands.KillAllMonsters
+                },
+                new CommandBinding {
                     Key         = KeyCode.Keypad8,
                     Description = "Combat pet",
                     Execute     = CheatCommands.SpawnCombatPet
@@ -135,76 +145,89 @@ namespace ICanShowYouTheWorld
                 },
                 new CommandBinding {
                     Key         = KeyCode.PageUp,
-                    Description = "+Speed",
+                    Description = "++Speed",
                     Execute     = CheatCommands.SpeedUp
                 },
                 new CommandBinding {
                     Key         = KeyCode.PageDown,
-                    Description = "-Speed",
+                    Description = "--Speed",
                     Execute     = CheatCommands.SpeedDown
                 },
                 new CommandBinding {
                     Key         = KeyCode.RightArrow,
-                    Description = "+Damage",
+                    Description = "++Damage",
                     Execute     = CheatCommands.IncreaseDamageCounter
                 },
                 new CommandBinding {
                     Key         = KeyCode.LeftArrow,
-                    Description = "-Damage",
+                    Description = "--Damage",
                     Execute     = CheatCommands.DecreaseDamageCounter
+                },
+                //Teleport
+                new CommandBinding {
+                    Key         = KeyCode.Home,
+                    Description = "Gate",
+                    Execute     = CheatCommands.TeleportHome
+                },
+                new CommandBinding {
+                    Key         = KeyCode.Insert,
+                    Description = "Teleport",
+                    Execute     = CheatCommands.TeleportSolo
                 }
+            //inputManager.Register(KeyCode.Delete, CheatCommands.TeleportMass);
+           // inputManager.Register(KeyCode.End, CheatCommands.TeleportSafe);
 
-                /* 
-                  
-            // Bosses & exploration
-            inputManager.Register(KeyCode.F10, CheatCommands.RevealBosses);
-            inputManager.Register(KeyCode.F6, CheatCommands.ToggleGuardianPower);
-            inputManager.Register(KeyCode.F7, CheatCommands.ExploreAll);
+            /* 
 
-            // Healing & damage
-            inputManager.Register(KeyCode.UpArrow, CheatCommands.Invigorate);
-            inputManager.Register(KeyCode.LeftArrow, CheatCommands.DecreaseDamageCounter);
-            inputManager.Register(KeyCode.RightArrow, CheatCommands.IncreaseDamageCounter);
-            inputManager.Register(KeyCode.DownArrow, CheatCommands.KillAllMonsters);
+        // Bosses & exploration
+        inputManager.Register(KeyCode.F10, CheatCommands.RevealBosses);
+        inputManager.Register(KeyCode.F6, CheatCommands.ToggleGuardianPower);
+        inputManager.Register(KeyCode.F7, CheatCommands.ExploreAll);
 
-            // Teleports
-            inputManager.Register(KeyCode.Insert, CheatCommands.TeleportSolo);
-            inputManager.Register(KeyCode.Delete, CheatCommands.TeleportMass);
-            inputManager.Register(KeyCode.Home, CheatCommands.TeleportHome);
-            inputManager.Register(KeyCode.End, CheatCommands.TeleportSafe);
-            // Movement speed
-            inputManager.Register(KeyCode.PageUp, CheatCommands.SpeedUp);
-            inputManager.Register(KeyCode.PageDown, CheatCommands.SpeedDown);
+        // Healing & damage
+        inputManager.Register(KeyCode.UpArrow, CheatCommands.Invigorate);
+        inputManager.Register(KeyCode.LeftArrow, CheatCommands.DecreaseDamageCounter);
+        inputManager.Register(KeyCode.RightArrow, CheatCommands.IncreaseDamageCounter);
+        inputManager.Register(KeyCode.DownArrow, CheatCommands.KillAllMonsters);
 
-            // ---------------------------------
-            // Keypad 
-            inputManager.Register(KeyCode.Keypad0, CheatCommands.ToggleGodMode); // Toggle Modes: God, Builder, Beast Master
-            //1-3
+        // Teleports
+        inputManager.Register(KeyCode.Insert, CheatCommands.TeleportSolo);
+        inputManager.Register(KeyCode.Delete, CheatCommands.TeleportMass);
+        inputManager.Register(KeyCode.Home, CheatCommands.TeleportHome);
+        inputManager.Register(KeyCode.End, CheatCommands.TeleportSafe);
+        // Movement speed
+        inputManager.Register(KeyCode.PageUp, CheatCommands.SpeedUp);
+        inputManager.Register(KeyCode.PageDown, CheatCommands.SpeedDown);
 
-            inputManager.Register(KeyCode.Keypad1, CheatCommands.GuardianGift);
-            inputManager.Register(KeyCode.Keypad2, CheatCommands.ToggleRenewal);
-            inputManager.Register(KeyCode.Keypad3, CheatCommands.ToggleAoeRenewal);
+        // ---------------------------------
+        // Keypad 
+        inputManager.Register(KeyCode.Keypad0, CheatCommands.ToggleGodMode); // Toggle Modes: God, Builder, Beast Master
+        //1-3
 
-            //4-6
-            inputManager.Register(KeyCode.Keypad4, CheatCommands.ToggleCloakOfFlames);
-            //5
-            inputManager.Register(KeyCode.Keypad6, CheatCommands.ReplenishStacks);
+        inputManager.Register(KeyCode.Keypad1, CheatCommands.GuardianGift);
+        inputManager.Register(KeyCode.Keypad2, CheatCommands.ToggleRenewal);
+        inputManager.Register(KeyCode.Keypad3, CheatCommands.ToggleAoeRenewal);
 
-            //7-9
-            inputManager.Register(KeyCode.Keypad7, CheatCommands.ToggleGhostMode);
-            inputManager.Register(KeyCode.Keypad8, CheatCommands.SpawnCombatPet);
-            inputManager.Register(KeyCode.Keypad9, CheatCommands.TameAll);
+        //4-6
+        inputManager.Register(KeyCode.Keypad4, CheatCommands.ToggleCloakOfFlames);
+        //5
+        inputManager.Register(KeyCode.Keypad6, CheatCommands.ReplenishStacks);
 
-            // extra
+        //7-9
+        inputManager.Register(KeyCode.Keypad7, CheatCommands.ToggleGhostMode);
+        inputManager.Register(KeyCode.Keypad8, CheatCommands.SpawnCombatPet);
+        inputManager.Register(KeyCode.Keypad9, CheatCommands.TameAll);
 
-            inputManager.Register(KeyCode.KeypadEnter, CheatCommands.CastHealAOE);
-            inputManager.Register(KeyCode.KeypadPlus, CheatCommands.CastDmgAOE);
-            inputManager.Register(KeyCode.KeypadMinus, CheatCommands.CastHealAOE);
-            inputManager.Register(KeyCode.KeypadDivide, CheatCommands.ToggleGhostMode);
-            inputManager.Register(KeyCode.KeypadMultiply, CheatCommands.ToggleGhostMode);
-            inputManager.Register(KeyCode.KeypadPeriod, CheatCommands.ToggleGhostMode);                 
-                 */
-            };
+        // extra
+
+        inputManager.Register(KeyCode.KeypadEnter, CheatCommands.CastHealAOE);
+        inputManager.Register(KeyCode.KeypadPlus, CheatCommands.CastDmgAOE);
+        inputManager.Register(KeyCode.KeypadMinus, CheatCommands.CastHealAOE);
+        inputManager.Register(KeyCode.KeypadDivide, CheatCommands.ToggleGhostMode);
+        inputManager.Register(KeyCode.KeypadMultiply, CheatCommands.ToggleGhostMode);
+        inputManager.Register(KeyCode.KeypadPeriod, CheatCommands.ToggleGhostMode);                 
+             */
+        };
 
             foreach (var cmd in commands)
             {
@@ -288,8 +311,8 @@ namespace ICanShowYouTheWorld
         public static int DamageCounter { get; private set; }
         public static string CurrentGuardianName => guardians[guardianIndex];
         private static readonly string[] guardians = { "GP_Eikthyr", "GP_Bonemass", "GP_Moder", "GP_Yagluth", "GP_Fader" };
-        // private static readonly string[] combatPets = { "Wolf", "DvergerMageSupport" };
-        private static readonly string[] combatPets = { "Skeleton_Friendly" };
+        // private static readonly string[] combatPets = { "Wolf", "DvergerMageSupport" }; //AskSvin
+        private static readonly string[] combatPets = { "Skeleton_Friendly", "Asksvin" };
         private static readonly string[] petNames = { "Bob", "Ralf", "Liam", "Olivia", "Elijah" /*...*/ };
 
         static CheatCommands()
@@ -661,7 +684,7 @@ namespace ICanShowYouTheWorld
         private bool visible;
         private Rect trackWindow = new Rect(150, Screen.height - 250, 250, 150);
         const float modeWidth = 350f;
-        const float modeHeight = 450f;
+        const float modeHeight = 550f;
         private Rect modeWindow = new Rect(
             Screen.width - modeWidth,  // x
             Screen.height - modeHeight - 10f, // y (10px margin from bottom, for example)
