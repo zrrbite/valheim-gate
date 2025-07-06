@@ -194,57 +194,11 @@ namespace ICanShowYouTheWorld
                     Description = "Reveal map",
                     Execute     = CheatCommands.ExploreAll,
                 },
-           // inputManager.Register(KeyCode.End, CheatCommands.TeleportSafe);
-        // Bosses & exploration
-       // /inputManager.Register(KeyCode.F10, CheatCommands.RevealBosses);
-          //  inputManager.Register(KeyCode.F7, CheatCommands.ExploreAll);
-       /* 
-
-
-
-        // Healing & damage
-        inputManager.Register(KeyCode.UpArrow, CheatCommands.Invigorate);
-        inputManager.Register(KeyCode.LeftArrow, CheatCommands.DecreaseDamageCounter);
-        inputManager.Register(KeyCode.RightArrow, CheatCommands.IncreaseDamageCounter);
-        inputManager.Register(KeyCode.DownArrow, CheatCommands.KillAllMonsters);
-
-        // Teleports
-        inputManager.Register(KeyCode.Insert, CheatCommands.TeleportSolo);
-        inputManager.Register(KeyCode.Delete, CheatCommands.TeleportMass);
-        inputManager.Register(KeyCode.Home, CheatCommands.TeleportHome);
-        inputManager.Register(KeyCode.End, CheatCommands.TeleportSafe);
-        // Movement speed
-        inputManager.Register(KeyCode.PageUp, CheatCommands.SpeedUp);
-        inputManager.Register(KeyCode.PageDown, CheatCommands.SpeedDown);
-
-        // ---------------------------------
-        // Keypad 
-        inputManager.Register(KeyCode.Keypad0, CheatCommands.ToggleGodMode); // Toggle Modes: God, Builder, Beast Master
-        //1-3
-
-        inputManager.Register(KeyCode.Keypad1, CheatCommands.GuardianGift);
-        inputManager.Register(KeyCode.Keypad2, CheatCommands.ToggleRenewal);
-        inputManager.Register(KeyCode.Keypad3, CheatCommands.ToggleAoeRenewal);
-
-        //4-6
-        inputManager.Register(KeyCode.Keypad4, CheatCommands.ToggleCloakOfFlames);
-        //5
-        inputManager.Register(KeyCode.Keypad6, CheatCommands.ReplenishStacks);
-
-        //7-9
-        inputManager.Register(KeyCode.Keypad7, CheatCommands.ToggleGhostMode);
-        inputManager.Register(KeyCode.Keypad8, CheatCommands.SpawnCombatPet);
-        inputManager.Register(KeyCode.Keypad9, CheatCommands.TameAll);
 
         // extra
-
-        inputManager.Register(KeyCode.KeypadEnter, CheatCommands.CastHealAOE);
-        inputManager.Register(KeyCode.KeypadPlus, CheatCommands.CastDmgAOE);
-        inputManager.Register(KeyCode.KeypadMinus, CheatCommands.CastHealAOE);
-        inputManager.Register(KeyCode.KeypadDivide, CheatCommands.ToggleGhostMode);
-        inputManager.Register(KeyCode.KeypadMultiply, CheatCommands.ToggleGhostMode);
-        inputManager.Register(KeyCode.KeypadPeriod, CheatCommands.ToggleGhostMode);                 
-             */
+        // inputManager.Register(KeyCode.End, CheatCommands.TeleportSafe);
+        // inputManager.Register(KeyCode.KeypadEnter, CheatCommands.CastHealAOE);
+        // inputManager.Register(KeyCode.KeypadPlus, CheatCommands.CastDmgAOE);
         };
 
             foreach (var cmd in commands)
@@ -447,14 +401,17 @@ namespace ICanShowYouTheWorld
             GameObject p = ZNetScene.instance.GetPrefab(prefab);
             if (p == null) { Show($"Missing prefab: {prefab}"); return; }
 
+            // Get Component
             Vector3 pos = Player.m_localPlayer.transform.position + Player.m_localPlayer.transform.forward * 2f;
             var inst = UnityEngine.Object.Instantiate(p, pos, Quaternion.identity);
             var ch = inst.GetComponent<Character>();
+
             ch.SetLevel(3);
             ch.GetComponent<Character>().SetMaxHealth(2000);
             ch.GetComponent<Character>().SetHealth(2000);
             ch.GetComponent<MonsterAI>().SetFollowTarget(Player.m_localPlayer.gameObject);
-            ch.m_name = petNames[rnd.Next(petNames.Length)];
+            ch.GetComponent<Character>().m_name = petNames[rnd.Next(petNames.Length)];
+
             //tame it
             Tameable.TameAllInArea(Player.m_localPlayer.transform.position, 20.0f);
 
@@ -473,7 +430,6 @@ namespace ICanShowYouTheWorld
             foreach (Character item in list)
             {
                 if (item.IsPlayer()) continue;
-                if (!item.IsTamed()) continue;
 
                 //item.SetLevel(3); //Hmm, its kind of interesting that we could runtime just increase the level of mobs already in the world.
                 //item.GetComponent<Character>().SetMaxHealth(10000);
@@ -506,21 +462,23 @@ namespace ICanShowYouTheWorld
             {
                 if (!item.IsWeapon()) continue;
                 // Get base damage types
-                var baseDamages = item.GetDamage(); // not really used
+                var baseDamages = item.GetDamage();
                 int dmg = DamageCounter * 10;
 
                 var updated = new HitData.DamageTypes
                 {
-                    m_slash = dmg,
-                    m_blunt = dmg,
-                    m_pierce = dmg,
-                    m_frost =  dmg,
-                    m_lightning = dmg,
-                    m_poison = dmg,
-                    m_spirit = dmg,
-                    m_chop = dmg,
-                    m_pickaxe = dmg,
-                    m_damage = dmg
+                    m_slash = baseDamages.m_slash > 0 ? dmg : 0,
+                    m_blunt = baseDamages.m_blunt > 0 ? dmg : 0,
+                    m_pierce = baseDamages.m_pierce > 0 ? dmg : 0,
+                    m_frost = baseDamages.m_frost > 0 ? dmg : 0,
+                    m_lightning = baseDamages.m_lightning > 0 ? dmg : 0,
+                    m_poison = baseDamages.m_poison > 0 ? dmg : 0,
+                    m_spirit = baseDamages.m_spirit > 0 ? dmg : 0,
+                    //harvest
+                    m_chop = baseDamages.m_chop > 0 ? dmg : 0,
+                    m_pickaxe = baseDamages.m_pickaxe > 0 ? dmg : 0,
+                    //generic
+                    m_damage = baseDamages.m_damage > 0 ?  dmg : 0
                 };
                 item.m_shared.m_damages = updated;
             }
@@ -532,20 +490,25 @@ namespace ICanShowYouTheWorld
         {
             GiftActive = true; // can't disable
             if (!RequireGodMode("Guardian's Gift")) return;
-            ToggleRenewal();
+
             var p = Player.m_localPlayer;
             // Boost stats
-            float regen = 100f, fallDmg = 0.1f, noise = 1f;
-            p.GetSEMan().ModifyHealthRegen(ref regen);
-            p.GetSEMan().ModifyFallDamage(1, ref fallDmg);
-            p.GetSEMan().ModifyNoise(1, ref noise);
+            //float regen = 100f, fallDmg = 0.1f, noise = 1f;
+
+            // this vs vanilla way?
+            //p.GetSEMan().ModifyHealthRegen(ref regen);
+            //p.GetSEMan().ModifyFallDamage(1, ref fallDmg);
+            //p.GetSEMan().ModifyNoise(1, ref noise);
+
+            p.m_baseHP = 400f; //?
             p.m_blockStaminaDrain = 0.1f;
             p.m_runStaminaDrain = 0.1f;
             p.m_staminaRegen = 50f;
             p.m_staminaRegenDelay = 0.5f;
             p.m_eiterRegen = 50f;
             p.m_eitrRegenDelay = 0.1f;
-            p.m_maxCarryWeight = 99999f;
+            p.m_maxCarryWeight = 9999f;
+
             // Durability
             foreach (var item in p.GetInventory().GetEquippedItems())
             {
@@ -554,6 +517,8 @@ namespace ICanShowYouTheWorld
                 item.m_shared.m_weight = 0.1f;
                 item.m_durability = 10000f;
             }
+
+            // Food
             List<Player.Food> foods = p.GetFoods();
             foreach (var food in foods)
             {
@@ -564,7 +529,6 @@ namespace ICanShowYouTheWorld
 
         public static void Invigorate()
         {
-           
                 var p = Player.m_localPlayer;
                 p.Heal(p.GetMaxHealth() - p.GetHealth(), true);
                 p.AddStamina(p.GetMaxStamina());
@@ -592,7 +556,7 @@ namespace ICanShowYouTheWorld
             foreach (Character entity in list)
             {
                 if ( (!entity.IsPlayer())) continue; // || !entity.IsTamed() 
-                if (entity.GetHealthPercentage() < 0.75f) //maybe a retamed isnt really tamed? /*&& entity.GetHoverName() != Player.m_localPlayer.GetHoverName()*/ 
+                if (entity.GetHealthPercentage() < 0.85f) //maybe a retamed isnt really tamed? /*&& entity.GetHoverName() != Player.m_localPlayer.GetHoverName()*/ 
                 {
                     Show(entity.GetHoverName() + " at " + Math.Floor(entity.GetHealthPercentage() * 100) + "%. Healing.");
                     entity.Heal(25.0f, false); // don't show it. shh
@@ -724,7 +688,7 @@ namespace ICanShowYouTheWorld
         public static UIManager Instance { get; private set; }
         private bool visible;
         const float TW = 350f, TH = 250f;
-        const float modeWidth = 350f;
+        const float modeWidth = 300f;
         const float modeHeight = 550f;
 
         //private Rect trackWindow = new Rect(250, Screen.height - 250, 250, 150);
@@ -841,32 +805,18 @@ namespace ICanShowYouTheWorld
             GUI.Box(new Rect(0, 0, modeWindow.width, modeWindow.height), GUIContent.none);
             GUI.backgroundColor = Color.white;
 
-            // precompute styles
+            // precompute description style
             var descStyle = new GUIStyle(GUI.skin.label)
             {
                 fontStyle = FontStyle.Bold,
                 normal = { textColor = Color.grey }
             };
-            var keyStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontStyle = FontStyle.Normal,
-                normal = { textColor = Color.yellow }
-            };
-            var onStyle = new GUIStyle(GUI.skin.label)
-            {
-                normal = { textColor = Color.green }
-            };
-            var offStyle = new GUIStyle(GUI.skin.label)
-            {
-                normal = { textColor = Color.red }
-            };
 
             var oldColor = GUI.contentColor;
 
             // column widths
-            const float descW = 160f;  // enough room for your longest description
-            const float keyW = 85f;   // enough room for "(RightArrow)" etc.
-            const float valueW = 50f;   // "ON"/"OFF"
+            const float descW = 160f;  // room for description
+            const float keyW = 85f;   // room for "(KeyName)"
 
             foreach (var cmd in CommandRegistry.All)
             {
@@ -875,24 +825,19 @@ namespace ICanShowYouTheWorld
 
                 GUILayout.BeginHorizontal();
 
-                // 1) Description
+                // 1) Description in grey bold
                 GUILayout.Label(cmd.Description, descStyle, GUILayout.Width(descW));
 
-                // 2) Key
+                // 2) Key in yellow when off, green when on
+                var keyStyle = new GUIStyle(GUI.skin.label)
+                {
+                    fontStyle = FontStyle.Normal,
+                    normal = { textColor = isOn ? Color.green : Color.yellow }
+                };
                 GUILayout.Label($"({cmd.Key})", keyStyle, GUILayout.Width(keyW));
 
-                // 3) push the value to the far right
+                // 3) push everything else (if any) to the right
                 GUILayout.FlexibleSpace();
-
-                // 4) ON/OFF only if there's a state-getter
-                if (hasState)
-                {
-                    GUILayout.Label(
-                        isOn ? "ON" : "OFF",
-                        isOn ? onStyle : offStyle,
-                        GUILayout.Width(valueW)
-                    );
-                }
 
                 GUILayout.EndHorizontal();
             }
