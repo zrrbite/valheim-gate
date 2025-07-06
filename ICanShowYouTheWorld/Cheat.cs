@@ -587,11 +587,12 @@ namespace ICanShowYouTheWorld
         public static void AoeRegen()
         {
             List<Character> list = new List<Character>();
-            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 100.0f, list);
+            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 80.0f, list);
 
             foreach (Character entity in list)
             {
-                if ((entity.IsPlayer() || entity.IsTamed()) && entity.GetHoverName() != Player.m_localPlayer.GetHoverName() && entity.GetHealthPercentage() < 0.75f)
+                if ( (!entity.IsPlayer())) continue; // || !entity.IsTamed() 
+                if (entity.GetHealthPercentage() < 0.75f) //maybe a retamed isnt really tamed? /*&& entity.GetHoverName() != Player.m_localPlayer.GetHoverName()*/ 
                 {
                     Show(entity.GetHoverName() + " at " + Math.Floor(entity.GetHealthPercentage() * 100) + "%. Healing.");
                     entity.Heal(25.0f, false); // don't show it. shh
@@ -1513,8 +1514,8 @@ namespace ICanShowYouTheWorld
                         ItemDrop component4 = gameObject2.GetComponent<ItemDrop>();
                         gameObject2.GetComponent<Character>()?.SetLevel(3); //1 = 0, 2 = 1, 3 = 2 stars
                         gameObject2.GetComponent<Character>().m_name = pet_names[name_index];
-                        gameObject2.GetComponent<Character>().SetMaxHealth(10000);
-                        gameObject2.GetComponent<Character>().SetHealth(10000);
+                        gameObject2.GetComponent<Character>().SetMaxHealth(2000);
+                        gameObject2.GetComponent<Character>().SetHealth(2000);
                         gameObject2.GetComponent<MonsterAI>().SetFollowTarget(player.gameObject);
                         //tame it - if possible
                         Tameable.TameAllInArea(player.transform.position, 30.0f);
