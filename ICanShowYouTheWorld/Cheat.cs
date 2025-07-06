@@ -456,6 +456,19 @@ namespace ICanShowYouTheWorld
         {
             if (!RequireGodMode("Tame all")) return;
             Tameable.TameAllInArea(Player.m_localPlayer.transform.position, 30f);
+
+            List<Character> list = new List<Character>();
+            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 30.0f, list);
+
+            // set follow
+            foreach (Character item in list)
+            {
+                item.SetLevel(3);
+                item.GetComponent<Character>().SetMaxHealth(10000);
+                item.GetComponent<Character>().SetHealth(10000);
+                item.GetComponent<MonsterAI>().SetFollowTarget(Player.m_localPlayer.gameObject);
+            }
+
             Show("All nearby tamed");
         }
 
@@ -474,7 +487,6 @@ namespace ICanShowYouTheWorld
             Show("Stacks replenished");
         }
 
-        // dmg only goes up, never dpwn haha
         public static void ApplySuperWeapon()
         {
             // Apply current damage counter to equipped weapons
@@ -482,16 +494,21 @@ namespace ICanShowYouTheWorld
             {
                 if (!item.IsWeapon()) continue;
                 // Get base damage types
-                var baseDamages = item.GetDamage();
+                var baseDamages = item.GetDamage(); // not really used
+                int dmg = DamageCounter * 10;
+
                 var updated = new HitData.DamageTypes
                 {
-                    m_slash = DamageCounter * 10,
-                    m_blunt = DamageCounter * 10,
-                    m_pierce = DamageCounter * 10,
-                    m_frost =  DamageCounter * 10,
-                    m_lightning = DamageCounter * 10,
-                    m_poison = DamageCounter * 10,
-                    m_spirit = DamageCounter * 10
+                    m_slash = dmg,
+                    m_blunt = dmg,
+                    m_pierce = dmg,
+                    m_frost =  dmg,
+                    m_lightning = dmg,
+                    m_poison = dmg,
+                    m_spirit = dmg,
+                    m_chop = dmg,
+                    m_pickaxe = dmg,
+                    m_damage = dmg
                 };
                 item.m_shared.m_damages = updated;
             }
@@ -522,6 +539,7 @@ namespace ICanShowYouTheWorld
             {
                 item.m_shared.m_durabilityDrain = 0.1f;
                 item.m_shared.m_maxDurability = 10000f;
+                item.m_shared.m_weight = 0.1f;
                 item.m_durability = 10000f;
             }
             List<Player.Food> foods = p.GetFoods();
@@ -534,6 +552,8 @@ namespace ICanShowYouTheWorld
 
         public static void Invigorate()
         {
+            if (!RequireGodMode("Invigorate")) return;
+            Show("Invigorate");
             var p = Player.m_localPlayer;
             p.Heal(p.GetMaxHealth() - p.GetHealth(), true);
             p.AddStamina(p.GetMaxStamina());
@@ -696,7 +716,7 @@ namespace ICanShowYouTheWorld
         const float modeHeight = 550f;
         private Rect modeWindow = new Rect(
             Screen.width - modeWidth,  // x
-            Screen.height - modeHeight - 10f, // y (10px margin from bottom, for example)
+            Screen.height - modeHeight - 50f, // Margin from bottom
             modeWidth,                  // width
             modeHeight                  // height
         );
