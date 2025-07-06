@@ -781,23 +781,55 @@ namespace ICanShowYouTheWorld
 
         void DrawTracking(int id)
         {
+            // draw opaque background
+            GUI.backgroundColor = new Color(0f, 0f, 0f, 0.8f);
+            GUI.Box(new Rect(0, 0, trackWindow.width, trackWindow.height), GUIContent.none);
+            GUI.backgroundColor = Color.white;
+
             var player = Player.m_localPlayer;
             var list = new List<Character>();
             Character.GetCharactersInRange(player.transform.position, 50f, list);
 
+            // sort by distance ascending
+            list.Sort((a, b) => {
+                float da = Utils.DistanceXZ(a.transform.position, player.transform.position);
+                float db = Utils.DistanceXZ(b.transform.position, player.transform.position);
+                return da.CompareTo(db);
+            });
+
+            // column widths (tweak as needed)
+            const float nameW = 120f;
+            const float distW = 60f;
+            const float hpW = 60f;
+
+            var oldColor = GUI.contentColor;
             foreach (var c in list)
             {
-                if (!c.IsPlayer() && !c.IsTamed())
-                {
-                    float dist = Utils.DistanceXZ(c.transform.position, player.transform.position);
-                    float hpPct = c.GetHealthPercentage() * 100f;
-                    GUILayout.Label($"{c.GetHoverName()}: {dist:0.0}m ({hpPct:0.0}% HP)");
-                }
+                if (c.IsPlayer() || c.IsTamed()) continue;
+
+                float dist = Utils.DistanceXZ(c.transform.position, player.transform.position);
+                float hpPct = c.GetHealthPercentage() * 100f;
+
+                GUILayout.BeginHorizontal();
+
+                // Name in white
+                GUI.contentColor = Color.white;
+                GUILayout.Label(c.GetHoverName(), GUILayout.Width(nameW));
+
+                // Distance in cyan
+                GUI.contentColor = Color.cyan;
+                GUILayout.Label($"{dist:0.0}m", GUILayout.Width(distW));
+
+                // Health in green (>75%) or red
+                GUI.contentColor = hpPct >= 75f ? Color.green : Color.red;
+                GUILayout.Label($"{hpPct:0.0}%", GUILayout.Width(hpW));
+
+                GUILayout.EndHorizontal();
             }
+            GUI.contentColor = oldColor;
 
             GUI.DragWindow();
         }
-
         void DrawModes(int id)
         {
             // 1) Opaque dark backdrop
