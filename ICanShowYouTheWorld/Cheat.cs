@@ -89,12 +89,6 @@ namespace ICanShowYouTheWorld
                     GetState    = () => CheatCommands.GodMode
                 },
                 new CommandBinding {
-                    Key         = KeyCode.Keypad1,
-                    Description = "Guardian Gift",
-                    Execute     = CheatCommands.GuardianGift,
-                    GetState    = () => CheatCommands.GiftActive
-                },
-                new CommandBinding {
                     Key         = KeyCode.Keypad2,
                     Description = "Renewal",
                     Execute     = CheatCommands.ToggleRenewal,
@@ -113,15 +107,16 @@ namespace ICanShowYouTheWorld
                     GetState    = () => CheatCommands.CloakActive
                 },
                 new CommandBinding {
-                    Key         = KeyCode.Keypad6,
-                    Description = "Replenish Stacks",
-                    Execute     = CheatCommands.ReplenishStacks,
-                },
-                new CommandBinding {
                     Key         = KeyCode.Keypad7,
                     Description = "Ghost Mode",
                     Execute     = CheatCommands.ToggleGhostMode,
                     GetState    = () => CheatCommands.GhostMode
+                },
+                new CommandBinding {
+                    Key         = KeyCode.Keypad1,
+                    Description = "Guardian Gift",
+                    Execute     = CheatCommands.GuardianGift
+                    //,GetState    = () => CheatCommands.GiftActive
                 },
                 new CommandBinding {
                     Key         = KeyCode.UpArrow,
@@ -173,16 +168,30 @@ namespace ICanShowYouTheWorld
                     Key         = KeyCode.Insert,
                     Description = "Teleport",
                     Execute     = CheatCommands.TeleportSolo
-                }
-            //inputManager.Register(KeyCode.Delete, CheatCommands.TeleportMass);
+                },
+                new CommandBinding {
+                    Key         = KeyCode.End,
+                    Description = "Mass teleport",
+                    Execute     = CheatCommands.TeleportMass
+                },
+                new CommandBinding {
+                    Key         = KeyCode.Keypad6,
+                    Description = "Replenish Stacks",
+                    Execute     = CheatCommands.ReplenishStacks,
+                },
+                new CommandBinding {
+                    Key         = KeyCode.F6,
+                    Description = "Guardian Power",
+                    Execute     = CheatCommands.ToggleGuardianPower,
+                },
+
            // inputManager.Register(KeyCode.End, CheatCommands.TeleportSafe);
-
-            /* 
-
         // Bosses & exploration
-        inputManager.Register(KeyCode.F10, CheatCommands.RevealBosses);
-        inputManager.Register(KeyCode.F6, CheatCommands.ToggleGuardianPower);
-        inputManager.Register(KeyCode.F7, CheatCommands.ExploreAll);
+       // /inputManager.Register(KeyCode.F10, CheatCommands.RevealBosses);
+          //  inputManager.Register(KeyCode.F7, CheatCommands.ExploreAll);
+       /* 
+
+
 
         // Healing & damage
         inputManager.Register(KeyCode.UpArrow, CheatCommands.Invigorate);
