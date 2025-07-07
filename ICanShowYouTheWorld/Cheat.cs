@@ -496,12 +496,14 @@ namespace ICanShowYouTheWorld
         public static void IncreaseSkills()
         {
             var p = Player.m_localPlayer;
-            p.RaiseSkill(Skills.SkillType.BloodMagic, 5);
-            p.RaiseSkill(Skills.SkillType.ElementalMagic, 5);
-            p.RaiseSkill(Skills.SkillType.Swim, 5);
-            p.RaiseSkill(Skills.SkillType.Run, 5);
-            p.RaiseSkill(Skills.SkillType.Sneak, 5);
-            p.RaiseSkill(Skills.SkillType.Jump, 5);
+            p.RaiseSkill(Skills.SkillType.BloodMagic);
+            p.RaiseSkill(Skills.SkillType.ElementalMagic);
+            p.RaiseSkill(Skills.SkillType.Swim);
+            p.RaiseSkill(Skills.SkillType.Run);
+            p.RaiseSkill(Skills.SkillType.Sneak);
+            p.RaiseSkill(Skills.SkillType.Jump);
+
+            Show("Raising skills!");
         }
 
         // Guardian's Gift: major buff including Renewal
@@ -512,12 +514,12 @@ namespace ICanShowYouTheWorld
 
             var p = Player.m_localPlayer;
             // Boost stats
-            //float regen = 100f, fallDmg = 0.1f, noise = 1f;
+            float regen = 100f, fallDmg = 0.1f, noise = 1f;
 
             // this vs vanilla way?
-            //p.GetSEMan().ModifyHealthRegen(ref regen);
-            //p.GetSEMan().ModifyFallDamage(1, ref fallDmg);
-            //p.GetSEMan().ModifyNoise(1, ref noise);
+            p.GetSEMan().ModifyHealthRegen(ref regen);
+            p.GetSEMan().ModifyFallDamage(1, ref fallDmg);
+            p.GetSEMan().ModifyNoise(1, ref noise);
 
             p.m_maxCarryWeight = 9999f;
             p.m_baseHP = 75f;
@@ -701,6 +703,28 @@ namespace ICanShowYouTheWorld
         {
             var p = Player.m_localPlayer;
             p.m_runSpeed = p.m_walkSpeed = speed;
+
+            p.m_runSpeed = speed;
+            p.m_swimSpeed = speed;
+            p.m_acceleration = speed;
+            p.m_crouchSpeed = speed;
+            p.m_walkSpeed = speed;
+            p.m_jumpForce = speed;
+            p.m_jumpForceForward = speed;
+
+            List<Character> list = new List<Character>();
+            Character.GetCharactersInRange(p.transform.position, 30.0f, list);
+
+            foreach (Character item in list)
+            {
+                if (!item.IsMonsterFaction(10) && item != p)
+                {
+                    item.m_runSpeed = speed;
+                    item.m_speed = speed;
+                    Show("Increased speed for " + item.GetHoverName() + " to " + item.m_runSpeed);
+                }
+            }
+
             Show($"Speed set: {speed}");
         }
 
@@ -716,7 +740,7 @@ namespace ICanShowYouTheWorld
     {
         public static UIManager Instance { get; private set; }
         private bool visible;
-        const float TW = 350f, TH = 250f;
+        const float TW = 400, TH = 250f;
         const float modeWidth = 300f;
         const float modeHeight = 550f;
 
@@ -785,7 +809,7 @@ namespace ICanShowYouTheWorld
 
             var player = Player.m_localPlayer;
             var list = new List<Character>();
-            Character.GetCharactersInRange(player.transform.position, 50f, list);
+            Character.GetCharactersInRange(player.transform.position, 100f, list);
 
             // sort by distance ascending
             list.Sort((a, b) => {
@@ -795,9 +819,9 @@ namespace ICanShowYouTheWorld
             });
 
             // column widths (tweak as needed)
-            const float nameW = 160f;
-            const float distW = 50f;
-            const float hpW = 50f;
+            const float nameW = 200f;
+            const float distW = 100f;
+            const float hpW = 200f;
 
             var oldColor = GUI.contentColor;
             foreach (var c in list)
@@ -819,7 +843,7 @@ namespace ICanShowYouTheWorld
 
                 // Health in green (>75%) or red
                 GUI.contentColor = hpPct >= 75f ? Color.green : Color.red;
-                GUILayout.Label($"{hpPct:0.0}%", GUILayout.Width(hpW));
+                GUILayout.Label($"{hpPct:0.0}% ({c.GetHealth()})", GUILayout.Width(hpW));
 
                 GUILayout.EndHorizontal();
             }
@@ -868,6 +892,30 @@ namespace ICanShowYouTheWorld
                 // 3) push everything else (if any) to the right
                 GUILayout.FlexibleSpace();
 
+                GUILayout.EndHorizontal();
+            }
+
+            // 2) A little spacing
+            GUILayout.Space(10f);
+
+            // 3) Damage Counters row
+            {
+                GUILayout.BeginHorizontal();
+                GUI.contentColor = Color.white;
+                GUILayout.Label("Damage Counters", descStyle, GUILayout.Width(descW));
+                GUI.contentColor = Color.yellow;
+                GUILayout.Label(CheatCommands.DamageCounter.ToString(), GUILayout.Width(keyW));
+                GUILayout.EndHorizontal();
+            }
+
+            // 4) Run Speed row
+            {
+                GUILayout.BeginHorizontal();
+                GUI.contentColor = Color.white;
+                GUILayout.Label("Run Speed", descStyle, GUILayout.Width(descW));
+                GUI.contentColor = Color.yellow;
+                float speed = Player.m_localPlayer.m_runSpeed;
+                GUILayout.Label($"{speed:0.0}", GUILayout.Width(keyW));
                 GUILayout.EndHorizontal();
             }
 
