@@ -564,11 +564,11 @@ namespace ICanShowYouTheWorld
                 // Remove bad effects
                 //
                 // TODO: Does this only remove bad ones?
-                List<StatusEffect> effects = p.GetSEMan().GetStatusEffects();
-                foreach (StatusEffect st in effects)
-                {
-                    p.GetSEMan().RemoveStatusEffect(st);
-                }
+                //List<StatusEffect> effects = p.GetSEMan().GetStatusEffects();
+                //foreach (StatusEffect st in effects)
+                //{
+                //    p.GetSEMan().RemoveStatusEffect(st);
+                //}
 
                 // Add beneficial effects
                 //          p.GetSEMan().AddStatusEffect(new SE_Rested(), resetTime: true, 10, 10); //this will add lvl1: 8mins
