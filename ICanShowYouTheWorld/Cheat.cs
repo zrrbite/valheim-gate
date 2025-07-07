@@ -435,10 +435,12 @@ namespace ICanShowYouTheWorld
             // Set follow
             foreach (Character item in list)
             {
-                if (item.IsPlayer()) continue;
+                if (item.IsPlayer() || !item.IsTamed()) continue;
 
                 //item.SetLevel(3); //Hmm, its kind of interesting that we could runtime just increase the level of mobs already in the world.
                 item.GetComponent<MonsterAI>().SetFollowTarget(Player.m_localPlayer.gameObject);
+                item.SetMaxHealth(2000);
+                //item.GetComponent<Character>().m_name = ... something to symbolise it has been augmented.
             }
 
             Show("All nearby tamed");
@@ -582,7 +584,7 @@ namespace ICanShowYouTheWorld
 
             foreach (Character entity in list)
             {
-                if ( (!entity.IsPlayer())) continue; // || !entity.IsTamed() 
+                if (!entity.IsPlayer() || !entity.IsTamed()) continue; // || !entity.IsTamed() 
                 if (entity.GetHealthPercentage() < 0.85f) //maybe a retamed isnt really tamed? /*&& entity.GetHoverName() != Player.m_localPlayer.GetHoverName()*/ 
                 {
                     Show(entity.GetHoverName() + " at " + Math.Floor(entity.GetHealthPercentage() * 100) + "%. Healing.");
