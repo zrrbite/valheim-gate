@@ -107,6 +107,11 @@ namespace ICanShowYouTheWorld
                     GetState    = () => CheatCommands.CloakActive
                 },
                 new CommandBinding {
+                    Key         = KeyCode.Keypad5,
+                    Description = "Raise skills",
+                    Execute     = CheatCommands.IncreaseSkills,
+                },
+                new CommandBinding {
                     Key         = KeyCode.Keypad7,
                     Description = "Ghost Mode",
                     Execute     = CheatCommands.ToggleGhostMode,
@@ -478,11 +483,23 @@ namespace ICanShowYouTheWorld
                     m_chop = baseDamages.m_chop > 0 ? dmg : 0,
                     m_pickaxe = baseDamages.m_pickaxe > 0 ? dmg : 0,
                     //generic
-                    m_damage = baseDamages.m_damage > 0 ?  dmg : 0
+                    m_damage = baseDamages.m_damage > 0 ?  dmg : 0,
+            
                 };
                 item.m_shared.m_damages = updated;
             }
             Show($"Applied {DamageCounter} damage counters to weapons");
+        }
+
+        public static void IncreaseSkills()
+        {
+            var p = Player.m_localPlayer;
+            p.RaiseSkill(Skills.SkillType.BloodMagic, 5);
+            p.RaiseSkill(Skills.SkillType.ElementalMagic, 5);
+            p.RaiseSkill(Skills.SkillType.Swim, 5);
+            p.RaiseSkill(Skills.SkillType.Run, 5);
+            p.RaiseSkill(Skills.SkillType.Sneak, 5);
+            p.RaiseSkill(Skills.SkillType.Jump, 5);
         }
 
         // Guardian's Gift: major buff including Renewal
