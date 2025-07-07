@@ -461,6 +461,7 @@ namespace ICanShowYouTheWorld
 
         public static void ApplySuperWeapon()
         {
+//            Player.m_localPlayer.UseHealth()
             // Apply current damage counter to equipped weapons
             foreach (var item in Player.m_localPlayer.GetInventory().GetEquippedItems())
             {
@@ -516,30 +517,40 @@ namespace ICanShowYouTheWorld
             //p.GetSEMan().ModifyFallDamage(1, ref fallDmg);
             //p.GetSEMan().ModifyNoise(1, ref noise);
 
-            p.m_baseHP = 400f; //?
-            p.m_blockStaminaDrain = 0.1f;
+            p.m_maxCarryWeight = 9999f;
+            p.m_baseHP = 75f;
+            p.m_baseStamina = 100f;
+            //p.m_blockStaminaDrain = 0.1f;
+
+            // stamina
             p.m_runStaminaDrain = 0.1f;
             p.m_staminaRegen = 50f;
             p.m_staminaRegenDelay = 0.5f;
-            p.m_eiterRegen = 50f;
+            //eitr
+            p.m_eiterRegen = 100f;
             p.m_eitrRegenDelay = 0.1f;
-            p.m_maxCarryWeight = 9999f;
 
-            // Durability
+            // Durability TODO move this to other function. not related.
+
             foreach (var item in p.GetInventory().GetEquippedItems())
             {
                 item.m_shared.m_durabilityDrain = 0.1f;
                 item.m_shared.m_maxDurability = 10000f;
                 item.m_shared.m_weight = 0.1f;
                 item.m_durability = 10000f;
+                item.m_shared.m_armor = 100;
             }
 
-            // Food
+            // Food - own func?
             List<Player.Food> foods = p.GetFoods();
             foreach (var food in foods)
             {
                 food.m_time = 10000f;
+                food.m_eitr = 100;
+                food.m_health = 100;
+                food.m_stamina = 100;
             }
+
             Show("Guardian's Gift activated");
         }
 
