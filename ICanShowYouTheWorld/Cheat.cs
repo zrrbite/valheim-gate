@@ -423,22 +423,21 @@ namespace ICanShowYouTheWorld
             Show($"Spawned pet: {ch.m_name}");
         }
 
+        // Can also be used to re-tame
         public static void TameAll()
         {
             if (!RequireGodMode("Tame all")) return;
-            Tameable.TameAllInArea(Player.m_localPlayer.transform.position, 100.0f);
+            Tameable.TameAllInArea(Player.m_localPlayer.transform.position, 30.0f);
 
             List<Character> list = new List<Character>();
-            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 100.0f, list);
+            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 30.0f, list);
 
-            // set follow
+            // Set follow
             foreach (Character item in list)
             {
                 if (item.IsPlayer()) continue;
 
                 //item.SetLevel(3); //Hmm, its kind of interesting that we could runtime just increase the level of mobs already in the world.
-                //item.GetComponent<Character>().SetMaxHealth(10000);
-                //item.GetComponent<Character>().SetHealth(10000);
                 item.GetComponent<MonsterAI>().SetFollowTarget(Player.m_localPlayer.gameObject);
             }
 
