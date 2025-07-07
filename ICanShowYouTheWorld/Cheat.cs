@@ -194,11 +194,11 @@ namespace ICanShowYouTheWorld
                     Description = "Revea; bosses",
                     Execute     = CheatCommands.RevealBosses,
                 },
-                new CommandBinding {
+                /*new CommandBinding {
                     Key         = KeyCode.F8,
                     Description = "Reveal map",
                     Execute     = CheatCommands.ExploreAll,
-                },
+                },*/
 
         // extra
         // inputManager.Register(KeyCode.End, CheatCommands.TeleportSafe);
