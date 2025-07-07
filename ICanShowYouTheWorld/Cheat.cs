@@ -299,6 +299,9 @@ namespace ICanShowYouTheWorld
             PeriodicManager.Register(50, () => { if (AOERenewalActive) AoeRegen(); });
             PeriodicManager.Register(150, () => { if (MelodicActive) SlowMonsters(); });
             PeriodicManager.Register(75, () => { if (CloakActive) DamageAoE(); });
+
+            // Default values
+            DamageCounter = 10;
         }
 
         public static void HandlePeriodic() => PeriodicManager.HandlePeriodic();
@@ -495,6 +498,8 @@ namespace ICanShowYouTheWorld
 
         public static void IncreaseSkills()
         {
+            Show($"Raising important skills");
+
             var p = Player.m_localPlayer;
             p.RaiseSkill(Skills.SkillType.BloodMagic);
             p.RaiseSkill(Skills.SkillType.ElementalMagic);
@@ -502,8 +507,6 @@ namespace ICanShowYouTheWorld
             p.RaiseSkill(Skills.SkillType.Run);
             p.RaiseSkill(Skills.SkillType.Sneak);
             p.RaiseSkill(Skills.SkillType.Jump);
-
-            Show("Raising skills!");
         }
 
         // Guardian's Gift: major buff including Renewal
