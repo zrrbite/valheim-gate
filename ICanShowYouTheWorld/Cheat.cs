@@ -88,12 +88,6 @@ namespace ICanShowYouTheWorld
                     Execute     = CheatCommands.ToggleGodMode,
                     GetState    = () => CheatCommands.GodMode
                 },
-                /*new CommandBinding {
-                    Key         = KeyCode.Keypad2,
-                    Description = "Renewal",
-                    Execute     = CheatCommands.ToggleRenewal,
-                    GetState    = () => CheatCommands.RenewalActive
-                },*/
                 new CommandBinding {
                     Key         = KeyCode.Keypad1,
                     Description = "AoE Renewal",
@@ -174,6 +168,11 @@ namespace ICanShowYouTheWorld
                     Key         = KeyCode.Keypad6,
                     Description = "Replenish Stacks",
                     Execute     = CheatCommands.ReplenishStacks,
+                },
+                new CommandBinding {
+                    Key         = KeyCode.Keypad2,
+                    Description = "Spawn Prefab",
+                    Execute     = CheatCommands.SpawnPrefab
                 },
                 new CommandBinding {
                     Key         = KeyCode.F6,
@@ -586,6 +585,21 @@ namespace ICanShowYouTheWorld
                 // Add beneficial effects
                 //          p.GetSEMan().AddStatusEffect(new SE_Rested(), resetTime: true, 10, 10); //this will add lvl1: 8mins
                 //          p.GetSEMan().AddStatusEffect(new SE_Shield(), resetTime: true, 10, 10);
+        }
+
+        // todo: List of pets in seperate box.
+        // todo: Allow cycling through prefabs and displaying that to the user.
+        // todo: 
+        public static void SpawnPrefab()
+        {
+            if (!RequireGodMode("Spawn prefab")) return;
+            //var prefab = ZNetScene.instance.GetPrefab("Pukeberries");
+            var prefab = ZNetScene.instance.GetPrefab("Fader_MeteorSmash_AOE"); // Fader_Fissure_AOE, Fader_Flamebreath_AOE, Fader_MeteorSmash_AOE, FenringIceNova_aoe, fallenvalkyrie_poisonbreath_aoe
+            if (prefab == null) { Show("Missing prefab"); return; }
+            UnityEngine.Object.Instantiate(prefab,
+                Player.m_localPlayer.transform.position + Vector3.up,
+                Quaternion.identity);
+            Show("Spawning prefab");
         }
 
         public static void AoeRegen()
