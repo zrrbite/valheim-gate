@@ -88,55 +88,39 @@ namespace ICanShowYouTheWorld
                     Execute     = CheatCommands.ToggleGodMode,
                     GetState    = () => CheatCommands.GodMode
                 },
-                new CommandBinding {
+                /*new CommandBinding {
                     Key         = KeyCode.Keypad2,
                     Description = "Renewal",
                     Execute     = CheatCommands.ToggleRenewal,
                     GetState    = () => CheatCommands.RenewalActive
-                },
+                },*/
                 new CommandBinding {
-                    Key         = KeyCode.Keypad3,
+                    Key         = KeyCode.Keypad1,
                     Description = "AoE Renewal",
                     Execute     = CheatCommands.ToggleAoeRenewal,
                     GetState    = () => CheatCommands.AOERenewalActive
                 },
                 new CommandBinding {
-                    Key         = KeyCode.Keypad4,
-                    Description = "Cloak of Flames",
-                    Execute     = CheatCommands.ToggleCloakOfFlames,
-                    GetState    = () => CheatCommands.CloakActive
-                },
-                new CommandBinding {
-                    Key         = KeyCode.Keypad5,
-                    Description = "Raise skills",
-                    Execute     = CheatCommands.IncreaseSkills,
-                },
-                new CommandBinding {
-                    Key         = KeyCode.Keypad7,
-                    Description = "Ghost Mode",
-                    Execute     = CheatCommands.ToggleGhostMode,
-                    GetState    = () => CheatCommands.GhostMode
-                },
-                new CommandBinding {
-                    Key         = KeyCode.Keypad1,
+                    Key         = KeyCode.UpArrow,
                     Description = "Guardian Gift",
                     Execute     = CheatCommands.GuardianGift
                     //,GetState    = () => CheatCommands.GiftActive
                 },
                 new CommandBinding {
-                    Key         = KeyCode.UpArrow,
-                    Description = "Invigorate",
-                    Execute     = CheatCommands.Invigorate
-                },
-                new CommandBinding {
                     Key         = KeyCode.DownArrow,
-                    Description = "Kill em' all!",
-                    Execute     = CheatCommands.KillAllMonsters
+                    Description = "Heal AOE",
+                    Execute     = CheatCommands.CastHealAOE
                 },
                 new CommandBinding {
                     Key         = KeyCode.Keypad8,
                     Description = "Combat pet",
                     Execute     = CheatCommands.SpawnCombatPet
+                },
+                new CommandBinding {
+                    Key         = KeyCode.Keypad3,
+                    Description = "Cloak of Flames",
+                    Execute     = CheatCommands.ToggleCloakOfFlames,
+                    GetState    = () => CheatCommands.CloakActive
                 },
                 new CommandBinding {
                     Key         = KeyCode.Keypad9,
@@ -162,6 +146,13 @@ namespace ICanShowYouTheWorld
                     Key         = KeyCode.LeftArrow,
                     Description = "--Damage",
                     Execute     = CheatCommands.DecreaseDamageCounter
+                },
+
+                new CommandBinding {
+                    Key         = KeyCode.Keypad4,
+                    Description = "Ghost Mode",
+                    Execute     = CheatCommands.ToggleGhostMode,
+                    GetState    = () => CheatCommands.GhostMode
                 },
                 //Teleport
                 new CommandBinding {
@@ -191,27 +182,41 @@ namespace ICanShowYouTheWorld
                 },
                 new CommandBinding {
                     Key         = KeyCode.F7,
-                    Description = "Revea; bosses",
+                    Description = "Reveal bosses",
                     Execute     = CheatCommands.RevealBosses,
                 },
+                new CommandBinding {
+                    Key         = KeyCode.F8,
+                    Description = "Kill 'em all",
+                    Execute     = CheatCommands.KillAllMonsters,
+                },
                 /*new CommandBinding {
+                    Key         = KeyCode.Keypad5,
+                    Description = "Raise skills",
+                    Execute     = CheatCommands.IncreaseSkills,
+                },
+                new CommandBinding {
                     Key         = KeyCode.F8,
                     Description = "Reveal map",
                     Execute     = CheatCommands.ExploreAll,
                 },*/
+               /* new CommandBinding {
+                    Key         = KeyCode.UpArrow,
+                    Description = "Invigorate",
+                    Execute     = CheatCommands.Invigorate
+                },*/
 
-        // extra
-        // inputManager.Register(KeyCode.End, CheatCommands.TeleportSafe);
-        // inputManager.Register(KeyCode.KeypadEnter, CheatCommands.CastHealAOE);
-        // inputManager.Register(KeyCode.KeypadPlus, CheatCommands.CastDmgAOE);
-        };
+            // extra
+            // inputManager.Register(KeyCode.End, CheatCommands.TeleportSafe);
+            // inputManager.Register(KeyCode.KeypadPlus, CheatCommands.CastDmgAOE);
+            };
 
             foreach (var cmd in commands)
             {
-                // register in the global registry…
+                // register in the global registry...
                 CommandRegistry.All.Add(cmd);
 
-                // …and hook into input handling
+                // ...and hook into input handling
                 inputManager.Register(cmd.Key, cmd.Execute);
             }            
         }
@@ -351,6 +356,7 @@ namespace ICanShowYouTheWorld
         public static void ToggleGodMode()
         {
             GodMode = !GodMode;
+            ToggleRenewal();
             Player.m_localPlayer.SetGodMode(GodMode);
             Player.m_localPlayer.SetNoPlacementCost(value: GodMode);
             Show($"God Mode {(GodMode ? "ON" : "OFF")}");
@@ -589,7 +595,7 @@ namespace ICanShowYouTheWorld
 
             foreach (Character entity in list)
             {
-                if (!entity.IsPlayer() || !entity.IsTamed()) continue; // || !entity.IsTamed() 
+                if (!entity.IsPlayer()) continue; // || !entity.IsTamed() 
                 if (entity.GetHealthPercentage() < 0.85f) //maybe a retamed isnt really tamed? /*&& entity.GetHoverName() != Player.m_localPlayer.GetHoverName()*/ 
                 {
                     Show(entity.GetHoverName() + " at " + Math.Floor(entity.GetHealthPercentage() * 100) + "%. Healing.");
