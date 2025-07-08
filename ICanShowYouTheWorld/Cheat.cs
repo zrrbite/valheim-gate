@@ -111,7 +111,7 @@ namespace ICanShowYouTheWorld
                     Execute     = CheatCommands.SpawnCombatPet
                 },
                 new CommandBinding {
-                    Key         = KeyCode.Keypad3,
+                    Key         = KeyCode.Keypad5,
                     Description = "Cloak of Flames",
                     Execute     = CheatCommands.ToggleCloakOfFlames,
                     GetState    = () => CheatCommands.CloakActive
@@ -171,8 +171,13 @@ namespace ICanShowYouTheWorld
                 },
                 new CommandBinding {
                     Key         = KeyCode.Keypad2,
+                    Description = "Next Prefab",
+                    Execute     = CheatCommands.CyclePrefab,
+                },
+                new CommandBinding {
+                    Key         = KeyCode.Keypad3,
                     Description = "Spawn Prefab",
-                    Execute     = CheatCommands.SpawnPrefab
+                    Execute     = CheatCommands.SpawnSelectedPrefab
                 },
                 new CommandBinding {
                     Key         = KeyCode.F6,
@@ -296,6 +301,16 @@ namespace ICanShowYouTheWorld
         private static readonly string[] combatPets = { "Skeleton_Friendly" };
         private static readonly string[] petNames = { "Bob", "Ralf", "Liam", "Olivia", "Elijah" /*...*/ };
 
+        // 1.A) The list of available prefabs
+        private static readonly string[] SpawnPrefabs = {
+            "Fader_Fissure_AOE",
+            "Fader_Flamebreath_AOE",
+            "Fader_MeteorSmash_AOE",
+            "FenringIceNova_aoe"
+        };
+        private static int prefabIndex = 0;
+        public static string CurrentPrefab => SpawnPrefabs[prefabIndex];
+
         static CheatCommands()
         {
             // register periodic callbacks - todo: can do this better
@@ -379,6 +394,34 @@ namespace ICanShowYouTheWorld
             DamageCounter--;
             Show("Damage Counter: " + DamageCounter);
             ApplySuperWeapon();
+        }
+
+        // 1.B) Cycle to the next prefab in the list
+        public static void CyclePrefab()
+        {
+            prefabIndex = (prefabIndex + 1) % SpawnPrefabs.Length;
+            Show($"Selected prefab: {CurrentPrefab}");
+        }
+
+        // 1.C) Spawn whatever is currently selected
+        public static void SpawnSelectedPrefab()
+        {
+            SpawnPrefab(CurrentPrefab);
+        }
+
+        // 1.D) Refactored spawn that takes a name
+        private static void SpawnPrefab(string name)
+        {
+            if (!RequireGodMode("Spawn Prefab")) return;
+            var prefab = ZNetScene.instance.GetPrefab(name);
+            if (prefab == null) { Show($"Missing prefab: {name}"); return; }
+            var player = Player.m_localPlayer;
+            Vector3 forward = player.transform.forward;
+            Vector3 spawnPos = player.transform.position + forward * 5f + Vector3.up;
+            if (Physics.Raycast(spawnPos, Vector3.down, out RaycastHit hit, 10f))
+                spawnPos.y = hit.point.y + 0.5f;
+            UnityEngine.Object.Instantiate(prefab, spawnPos, Quaternion.identity);
+            Show($"Spawned {name} at {spawnPos:0.0}");
         }
 
         public static void RevealBosses()
@@ -590,7 +633,7 @@ namespace ICanShowYouTheWorld
         // todo: List of pets in seperate box.
         // todo: Allow cycling through prefabs and displaying that to the user.
         // todo: 
-        public static void SpawnPrefab()
+        public static void SpawnPrefabOld()
         {
             if (!RequireGodMode("Spawn Prefab")) return;
 
@@ -888,6 +931,16 @@ namespace ICanShowYouTheWorld
             GUI.backgroundColor = new Color(0f, 0f, 0f, 0.8f);
             GUI.Box(new Rect(0, 0, modeWindow.width, modeWindow.height), GUIContent.none);
             GUI.backgroundColor = Color.white;
+
+            // 2.A) Prefab label
+            GUILayout.BeginHorizontal();
+            GUI.contentColor = Color.white;
+            GUILayout.Label($"Prefab: {CheatCommands.CurrentPrefab}", GUILayout.ExpandWidth(false));
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+
+            // small gap
+            GUILayout.Space(5);
 
             // precompute description style
             var descStyle = new GUIStyle(GUI.skin.label)
