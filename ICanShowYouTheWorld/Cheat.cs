@@ -663,7 +663,7 @@ namespace ICanShowYouTheWorld
 
             foreach (Character entity in list)
             {
-                if (!entity.IsPlayer()) continue; // || !entity.IsTamed() 
+                if (!entity.IsPlayer() && !entity.IsTamed()) continue; // || !entity.IsTamed() 
                 if (entity.GetHealthPercentage() < 0.85f) //maybe a retamed isnt really tamed? /*&& entity.GetHoverName() != Player.m_localPlayer.GetHoverName()*/ 
                 {
                     Show(entity.GetHoverName() + " at " + Math.Floor(entity.GetHealthPercentage() * 100) + "%. Healing.");
@@ -882,7 +882,7 @@ namespace ICanShowYouTheWorld
             );
             // ID = 2 for Pets
             petWindow = GUILayout.Window(
-                2, petWindow, DrawPets, "Pets",
+                2, petWindow, DrawPets, "Group",
                 GUILayout.Width(200f), GUILayout.Height(TH)
             );
         }
@@ -953,7 +953,7 @@ namespace ICanShowYouTheWorld
             var old = GUI.contentColor;
             foreach (var c in pets)
             {
-                if (!c.IsTamed()) continue;
+                if (!c.IsTamed() && !c.IsPlayer()) continue;
                 float dist = Utils.DistanceXZ(c.transform.position, player.transform.position);
                 float hpPct = c.GetHealthPercentage() * 100f;
 
