@@ -771,8 +771,8 @@ namespace ICanShowYouTheWorld
     {
         public static UIManager Instance { get; private set; }
         private bool visible;
-        const float TW = 400, TH = 250f;
-        const float modeWidth = 300f;
+        const float TW = 300, TH = 250f;
+        const float modeWidth = 325f;
         const float modeHeight = 550f;
 
         //private Rect trackWindow = new Rect(250, Screen.height - 250, 250, 150);
@@ -850,9 +850,9 @@ namespace ICanShowYouTheWorld
             });
 
             // column widths (tweak as needed)
-            const float nameW = 200f;
-            const float distW = 100f;
-            const float hpW = 200f;
+            const float nameW = 150f;
+            const float distW = 75f;
+            const float hpW = 100f;
 
             var oldColor = GUI.contentColor;
             foreach (var c in list)
