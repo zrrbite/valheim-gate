@@ -490,7 +490,7 @@ namespace ICanShowYouTheWorld
 
                 //item.SetLevel(3); //Hmm, its kind of interesting that we could runtime just increase the level of mobs already in the world.
                 item.GetComponent<MonsterAI>().SetFollowTarget(Player.m_localPlayer.gameObject);
-                item.SetMaxHealth(2000);
+                item.SetMaxHealth(3000);
                 //item.GetComponent<Character>().m_name = ... something to symbolise it has been augmented.
             }
 
@@ -835,7 +835,7 @@ namespace ICanShowYouTheWorld
         // Pets panel, just to the right of tracking
         private Rect petWindow = new Rect(
             20f,
-            100f,
+            150f,
             200f, TH
         );
         void Awake() => Instance = this;
