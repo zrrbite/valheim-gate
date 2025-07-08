@@ -308,7 +308,8 @@ namespace ICanShowYouTheWorld
             "Fader_MeteorSmash_AOE", // invis dmg
             "FenringIceNova_aoe", // slow?
             "shieldgenerator_attack", // not sure this even does dmg
-            "aoe_nova"
+            "aoe_nova",
+            "VikingShip_Ashlands"
         };
         private static int prefabIndex = 0;
         public static string CurrentPrefab => SpawnPrefabs[prefabIndex];
