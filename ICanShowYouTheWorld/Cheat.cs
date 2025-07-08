@@ -840,7 +840,7 @@ namespace ICanShowYouTheWorld
         // Pets panel, just to the right of tracking
         private Rect petWindow = new Rect(
             20f,
-            225f,
+            300f,
             200f, TH
         );
         void Awake() => Instance = this;
@@ -997,7 +997,7 @@ namespace ICanShowYouTheWorld
 
             // column widths
             const float descW = 160f;  // room for description
-            const float keyW = 85f;   // room for "(KeyName)"
+            const float keyW = 120f;   // room for "(KeyName)"
 
             foreach (var cmd in CommandRegistry.All)
             {
