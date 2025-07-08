@@ -95,13 +95,13 @@ namespace ICanShowYouTheWorld
                     GetState    = () => CheatCommands.AOERenewalActive
                 },
                 new CommandBinding {
-                    Key         = KeyCode.UpArrow,
+                    Key         = KeyCode.Keypad2,
                     Description = "Guardian Gift",
                     Execute     = CheatCommands.GuardianGift
                     //,GetState    = () => CheatCommands.GiftActive
                 },
                 new CommandBinding {
-                    Key         = KeyCode.DownArrow,
+                    Key         = KeyCode.UpArrow,
                     Description = "Heal AOE",
                     Execute     = CheatCommands.CastHealAOE
                 },
@@ -111,39 +111,39 @@ namespace ICanShowYouTheWorld
                     Execute     = CheatCommands.SpawnCombatPet
                 },
                 new CommandBinding {
-                    Key         = KeyCode.Keypad5,
+                    Key         = KeyCode.Keypad3,
                     Description = "Cloak of Flames",
                     Execute     = CheatCommands.ToggleCloakOfFlames,
                     GetState    = () => CheatCommands.CloakActive
                 },
                 new CommandBinding {
-                    Key         = KeyCode.Keypad9,
+                    Key         = KeyCode.Keypad7,
                     Description = "Tame All",
                     Execute     = CheatCommands.TameAll
                 },
                 new CommandBinding {
-                    Key         = KeyCode.PageUp,
+                    Key         = KeyCode.RightArrow,
                     Description = "++Speed",
                     Execute     = CheatCommands.SpeedUp
                 },
                 new CommandBinding {
-                    Key         = KeyCode.PageDown,
+                    Key         = KeyCode.LeftArrow,
                     Description = "--Speed",
                     Execute     = CheatCommands.SpeedDown
                 },
                 new CommandBinding {
-                    Key         = KeyCode.RightArrow,
+                    Key         = KeyCode.KeypadPlus,
                     Description = "++Damage",
                     Execute     = CheatCommands.IncreaseDamageCounter
                 },
                 new CommandBinding {
-                    Key         = KeyCode.LeftArrow,
+                    Key         = KeyCode.KeypadMinus,
                     Description = "--Damage",
                     Execute     = CheatCommands.DecreaseDamageCounter
                 },
 
                 new CommandBinding {
-                    Key         = KeyCode.Keypad4,
+                    Key         = KeyCode.KeypadDivide,
                     Description = "Ghost Mode",
                     Execute     = CheatCommands.ToggleGhostMode,
                     GetState    = () => CheatCommands.GhostMode
@@ -165,17 +165,17 @@ namespace ICanShowYouTheWorld
                     Execute     = CheatCommands.TeleportMass
                 },
                 new CommandBinding {
-                    Key         = KeyCode.Keypad6,
+                    Key         = KeyCode.Keypad4,
                     Description = "Replenish Stacks",
                     Execute     = CheatCommands.ReplenishStacks,
                 },
                 new CommandBinding {
-                    Key         = KeyCode.Keypad2,
+                    Key         = KeyCode.KeypadPeriod,
                     Description = "Next Prefab",
                     Execute     = CheatCommands.CyclePrefab,
                 },
                 new CommandBinding {
-                    Key         = KeyCode.Keypad3,
+                    Key         = KeyCode.KeypadEnter,
                     Description = "Spawn Prefab",
                     Execute     = CheatCommands.SpawnSelectedPrefab
                 },
