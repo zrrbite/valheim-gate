@@ -835,7 +835,7 @@ namespace ICanShowYouTheWorld
         // Pets panel, just to the right of tracking
         private Rect petWindow = new Rect(
             20f,
-            150f,
+            225f,
             200f, TH
         );
         void Awake() => Instance = this;
@@ -927,7 +927,7 @@ namespace ICanShowYouTheWorld
 
                 // Health in green (>75%) or red
                 GUI.contentColor = hpPct >= 75f ? Color.green : Color.red;
-                GUILayout.Label($"{hpPct:0.0}% ({c.GetHealth()})", GUILayout.Width(hpW));
+                GUILayout.Label($"{hpPct:0.0}% ({Mathf.RoundToInt(c.GetHealth())})", GUILayout.Width(hpW));
 
                 GUILayout.EndHorizontal();
             }
@@ -958,7 +958,7 @@ namespace ICanShowYouTheWorld
                 GUI.contentColor = Color.white;
                 GUILayout.Label(c.GetHoverName(), GUILayout.Width(nameW));           
                 GUI.contentColor = hpPct >= 75f ? Color.green : Color.red;
-                GUILayout.Label($"{hpPct:0.0}% ({c.GetHealth()})", GUILayout.Width(hpW));
+                GUILayout.Label($"{hpPct:0.0}% ({Mathf.RoundToInt(c.GetHealth())})", GUILayout.Width(hpW));
                 GUILayout.EndHorizontal();
             }
             GUI.contentColor = old;
