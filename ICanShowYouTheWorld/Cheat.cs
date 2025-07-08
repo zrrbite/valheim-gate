@@ -297,16 +297,18 @@ namespace ICanShowYouTheWorld
         public static int DamageCounter { get; private set; }
         public static string CurrentGuardianName => guardians[guardianIndex];
         private static readonly string[] guardians = { "GP_Eikthyr", "GP_Bonemass", "GP_Moder", "GP_Yagluth", "GP_Fader" };
-        // private static readonly string[] combatPets = { "Wolf", "DvergerMageSupport", "Asksvin" }; //AskSvin
-        private static readonly string[] combatPets = { "Skeleton_Friendly", "Asksvin" };
+        // private static readonly string[] combatPets = { "Wolf", "DvergerMageSupport", "Asksvin" };
+        private static readonly string[] combatPets = { "Skeleton_Friendly" };
         private static readonly string[] petNames = { "Bob", "Ralf", "Liam", "Olivia", "Elijah" };
 
         // 1.A) The list of available prefabs
         private static readonly string[] SpawnPrefabs = {
             "Fader_Fissure_AOE",
-            "Fader_Flamebreath_AOE",
-            "Fader_MeteorSmash_AOE",
-            "FenringIceNova_aoe"
+            "Fader_Flamebreath_AOE", // "wall of fire"
+            "Fader_MeteorSmash_AOE", // invis dmg
+            "FenringIceNova_aoe", // slow?
+            "shieldgenerator_attack", // not sure this even does dmg
+            "aoe_nova"
         };
         private static int prefabIndex = 0;
         public static string CurrentPrefab => SpawnPrefabs[prefabIndex];
@@ -463,8 +465,8 @@ namespace ICanShowYouTheWorld
             var ch = inst.GetComponent<Character>();
 
             ch.SetLevel(3);
-            ch.GetComponent<Character>().SetMaxHealth(2000);
-            ch.GetComponent<Character>().SetHealth(2000);
+            ch.GetComponent<Character>().SetMaxHealth(3000);
+            ch.GetComponent<Character>().SetHealth(3000);
             ch.GetComponent<MonsterAI>().SetFollowTarget(Player.m_localPlayer.gameObject);
             ch.GetComponent<Character>().m_name = petNames[rnd.Next(petNames.Length)];
 
@@ -944,7 +946,7 @@ namespace ICanShowYouTheWorld
 
             var player = Player.m_localPlayer;
             var pets = new List<Character>();
-            Character.GetCharactersInRange(player.transform.position, 50f, pets);
+            Character.GetCharactersInRange(player.transform.position, 50f, pets); //todo: helper. same with tame.
 
             const float nameW = 100f, hpW = 100f;
             var old = GUI.contentColor;
