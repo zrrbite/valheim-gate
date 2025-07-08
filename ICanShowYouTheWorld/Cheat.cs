@@ -298,8 +298,8 @@ namespace ICanShowYouTheWorld
         public static string CurrentGuardianName => guardians[guardianIndex];
         private static readonly string[] guardians = { "GP_Eikthyr", "GP_Bonemass", "GP_Moder", "GP_Yagluth", "GP_Fader" };
         // private static readonly string[] combatPets = { "Wolf", "DvergerMageSupport", "Asksvin" }; //AskSvin
-        private static readonly string[] combatPets = { "Skeleton_Friendly" };
-        private static readonly string[] petNames = { "Bob", "Ralf", "Liam", "Olivia", "Elijah" /*...*/ };
+        private static readonly string[] combatPets = { "Skeleton_Friendly", "Asksvin" };
+        private static readonly string[] petNames = { "Bob", "Ralf", "Liam", "Olivia", "Elijah" };
 
         // 1.A) The list of available prefabs
         private static readonly string[] SpawnPrefabs = {
@@ -832,7 +832,12 @@ namespace ICanShowYouTheWorld
             modeWidth,                  // width
             modeHeight                  // height
         );
-
+        // Pets panel, just to the right of tracking
+        private Rect petWindow = new Rect(
+            20f,
+            100f,
+            200f, TH
+        );
         void Awake() => Instance = this;
 
         public void ToggleVisible() => visible = !visible;
@@ -871,6 +876,11 @@ namespace ICanShowYouTheWorld
                 DrawModes,
                 "Modes",
                 GUILayout.MinWidth(modeWidth)
+            );
+            // ID = 2 for Pets
+            petWindow = GUILayout.Window(
+                2, petWindow, DrawPets, "Pets",
+                GUILayout.Width(200f), GUILayout.Height(TH)
             );
         }
 
@@ -923,6 +933,35 @@ namespace ICanShowYouTheWorld
             }
             GUI.contentColor = oldColor;
 
+            GUI.DragWindow();
+        }
+        void DrawPets(int id)
+        {
+            // Opaque background
+            GUI.backgroundColor = new Color(0, 0, 0, 0.8f);
+            GUI.Box(new Rect(0, 0, petWindow.width, petWindow.height), GUIContent.none);
+            GUI.backgroundColor = Color.white;
+
+            var player = Player.m_localPlayer;
+            var pets = new List<Character>();
+            Character.GetCharactersInRange(player.transform.position, 50f, pets);
+
+            const float nameW = 100f, hpW = 100f;
+            var old = GUI.contentColor;
+            foreach (var c in pets)
+            {
+                if (!c.IsTamed()) continue;
+                float dist = Utils.DistanceXZ(c.transform.position, player.transform.position);
+                float hpPct = c.GetHealthPercentage() * 100f;
+
+                GUILayout.BeginHorizontal();
+                GUI.contentColor = Color.white;
+                GUILayout.Label(c.GetHoverName(), GUILayout.Width(nameW));           
+                GUI.contentColor = hpPct >= 75f ? Color.green : Color.red;
+                GUILayout.Label($"{hpPct:0.0}% ({c.GetHealth()})", GUILayout.Width(hpW));
+                GUILayout.EndHorizontal();
+            }
+            GUI.contentColor = old;
             GUI.DragWindow();
         }
         void DrawModes(int id)
