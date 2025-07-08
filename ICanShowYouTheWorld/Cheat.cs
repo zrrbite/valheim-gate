@@ -592,14 +592,22 @@ namespace ICanShowYouTheWorld
         // todo: 
         public static void SpawnPrefab()
         {
-            if (!RequireGodMode("Spawn prefab")) return;
-            //var prefab = ZNetScene.instance.GetPrefab("Pukeberries");
-            var prefab = ZNetScene.instance.GetPrefab("Fader_MeteorSmash_AOE"); // Fader_Fissure_AOE, Fader_Flamebreath_AOE, Fader_MeteorSmash_AOE, FenringIceNova_aoe, fallenvalkyrie_poisonbreath_aoe
+            if (!RequireGodMode("Spawn Prefab")) return;
+
+            var prefab = ZNetScene.instance.GetPrefab("FenringIceNova_aoe"); // Fader_Fissure_AOE, Fader_Flamebreath_AOE, Fader_MeteorSmash_AOE (crazy invis dmg), FenringIceNova_aoe
             if (prefab == null) { Show("Missing prefab"); return; }
-            UnityEngine.Object.Instantiate(prefab,
-                Player.m_localPlayer.transform.position + Vector3.up,
-                Quaternion.identity);
-            Show("Spawning prefab");
+
+            var player = Player.m_localPlayer;
+            // 1) Project a point 5 units in front of the player…
+            Vector3 forward = player.transform.forward;
+            Vector3 spawnPos = player.transform.position + forward * 5f + Vector3.up;
+
+            // 2) (Optional) Drop it to the ground using a raycast:
+            if (Physics.Raycast(spawnPos, Vector3.down, out RaycastHit hit, 10f))
+                spawnPos.y = hit.point.y + 0.5f;  // adjust so it’s not clipping
+
+            UnityEngine.Object.Instantiate(prefab, spawnPos, Quaternion.identity);
+            Show($"Spawning prefab at {spawnPos:0.0}");
         }
 
         public static void AoeRegen()
