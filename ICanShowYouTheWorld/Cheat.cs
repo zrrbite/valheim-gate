@@ -376,6 +376,8 @@ namespace ICanShowYouTheWorld
             ToggleRenewal();
             Player.m_localPlayer.SetGodMode(GodMode);
             Player.m_localPlayer.SetNoPlacementCost(value: GodMode);
+            Player.m_localPlayer.m_guardianPowerCooldown = 1f;
+
             Show($"God Mode {(GodMode ? "ON" : "OFF")}");
         }
 
