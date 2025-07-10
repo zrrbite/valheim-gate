@@ -101,6 +101,11 @@ namespace ICanShowYouTheWorld
                     //,GetState    = () => CheatCommands.GiftActive
                 },
                 new CommandBinding {
+                    Key         = KeyCode.Keypad5,
+                    Description = "Curse",
+                    Execute     = CheatCommands.DebuffAoE
+                },
+                new CommandBinding {
                     Key         = KeyCode.UpArrow,
                     Description = "Heal AOE",
                     Execute     = CheatCommands.CastHealAOE
@@ -281,6 +286,9 @@ namespace ICanShowYouTheWorld
         }
     }
 
+    //todo 1: group things, as per note
+    //todo 2:
+
     // Static cheat commands and shared state
     public static class CheatCommands
     {
@@ -299,7 +307,7 @@ namespace ICanShowYouTheWorld
         private static readonly string[] guardians = { "GP_Eikthyr", "GP_Bonemass", "GP_Moder", "GP_Yagluth", "GP_Fader" };
         // private static readonly string[] combatPets = { "Wolf", "DvergerMageSupport", "Asksvin" };
         private static readonly string[] combatPets = { "Skeleton_Friendly" };
-        private static readonly string[] petNames = { "Bob", "Ralf", "Liam", "Olivia", "Elijah" };
+        private static readonly string[] petNames = { "Bob", "Ralf", "Liam", "Olivia", "Elijah", "Kebober" };
 
         // 1.A) The list of available prefabs
         private static readonly string[] SpawnPrefabs = {
@@ -309,7 +317,14 @@ namespace ICanShowYouTheWorld
             "FenringIceNova_aoe", // slow?
             "shieldgenerator_attack", // not sure this even does dmg
             "aoe_nova",
-            "VikingShip_Ashlands",
+//            "giant_arm",
+//            "giant_brain",
+//            "giant_helmet1",
+//            "giant_helmet2",
+//            "giant_ribs",
+//            "giant_skull",
+//            "giant_sword1",
+//            "giant_sword2"
         };
         private static int prefabIndex = 0;
         public static string CurrentPrefab => SpawnPrefabs[prefabIndex];
@@ -376,7 +391,7 @@ namespace ICanShowYouTheWorld
             ToggleRenewal();
             Player.m_localPlayer.SetGodMode(GodMode);
             Player.m_localPlayer.SetNoPlacementCost(value: GodMode);
-            Player.m_localPlayer.m_guardianPowerCooldown = 1f;
+            Player.m_localPlayer.m_guardianPowerCooldown = 1f; //todo: this works if we place it in Gift
 
             Show($"God Mode {(GodMode ? "ON" : "OFF")}");
         }
@@ -497,6 +512,50 @@ namespace ICanShowYouTheWorld
                 item.GetComponent<MonsterAI>().SetFollowTarget(Player.m_localPlayer.gameObject);
                 item.SetMaxHealth(3000);
                 //item.GetComponent<Character>().m_name = ... something to symbolise it has been augmented.
+            }
+
+            Show("All nearby tamed");
+        }
+
+        public static void BuffAoE()
+        {
+            if (!RequireGodMode("Buff team")) return;
+
+            List<Character> list = new List<Character>();
+            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 50.0f, list);
+
+            foreach (Character item in list)
+            {
+                if (!item.IsPlayer()) continue;
+
+                //item.SetMaxHealth(150);
+                item.m_speed = 9;
+                item.m_acceleration = 9;
+            }
+
+            Show("All nearby tamed");
+        }
+
+        // Can also be used to re-tame
+        public static void DebuffAoE()
+        {
+            if (!RequireGodMode("Debuff")) return;
+
+            List<Character> list = new List<Character>();
+            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 50.0f, list);
+
+            foreach (Character item in list)
+            {
+                if (!item.IsMonsterFaction(10)) continue;
+
+                //Lower health to 100. If they're full health, health bar won't show any signs of change
+                item.SetMaxHealth(166);
+                item.GetComponent<Character>().m_name = "Gimp";
+                item.SetLevel(1); // Strip level
+                item.SetWalk(true); // Slow
+                item.m_speed = 1;
+                item.m_acceleration = 1;
+                // todo: Taunt by setting follow target?
             }
 
             Show("All nearby tamed");
@@ -707,7 +766,7 @@ namespace ICanShowYouTheWorld
         {
             if (!RequireGodMode("Kill all monsters")) return;
             var list = new List<Character>();
-            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 20f, list);
+            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 30f, list);
             int killed = 0;
             foreach (var c in list)
                 if (!c.IsPlayer() && !c.IsTamed())
