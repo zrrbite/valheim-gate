@@ -106,6 +106,12 @@ namespace ICanShowYouTheWorld
                     Execute     = CheatCommands.ToggleCloakOfFlames,
                     GetState    = () => CheatCommands.CloakActive
                 },
+                new CommandBinding {
+                    Key         = KeyCode.Keypad7,
+                    Description = "Taunt",
+                    Execute     = CheatCommands.Taunt
+                },
+
                 // ---- pets ----
                 new CommandBinding {
                     Key         = KeyCode.Keypad4,
@@ -299,7 +305,7 @@ namespace ICanShowYouTheWorld
             "Fader_Flamebreath_AOE", // "wall of fire"
             "Fader_MeteorSmash_AOE", // invis dmg
             "FenringIceNova_aoe", // slow?
-            "shieldgenerator_attack", // not sure this even does dmg
+            "shieldgenerator_attack",
             "aoe_nova",
 //            "giant_arm",
 //            "giant_brain",
@@ -334,6 +340,8 @@ namespace ICanShowYouTheWorld
             ("Toggle Ghost Mode",       ToggleGhostMode),
             ("Toggle Guardian Pwr",     ToggleGuardianPower),
             ("Replenish Stacks",        ReplenishStacks),
+            ("Increase Skills",         IncreaseSkills),
+
         };
 
         // 2. Track which one is “current”
@@ -504,7 +512,7 @@ namespace ICanShowYouTheWorld
             ch.GetComponent<Character>().SetMaxHealth(3000);
             ch.GetComponent<Character>().SetHealth(3000);
             ch.GetComponent<MonsterAI>().SetFollowTarget(Player.m_localPlayer.gameObject);
-            ch.GetComponent<Character>().m_name = petNames[rnd.Next(petNames.Length)];
+            ch.m_name = petNames[rnd.Next(petNames.Length)];
 
             //tame it
             Tameable.TameAllInArea(Player.m_localPlayer.transform.position, 20.0f);
@@ -546,13 +554,14 @@ namespace ICanShowYouTheWorld
             foreach (Character item in list)
             {
                 if (!item.IsPlayer()) continue;
+                if (item == Player.m_localPlayer)
+                    continue;
 
-                //item.SetMaxHealth(150);
                 item.m_speed = 9;
                 item.m_acceleration = 9;
             }
 
-            Show("All nearby tamed");
+            Show("AoE Buff!");
         }
 
         // Can also be used to re-tame
@@ -568,16 +577,35 @@ namespace ICanShowYouTheWorld
                 if (!item.IsMonsterFaction(10)) continue;
 
                 //Lower health to 100. If they're full health, health bar won't show any signs of change
-                item.SetMaxHealth(166);
-                item.GetComponent<Character>().m_name = "Gimp";
-                item.SetLevel(1); // Strip level
-                item.SetWalk(true); // Slow
-                item.m_speed = 1;
-                item.m_acceleration = 1;
-                // todo: Taunt by setting follow target?
+                item.GetComponent<Character>().SetMaxHealth(100);
+                item.GetComponent<Character>().SetHealth(100);
+
+                item.GetComponent<Character>().SetLevel(1); // Strip level
+                item.GetComponent<Character>().SetWalk(true); // Slow
+                item.GetComponent<Character>().m_speed = 1;
+                item.GetComponent<Character>().m_runSpeed = 1;
+                item.GetComponent<Character>().m_acceleration = 1;
+
+                item.GetComponent<MonsterAI>().SetFollowTarget(Player.m_localPlayer.gameObject);
             }
 
-            Show("All nearby tamed");
+            Show("AoE Debuff!");
+        }
+
+        public static void Taunt()
+        {
+            if (!RequireGodMode("Taunt")) return;
+
+            List<Character> list = new List<Character>();
+            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 50.0f, list);
+
+            foreach (Character item in list)
+            {
+                if (!item.IsMonsterFaction(10)) continue;
+                item.GetComponent<MonsterAI>().SetFollowTarget(Player.m_localPlayer.gameObject);
+            }
+
+            Show("AoE Taunt!");
         }
 
         public static void ReplenishStacks()
@@ -632,12 +660,12 @@ namespace ICanShowYouTheWorld
             Show($"Raising important skills");
 
             var p = Player.m_localPlayer;
-            p.RaiseSkill(Skills.SkillType.BloodMagic);
-            p.RaiseSkill(Skills.SkillType.ElementalMagic);
-            p.RaiseSkill(Skills.SkillType.Swim);
-            p.RaiseSkill(Skills.SkillType.Run);
-            p.RaiseSkill(Skills.SkillType.Sneak);
-            p.RaiseSkill(Skills.SkillType.Jump);
+            p.RaiseSkill(Skills.SkillType.BloodMagic, 2);
+            p.RaiseSkill(Skills.SkillType.ElementalMagic, 2);
+            p.RaiseSkill(Skills.SkillType.Swim, 2);
+            p.RaiseSkill(Skills.SkillType.Run, 2);
+            p.RaiseSkill(Skills.SkillType.Sneak, 2);
+            p.RaiseSkill(Skills.SkillType.Jump, 2);
         }
 
         // Guardian's Gift: major buff including Renewal
