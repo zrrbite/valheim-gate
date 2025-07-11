@@ -84,10 +84,11 @@ namespace ICanShowYouTheWorld
                 },
                 new CommandBinding {
                     Key         = KeyCode.Keypad0,
-                    Description = "God Mode",
+                    Description = "God Mode", // Also toggles Renewal
                     Execute     = CheatCommands.ToggleGodMode,
                     GetState    = () => CheatCommands.GodMode
                 },
+                // --- Important Buffs
                 new CommandBinding {
                     Key         = KeyCode.Keypad1,
                     Description = "AoE Renewal",
@@ -98,22 +99,6 @@ namespace ICanShowYouTheWorld
                     Key         = KeyCode.Keypad2,
                     Description = "Guardian Gift",
                     Execute     = CheatCommands.GuardianGift
-                    //,GetState    = () => CheatCommands.GiftActive
-                },
-                new CommandBinding {
-                    Key         = KeyCode.Keypad5,
-                    Description = "Curse",
-                    Execute     = CheatCommands.DebuffAoE
-                },
-                new CommandBinding {
-                    Key         = KeyCode.UpArrow,
-                    Description = "Heal AOE",
-                    Execute     = CheatCommands.CastHealAOE
-                },
-                new CommandBinding {
-                    Key         = KeyCode.Keypad8,
-                    Description = "Combat pet",
-                    Execute     = CheatCommands.SpawnCombatPet
                 },
                 new CommandBinding {
                     Key         = KeyCode.Keypad3,
@@ -121,39 +106,44 @@ namespace ICanShowYouTheWorld
                     Execute     = CheatCommands.ToggleCloakOfFlames,
                     GetState    = () => CheatCommands.CloakActive
                 },
+                // ---- pets ----
                 new CommandBinding {
-                    Key         = KeyCode.Keypad7,
+                    Key         = KeyCode.Keypad4,
+                    Description = "Combat pet",
+                    Execute     = CheatCommands.SpawnCombatPet
+                },
+                new CommandBinding {
+                    Key         = KeyCode.Keypad5,
                     Description = "Tame All",
                     Execute     = CheatCommands.TameAll
                 },
+                // ----------------
+                new CommandBinding {
+                    Key         = KeyCode.UpArrow,
+                    Description = "Heal AOE",
+                    Execute     = CheatCommands.CastHealAOE
+                },
                 new CommandBinding {
                     Key         = KeyCode.RightArrow,
-                    Description = "++Speed",
+                    Description = "Speed++",
                     Execute     = CheatCommands.SpeedUp
                 },
                 new CommandBinding {
                     Key         = KeyCode.LeftArrow,
-                    Description = "--Speed",
+                    Description = "Speed--",
                     Execute     = CheatCommands.SpeedDown
                 },
                 new CommandBinding {
                     Key         = KeyCode.KeypadPlus,
-                    Description = "++Damage",
+                    Description = "Damage++",
                     Execute     = CheatCommands.IncreaseDamageCounter
                 },
                 new CommandBinding {
                     Key         = KeyCode.KeypadMinus,
-                    Description = "--Damage",
+                    Description = "Damage--",
                     Execute     = CheatCommands.DecreaseDamageCounter
                 },
-
-                new CommandBinding {
-                    Key         = KeyCode.KeypadDivide,
-                    Description = "Ghost Mode",
-                    Execute     = CheatCommands.ToggleGhostMode,
-                    GetState    = () => CheatCommands.GhostMode
-                },
-                //Teleport
+                // ---- Teleport ----
                 new CommandBinding {
                     Key         = KeyCode.Home,
                     Description = "Gate",
@@ -165,14 +155,9 @@ namespace ICanShowYouTheWorld
                     Execute     = CheatCommands.TeleportSolo
                 },
                 new CommandBinding {
-                    Key         = KeyCode.End,
-                    Description = "Mass teleport",
-                    Execute     = CheatCommands.TeleportMass
-                },
-                new CommandBinding {
-                    Key         = KeyCode.Keypad4,
-                    Description = "Replenish Stacks",
-                    Execute     = CheatCommands.ReplenishStacks,
+                    Key         = KeyCode.Numlock,
+                    Description = "Kill 'em all",
+                    Execute     = CheatCommands.KillAllMonsters,
                 },
                 new CommandBinding {
                     Key         = KeyCode.KeypadPeriod,
@@ -184,38 +169,23 @@ namespace ICanShowYouTheWorld
                     Description = "Spawn Prefab",
                     Execute     = CheatCommands.SpawnSelectedPrefab
                 },
+
                 new CommandBinding {
-                    Key         = KeyCode.F6,
-                    Description = "Guardian Power",
-                    Execute     = CheatCommands.ToggleGuardianPower,
+                    Key         = KeyCode.ScrollLock,
+                    Description = "Next Utility",
+                    Execute     = CheatCommands.CycleUtility,
+                    GetState    = null
                 },
+                // Execute the current utility (e.g. KeypadEnter)
                 new CommandBinding {
-                    Key         = KeyCode.F7,
-                    Description = "Reveal bosses",
-                    Execute     = CheatCommands.RevealBosses,
+                    Key         = KeyCode.Pause,
+                    Description = "Run Utility",
+                    Execute     = CheatCommands.ExecuteUtility,
+                    GetState    = null
                 },
-                new CommandBinding {
-                    Key         = KeyCode.F8,
-                    Description = "Kill 'em all",
-                    Execute     = CheatCommands.KillAllMonsters,
-                },
-                /*new CommandBinding {
-                    Key         = KeyCode.Keypad5,
-                    Description = "Raise skills",
-                    Execute     = CheatCommands.IncreaseSkills,
-                },
-                new CommandBinding {
-                    Key         = KeyCode.F8,
-                    Description = "Reveal map",
-                    Execute     = CheatCommands.ExploreAll,
-                },*/
-               /* new CommandBinding {
-                    Key         = KeyCode.UpArrow,
-                    Description = "Invigorate",
-                    Execute     = CheatCommands.Invigorate
-                },*/
 
             // extra
+            // CheatCommands.TeleportMass
             // inputManager.Register(KeyCode.End, CheatCommands.TeleportSafe);
             // inputManager.Register(KeyCode.KeypadPlus, CheatCommands.CastDmgAOE);
             };
@@ -341,6 +311,40 @@ namespace ICanShowYouTheWorld
             DamageCounter = 10;
         }
 
+        // ---
+
+        // 1. Define the utilities you want to cycle through:
+        private static readonly (string Name, Action Action)[] Utilities = {
+//            ("Explore Map",             ExploreAll),
+            ("Reveal Bosses",           RevealBosses),
+            ("Toggle Ghost Mode",       ToggleGhostMode),
+            ("Toggle Guardian Pwr",     ToggleGuardianPower),
+            ("Replenish Stacks",        ReplenishStacks),
+        };
+
+        // 2. Track which one is “current”
+        private static int utilIndex = 1; //start with ghost mode
+        public static string CurrentUtilityName
+            => Utilities[utilIndex].Name;
+
+        // 3. Key‐handler to step to the next one
+        public static void CycleUtility()
+        {
+            utilIndex = (utilIndex + 1) % Utilities.Length;
+            Show($"Selected Utility: {CurrentUtilityName}");
+        }
+
+        // 4. Key‐handler to execute the selected one
+        public static void ExecuteUtility()
+        {
+            // If you want to gate them behind God Mode:
+            // if (!GodMode) { Show("Requires God Mode"); return; }
+
+            Utilities[utilIndex].Action();
+        }
+
+        // ---
+
         public static void HandlePeriodic() => PeriodicManager.HandlePeriodic();
 
         // Permission check
@@ -360,14 +364,14 @@ namespace ICanShowYouTheWorld
         public static void ToggleRenewal()
         {
             RenewalActive = !RenewalActive;
-            Show($"Renewal {(RenewalActive ? "Enabled" : "Disabled")}");
+            Show($"Renewal {(RenewalActive ? "ON" : "OFF")}");
         }
 
         public static void ToggleAoeRenewal()
         {
             if (!RequireGodMode("AoE Renewal")) return;
             AOERenewalActive = !AOERenewalActive;
-            Show($"AoE Renewal {(AOERenewalActive ? "Enabled" : "Disabled")}");
+            Show($"AoE Renewal {(AOERenewalActive ? "ON" : "OFF")}");
         }
 
         public static void ToggleCloakOfFlames()
@@ -1035,15 +1039,33 @@ namespace ICanShowYouTheWorld
             GUI.Box(new Rect(0, 0, modeWindow.width, modeWindow.height), GUIContent.none);
             GUI.backgroundColor = Color.white;
 
+            // prepare a bold style for highlights
+            var highlightStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontStyle = FontStyle.Bold,
+                normal = { textColor = Color.white },
+                fontSize = 13
+            };
+
             // 2.A) Prefab label
             GUILayout.BeginHorizontal();
             GUI.contentColor = Color.white;
-            GUILayout.Label($"Prefab: {CheatCommands.CurrentPrefab}", GUILayout.ExpandWidth(false));
+            GUILayout.Label($"Prefab: {CheatCommands.CurrentPrefab}", highlightStyle, GUILayout.ExpandWidth(false));
             GUILayout.FlexibleSpace();
             GUILayout.EndHorizontal();
 
+            var oldColor = GUI.contentColor;
+
             // small gap
             GUILayout.Space(5);
+
+            // Utility header
+            GUILayout.BeginHorizontal();
+            GUI.contentColor = Color.white;
+            GUILayout.Label($"Utility: {CheatCommands.CurrentUtilityName}", highlightStyle, GUILayout.ExpandWidth(false));
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+            GUILayout.Space(5f);
 
             // precompute description style
             var descStyle = new GUIStyle(GUI.skin.label)
@@ -1051,12 +1073,34 @@ namespace ICanShowYouTheWorld
                 fontStyle = FontStyle.Bold,
                 normal = { textColor = Color.grey }
             };
-
-            var oldColor = GUI.contentColor;
-
             // column widths
             const float descW = 160f;  // room for description
             const float keyW = 120f;   // room for "(KeyName)"
+
+            // 3) Damage Counters row
+            {
+                GUILayout.BeginHorizontal();
+                GUI.contentColor = Color.white;
+                GUILayout.Label("Damage Counters", descStyle, GUILayout.Width(descW));
+                GUI.contentColor = Color.yellow;
+                GUILayout.Label(CheatCommands.DamageCounter.ToString(), GUILayout.Width(keyW));
+                GUILayout.EndHorizontal();
+            }
+
+            // 4) Run Speed row
+            {
+                GUILayout.BeginHorizontal();
+                GUI.contentColor = Color.white;
+                GUILayout.Label("Run Speed", descStyle, GUILayout.Width(descW));
+                GUI.contentColor = Color.yellow;
+                float speed = Player.m_localPlayer.m_runSpeed;
+                GUILayout.Label($"{speed:0.0}", GUILayout.Width(keyW));
+                GUILayout.EndHorizontal();
+            }
+            // 2) A little spacing
+            GUILayout.Space(10f);
+
+            GUI.contentColor = oldColor;
 
             foreach (var cmd in CommandRegistry.All)
             {
@@ -1082,31 +1126,7 @@ namespace ICanShowYouTheWorld
                 GUILayout.EndHorizontal();
             }
 
-            // 2) A little spacing
-            GUILayout.Space(10f);
-
-            // 3) Damage Counters row
-            {
-                GUILayout.BeginHorizontal();
-                GUI.contentColor = Color.white;
-                GUILayout.Label("Damage Counters", descStyle, GUILayout.Width(descW));
-                GUI.contentColor = Color.yellow;
-                GUILayout.Label(CheatCommands.DamageCounter.ToString(), GUILayout.Width(keyW));
-                GUILayout.EndHorizontal();
-            }
-
-            // 4) Run Speed row
-            {
-                GUILayout.BeginHorizontal();
-                GUI.contentColor = Color.white;
-                GUILayout.Label("Run Speed", descStyle, GUILayout.Width(descW));
-                GUI.contentColor = Color.yellow;
-                float speed = Player.m_localPlayer.m_runSpeed;
-                GUILayout.Label($"{speed:0.0}", GUILayout.Width(keyW));
-                GUILayout.EndHorizontal();
-            }
-
-            GUI.contentColor = oldColor;
+   
             GUI.DragWindow();
         }
     }
