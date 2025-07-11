@@ -754,17 +754,16 @@ namespace ICanShowYouTheWorld
             var list = new List<Character>();
             Character.GetCharactersInRange(
                 Player.m_localPlayer.transform.position,
-                80f, // keep your fixed range
+                80f,
                 list
             );
 
             foreach (var entity in list)
             {
                 if (!entity.IsPlayer() && !entity.IsTamed()) continue;
-                if (entity.GetHealthPercentage() < 0.85f)
+                if (entity.GetHealthPercentage() < 0.75f)
                 {
                     Show($"{entity.GetHoverName()} at {(int)(entity.GetHealthPercentage() * 100)}%. Healing.");
-                    // use the configurable amount now:
                     entity.Heal(AoeHealAmount, false);
                 }
             }
