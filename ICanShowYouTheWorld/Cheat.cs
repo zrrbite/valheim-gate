@@ -91,14 +91,14 @@ namespace ICanShowYouTheWorld
                 // --- Important Buffs
                 new CommandBinding {
                     Key         = KeyCode.Keypad1,
-                    Description = "AoE Renewal",
-                    Execute     = CheatCommands.ToggleAoeRenewal,
-                    GetState    = () => CheatCommands.AOERenewalActive
+                    Description = "Guardian Gift",
+                    Execute     = CheatCommands.GuardianGift
                 },
                 new CommandBinding {
                     Key         = KeyCode.Keypad2,
-                    Description = "Guardian Gift",
-                    Execute     = CheatCommands.GuardianGift
+                    Description = "AoE Renewal",
+                    Execute     = CheatCommands.ToggleAoeRenewal,
+                    GetState    = () => CheatCommands.AOERenewalActive
                 },
                 new CommandBinding {
                     Key         = KeyCode.Keypad3,
@@ -116,6 +116,19 @@ namespace ICanShowYouTheWorld
                     Key         = KeyCode.Keypad5,
                     Description = "Tame All",
                     Execute     = CheatCommands.TameAll
+                },
+                // --- aoe regen
+                new CommandBinding {
+                    Key         = KeyCode.PageUp,
+                    Description = "Increase AOE Heal",
+                    Execute     = CheatCommands.IncreaseAoeHealAmount,
+                    GetState    = null
+                },
+                new CommandBinding {
+                    Key         = KeyCode.PageDown,
+                    Description = "Decrease AOE Heal",
+                    Execute     = CheatCommands.DecreaseAoeHealAmount,
+                    GetState    = null
                 },
                 // ----------------
                 new CommandBinding {
@@ -278,6 +291,7 @@ namespace ICanShowYouTheWorld
         // private static readonly string[] combatPets = { "Wolf", "DvergerMageSupport", "Asksvin" };
         private static readonly string[] combatPets = { "Skeleton_Friendly" };
         private static readonly string[] petNames = { "Bob", "Ralf", "Liam", "Olivia", "Elijah", "Kebober" };
+        public static float AoeHealAmount = 25f;
 
         // 1.A) The list of available prefabs
         private static readonly string[] SpawnPrefabs = {
@@ -721,18 +735,36 @@ namespace ICanShowYouTheWorld
             Show($"Spawning prefab at {spawnPos:0.0}");
         }
 
+        public static void IncreaseAoeHealAmount()
+        {
+            AoeHealAmount = Mathf.Min(200f, AoeHealAmount + 5f);
+            Show($"AOE Heal Amount: {AoeHealAmount:0}");
+        }
+
+        // bump it down
+        public static void DecreaseAoeHealAmount()
+        {
+            AoeHealAmount = Mathf.Max(5f, AoeHealAmount - 5f);
+            Show($"AOE Heal Amount: {AoeHealAmount:0}");
+        }
+
         public static void AoeRegen()
         {
-            List<Character> list = new List<Character>();
-            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 80.0f, list);
+            var list = new List<Character>();
+            Character.GetCharactersInRange(
+                Player.m_localPlayer.transform.position,
+                80f, // keep your fixed range
+                list
+            );
 
-            foreach (Character entity in list)
+            foreach (var entity in list)
             {
-                if (!entity.IsPlayer() && !entity.IsTamed()) continue; // || !entity.IsTamed() 
-                if (entity.GetHealthPercentage() < 0.85f) //maybe a retamed isnt really tamed? /*&& entity.GetHoverName() != Player.m_localPlayer.GetHoverName()*/ 
+                if (!entity.IsPlayer() && !entity.IsTamed()) continue;
+                if (entity.GetHealthPercentage() < 0.85f)
                 {
-                    Show(entity.GetHoverName() + " at " + Math.Floor(entity.GetHealthPercentage() * 100) + "%. Healing.");
-                    entity.Heal(25.0f, false); // don't show it. shh
+                    Show($"{entity.GetHoverName()} at {(int)(entity.GetHealthPercentage() * 100)}%. Healing.");
+                    // use the configurable amount now:
+                    entity.Heal(AoeHealAmount, false);
                 }
             }
         }
@@ -1097,6 +1129,15 @@ namespace ICanShowYouTheWorld
                 GUILayout.Label($"{speed:0.0}", GUILayout.Width(keyW));
                 GUILayout.EndHorizontal();
             }
+
+            GUILayout.BeginHorizontal();
+            GUI.contentColor = Color.white;
+            GUILayout.Label("AOE Heal Amt", GUILayout.Width(160f));
+            GUI.contentColor = Color.cyan;
+            GUILayout.Label($"{CheatCommands.AoeHealAmount:0}", GUILayout.Width(85f));
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+
             // 2) A little spacing
             GUILayout.Space(10f);
 
