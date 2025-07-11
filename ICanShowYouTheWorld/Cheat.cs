@@ -120,13 +120,13 @@ namespace ICanShowYouTheWorld
                 // --- aoe regen
                 new CommandBinding {
                     Key         = KeyCode.PageUp,
-                    Description = "Increase AOE Heal",
+                    Description = "AOE Heal ++",
                     Execute     = CheatCommands.IncreaseAoeHealAmount,
                     GetState    = null
                 },
                 new CommandBinding {
                     Key         = KeyCode.PageDown,
-                    Description = "Decrease AOE Heal",
+                    Description = "AOE Heal --",
                     Execute     = CheatCommands.DecreaseAoeHealAmount,
                     GetState    = null
                 },
