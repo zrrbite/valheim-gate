@@ -92,7 +92,8 @@ namespace ICanShowYouTheWorld
                 new CommandBinding {
                     Key         = KeyCode.Keypad1,
                     Description = "Guardian Gift",
-                    Execute     = CheatCommands.GuardianGift
+                    Execute     = CheatCommands.ToggleGuardianGift,
+                    GetState    = () => CheatCommands.GiftActive
                 },
                 new CommandBinding {
                     Key         = KeyCode.Keypad2,
@@ -299,6 +300,31 @@ namespace ICanShowYouTheWorld
         private static readonly string[] petNames = { "Bob", "Ralf", "Liam", "Olivia", "Elijah", "Kebober" };
         public static float AoeHealAmount = 25f;
 
+        // --- Player stats snapshot ---
+        private static float origBaseHP;
+        private static float origBlockStaminaDrain;
+        private static float origRunStaminaDrain;
+        private static float origStaminaRegen;
+        private static float origStaminaRegenDelay;
+        private static float origEitrRegen;
+        private static float origEitrRegenDelay;
+        private static float origMaxCarryWeight;
+
+        // (If you were using SEMAN.ModifyHealthRegen/etc. to buff regen/fall/noise,
+        // you'd need to snapshot whatever persistent modifier you applied there too.
+        // For simplicity, I’m omitting those here—just roll your own ref values.)
+
+        // --- Food snapshot ---
+        private static Dictionary<Player.Food, float> origFoodTimes;
+
+        // --- Item snapshot struct + storage ---
+        private struct ItemSnapshot
+        {
+            public float durDrain, maxDur, curDur, armor;
+        }
+        private static Dictionary<ItemDrop.ItemData, ItemSnapshot> origItemStats;
+
+
         // 1.A) The list of available prefabs
         private static readonly string[] SpawnPrefabs = {
             "Fader_Fissure_AOE",
@@ -329,6 +355,100 @@ namespace ICanShowYouTheWorld
 
             // Default values
             DamageCounter = 10;
+        }
+
+        // --- guardian gift
+        public static void ToggleGuardianGift()
+        {
+            var p = Player.m_localPlayer;
+            if (!RequireGodMode("Guardian's Gift")) return;
+
+            if (!GiftActive)
+            {
+                // 1) Snapshot all the player fields we’re about to change
+                origBaseHP = p.m_baseHP;
+                origBlockStaminaDrain = p.m_blockStaminaDrain;
+                origRunStaminaDrain = p.m_runStaminaDrain;
+                origStaminaRegen = p.m_staminaRegen;
+                origStaminaRegenDelay = p.m_staminaRegenDelay;
+                origEitrRegen = p.m_eiterRegen;
+                origEitrRegenDelay = p.m_eitrRegenDelay;
+                origMaxCarryWeight = p.m_maxCarryWeight;
+
+                // 2) Snapshot food timers
+                origFoodTimes = new Dictionary<Player.Food, float>();
+                foreach (var food in p.GetFoods())
+                {
+                    origFoodTimes[food] = food.m_time;
+                    food.m_time = float.MaxValue;
+                }
+
+                // 3) Snapshot equipped items
+                origItemStats = new Dictionary<ItemDrop.ItemData, ItemSnapshot>();
+                foreach (var item in p.GetInventory().GetEquippedItems())
+                {
+                    origItemStats[item] = new ItemSnapshot
+                    {
+                        durDrain = item.m_shared.m_durabilityDrain,
+                        maxDur = item.m_shared.m_maxDurability,
+                        curDur = item.m_durability,
+                        armor = item.m_shared.m_armor
+                    };
+                }
+
+                // 4) Apply the buff
+                p.m_baseHP = p.m_baseHP + 100f;
+                p.m_blockStaminaDrain = 0.1f;
+                p.m_runStaminaDrain = 0.1f;
+                p.m_staminaRegen = 50f;
+                p.m_staminaRegenDelay = 0.5f;
+                p.m_eiterRegen = 50f;
+                p.m_eitrRegenDelay = 0.1f;
+                p.m_maxCarryWeight = 99999f;
+
+                foreach (var item in p.GetInventory().GetEquippedItems())
+                {
+                    item.m_shared.m_durabilityDrain = 0.1f;
+                    item.m_shared.m_maxDurability = 10000f;
+                    item.m_durability = 10000f;
+                    item.m_shared.m_armor = item.m_shared.m_armor + 50f;
+                }
+
+                GiftActive = true;
+                Show("Guardian's Gift: ON");
+            }
+            else
+            {
+                // 1) Revert player stats
+                p.m_baseHP = origBaseHP;
+                p.m_blockStaminaDrain = origBlockStaminaDrain;
+                p.m_runStaminaDrain = origRunStaminaDrain;
+                p.m_staminaRegen = origStaminaRegen;
+                p.m_staminaRegenDelay = origStaminaRegenDelay;
+                p.m_eiterRegen = origEitrRegen;
+                p.m_eitrRegenDelay = origEitrRegenDelay;
+                p.m_maxCarryWeight = origMaxCarryWeight;
+
+                // 2) Revert food timers
+                foreach (var kv in origFoodTimes)
+                    kv.Key.m_time = kv.Value;
+                origFoodTimes = null;
+
+                // 3) Revert items
+                foreach (var kv in origItemStats)
+                {
+                    var item = kv.Key;
+                    var snap = kv.Value;
+                    item.m_shared.m_durabilityDrain = snap.durDrain;
+                    item.m_shared.m_maxDurability = snap.maxDur;
+                    item.m_durability = snap.curDur;
+                    item.m_shared.m_armor = snap.armor;
+                }
+                origItemStats = null;
+
+                GiftActive = false;
+                Show("Guardian's Gift: OFF");
+            }
         }
 
         // ---
