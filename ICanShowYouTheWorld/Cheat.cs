@@ -287,7 +287,7 @@ namespace ICanShowYouTheWorld
         private static int guardianIndex = 0;
         public static int DamageCounter { get; private set; }
         public static string CurrentGuardianName => guardians[guardianIndex];
-        private static readonly string[] guardians = { "GP_Eikthyr", "GP_Bonemass", "GP_Moder", "GP_Yagluth", "GP_Fader" };
+        private static readonly string[] guardians = { "GP_Eikthyr", "GP_Bonemass", "GP_Moder", "GP_Yagluth", "GP_Fader", "GP_Queen" };
         // private static readonly string[] combatPets = { "Wolf", "DvergerMageSupport", "Asksvin" };
         private static readonly string[] combatPets = { "Skeleton_Friendly" };
         private static readonly string[] petNames = { "Bob", "Ralf", "Liam", "Olivia", "Elijah", "Kebober" };
