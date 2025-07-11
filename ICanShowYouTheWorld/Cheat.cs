@@ -529,6 +529,7 @@ namespace ICanShowYouTheWorld
                 //item.SetLevel(3); //Hmm, its kind of interesting that we could runtime just increase the level of mobs already in the world.
                 item.GetComponent<MonsterAI>().SetFollowTarget(Player.m_localPlayer.gameObject);
                 item.SetMaxHealth(3000);
+                item.m_runSpeed = 9;
                 //item.GetComponent<Character>().m_name = ... something to symbolise it has been augmented.
             }
 
