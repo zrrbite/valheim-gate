@@ -928,7 +928,7 @@ namespace ICanShowYouTheWorld
 
         private Rect modeWindow = new Rect(
             Screen.width - modeWidth,  // x
-            Screen.height - modeHeight - 200f, // Margin from bottom
+            Screen.height - modeHeight - 240f, // Margin from bottom
             modeWidth,                  // width
             modeHeight                  // height
         );
