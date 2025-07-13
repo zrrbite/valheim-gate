@@ -121,26 +121,26 @@ namespace ICanShowYouTheWorld
                 },
                 new CommandBinding {
                     Key         = KeyCode.Keypad5,
-                    Description = "Tame All",
+                    Description = "Tame/Buff pets",
                     Execute     = CheatCommands.TameAll
                 },
                 // --- aoe regen
                 new CommandBinding {
                     Key         = KeyCode.PageUp,
-                    Description = "AOE Heal ++",
-                    Execute     = CheatCommands.IncreaseAoeHealAmount,
+                    Description = "AOE Power++",
+                    Execute     = CheatCommands.IncreaseAoePower,
                     GetState    = null
                 },
                 new CommandBinding {
                     Key         = KeyCode.PageDown,
-                    Description = "AOE Heal --",
-                    Execute     = CheatCommands.DecreaseAoeHealAmount,
+                    Description = "AOE Power--",
+                    Execute     = CheatCommands.DecreaseAoePower,
                     GetState    = null
                 },
-                // ----------------
+                // ---------------------------------
                 new CommandBinding {
                     Key         = KeyCode.UpArrow,
-                    Description = "Heal AOE",
+                    Description = "Heal All",
                     Execute     = CheatCommands.CastHealAOE
                 },
                 new CommandBinding {
@@ -174,6 +174,7 @@ namespace ICanShowYouTheWorld
                     Description = "Teleport",
                     Execute     = CheatCommands.TeleportSolo
                 },
+                // -----
                 new CommandBinding {
                     Key         = KeyCode.Numlock,
                     Description = "Kill 'em all",
@@ -298,7 +299,12 @@ namespace ICanShowYouTheWorld
         // private static readonly string[] combatPets = { "Wolf", "DvergerMageSupport", "Asksvin" };
         private static readonly string[] combatPets = { "Skeleton_Friendly" };
         private static readonly string[] petNames = { "Bob", "Ralf", "Liam", "Olivia", "Elijah", "Kebober" };
-        public static float AoeHealAmount = 25f;
+
+        // Single base power
+        public static float AoePower = 25f;
+        private const float MinAoePower = 5f;
+        private const float MaxAoePower = 200f;
+        private const float AoeDmgScale = 1.5f;
 
         // --- Player stats snapshot ---
         private static float origBaseHP;
@@ -525,8 +531,8 @@ namespace ICanShowYouTheWorld
         public static void ToggleCloakOfFlames()
         {
             if (!RequireGodMode("CoF")) return;
-            CloakActive = !CloakActive;
-            Show($"Cloak of Flames {CloakActive}");
+            CloakActive = !CloakActive; // Player.m_localPlayer.GetSEMan().AddStatusEffect(new SE_Burning(), resetTime: true, 10, 10);
+            Show($"Cloak of Flames {(CloakActive ? "ON" : "OFF")}");
         }
 
         public static void ToggleMelodicBinding()
@@ -890,19 +896,18 @@ namespace ICanShowYouTheWorld
             Show($"Spawning prefab at {spawnPos:0.0}");
         }
 
-        public static void IncreaseAoeHealAmount()
+        public static void IncreaseAoePower()
         {
-            AoeHealAmount = Mathf.Min(200f, AoeHealAmount + 5f);
-            Show($"AOE Heal Amount: {AoeHealAmount:0}");
+            AoePower = Mathf.Min(MaxAoePower, AoePower + 5f);
+            Show($"AOE Power: {AoePower:0}");
+        }
+        public static void DecreaseAoePower()
+        {
+            AoePower = Mathf.Max(MinAoePower, AoePower - 5f);
+            Show($"AOE Power: {AoePower:0}");
         }
 
-        // bump it down
-        public static void DecreaseAoeHealAmount()
-        {
-            AoeHealAmount = Mathf.Max(5f, AoeHealAmount - 5f);
-            Show($"AOE Heal Amount: {AoeHealAmount:0}");
-        }
-
+        // healing pulse
         public static void AoeRegen()
         {
             var list = new List<Character>();
@@ -911,14 +916,12 @@ namespace ICanShowYouTheWorld
                 80f,
                 list
             );
-
-            foreach (var entity in list)
+            foreach (var c in list)
             {
-                if (!entity.IsPlayer() && !entity.IsTamed()) continue;
-                if (entity.GetHealthPercentage() < 0.75f)
+                if (!c.IsPlayer() && !c.IsTamed()) continue;
+                if (c.GetHealthPercentage() < 0.85f)
                 {
-                    Show($"{entity.GetHoverName()} at {(int)(entity.GetHealthPercentage() * 100)}%. Healing.");
-                    entity.Heal(AoeHealAmount, false);
+                    c.Heal(AoePower, false);
                 }
             }
         }
@@ -1018,13 +1021,20 @@ namespace ICanShowYouTheWorld
                     c.m_runSpeed = c.m_speed = 1f;
         }
 
-        private static void DamageAoE()
+        public static void DamageAoE()
         {
             var list = new List<Character>();
-            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 5f, list);
+            Character.GetCharactersInRange(
+                Player.m_localPlayer.transform.position,
+                5f,
+                list
+            );
+            float dmg = AoePower * AoeDmgScale;
             foreach (var c in list)
-                if (!c.IsPlayer() && c.IsMonsterFaction(10))
-                    c.Damage(new HitData { m_damage = { m_damage = 75f } });
+            {
+                if (c.IsPlayer() || !c.IsMonsterFaction(10)) continue;
+                c.Damage(new HitData { m_damage = { m_damage = dmg } });
+            }
         }
 
         private static void SetSpeed(float speed)
@@ -1286,9 +1296,9 @@ namespace ICanShowYouTheWorld
 
             GUILayout.BeginHorizontal();
             GUI.contentColor = Color.white;
-            GUILayout.Label("AOE Heal Amt", GUILayout.Width(160f));
+            GUILayout.Label("AOE Power", GUILayout.Width(160f));
             GUI.contentColor = Color.cyan;
-            GUILayout.Label($"{CheatCommands.AoeHealAmount:0}", GUILayout.Width(85f));
+            GUILayout.Label($"{CheatCommands.AoePower:0} / {CheatCommands.AoePower * 1.5:0}", GUILayout.Width(85f));
             GUILayout.FlexibleSpace();
             GUILayout.EndHorizontal();
 
