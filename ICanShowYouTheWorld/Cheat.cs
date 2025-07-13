@@ -3,6 +3,7 @@ using System;
 using UnityEngine;
 using Random = System.Random;
 using System.Diagnostics;
+using Object = UnityEngine.Object;
 
 //todo:
 // 			BaseAI.AggravateAllInArea(Player.m_localPlayer.transform.position, 20f, BaseAI.AggravatedReason.Damage); + shout! Chat.instance.BroadcastMessage("Monsters become aggravated!");
@@ -84,7 +85,7 @@ namespace ICanShowYouTheWorld
                 },
                 new CommandBinding {
                     Key         = KeyCode.Keypad0,
-                    Description = "God Mode", // Also toggles Renewal
+                    Description = "God Mode", // Also toggles Renewal / resets forsaken power timer
                     Execute     = CheatCommands.ToggleGodMode,
                     GetState    = () => CheatCommands.GodMode
                 },
@@ -107,13 +108,7 @@ namespace ICanShowYouTheWorld
                     Execute     = CheatCommands.ToggleCloakOfFlames,
                     GetState    = () => CheatCommands.CloakActive
                 },
-                new CommandBinding {
-                    Key         = KeyCode.Keypad7,
-                    Description = "Taunt",
-                    Execute     = CheatCommands.Taunt
-                },
-
-                // ---- pets ----
+                // ---- pets ? ----
                 new CommandBinding {
                     Key         = KeyCode.Keypad4,
                     Description = "Combat pet",
@@ -228,7 +223,9 @@ namespace ICanShowYouTheWorld
         }
     }
 
-    // Maps keys to actions
+
+
+    // ----------- Maps keys to actions ----------------
     public class InputManager
     {
         private readonly Dictionary<KeyCode, Action> mappings = new Dictionary<KeyCode, Action>();
