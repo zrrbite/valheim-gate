@@ -18,7 +18,7 @@ namespace ICanShowYouTheWorld
 
         public static void Run()
         {
-            UnifiedPopup.Push(new WarningPopup("ICanShowYouTheWorld", "Loaded mod v0.220.5!"
+            UnifiedPopup.Push(new WarningPopup("ICanShowYouTheWorld", "Loaded mod v0.220.5-2!" // todo: Get this from __VERSION__, set by setversion.sh based on git tags
                 , delegate
             {
                 UnifiedPopup.Pop();
