@@ -439,9 +439,15 @@ namespace ICanShowYouTheWorld
                 {
                     var item = kv.Key;
                     var snap = kv.Value;
-                    item.m_shared.m_durabilityDrain = snap.durDrain;
+
+                    // 1) put the old max back
                     item.m_shared.m_maxDurability = snap.maxDur;
+
+                    // 2) restore current durability (now it won't get capped)
                     item.m_durability = snap.curDur;
+
+                    // 3) restore drain and armor
+                    item.m_shared.m_durabilityDrain = snap.durDrain;
                     item.m_shared.m_armor = snap.armor;
                 }
                 origItemStats = null;
