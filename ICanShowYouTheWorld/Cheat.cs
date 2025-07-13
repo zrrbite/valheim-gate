@@ -19,33 +19,47 @@ namespace ICanShowYouTheWorld
 
         public static void Run()
         {
-            UnifiedPopup.Push(new WarningPopup("ICanShowYouTheWorld", "Loaded mod v0.220.5-2!" // todo: Get this from __VERSION__, set by setversion.sh based on git tags
-                , delegate
-            {
-                UnifiedPopup.Pop();
-            }));
+            // 1) Get  version string
+            string version = "0.220.5-2"; //ModVersion.VERSION;
 
-            // Instanciate a new GameObject instance attaching script component (class) 
-            cheatObject = new GameObject();
-            //            cheatObject.AddComponent<DiscoverThings>(); //old
-            // Initialize CheatController
-            var controller = cheatObject.AddComponent<CheatController>();
-            UnifiedPopup.Push(new WarningPopup(
-                "ICanShowYouTheWorld",
-                "CheatController loaded successfully!",
-                () => UnifiedPopup.Pop()
-            ));
-
-            // Initialize UIManager
-            var ui = cheatObject.AddComponent<UIManager>();
-            UnifiedPopup.Push(new WarningPopup(
-                "ICanShowYouTheWorld",
-                "UIManager loaded successfully!",
-                () => UnifiedPopup.Pop()
-            ));
-
-            // Avoid object destroyed when loading a level
+            // 2) Create the cheat GameObject
+            var cheatObject = new GameObject("ICanShowYouTheWorld");
             GameObject.DontDestroyOnLoad(cheatObject);
+
+            // 3) Try adding each component, record successes
+            var loaded = new List<string>();
+            TryAddAndRecord<CheatController>(cheatObject, loaded);
+            TryAddAndRecord<UIManager>(cheatObject, loaded);
+
+            // 4) Build the final message: version + list
+            var msgLines = new List<string>
+        {
+            $"Loaded mod v{version}!"
+        };
+            msgLines.AddRange(loaded);
+
+            string msg = string.Join("\n", msgLines);
+
+            // 5) Show single popup with results
+            UnifiedPopup.Push(new WarningPopup(
+                "ICanShowYouTheWorld",
+                msg,
+                () => UnifiedPopup.Pop()
+            ));
+        }
+
+       private static void TryAddAndRecord<T>(GameObject go, List<string> log)
+       where T : Component
+        {
+            try
+            {
+                go.AddComponent<T>();
+                log.Add($"• {typeof(T).Name}");
+            }
+            catch (Exception e)
+            {
+                UnityEngine.Debug.LogError($"Failed to add {typeof(T).Name}: {e}");
+            }
         }
     }
 
