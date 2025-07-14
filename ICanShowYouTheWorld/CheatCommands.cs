@@ -73,15 +73,15 @@ namespace ICanShowYouTheWorld
         }
         private static Dictionary<ItemDrop.ItemData, ItemSnapshot> origItemStats;
 
-
         // 1.A) The list of available prefabs
         private static readonly string[] SpawnPrefabs = {
-                "Fader_Fissure_AOE",
-                "Fader_Flamebreath_AOE", // "wall of fire"
+                "dne",
                 "Fader_MeteorSmash_AOE", // invis dmg
-                "FenringIceNova_aoe", // slow?
-                "shieldgenerator_attack",
-                "aoe_nova",
+                //"Fader_Fissure_AOE",
+                //"Fader_Flamebreath_AOE", // "wall of fire"                
+                //"FenringIceNova_aoe", // slow?
+                //"shieldgenerator_attack",
+                //"aoe_nova",
     //            "giant_arm",
     //            "giant_brain",
     //            "giant_helmet1",
