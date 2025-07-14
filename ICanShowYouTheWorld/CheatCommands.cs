@@ -384,8 +384,8 @@ namespace ICanShowYouTheWorld
             var ch = inst.GetComponent<Character>();
 
             ch.SetLevel(3);
-            ch.GetComponent<Character>().SetMaxHealth(3000);
-            ch.GetComponent<Character>().SetHealth(3000);
+            ch.GetComponent<Character>().SetMaxHealth(1000);
+            ch.GetComponent<Character>().SetHealth(1000);
             ch.GetComponent<MonsterAI>().SetFollowTarget(Player.m_localPlayer.gameObject);
             ch.m_name = petNames[rnd.Next(petNames.Length)];
 
@@ -411,7 +411,7 @@ namespace ICanShowYouTheWorld
 
                 //item.SetLevel(3); //Hmm, its kind of interesting that we could runtime just increase the level of mobs already in the world.
                 item.GetComponent<MonsterAI>().SetFollowTarget(Player.m_localPlayer.gameObject);
-                item.SetMaxHealth(3000);
+                item.SetMaxHealth(1000);
                 item.m_runSpeed = 9;
                 //item.GetComponent<Character>().m_name = ... something to symbolise it has been augmented.
             }
