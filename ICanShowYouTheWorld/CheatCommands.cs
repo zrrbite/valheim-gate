@@ -103,7 +103,7 @@ namespace ICanShowYouTheWorld
             PeriodicManager.Register(75, () => { if (CloakActive) DamageAoE(); });
 
             // Default values
-            DamageCounter = 10;
+            DamageCounter = 5;
         }
 
         // --- guardian gift
