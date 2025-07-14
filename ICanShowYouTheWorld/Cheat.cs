@@ -33,9 +33,9 @@ namespace ICanShowYouTheWorld
 
             // 4) Build the final message: version + list
             var msgLines = new List<string>
-        {
-            $"Loaded mod v{version}!"
-        };
+            {
+                $"Loaded mod v{version}!"
+            };
             msgLines.AddRange(loaded);
 
             string msg = string.Join("\n", msgLines);
