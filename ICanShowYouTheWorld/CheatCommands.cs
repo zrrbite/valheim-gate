@@ -98,7 +98,7 @@ namespace ICanShowYouTheWorld
         {
             // register periodic callbacks - todo: can do this better
             PeriodicManager.Register(50, () => { if (RenewalActive) Invigorate(); });
-            PeriodicManager.Register(50, () => { if (AOERenewalActive) AoeRegen(); });
+            PeriodicManager.Register(60, () => { if (AOERenewalActive) AoeRegen(); });
             PeriodicManager.Register(150, () => { if (MelodicActive) SlowMonsters(); });
             PeriodicManager.Register(75, () => { if (CloakActive) DamageAoE(); });
 
