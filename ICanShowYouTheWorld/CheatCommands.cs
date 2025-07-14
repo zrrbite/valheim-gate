@@ -820,7 +820,7 @@ namespace ICanShowYouTheWorld
             //p.m_crouchSpeed = speed;
 
             p.m_jumpForce = speed;
-            //p.m_jumpForceForward = speed;
+            p.m_jumpForceForward = speed;
 
             List<Character> list = new List<Character>();
             Character.GetCharactersInRange(p.transform.position, 30.0f, list);
