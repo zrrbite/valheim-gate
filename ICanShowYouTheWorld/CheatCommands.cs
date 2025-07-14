@@ -815,13 +815,12 @@ namespace ICanShowYouTheWorld
             var p = Player.m_localPlayer;
             p.m_runSpeed = p.m_walkSpeed = speed;
 
-            p.m_runSpeed = speed;
-            p.m_swimSpeed = speed;
-            p.m_acceleration = speed;
-            p.m_crouchSpeed = speed;
-            p.m_walkSpeed = speed;
+            //p.m_swimSpeed = speed; // This just looks rediculous
+            //p.m_acceleration = speed;
+            //p.m_crouchSpeed = speed;
+
             p.m_jumpForce = speed;
-            p.m_jumpForceForward = speed;
+            //p.m_jumpForceForward = speed;
 
             List<Character> list = new List<Character>();
             Character.GetCharactersInRange(p.transform.position, 30.0f, list);
