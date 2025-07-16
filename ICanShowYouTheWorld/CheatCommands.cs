@@ -82,7 +82,7 @@ namespace ICanShowYouTheWorld
         private static readonly string[] SpawnPrefabs = {
                 "dne",
                 "Fader_MeteorSmash_AOE", // invis dmg
-                //"Fader_Fissure_AOE",
+                "Fader_Fissure_AOE",
                 //"Fader_Flamebreath_AOE", // "wall of fire"                
                 //"FenringIceNova_aoe", // slow?
                 //"shieldgenerator_attack",
@@ -371,7 +371,8 @@ namespace ICanShowYouTheWorld
         // 1.C) Spawn whatever is currently selected
         public static void SpawnSelectedPrefab()
         {
-            SpawnPrefab(CurrentPrefab);
+            //SpawnPrefab(CurrentPrefab);
+            SpawnPrefabAtCursor(CurrentPrefab);
         }
 
         // 1.D) Refactored spawn that takes a name
@@ -385,6 +386,50 @@ namespace ICanShowYouTheWorld
             Vector3 spawnPos = player.transform.position + forward * 5f + Vector3.up;
             if (Physics.Raycast(spawnPos, Vector3.down, out RaycastHit hit, 10f))
                 spawnPos.y = hit.point.y + 0.5f;
+            UnityEngine.Object.Instantiate(prefab, spawnPos, Quaternion.identity);
+            Show($"Spawned {name} at {spawnPos:0.0}");
+        }
+
+        private static void SpawnPrefabAtCursor(string name)
+        {
+            if (!RequireGodMode("Spawn Prefab")) return;
+            var prefab = ZNetScene.instance.GetPrefab(name);
+            if (prefab == null)
+            {
+                Show($"Missing prefab: {name}");
+                return;
+            }
+
+            Vector3 spawnPos;
+            Camera cam = Camera.main;
+            if (cam != null)
+            {
+                // cast a ray from the cursor into the world
+                Ray ray = cam.ScreenPointToRay(Input.mousePosition);
+                if (Physics.Raycast(ray, out RaycastHit hit, 200f))
+                {
+                    // spawn right at the hit point
+                    spawnPos = hit.point;
+                }
+                else
+                {
+                    // fallback: 5m in front of you
+                    var player = Player.m_localPlayer;
+                    Vector3 fwd = player.transform.forward;
+                    spawnPos = player.transform.position + fwd * 5f + Vector3.up;
+                }
+            }
+            else
+            {
+                // no camera? fallback to front
+                var player = Player.m_localPlayer;
+                Vector3 fwd = player.transform.forward;
+                spawnPos = player.transform.position + fwd * 5f + Vector3.up;
+            }
+
+            // nudge up so it isn't clipping the ground
+            spawnPos.y += 0.5f;
+
             UnityEngine.Object.Instantiate(prefab, spawnPos, Quaternion.identity);
             Show($"Spawned {name} at {spawnPos:0.0}");
         }
