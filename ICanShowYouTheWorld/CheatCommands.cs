@@ -59,6 +59,11 @@ namespace ICanShowYouTheWorld
         private static float origEitrRegenDelay;
         private static float origMaxCarryWeight;
 
+        public static bool AutoDodgeActive = false;
+        private const float DodgeDistance = 3f;    // how far to dodge
+        private const float DodgeCooldown = 1f;    // seconds between dodges
+        private static float lastDodgeTime = -999f;
+
         // (If you were using SEMAN.ModifyHealthRegen/etc. to buff regen/fall/noise,
         // you'd need to snapshot whatever persistent modifier you applied there too.
         // For simplicity, I’m omitting those here—just roll your own ref values.)
@@ -104,6 +109,45 @@ namespace ICanShowYouTheWorld
 
             // Default values
             DamageCounter = 5;
+        }
+
+        public static void ToggleAutoDodge()
+        {
+            AutoDodgeActive = !AutoDodgeActive;
+            var player = Player.m_localPlayer;
+            if (AutoDodgeActive)
+                player.m_onDamaged += HandleAutoDodge;
+            else
+                player.m_onDamaged -= HandleAutoDodge;
+            Show($"Auto-Dodge {(AutoDodgeActive ? "ON" : "OFF")}");
+        }
+
+        private static void HandleAutoDodge(float damage, Character attacker)
+        {
+            if (!AutoDodgeActive) return;
+
+            // cooldown
+            if (Time.time - lastDodgeTime < DodgeCooldown) return;
+
+            var player = Player.m_localPlayer;
+            // direction from attacker to player
+            Vector3 dir = (player.transform.position - attacker.transform.position).normalized;
+
+            // pick a perpendicular vector (left or right randomly)
+            Vector3 perp = Vector3.Cross(dir, Vector3.up).normalized;
+            if (UnityEngine.Random.value > 0.5f) perp = -perp;
+
+            // target dodge position
+            Vector3 target = player.transform.position + perp * DodgeDistance;
+
+            // project to ground so you don't end up in mid-air
+            if (Physics.Raycast(target + Vector3.up * 5f, Vector3.down, out RaycastHit hit, 10f))
+                target.y = hit.point.y + 0.1f;
+
+            // teleport the player
+            player.TeleportTo(target, player.transform.rotation, distantTeleport: true);
+
+            lastDodgeTime = Time.time;
         }
 
         // --- guardian gift
@@ -395,11 +439,37 @@ namespace ICanShowYouTheWorld
             Show($"Spawned pet: {ch.m_name}");
         }
 
-        // Can also be used to re-tame
-        public static void TameAll()
+        public static void TameTargeted()
+        {
+            if (!RequireGodMode("Tame target")) return;
+            var cam = Camera.main;
+            if (cam == null) return;
+
+            // shoot a ray from your mouse cursor (or center of screen)
+            Ray ray = cam.ScreenPointToRay(Input.mousePosition);
+            if (Physics.Raycast(ray, out var hit, 100f))
+            {
+                // find the Character on that hit
+                var c = hit.collider.GetComponentInParent<Character>();
+                if (c != null && !c.IsTamed() && !c.IsPlayer())
+                {
+                    // tiny blast around just that one
+                    Tameable.TameAllInArea(c.transform.position, 0.1f);
+                    Show($"Tamed {c.GetHoverName()}");
+                    return;
+                }
+            }
+            Show("No valid target to tame");
+        }
+
+        // Can also be used to re-tame already tamed, not using tame all in area
+        public static void TameAll(bool clear = false)
         {
             if (!RequireGodMode("Tame all")) return;
-            Tameable.TameAllInArea(Player.m_localPlayer.transform.position, 30.0f);
+            int tamed = 0;
+            GameObject followTarget = null;
+            if(!clear) followTarget = Player.m_localPlayer.gameObject;
+            //Tameable.TameAllInArea(Player.m_localPlayer.transform.position, 30.0f);
 
             List<Character> list = new List<Character>();
             Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 30.0f, list);
@@ -410,13 +480,39 @@ namespace ICanShowYouTheWorld
                 if (item.IsPlayer() || !item.IsTamed()) continue;
 
                 //item.SetLevel(3); //Hmm, its kind of interesting that we could runtime just increase the level of mobs already in the world.
-                item.GetComponent<MonsterAI>().SetFollowTarget(Player.m_localPlayer.gameObject);
-                item.SetMaxHealth(1000);
-                item.m_runSpeed = 9;
+                SetFollowTarget(item, followTarget);
+                item.SetTamed(true);
+                tamed++;
                 //item.GetComponent<Character>().m_name = ... something to symbolise it has been augmented.
             }
 
-            Show("All nearby tamed");
+            if(clear)
+                Show($"{tamed} pets staying");
+            else
+                Show($"{tamed} pets following");
+        }
+
+        public static void BuffTamed()
+        {
+            if (!RequireGodMode("Buff tamed")) return;
+
+            List<Character> list = new List<Character>();
+            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 30.0f, list);
+
+            // Set follow
+            foreach (Character item in list)
+            {
+                if (item.IsPlayer() || !item.IsTamed()) continue;
+                item.SetMaxHealth(1000);
+                item.m_runSpeed = 9;
+            }
+
+            Show("Buff tamed");
+        }
+
+        public static void SetFollowTarget(Character c, GameObject target)
+        {
+            c.GetComponent<MonsterAI>().SetFollowTarget(target);
         }
 
         public static void BuffAoE()

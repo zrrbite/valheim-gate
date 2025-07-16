@@ -123,15 +123,30 @@ namespace ICanShowYouTheWorld
                     GetState    = () => CheatCommands.CloakActive
                 },
                 // ---- pets ? ----
+                //new CommandBinding {
+                //    Key         = KeyCode.Keypad7,
+                //    Description = "Combat pet",
+                //    Execute     = CheatCommands.SpawnCombatPet
+                //},
                 new CommandBinding {
                     Key         = KeyCode.Keypad4,
-                    Description = "Combat pet",
-                    Execute     = CheatCommands.SpawnCombatPet
+                    Description = "Pets follow",
+                    Execute     = () => CheatCommands.TameAll()
+                },
+               new CommandBinding {
+                    Key         = KeyCode.Keypad5,
+                    Description = "Pets stay",
+                    Execute     = () => CheatCommands.TameAll(true)
                 },
                 new CommandBinding {
-                    Key         = KeyCode.Keypad5,
-                    Description = "Tame/Buff pets",
-                    Execute     = CheatCommands.TameAll
+                    Key         = KeyCode.Keypad6,
+                    Description = "Buff pets",
+                    Execute     = CheatCommands.BuffTamed
+                },
+                new CommandBinding {
+                    Key         = KeyCode.Keypad7,
+                    Description = "Tame targeted",
+                    Execute     = CheatCommands.TameTargeted
                 },
                 // --- aoe regen
                 new CommandBinding {
@@ -213,6 +228,12 @@ namespace ICanShowYouTheWorld
                     Execute     = CheatCommands.ExecuteUtility,
                     GetState    = null
                 },
+ //              new CommandBinding {
+ //                  Key         = KeyCode.Keypad7,               // pick your key
+ //                   Description = "Toggle Auto-Dodge",
+ //                   Execute     = CheatCommands.ToggleAutoDodge,
+ //                   GetState    = () => CheatCommands.AutoDodgeActive
+ //               },
 
             // extra
             // CheatCommands.TeleportMass

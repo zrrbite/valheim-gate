@@ -139,6 +139,17 @@ namespace ICanShowYouTheWorld
             GUI.Box(new Rect(0, 0, petWindow.width, petWindow.height), GUIContent.none);
             GUI.backgroundColor = Color.white;
 
+            // --- Controls row ---
+//            GUILayout.BeginHorizontal();
+//            if (GUILayout.Button("Buff Tamed", GUILayout.ExpandWidth(true)))
+//               CheatCommands.BuffTamed();
+//            if (GUILayout.Button("Follow Me", GUILayout.ExpandWidth(true)))
+//                CheatCommands.TameAll(); //target = me
+//            if (GUILayout.Button("Stay", GUILayout.ExpandWidth(true)))
+//                CheatCommands.TameAll(true); //clear
+//            GUILayout.EndHorizontal();
+//            GUILayout.Space(5f);
+
             var player = Player.m_localPlayer;
             var pets = new List<Character>();
             Character.GetCharactersInRange(player.transform.position, 50f, pets); //todo: helper. same with tame.
