@@ -327,21 +327,20 @@ namespace ICanShowYouTheWorld
             {
                 var p = Player.m_localPlayer.transform;
                 Vector3 origin = p.position + Vector3.up * 10f;
-                if (Physics.Raycast(origin, Vector3.down, out RaycastHit hit, 20f))
+                if (Physics.Raycast(origin, Vector3.down, out var hit, 20f))
                 {
-                    Vector3 spawnPos = hit.point + Vector3.up * 0.01f;
-                    CheatCommands.Show($"[CheatViz] Spawn dmg ring at {spawnPos}");
-
                     dmgViz = new GameObject("DmgRing");
-                    dmgViz.transform.position = spawnPos;
+                    dmgViz.transform.SetParent(p, worldPositionStays: false);
+                    float localY = hit.point.y - p.position.y + 0.01f;
+                    dmgViz.transform.localPosition = new Vector3(0f, localY, 0f);
 
                     var cv = dmgViz.AddComponent<CircleVisualizer>();
                     cv.radius = radius;
-                    cv.color = new Color(1, 0, 0, 0.3f);
-                    cv.lineWidth = 0.2f;
+                    cv.color = new Color(1f, 0f, 0f, 0.4f); // red
+                    cv.lineWidth = 0.02f;
                     cv.DrawCircle();
                 }
-                else CheatCommands.Show("[CheatViz] Raycast to ground failed!");
+                else Show("⟳ Could not find ground under player");
             }
             else
             {
