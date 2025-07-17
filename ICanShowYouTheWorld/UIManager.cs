@@ -290,24 +290,27 @@ namespace ICanShowYouTheWorld
             CheatCommands.Show("[CheatViz] ToggleHealViz called");
             if (healViz == null)
             {
-                // find ground under player
                 var p = Player.m_localPlayer.transform;
+                // raycast once to find the ground height under you
                 Vector3 origin = p.position + Vector3.up * 10f;
-                if (Physics.Raycast(origin, Vector3.down, out RaycastHit hit, 20f))
+                if (Physics.Raycast(origin, Vector3.down, out var hit, 20f))
                 {
-                    Vector3 spawnPos = hit.point + Vector3.up * 0.01f;
-                    CheatCommands.Show($"[CheatViz] Spawn heal ring at {spawnPos}");
-
+                    // create and parent
                     healViz = new GameObject("HealRing");
-                    healViz.transform.position = spawnPos;
+                    healViz.transform.SetParent(p, worldPositionStays: false);
 
+                    // position locally at ground level
+                    float localY = hit.point.y - p.position.y + 0.01f;
+                    healViz.transform.localPosition = new Vector3(0f, localY, 0f);
+
+                    // add & draw
                     var cv = healViz.AddComponent<CircleVisualizer>();
                     cv.radius = radius;
-                    cv.color = new Color(0, 1, 0, 0.3f);
-                    cv.lineWidth = 0.2f;
+                    cv.color = new Color(0f, 1f, 0f, 0.4f); // green
+                    cv.lineWidth = 0.02f;
                     cv.DrawCircle();
                 }
-                else CheatCommands.Show("[CheatViz] Raycast to ground failed!");
+                else CheatCommands.Show("⟳ Could not find ground under player");
             }
             else
             {

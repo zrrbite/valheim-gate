@@ -26,4 +26,28 @@ namespace ICanShowYouTheWorld
             }
         }
     }
+
+    [RequireComponent(typeof(Transform))]
+    public class GroundFollower : MonoBehaviour
+    {
+        /// <summary>Who to follow (usually the player)</summary>
+        public Transform target;
+
+        /// <summary>How high above the ground to sit</summary>
+        public float heightOffset = 0.01f;
+
+        void Update()
+        {
+            if (target == null) return;
+
+            // raycast from above the target straight down
+            Vector3 origin = target.position + Vector3.up * 10f;
+            if (Physics.Raycast(origin, Vector3.down, out var hit, 20f))
+            {
+                // snap to that ground point
+                transform.position = hit.point + Vector3.up * heightOffset;
+            }
+        }
+    }
+
 }

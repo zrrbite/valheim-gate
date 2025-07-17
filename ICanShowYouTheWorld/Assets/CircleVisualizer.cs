@@ -15,7 +15,7 @@ public class CircleVisualizer : MonoBehaviour
     {
         Debug.Log("[CircleViz] Awake on " + gameObject.name);
         lr = GetComponent<LineRenderer>();
-        lr.useWorldSpace = true;            // positions are in world coords
+        lr.useWorldSpace = false;            // positions are in world coords
         lr.loop = true;
         lr.positionCount = segments + 1;
         // a simple unlit color shader
@@ -34,8 +34,13 @@ public class CircleVisualizer : MonoBehaviour
         for (int i = 0; i <= segments; i++)
         {
             float a = i * step;
-            Vector3 offset = new Vector3(Mathf.Cos(a) * radius, 0f, Mathf.Sin(a) * radius);
-            lr.SetPosition(i, transform.position + offset);
+            Vector3 offset = new Vector3(
+                Mathf.Cos(a) * radius,
+                0f,
+                Mathf.Sin(a) * radius
+            );
+            // because useWorldSpace=false, this is local to the GameObject
+            lr.SetPosition(i, offset);
         }
     }
 
