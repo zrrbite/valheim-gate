@@ -231,7 +231,7 @@ namespace ICanShowYouTheWorld
                 new CommandBinding {
                     Key         = KeyCode.Keypad8,
                     Description = "Toggle Heal Viz",
-                    Execute     = () => CheatVisualizer.ToggleHealViz(CheatCommands.AoePower),
+                    Execute     = () => CheatVisualizer.ToggleHealViz(35f),
                     GetState    = null
                 },
                 new CommandBinding {
