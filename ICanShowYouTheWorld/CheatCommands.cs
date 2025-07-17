@@ -979,7 +979,7 @@ namespace ICanShowYouTheWorld
             Show($"Speed set: {speed}");
         }
 
-        private static void Show(string msg)
+        public static void Show(string msg)
         {
             Player.m_localPlayer.Message(MessageHud.MessageType.Center, msg);
             Console.instance.Print(msg);

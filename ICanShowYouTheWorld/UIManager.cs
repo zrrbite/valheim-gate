@@ -278,4 +278,74 @@ namespace ICanShowYouTheWorld
             GUI.DragWindow();
         }
     }
+
+
+
+    public static class CheatVisualizer
+    {
+        private static GameObject healViz, dmgViz;
+
+        public static void ToggleHealViz(float radius)
+        {
+            CheatCommands.Show("[CheatViz] ToggleHealViz called");
+            if (healViz == null)
+            {
+                // find ground under player
+                var p = Player.m_localPlayer.transform;
+                Vector3 origin = p.position + Vector3.up * 10f;
+                if (Physics.Raycast(origin, Vector3.down, out RaycastHit hit, 20f))
+                {
+                    Vector3 spawnPos = hit.point + Vector3.up * 0.01f;
+                    CheatCommands.Show($"[CheatViz] Spawn heal ring at {spawnPos}");
+
+                    healViz = new GameObject("HealRing");
+                    healViz.transform.position = spawnPos;
+
+                    var cv = healViz.AddComponent<CircleVisualizer>();
+                    cv.radius = radius;
+                    cv.color = new Color(0, 1, 0, 0.3f);
+                    cv.lineWidth = 0.2f;
+                    cv.DrawCircle();
+                }
+                else CheatCommands.Show("[CheatViz] Raycast to ground failed!");
+            }
+            else
+            {
+                CheatCommands.Show("[CheatViz] Destroying heal ring");
+                Object.Destroy(healViz);
+                healViz = null;
+            }
+        }
+
+        public static void ToggleDmgViz(float radius)
+        {
+            CheatCommands.Show("[CheatViz] ToggleDmgViz called");
+            if (dmgViz == null)
+            {
+                var p = Player.m_localPlayer.transform;
+                Vector3 origin = p.position + Vector3.up * 10f;
+                if (Physics.Raycast(origin, Vector3.down, out RaycastHit hit, 20f))
+                {
+                    Vector3 spawnPos = hit.point + Vector3.up * 0.01f;
+                    CheatCommands.Show($"[CheatViz] Spawn dmg ring at {spawnPos}");
+
+                    dmgViz = new GameObject("DmgRing");
+                    dmgViz.transform.position = spawnPos;
+
+                    var cv = dmgViz.AddComponent<CircleVisualizer>();
+                    cv.radius = radius;
+                    cv.color = new Color(1, 0, 0, 0.3f);
+                    cv.lineWidth = 0.2f;
+                    cv.DrawCircle();
+                }
+                else CheatCommands.Show("[CheatViz] Raycast to ground failed!");
+            }
+            else
+            {
+                CheatCommands.Show("[CheatViz] Destroying dmg ring");
+                Object.Destroy(dmgViz);
+                dmgViz = null;
+            }
+        }
+    }
 }
