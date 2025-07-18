@@ -103,9 +103,9 @@ namespace ICanShowYouTheWorld
         {
             // register periodic callbacks - todo: can do this better
             PeriodicManager.Register(50, () => { if (RenewalActive) Invigorate(); });
-            PeriodicManager.Register(60, () => { if (AOERenewalActive) AoeRegen(); });
+            PeriodicManager.Register(60, () => { if (AOERenewalActive) AoeRegen(10f); });
             PeriodicManager.Register(150, () => { if (MelodicActive) SlowMonsters(); });
-            PeriodicManager.Register(75, () => { if (CloakActive) DamageAoE(); });
+            PeriodicManager.Register(75, () => { if (CloakActive) DamageAoE(5f); }); //todo: config somewhere else
 
             // Default values
             DamageCounter = 5;
@@ -312,6 +312,7 @@ namespace ICanShowYouTheWorld
         {
             if (!RequireGodMode("AoE Renewal")) return;
             AOERenewalActive = !AOERenewalActive;
+            CheatVisualizer.ToggleConformHeal(10f); //todo: config. and toggle bool is already here.
             Show($"AoE Renewal {(AOERenewalActive ? "ON" : "OFF")}");
         }
 
@@ -319,6 +320,7 @@ namespace ICanShowYouTheWorld
         {
             if (!RequireGodMode("CoF")) return;
             CloakActive = !CloakActive; // Player.m_localPlayer.GetSEMan().AddStatusEffect(new SE_Burning(), resetTime: true, 10, 10);
+            CheatVisualizer.TogglePbaoeRing(5f);
             Show($"Cloak of Flames {(CloakActive ? "ON" : "OFF")}");
         }
 
@@ -797,12 +799,12 @@ namespace ICanShowYouTheWorld
         public static float CritMultiplier = 2f;      // 2x heal
         public static float HealThreshold = 0.85f;
 
-        public static void AoeRegen()
+        public static void AoeRegen(float radius)
         {
             var list = new List<Character>();
             Character.GetCharactersInRange(
                 Player.m_localPlayer.transform.position,
-                10f,
+                radius,
                 list
             );
 
@@ -935,12 +937,12 @@ namespace ICanShowYouTheWorld
                     c.m_runSpeed = c.m_speed = 1f;
         }
 
-        public static void DamageAoE()
+        public static void DamageAoE(float radius)
         {
             var list = new List<Character>();
             Character.GetCharactersInRange(
                 Player.m_localPlayer.transform.position,
-                5f,
+                radius,
                 list
             );
             float dmg = AoePower * AoeDmgScale;
@@ -948,6 +950,7 @@ namespace ICanShowYouTheWorld
             {
                 if (c.IsPlayer() || !c.IsMonsterFaction(10)) continue;
                 c.Damage(new HitData { m_damage = { m_damage = dmg } });
+                c.GetSEMan()?.AddStatusEffect(new SE_Burning(), resetTime: true, 5, 1);
             }
         }
 

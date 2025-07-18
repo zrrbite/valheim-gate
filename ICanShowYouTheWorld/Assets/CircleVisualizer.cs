@@ -61,6 +61,7 @@ public class CircleVisualizer : MonoBehaviour
     }
 }
 
+// todo: Enable these when enabling the aoe skills
 [RequireComponent(typeof(LineRenderer))]
 public class GroundConformingRing : MonoBehaviour
 {

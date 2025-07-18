@@ -351,7 +351,7 @@ namespace ICanShowYouTheWorld
         }
 
         private static GameObject _healRing, _dmgRing;
-
+        //todo: consolidate these two functions
         public static void ToggleConformHeal(float radius)
         {
             if (_healRing == null)

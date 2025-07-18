@@ -227,31 +227,7 @@ namespace ICanShowYouTheWorld
                     Description = "Run Utility",
                     Execute     = CheatCommands.ExecuteUtility,
                     GetState    = null
-                },
-                /*new CommandBinding {
-                    Key         = KeyCode.Keypad8,
-                    Description = "Toggle Heal Viz",
-                    Execute     = () => CheatVisualizer.ToggleHealViz(35f),
-                    GetState    = null
-                },*/
-                new CommandBinding {
-                    Key         = KeyCode.Keypad8,
-                    Description = "Toggle HEAL VIZ",
-                    Execute     = () => CheatVisualizer.ToggleConformHeal(10f),
-                    GetState    = null
-                },
-                new CommandBinding {
-                    Key         = KeyCode.Keypad9,
-                    Description = "Toggle Dmg Viz",
-                    Execute     = () => CheatVisualizer.TogglePbaoeRing(5f),
-                    GetState    = null
-                },
- //              new CommandBinding {
- //                  Key         = KeyCode.Keypad7,               // pick your key
- //                   Description = "Toggle Auto-Dodge",
- //                   Execute     = CheatCommands.ToggleAutoDodge,
- //                   GetState    = () => CheatCommands.AutoDodgeActive
- //               },
+                }
 
             // extra
             // CheatCommands.TeleportMass
