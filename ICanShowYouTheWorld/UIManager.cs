@@ -361,7 +361,7 @@ namespace ICanShowYouTheWorld
                 var ring = _healRing.AddComponent<GroundConformingRing>();
                 ring.segments = 128;
                 ring.radius = radius;
-                ring.lineWidth = 0.2f;
+                ring.lineWidth = 1.0f;
                 ring.baseColor = new Color(0f, 1f, 0f, 0.3f);
                 ring.pulseSpeed = 1f;
                 ring.minAlpha = 0.2f;
@@ -380,7 +380,7 @@ namespace ICanShowYouTheWorld
                 var ring = _dmgRing.AddComponent<GroundConformingRing>();
                 ring.segments = 128;
                 ring.radius = radius;
-                ring.lineWidth = 0.2f;
+                ring.lineWidth = 1.0f;
                 ring.baseColor = new Color(1f, 0f, 0f, 0.3f);
                 ring.pulseSpeed = 1f;
                 ring.minAlpha = 0.2f;
