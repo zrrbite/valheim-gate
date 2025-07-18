@@ -356,11 +356,12 @@ namespace ICanShowYouTheWorld
         {
             if (_healRing == null)
             {
+                CheatCommands.Show("[CheatViz] Spawning Heal Ring");
                 _healRing = new GameObject("HealCircle");
                 var ring = _healRing.AddComponent<GroundConformingRing>();
                 ring.segments = 128;
                 ring.radius = radius;
-                ring.lineWidth = 0.02f;
+                ring.lineWidth = 0.2f;
                 ring.baseColor = new Color(0f, 1f, 0f, 0.3f);
                 ring.pulseSpeed = 1f;
                 ring.minAlpha = 0.2f;
@@ -368,6 +369,25 @@ namespace ICanShowYouTheWorld
                 ring.Init(Player.m_localPlayer.transform);
             }
             else Object.Destroy(_healRing);
+        }
+
+        public static void TogglePbaoeRing(float radius)
+        {
+            if (_dmgRing == null)
+            {
+                CheatCommands.Show("[CheatViz] Spawning CoF Ring");
+                _dmgRing = new GameObject("DmgCircle");
+                var ring = _dmgRing.AddComponent<GroundConformingRing>();
+                ring.segments = 128;
+                ring.radius = radius;
+                ring.lineWidth = 0.2f;
+                ring.baseColor = new Color(1f, 0f, 0f, 0.3f);
+                ring.pulseSpeed = 1f;
+                ring.minAlpha = 0.2f;
+                ring.maxAlpha = 0.6f;
+                ring.Init(Player.m_localPlayer.transform);
+            }
+            else Object.Destroy(_dmgRing);
         }
     }
 }

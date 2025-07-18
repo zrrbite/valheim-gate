@@ -69,7 +69,7 @@ public class GroundConformingRing : MonoBehaviour
     [Tooltip("Horizontal radius of the ring")]
     public float radius = 5f;
     [Tooltip("Thickness of the line")]
-    public float lineWidth = 0.08f;
+    public float lineWidth = 0.02f;
     [Tooltip("Base color (RGB) and initial alpha")]
     public Color baseColor = new Color(0, 1, 0, .3f);
     [Tooltip("How fast the alpha pulses (cycles/sec)")]

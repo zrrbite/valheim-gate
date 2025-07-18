@@ -802,7 +802,7 @@ namespace ICanShowYouTheWorld
             var list = new List<Character>();
             Character.GetCharactersInRange(
                 Player.m_localPlayer.transform.position,
-                35f,
+                10f,
                 list
             );
 

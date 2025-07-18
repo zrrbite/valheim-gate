@@ -236,14 +236,14 @@ namespace ICanShowYouTheWorld
                 },*/
                 new CommandBinding {
                     Key         = KeyCode.Keypad8,
-                    Description = "SNUG HEAL",
+                    Description = "Toggle HEAL VIZ",
                     Execute     = () => CheatVisualizer.ToggleConformHeal(10f),
                     GetState    = null
                 },
                 new CommandBinding {
                     Key         = KeyCode.Keypad9,
                     Description = "Toggle Dmg Viz",
-                    Execute     = () => CheatVisualizer.ToggleDmgViz(5f),
+                    Execute     = () => CheatVisualizer.TogglePbaoeRing(5f),
                     GetState    = null
                 },
  //              new CommandBinding {
