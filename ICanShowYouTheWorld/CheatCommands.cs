@@ -64,6 +64,10 @@ namespace ICanShowYouTheWorld
         private const float DodgeCooldown = 1f;    // seconds between dodges
         private static float lastDodgeTime = -999f;
 
+        public static bool KnockbackAoEActive = false;
+        public static float KnockbackRadius = 10f;
+        public static float KnockbackStrength = 100f;
+
         // (If you were using SEMAN.ModifyHealthRegen/etc. to buff regen/fall/noise,
         // you'd need to snapshot whatever persistent modifier you applied there too.
         // For simplicity, I’m omitting those here—just roll your own ref values.)
@@ -148,6 +152,12 @@ namespace ICanShowYouTheWorld
             player.TeleportTo(target, player.transform.rotation, distantTeleport: true);
 
             lastDodgeTime = Time.time;
+        }
+
+        public static void ToggleKnockbackAoE()
+        {
+            KnockbackAoEActive = !KnockbackAoEActive;
+            Show($"AoE Knockback {(KnockbackAoEActive ? "ENABLED" : "DISABLED")}");
         }
 
         // --- guardian gift
@@ -952,6 +962,35 @@ namespace ICanShowYouTheWorld
                 c.Damage(new HitData { m_damage = { m_damage = dmg } });
                 c.GetSEMan()?.AddStatusEffect(new SE_Burning(), resetTime: true, 5, 1);
             }
+        }
+
+        // call this once when the key is pressed (not every frame)
+        public static void DoKnockbackAoE()
+        {
+            var center = Player.m_localPlayer.transform.position;
+            var list = new List<Character>();
+            Character.GetCharactersInRange(center, KnockbackRadius, list);
+
+            int count = 0;
+            foreach (var c in list)
+            {
+                if (c.IsPlayer() || c.IsTamed()) continue;
+
+                // compute direction
+                Vector3 dir = (c.transform.position - center).normalized;
+                // get the Rigidbody (Character.m_body is protected, so grab via GetComponent)
+                var rb = c.GetComponent<Rigidbody>();
+                if (rb != null)
+                {
+                    // zero vertical so they fly level (optional)
+                    dir.y = 0.5f;
+                    // apply an impulse
+                    rb.AddForce(dir * KnockbackStrength, ForceMode.VelocityChange);
+                    count++;
+                }
+            }
+
+            Show($"🌪 Knocked back {count} foes in {KnockbackRadius}m!");
         }
 
         private static void SetSpeed(float speed)

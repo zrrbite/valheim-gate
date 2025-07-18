@@ -148,6 +148,11 @@ namespace ICanShowYouTheWorld
                     Description = "Tame targeted",
                     Execute     = CheatCommands.TameTargeted
                 },
+                new CommandBinding {
+                    Key         = KeyCode.Keypad8,
+                    Description = "Knockback",
+                    Execute     = CheatCommands.DoKnockbackAoE
+                },
                 // --- aoe regen
                 new CommandBinding {
                     Key         = KeyCode.PageUp,
