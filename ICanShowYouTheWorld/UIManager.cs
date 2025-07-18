@@ -340,7 +340,7 @@ namespace ICanShowYouTheWorld
                     cv.lineWidth = 0.02f;
                     cv.DrawCircle();
                 }
-                else Show("⟳ Could not find ground under player");
+                else CheatCommands.Show("⟳ Could not find ground under player");
             }
             else
             {

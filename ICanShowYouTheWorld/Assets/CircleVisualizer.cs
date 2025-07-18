@@ -24,6 +24,7 @@ public class CircleVisualizer : MonoBehaviour
         lr.startWidth = lr.endWidth = lineWidth;
 
         DrawCircle();
+        ApplyToRenderer();
     }
 
     public void DrawCircle()
@@ -51,5 +52,11 @@ public class CircleVisualizer : MonoBehaviour
         color = newColor;
         lr.startColor = lr.endColor = color;
         DrawCircle();
+        ApplyToRenderer();
+    }
+    private void ApplyToRenderer()
+    {
+        lr.startWidth = lr.endWidth = lineWidth;
+        lr.startColor = lr.endColor = color;
     }
 }
