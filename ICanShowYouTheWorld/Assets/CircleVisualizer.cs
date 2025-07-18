@@ -77,7 +77,8 @@ public class GroundConformingRing : MonoBehaviour
     [Tooltip("Min/max alpha for the pulse")]
     public float minAlpha = 0.2f;
     public float maxAlpha = 0.6f;
-
+    [Tooltip("Maximum allowed change in height between adjacent segments")]
+    public float maxStepHeight = 1f;
     private LineRenderer _lr;
     private Transform _target;
 
@@ -102,27 +103,44 @@ public class GroundConformingRing : MonoBehaviour
     void Update()
     {
         if (_target == null) return;
+        Vector3 center = _target.position;
 
-        // 1) pulse alpha
+        // pulse alpha
         float t = (Mathf.Sin(Time.time * pulseSpeed * 2 * Mathf.PI) + 1f) * 0.5f;
         float a = Mathf.Lerp(minAlpha, maxAlpha, t);
         Color c = new Color(baseColor.r, baseColor.g, baseColor.b, a);
         _lr.startColor = _lr.endColor = c;
 
-        // 2) sample ground under each segment
-        Vector3 center = _target.position;
+        float lastY = center.y;  // start from player?s foot?height
+
         for (int i = 0; i <= segments; i++)
         {
             float ang = 2 * Mathf.PI * i / segments;
             Vector3 dir = new Vector3(Mathf.Cos(ang), 0, Mathf.Sin(ang));
-
-            // cast 10m above and down to find ground
             Vector3 origin = center + dir * radius + Vector3.up * 10f;
-            Vector3 pos = origin;
-            if (Physics.Raycast(origin, Vector3.down, out var hit, 20f))
-                pos = hit.point + Vector3.up * 0.02f;
 
-            _lr.SetPosition(i, pos);
+            // gather all hits and pick lowest
+            RaycastHit[] hits = Physics.RaycastAll(origin, Vector3.down, 20f);
+            float newY = lastY;
+            if (hits.Length > 0)
+            {
+                float minY = float.MaxValue;
+                foreach (var h in hits)
+                    if (h.point.y < minY) minY = h.point.y;
+                newY = minY + 0.02f;
+            }
+
+            // if too big a step, throw it out
+            if (Mathf.Abs(newY - lastY) > maxStepHeight)
+                newY = lastY;
+
+            // record and set
+            lastY = newY;
+            _lr.SetPosition(i, new Vector3(
+                center.x + dir.x * radius,
+                newY,
+                center.z + dir.z * radius
+            ));
         }
     }
 }
