@@ -363,9 +363,9 @@ namespace ICanShowYouTheWorld
                 ring.radius = radius;
                 ring.lineWidth = 1.0f;
                 ring.baseColor = new Color(0f, 1f, 0f, 0.3f);
-                ring.pulseSpeed = 1f;
+                ring.pulseSpeed = 1.2f;
                 ring.minAlpha = 0.2f;
-                ring.maxAlpha = 0.6f;
+                ring.maxAlpha = 1f;
                 ring.Init(Player.m_localPlayer.transform);
             }
             else Object.Destroy(_healRing);

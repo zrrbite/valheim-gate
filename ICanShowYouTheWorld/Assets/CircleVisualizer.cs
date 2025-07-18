@@ -106,37 +106,47 @@ public class GroundConformingRing : MonoBehaviour
         if (_target == null) return;
         Vector3 center = _target.position;
 
-        // pulse alpha
+        // 1) pulse alpha
         float t = (Mathf.Sin(Time.time * pulseSpeed * 2 * Mathf.PI) + 1f) * 0.5f;
         float a = Mathf.Lerp(minAlpha, maxAlpha, t);
         Color c = new Color(baseColor.r, baseColor.g, baseColor.b, a);
         _lr.startColor = _lr.endColor = c;
 
-        float lastY = center.y;  // start from player?s foot?height
-
+        // 2) sample and reject spikes
+        float lastY = center.y;
         for (int i = 0; i <= segments; i++)
         {
             float ang = 2 * Mathf.PI * i / segments;
             Vector3 dir = new Vector3(Mathf.Cos(ang), 0, Mathf.Sin(ang));
             Vector3 origin = center + dir * radius + Vector3.up * 10f;
 
-            // gather all hits and pick lowest
+            // gather all hits under this point
             RaycastHit[] hits = Physics.RaycastAll(origin, Vector3.down, 20f);
             float newY = lastY;
+
             if (hits.Length > 0)
             {
+                // find lowest Y among hits that aren't trees/mobs
                 float minY = float.MaxValue;
                 foreach (var h in hits)
+                {
+                    var go = h.collider.gameObject;
+                    // skip branches (tagged "Tree") and any Character
+                    if (go.CompareTag("Tree") || go.GetComponent<Character>() != null)
+                        continue;
                     if (h.point.y < minY) minY = h.point.y;
-                newY = minY + 0.02f;
+                }
+                if (minY != float.MaxValue)
+                    newY = minY + 0.02f;
             }
 
-            // if too big a step, throw it out
+            // reject any spike > maxStepHeight
             if (Mathf.Abs(newY - lastY) > maxStepHeight)
                 newY = lastY;
 
-            // record and set
             lastY = newY;
+
+            // set the world?space vertex
             _lr.SetPosition(i, new Vector3(
                 center.x + dir.x * radius,
                 newY,
