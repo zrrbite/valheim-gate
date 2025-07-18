@@ -60,3 +60,69 @@ public class CircleVisualizer : MonoBehaviour
         lr.startColor = lr.endColor = color;
     }
 }
+
+[RequireComponent(typeof(LineRenderer))]
+public class GroundConformingRing : MonoBehaviour
+{
+    [Tooltip("How many points around the circle (higher = smoother)")]
+    public int segments = 128;
+    [Tooltip("Horizontal radius of the ring")]
+    public float radius = 5f;
+    [Tooltip("Thickness of the line")]
+    public float lineWidth = 0.08f;
+    [Tooltip("Base color (RGB) and initial alpha")]
+    public Color baseColor = new Color(0, 1, 0, .3f);
+    [Tooltip("How fast the alpha pulses (cycles/sec)")]
+    public float pulseSpeed = 1f;
+    [Tooltip("Min/max alpha for the pulse")]
+    public float minAlpha = 0.2f;
+    public float maxAlpha = 0.6f;
+
+    private LineRenderer _lr;
+    private Transform _target;
+
+    /// <summary>
+    /// Call once after AddComponent to tell it who to follow.
+    /// </summary>
+    public void Init(Transform followTarget)
+    {
+        _target = followTarget;
+    }
+
+    void Awake()
+    {
+        _lr = GetComponent<LineRenderer>();
+        _lr.loop = true;
+        _lr.useWorldSpace = true;              // world coords
+        _lr.positionCount = segments + 1;
+        _lr.material = new Material(Shader.Find("Sprites/Default"));
+        _lr.startWidth = _lr.endWidth = lineWidth;
+    }
+
+    void Update()
+    {
+        if (_target == null) return;
+
+        // 1) pulse alpha
+        float t = (Mathf.Sin(Time.time * pulseSpeed * 2 * Mathf.PI) + 1f) * 0.5f;
+        float a = Mathf.Lerp(minAlpha, maxAlpha, t);
+        Color c = new Color(baseColor.r, baseColor.g, baseColor.b, a);
+        _lr.startColor = _lr.endColor = c;
+
+        // 2) sample ground under each segment
+        Vector3 center = _target.position;
+        for (int i = 0; i <= segments; i++)
+        {
+            float ang = 2 * Mathf.PI * i / segments;
+            Vector3 dir = new Vector3(Mathf.Cos(ang), 0, Mathf.Sin(ang));
+
+            // cast 10m above and down to find ground
+            Vector3 origin = center + dir * radius + Vector3.up * 10f;
+            Vector3 pos = origin;
+            if (Physics.Raycast(origin, Vector3.down, out var hit, 20f))
+                pos = hit.point + Vector3.up * 0.02f;
+
+            _lr.SetPosition(i, pos);
+        }
+    }
+}

@@ -228,10 +228,16 @@ namespace ICanShowYouTheWorld
                     Execute     = CheatCommands.ExecuteUtility,
                     GetState    = null
                 },
-                new CommandBinding {
+                /*new CommandBinding {
                     Key         = KeyCode.Keypad8,
                     Description = "Toggle Heal Viz",
                     Execute     = () => CheatVisualizer.ToggleHealViz(35f),
+                    GetState    = null
+                },*/
+                new CommandBinding {
+                    Key         = KeyCode.Keypad8,
+                    Description = "SNUG HEAL",
+                    Execute     = () => CheatVisualizer.ToggleConformHeal(10f),
                     GetState    = null
                 },
                 new CommandBinding {

@@ -349,5 +349,25 @@ namespace ICanShowYouTheWorld
                 dmgViz = null;
             }
         }
+
+        private static GameObject _healRing, _dmgRing;
+
+        public static void ToggleConformHeal(float radius)
+        {
+            if (_healRing == null)
+            {
+                _healRing = new GameObject("HealCircle");
+                var ring = _healRing.AddComponent<GroundConformingRing>();
+                ring.segments = 128;
+                ring.radius = radius;
+                ring.lineWidth = 0.02f;
+                ring.baseColor = new Color(0f, 1f, 0f, 0.3f);
+                ring.pulseSpeed = 1f;
+                ring.minAlpha = 0.2f;
+                ring.maxAlpha = 0.6f;
+                ring.Init(Player.m_localPlayer.transform);
+            }
+            else Object.Destroy(_healRing);
+        }
     }
 }
