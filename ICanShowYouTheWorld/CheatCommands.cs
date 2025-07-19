@@ -66,7 +66,9 @@ namespace ICanShowYouTheWorld
 
         public static bool KnockbackAoEActive = false;
         public static float KnockbackRadius = 10f;
-        public static float KnockbackStrength = 100f;
+        public static float KnockbackStrength = 300f;
+
+        public static bool FreezeMonstersActive = false;
 
         // (If you were using SEMAN.ModifyHealthRegen/etc. to buff regen/fall/noise,
         // you'd need to snapshot whatever persistent modifier you applied there too.
@@ -938,13 +940,13 @@ namespace ICanShowYouTheWorld
         }
 
         // Helpers
-        private static void SlowMonsters()
+        public static void SlowMonsters()
         {
             var list = new List<Character>();
             Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 30f, list);
             foreach (var c in list)
                 if (c.IsMonsterFaction(10))
-                    c.m_runSpeed = c.m_speed = 1f;
+                    c.m_runSpeed = c.m_speed = 0f;
         }
 
         public static void DamageAoE(float radius)
@@ -991,6 +993,31 @@ namespace ICanShowYouTheWorld
             }
 
             Show($"🌪 Knocked back {count} foes in {KnockbackRadius}m!");
+        }
+
+        public static void ToggleFreezeMonsters()
+        {
+            FreezeMonstersActive = !FreezeMonstersActive;
+
+            // grab everyone in 50m
+            var list = new List<Character>();
+            Character.GetCharactersInRange(
+                Player.m_localPlayer.transform.position,
+                50f,
+                list
+            );
+
+            int affected = 0;
+            foreach (var c in list)
+            {
+                if (c.IsPlayer() || c.IsTamed()) continue;
+
+                // 0f = freeze, 1f = normal
+                c.m_speed = FreezeMonstersActive ? 0f : 1f;
+                affected++;
+            }
+
+            Show($"❄️ Monster Freeze {(FreezeMonstersActive ? "ON" : "OFF")} ({affected} {(FreezeMonstersActive ? "frozen" : "unfrozen")})");
         }
 
         private static void SetSpeed(float speed)
