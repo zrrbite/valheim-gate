@@ -296,6 +296,46 @@ namespace ICanShowYouTheWorld
             Utilities[utilIndex].Action();
         }
 
+        // 1) Call this to de-aggro every monster in radius
+        public static void PacifyAoE(float radius = 20f)
+        {
+            var center = Player.m_localPlayer.transform.position;
+            var list = new List<Character>();
+            Character.GetCharactersInRange(center, radius, list);
+
+            int pacified = 0;
+            foreach (var c in list)
+            {
+                // skip players & tamed creatures
+                if (c.IsPlayer() || c.IsTamed()) continue;
+
+                // grab their AI
+                var ai = c.GetComponent<MonsterAI>();
+                if (ai == null) continue;
+
+                // 2) clear the “aggravated” flag
+                ai.SetAggravated(false, BaseAI.AggravatedReason.Building);
+
+                // 3) clear any current attack target
+                //    (BaseAI stores it in a private field “m_target”)
+                var baseAi = (BaseAI)ai;
+                var targetField = typeof(BaseAI)
+                    .GetField("m_target");
+                if (targetField != null)
+                    targetField.SetValue(baseAi, null);
+
+                // 4) reset their alert timer so they don’t immediately re-aggro
+                var alertedField = typeof(BaseAI)
+                    .GetField("m_alerted");
+                if (alertedField != null)
+                    alertedField.SetValue(baseAi, false);
+
+                pacified++;
+            }
+
+            Show($"🕊 Pacified {pacified} foes within {radius:0}m");
+        }
+
         // ---
 
         public static void HandlePeriodic() => PeriodicManager.HandlePeriodic();
@@ -984,8 +1024,8 @@ namespace ICanShowYouTheWorld
                 var rb = c.GetComponent<Rigidbody>();
                 if (rb != null)
                 {
-                    // zero vertical so they fly level (optional)
-                    dir.y = 0.5f;
+                    // zero vertical so they fly level
+                    dir.y = 0.2f;
                     // apply an impulse
                     rb.AddForce(dir * KnockbackStrength, ForceMode.VelocityChange);
                     count++;
