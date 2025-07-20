@@ -1101,6 +1101,35 @@ namespace ICanShowYouTheWorld
             Show($"🌪 Knocked back {count} foes in {KnockbackRadius}m!");
         }
 
+        public static void GatherMonsters(float radius = 50f, float forwardOffset = 5f)
+        {
+            var player = Player.m_localPlayer.transform;
+            // Determine the “gather” point:
+            Vector3 gatherPos = player.position + player.forward * forwardOffset;
+
+            // Optionally raise it to ground level
+            if (Physics.Raycast(gatherPos + Vector3.up * 10f, Vector3.down, out var hit, 20f))
+                gatherPos.y = hit.point.y + 0.1f;
+
+            // Find all monsters in radius
+            var list = new List<Character>();
+            Character.GetCharactersInRange(player.position, radius, list);
+
+            int moved = 0;
+            foreach (var c in list)
+            {
+                if (c.IsPlayer() || c.IsTamed())
+                    continue;
+
+                // teleport them to the gather point
+                c.TeleportTo(gatherPos, c.transform.rotation, distantTeleport: true);
+                // can also use transform.position?
+                moved++;
+            }
+
+            Show($"Gathered {moved} monsters to ({gatherPos:0.0})");
+        }
+
         public static void ToggleFreezeMonsters()
         {
             FreezeMonstersActive = !FreezeMonstersActive;
