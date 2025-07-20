@@ -277,6 +277,7 @@ namespace ICanShowYouTheWorld
                 ("Toggle Ghost Mode",       ToggleGhostMode),
                 ("Toggle Guardian Pwr",     ToggleGuardianPower),
                 ("Replenish Stacks",        ReplenishStacks),
+                ("Reapair all things",      () => RepairStructuresAoE()),
                 ("Increase Skills",         IncreaseSkills),
 
             };
@@ -296,9 +297,7 @@ namespace ICanShowYouTheWorld
         // 4. Key‐handler to execute the selected one
         public static void ExecuteUtility()
         {
-            // If you want to gate them behind God Mode:
-            // if (!GodMode) { Show("Requires God Mode"); return; }
-
+            if (!RequireGodMode("Utilities")) return;
             Utilities[utilIndex].Action();
         }
 
@@ -339,7 +338,7 @@ namespace ICanShowYouTheWorld
                 pacified++;
             }
 
-            Show($"🕊 Pacified {pacified} foes within {radius:0}m");
+            Show($"Pacified {pacified} foes within {radius:0}m");
         }
 
         // ---
@@ -506,29 +505,17 @@ namespace ICanShowYouTheWorld
             var center = Player.m_localPlayer.transform.position;
             int repaired = 0;
 
-            // 1) Handle old-style WearNTear
-            foreach (var wt in Object.FindObjectsOfType<WearNTear>())
-            {
-                if (Vector3.Distance(wt.transform.position, center) <= radius)
-                {
-                    //wt.m_health += 50;
-                    //repaired++;
-                }
-            }
-
-            // 2) Handle new-style Piece (if present)
             foreach (var piece in Object.FindObjectsOfType<Piece>())
             {
                 if (Vector3.Distance(piece.transform.position, center) <= radius)
                 {
                     var znv = piece.GetComponent<ZNetView>();
                     znv.InvokeRPC("RPC_Repair");
-                    piece.m_repairPiece = true; //?  Does that do anything?
                     repaired++;
                 }
             }
 
-            Show($"🛠 Repaired {repaired} structures within {radius:0}m"
+            Show($"Repaired {repaired} structures within {radius:0}m"
             );
         }
 
