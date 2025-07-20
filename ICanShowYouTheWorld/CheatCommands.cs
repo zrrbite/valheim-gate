@@ -68,6 +68,11 @@ namespace ICanShowYouTheWorld
         public static float KnockbackRadius = 10f;
         public static float KnockbackStrength = 300f;
 
+        public static bool BarrierAoEActive = false;
+        public static float BarrierRadius = 3f;
+        public static float BarrierStrength = 5f;     // how hard to shove them
+        public static float BarrierFalloff = 1f;     // 1 = full strength at all ranges; >1 = stronger near center
+
         public static bool FreezeMonstersActive = false;
 
         // (If you were using SEMAN.ModifyHealthRegen/etc. to buff regen/fall/noise,
@@ -108,6 +113,7 @@ namespace ICanShowYouTheWorld
         static CheatCommands()
         {
             // register periodic callbacks - todo: can do this better
+            PeriodicManager.Register(50, () => { if (BarrierAoEActive) BarrierAoETick(); });
             PeriodicManager.Register(50, () => { if (RenewalActive) Invigorate(); });
             PeriodicManager.Register(60, () => { if (AOERenewalActive) AoeRegen(10f); });
             PeriodicManager.Register(150, () => { if (MelodicActive) SlowMonsters(); });
@@ -382,6 +388,13 @@ namespace ICanShowYouTheWorld
             MelodicActive = !MelodicActive;
             Show($"Melodic Binding {MelodicActive}");
         }
+
+        public static void ToggleBarrierAoE()
+        {
+            BarrierAoEActive = !BarrierAoEActive;
+            CheatVisualizer.ToggleBarrierRing(BarrierRadius);
+            Show($"Barrier AoE {(BarrierAoEActive ? "ON" : "OFF")} (r={BarrierRadius:0}, s={BarrierStrength:0})");
+        }
         // ---------------------------------------------
 
         public static void ToggleGodMode()
@@ -422,14 +435,14 @@ namespace ICanShowYouTheWorld
             Show($"Selected prefab: {CurrentPrefab}");
         }
 
-        // 1.C) Spawn whatever is currently selected
+        // Spawn whatever is currently selected
         public static void SpawnSelectedPrefab()
         {
             //SpawnPrefab(CurrentPrefab);
             SpawnPrefabAtCursor(CurrentPrefab);
         }
 
-        // 1.D) Refactored spawn that takes a name
+        // Refactored spawn that takes a name
         private static void SpawnPrefab(string name)
         {
             if (!RequireGodMode("Spawn Prefab")) return;
@@ -486,6 +499,59 @@ namespace ICanShowYouTheWorld
 
             UnityEngine.Object.Instantiate(prefab, spawnPos, Quaternion.identity);
             Show($"Spawned {name} at {spawnPos:0.0}");
+        }
+
+       static UInt16 pushed = 0;
+        public static bool BarrierUseTeleport = true;
+        public static void BarrierAoETick()
+        {
+            if (!BarrierAoEActive) return;
+
+            var center = Player.m_localPlayer.transform.position;
+            var list = new List<Character>();
+            Character.GetCharactersInRange(center, BarrierRadius, list);
+
+            foreach (var c in list)
+            {
+                if (c.IsPlayer() || c.IsTamed()) continue;
+
+                Vector3 delta = c.transform.position - center;
+                float dist = delta.magnitude;
+                if (dist < 0.01f || dist >= BarrierRadius) continue;
+
+                // compute normalized push direction & falloff
+                Vector3 pushDir = delta.normalized;
+                float falloff = Mathf.Pow(1f - (dist / BarrierRadius), BarrierFalloff);
+
+                if (BarrierUseTeleport)
+                {
+                    // teleport mode: snap them back a bit
+                    float moveDist = BarrierStrength * 0.1f * falloff;
+                    Vector3 newPos = c.transform.position + pushDir * moveDist;
+                    c.TeleportTo(newPos, c.transform.rotation, distantTeleport: true);
+                    pushed++;
+                }
+                else
+                {
+                    // physics mode: overwrite their horizontal velocity
+                    var rb = c.GetComponent<Rigidbody>();
+                    if (rb != null)
+                    {
+                        Vector3 impulse = pushDir * (BarrierStrength * falloff);
+                        rb.velocity = new Vector3(impulse.x, rb.velocity.y, impulse.z);
+                        pushed++;
+                    }
+                    else
+                    {
+                        // fallback to small teleport if no Rigidbody
+                        float moveDist = BarrierStrength * 0.05f * falloff;
+                        c.transform.position += pushDir * moveDist;
+                        pushed++;
+                    }
+                }
+                Show($"{pushed} mobs pushed.");
+                pushed = 0;
+            }
         }
 
         public static void RevealBosses()

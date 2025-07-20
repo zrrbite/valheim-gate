@@ -153,11 +153,11 @@ namespace ICanShowYouTheWorld
                     Description = "Knockback",
                     Execute     = CheatCommands.DoKnockbackAoE
                 },
-                new CommandBinding {
-                    Key         = KeyCode.Keypad9,
-                    Description = "Freeze",
-                    Execute     = CheatCommands.SlowMonsters
-                },
+              //  new CommandBinding {
+             //       Key         = KeyCode.Keypad9,
+             //       Description = "Toggle Barrier",
+             //       Execute     = () => CheatCommands.ToggleBarrierAoE()
+             //   },
                 // --- aoe regen
                 new CommandBinding {
                     Key         = KeyCode.PageUp,

@@ -389,5 +389,30 @@ namespace ICanShowYouTheWorld
             }
             else Object.Destroy(_dmgRing);
         }
+
+        private static GameObject _barrierRing;
+
+        public static void ToggleBarrierRing(float radius)
+        {
+            if (_barrierRing == null)
+            {
+                _barrierRing = new GameObject("BarrierRing");
+                var ring = _barrierRing.AddComponent<GroundConformingRing>();
+                ring.segments = 128;
+                ring.radius = radius;
+                ring.lineWidth = 0.02f;
+                ring.baseColor = new Color(0f, 0.5f, 1f, 0.3f); // cyan‐blue
+                ring.pulseSpeed = 1.2f;
+                ring.minAlpha = 0.1f;
+                ring.maxAlpha = 0.5f;
+                ring.maxStepHeight = 1f;
+                ring.Init(Player.m_localPlayer.transform);
+            }
+            else
+            {
+                Object.Destroy(_barrierRing);
+                _barrierRing = null;
+            }
+        }
     }
 }
