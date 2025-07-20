@@ -153,6 +153,11 @@ namespace ICanShowYouTheWorld
                     Description = "Knockback",
                     Execute     = CheatCommands.DoKnockbackAoE
                 },
+                new CommandBinding {
+                    Key         = KeyCode.Keypad9,
+                    Description = "Repair all",
+                    Execute     = () => CheatCommands.RepairStructuresAoE()
+                },                
               //  new CommandBinding {
              //       Key         = KeyCode.Keypad9,
              //       Description = "Toggle Barrier",

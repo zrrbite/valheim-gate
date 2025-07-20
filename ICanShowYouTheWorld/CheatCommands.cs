@@ -501,7 +501,38 @@ namespace ICanShowYouTheWorld
             Show($"Spawned {name} at {spawnPos:0.0}");
         }
 
-       static UInt16 pushed = 0;
+        public static void RepairStructuresAoE(float radius = 20f)
+        {
+            var center = Player.m_localPlayer.transform.position;
+            int repaired = 0;
+
+            // 1) Handle old-style WearNTear
+            foreach (var wt in Object.FindObjectsOfType<WearNTear>())
+            {
+                if (Vector3.Distance(wt.transform.position, center) <= radius)
+                {
+                    //wt.m_health += 50;
+                    //repaired++;
+                }
+            }
+
+            // 2) Handle new-style Piece (if present)
+            foreach (var piece in Object.FindObjectsOfType<Piece>())
+            {
+                if (Vector3.Distance(piece.transform.position, center) <= radius)
+                {
+                    var znv = piece.GetComponent<ZNetView>();
+                    znv.InvokeRPC("RPC_Repair");
+                    piece.m_repairPiece = true; //?  Does that do anything?
+                    repaired++;
+                }
+            }
+
+            Show($"🛠 Repaired {repaired} structures within {radius:0}m"
+            );
+        }
+
+        static UInt16 pushed = 0;
         public static bool BarrierUseTeleport = true;
         public static void BarrierAoETick()
         {
