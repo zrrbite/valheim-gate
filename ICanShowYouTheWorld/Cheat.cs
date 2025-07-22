@@ -175,11 +175,11 @@ namespace ICanShowYouTheWorld
  //                   Description = "Repair all",
  //                   Execute     = () => CheatCommands.RepairStructuresAoE()
  //               },                
-              //  new CommandBinding {
-             //       Key         = KeyCode.Keypad9,
-             //       Description = "Toggle Barrier",
-             //       Execute     = () => CheatCommands.ToggleBarrierAoE()
-             //   },
+                new CommandBinding {
+                    Key         = KeyCode.Keypad9,
+                    Description = "Toggle Barrier", //stagger barrier
+                    Execute     = () => CheatCommands.ToggleBarrierAoE()
+                },
                 // --- aoe regen
                 new CommandBinding {
                     Key         = KeyCode.PageUp,

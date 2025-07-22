@@ -113,7 +113,7 @@ namespace ICanShowYouTheWorld
         static CheatCommands()
         {
             // register periodic callbacks - todo: can do this better
-            PeriodicManager.Register(50, () => { if (BarrierAoEActive) BarrierAoETick(); });
+            PeriodicManager.Register(50, () => { if (BarrierAoEActive) StaggerAoE(); });
             PeriodicManager.Register(50, () => { if (RenewalActive) Invigorate(); });
             PeriodicManager.Register(60, () => { if (AOERenewalActive) AoeRegen(10f); });
             PeriodicManager.Register(150, () => { if (MelodicActive) SlowMonsters(); });
@@ -516,6 +516,33 @@ namespace ICanShowYouTheWorld
             }
 
             Show($"Repaired {repaired} structures within {radius:0}m"
+            );
+        }
+
+        public static void StaggerAoE(float radius = 10f)
+        {
+            var center = Player.m_localPlayer.transform.position;
+            var list = new List<Character>();
+            Character.GetCharactersInRange(center, radius, list);
+
+            int count = 0;
+            foreach (var c in list)
+            {
+                if (c.IsPlayer() || c.IsTamed()) continue;
+                c.Stagger(Vector3.forward);
+                count++;
+
+                //                var znv = c.GetComponent<ZNetView>();
+                //              if (znv != null && znv.IsValid())
+                //            {
+                //              znv.InvokeRPC("RPC_Stagger");
+                //            count++;
+                //      }
+            }
+
+            Player.m_localPlayer.Message(
+                MessageHud.MessageType.TopLeft,
+                $"Staggered {count} foes within {radius:0}m"
             );
         }
 
