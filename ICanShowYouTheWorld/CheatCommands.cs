@@ -69,7 +69,7 @@ namespace ICanShowYouTheWorld
         public static float KnockbackStrength = 300f;
 
         public static bool BarrierAoEActive = false;
-        public static float BarrierRadius = 3f;
+        public static float BarrierRadius = 10f;
         public static float BarrierStrength = 5f;     // how hard to shove them
         public static float BarrierFalloff = 1f;     // 1 = full strength at all ranges; >1 = stronger near center
 
@@ -531,13 +531,6 @@ namespace ICanShowYouTheWorld
                 if (c.IsPlayer() || c.IsTamed()) continue;
                 c.Stagger(Vector3.forward);
                 count++;
-
-                //                var znv = c.GetComponent<ZNetView>();
-                //              if (znv != null && znv.IsValid())
-                //            {
-                //              znv.InvokeRPC("RPC_Stagger");
-                //            count++;
-                //      }
             }
 
             Player.m_localPlayer.Message(

@@ -5,6 +5,9 @@ using Random = System.Random;
 using System.Diagnostics;
 using Object = UnityEngine.Object;
 using System.Reflection;
+using System.Text;
+using System.IO;
+using Debug = System.Diagnostics.Debug;
 
 //todo:
 // 			BaseAI.AggravateAllInArea(Player.m_localPlayer.transform.position, 20f, BaseAI.AggravatedReason.Damage); + shout! Chat.instance.BroadcastMessage("Monsters become aggravated!");
@@ -20,21 +23,7 @@ namespace ICanShowYouTheWorld
 
         public static void Run()
         {
-            // loop every type in the same assembly as ZNetView
-            foreach (var type in typeof(ZNetView).Assembly.GetTypes())
-            {
-                // get all instance/public/non-public methods
-                foreach (var mi in type.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
-                {
-                    if (mi.Name.StartsWith("RPC_"))
-                        UnityEngine.Debug.Log($"{type.Name}.{mi.Name}");
-
-                    if (mi.Name.Equals("RPC_Stagger", StringComparison.OrdinalIgnoreCase))
-                    {
-                        Console.instance.Print($"● {type.Name}.{mi.Name}");
-                    }
-                }
-            }
+            DumpAllRPCsToFile();
 
             // 1) Get  version string
             string version = "0.220.5-3"; //ModVersion.VERSION;
@@ -65,7 +54,44 @@ namespace ICanShowYouTheWorld
             ));
         }
 
-       private static void TryAddAndRecord<T>(GameObject go, List<string> log)
+        public static void DumpAllRPCsToFile()
+        {
+            try
+            {
+                var sb = new System.Text.StringBuilder();
+                var asm = typeof(ZNetView).Assembly;
+                foreach (var type in asm.GetTypes())
+                {
+                    foreach (var mi in type.GetMethods(
+                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+                    {
+                        if (mi.Name.StartsWith("RPC_", StringComparison.Ordinal))
+                            sb.AppendLine($"{type.FullName}.{mi.Name}");
+                    }
+                }
+
+                // write to persistent data path
+                string folder = Application.persistentDataPath;
+                string file = Path.Combine(folder, "rpc_dump.txt");
+                File.WriteAllText(file, sb.ToString(), Encoding.UTF8);
+
+                Debug.Print($"[DebugUtils] RPC dump saved to: {file}");
+                Player.m_localPlayer?.Message(
+                    MessageHud.MessageType.Center,
+                    $"✅ RPC list written to:\n{file}"
+                );
+            }
+            catch (Exception ex)
+            {
+                Debug.Print($"[DebugUtils] Failed to dump RPCs: {ex}");
+                Player.m_localPlayer?.Message(
+                    MessageHud.MessageType.Center,
+                    $"❌ RPC dump failed: {ex.Message}"
+                );
+            }
+        }
+
+        private static void TryAddAndRecord<T>(GameObject go, List<string> log)
        where T : Component
         {
             try
