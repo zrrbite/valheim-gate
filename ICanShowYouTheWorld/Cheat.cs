@@ -192,16 +192,6 @@ namespace ICanShowYouTheWorld
                     Execute     = CheatCommands.TameTargeted
                 },
                 new CommandBinding {
-                    Key         = KeyCode.Keypad8,
-                    Description = "Knockback",
-                    Execute     = CheatCommands.DoKnockbackAoE
-                },
- //               new CommandBinding {
- //                  Key         = KeyCode.Keypad9,
- //                   Description = "Repair all",
- //                   Execute     = () => CheatCommands.RepairStructuresAoE()
- //               },                
-                new CommandBinding {
                     Key         = KeyCode.Keypad9,
                     Description = "Toggle Barrier", //stagger barrier
                     Execute     = () => CheatCommands.ToggleBarrierAoE()

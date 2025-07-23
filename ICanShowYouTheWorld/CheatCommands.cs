@@ -278,8 +278,24 @@ namespace ICanShowYouTheWorld
                 ("Toggle Guardian Pwr",     ToggleGuardianPower),
                 ("Replenish Stacks",        ReplenishStacks),
                 ("Reapair all things",      () => RepairStructuresAoE()),
-                ("Increase Skills",         IncreaseSkills),
-
+                ("Smelt Iron Bars",      () =>
+                    {
+                        CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "IronScrap", 5);
+                        CheatCommands.RPCOnInRange<Smelter>("AddFuel", 5f, "Coal", 5);
+                    }),
+                ("Smelt Silver Bars",      () =>
+                    {
+                        CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "SilverOre", 5);
+                        CheatCommands.RPCOnInRange<Smelter>("AddFuel", 5f, "Coal", 5);
+                    }),
+                ("Smelt BlackIron Bars",      () =>
+                    {
+                        CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "BlackMetalScrap", 5);
+                        CheatCommands.RPCOnInRange<Smelter>("AddFuel", 5f, "Coal", 5);
+                    }),
+                ("Brew Eitr",              () => CheatCommands.RPCOnInRange<Fermenter>("AddItem", 5f, "MeadBaseEitrMinor", 10)),
+                ("Brew Health",              () => CheatCommands.RPCOnInRange<Fermenter>("AddItem", 5f, "MeadBaseHealthMajor", 10)),
+                ("Increase Skills",         IncreaseSkills)
             };
 
         // 2. Track which one is “current”
@@ -515,8 +531,7 @@ namespace ICanShowYouTheWorld
                 }
             }
 
-            Show($"Repaired {repaired} structures within {radius:0}m"
-            );
+            Show($"Repaired {repaired} structures within {radius:0}m");
         }
 
         public static void StaggerAoE(float radius = 10f)
@@ -1137,6 +1152,57 @@ namespace ICanShowYouTheWorld
             }
 
             Show($"🌪 Knocked back {count} foes in {KnockbackRadius}m!");
+        }
+
+        // todo: Do something where you select the type of object you want and which RPC to send it.
+        public static void RPCOnObject(float radius = 20f)
+        {
+            int count = 0;
+            var center = Player.m_localPlayer.transform.position;
+
+            foreach (var door in Object.FindObjectsOfType<Door>())
+            {
+                if (Vector3.Distance(door.transform.position, center) <= radius)
+                {
+                    var znv = door.GetComponent<ZNetView>();
+                    znv.InvokeRPC("RPC_UseDoor", true);
+                    count++;
+                }
+            }
+
+            Show($"Forward {count} ship in {KnockbackRadius}m!");
+        }
+
+        public static void RPCOnInRange<T>(string rpcSuffix, float radius = 20f, params object[] rpcArgs)
+            where T : Component
+        {
+            // build the full RPC name
+            string rpcName = rpcSuffix.StartsWith("RPC_", StringComparison.Ordinal)
+                ? rpcSuffix
+                : "RPC_" + rpcSuffix;
+
+            Vector3 center = Player.m_localPlayer.transform.position;
+            int count = 0;
+
+            // find all T components in the scene
+            foreach (var comp in UnityEngine.Object.FindObjectsOfType<T>())
+            {
+                if (Vector3.Distance(comp.transform.position, center) > radius)
+                    continue;
+
+                var znv = comp.GetComponent<ZNetView>();
+                if (znv != null && znv.IsValid())
+                {
+                    // invoke with whatever args you supplied
+                    znv.InvokeRPC(rpcName, rpcArgs);
+                    count++;
+                }
+            }
+
+            Player.m_localPlayer.Message(
+                MessageHud.MessageType.TopLeft,
+                $"Invoked {rpcName} on {count} {typeof(T).Name}(s) within {radius:0}m"
+            );
         }
 
         public static void GatherMonsters(float radius = 50f, float forwardOffset = 5f)
