@@ -278,29 +278,40 @@ namespace ICanShowYouTheWorld
                 ("Toggle Guardian Pwr",     ToggleGuardianPower),
                 ("Replenish Stacks",        ReplenishStacks),
                 ("Reapair all things",      () => RepairStructuresAoE()),
-                ("Smelt Iron Bars",      () =>
+   
+                ("Add Fuel",      () =>
                     {
-                        CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "IronScrap", 5);
-                        CheatCommands.RPCOnInRange<Smelter>("AddFuel", 5f, "Coal", 5);
+                        CheatCommands.RPCOnInRange<Smelter>("AddFuel", 5f, "Coal", 1);
+                        CheatCommands.RPCOnInRange<CookingStation>("AddFuel", 5f, "Wood", 1);
+                        CheatCommands.RPCOnInRange<Fireplace>("AddFuel", 5f, "Wood", 1);
+                        CheatCommands.RPCOnInRange<Fire>("AddFuel", 5f, "Wood", 1);
                     }),
-                ("Smelt Silver Bars",      () =>
+             // Smelt
+
+                ("Add Iron Bars",      () =>
                     {
-                        CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "SilverOre", 5);
-                        CheatCommands.RPCOnInRange<Smelter>("AddFuel", 5f, "Coal", 5);
+                        CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "IronScrap", 1);
                     }),
-                ("Smelt BlackIron Bars",      () =>
+                ("Add Silver Bars",      () =>
                     {
-                        CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "BlackMetalScrap", 5); //furnace is also a smelter
-                        CheatCommands.RPCOnInRange<Smelter>("AddFuel", 5f, "Coal", 5);
+                        CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "SilverOre", 1);
                     }),
+                ("Add BlackIron Bars",      () =>
+                    {
+                        CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "BlackMetalScrap", 1); //furnace is also a smelter
+                    }),
+                // CookingStation
                 ("Cook rabbit",      () => //this should hit the oven
                     {
                         CheatCommands.RPCOnInRange<CookingStation>("AddItem", 5f, "MisthareSupremeUncooked", 1);
-                        CheatCommands.RPCOnInRange<CookingStation>("AddFuel", 5f, "Wood", 1);
                     }),
-                ("Brew Eitr",              () => CheatCommands.RPCOnInRange<Fermenter>("AddItem", 5f, "MeadBaseEitrMinor", 10)),
-                ("Brew Health",            () => CheatCommands.RPCOnInRange<Fermenter>("AddItem", 5f, "MeadBaseHealthMajor", 10)),
-                ("Brew Health",            () => CheatCommands.RPCOnInRange<Fermenter>("AddItem", 5f, "MeadBaseHealthMajor", 10)),
+                ("Cook meatplatter",      () => //this should hit the oven
+                    {
+                        CheatCommands.RPCOnInRange<CookingStation>("AddItem", 5f, "MeatPlatterUncooked", 1);
+                    }),
+                // Fermenter
+                ("Brew Eitr",              () => CheatCommands.RPCOnInRange<Fermenter>("AddItem", 5f, "MeadBaseEitrMinor", 1)),
+                ("Brew Health",            () => CheatCommands.RPCOnInRange<Fermenter>("AddItem", 5f, "MeadBaseHealthMajor", 1)),
                 ("Increase Skills",        IncreaseSkills)
             };
 
