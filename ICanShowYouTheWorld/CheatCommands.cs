@@ -75,10 +75,6 @@ namespace ICanShowYouTheWorld
 
         public static bool FreezeMonstersActive = false;
 
-        // (If you were using SEMAN.ModifyHealthRegen/etc. to buff regen/fall/noise,
-        // you'd need to snapshot whatever persistent modifier you applied there too.
-        // For simplicity, I’m omitting those here—just roll your own ref values.)
-
         // --- Food snapshot ---
         private static Dictionary<Player.Food, float> origFoodTimes;
 
@@ -269,8 +265,7 @@ namespace ICanShowYouTheWorld
         }
 
         // ---
-
-        // 1. Define the utilities you want to cycle through:
+        // Utility functions to cycle through
         private static readonly (string Name, Action Action)[] Utilities = {
     //          ("Explore Map",             ExploreAll),
                 ("Reveal Bosses",           RevealBosses),
@@ -512,7 +507,7 @@ namespace ICanShowYouTheWorld
                 }
                 else
                 {
-                    // fallback: 5m in front of you
+                    // fallback: 5m in front
                     var player = Player.m_localPlayer;
                     Vector3 fwd = player.transform.forward;
                     spawnPos = player.transform.position + fwd * 5f + Vector3.up;
@@ -680,7 +675,7 @@ namespace ICanShowYouTheWorld
             var cam = Camera.main;
             if (cam == null) return;
 
-            // shoot a ray from your mouse cursor (or center of screen)
+            // shoot a ray from mouse cursor (or center of screen)
             Ray ray = cam.ScreenPointToRay(Input.mousePosition);
             if (Physics.Raycast(ray, out var hit, 100f))
             {
@@ -1169,25 +1164,6 @@ namespace ICanShowYouTheWorld
             }
 
             Show($"🌪 Knocked back {count} foes in {KnockbackRadius}m!");
-        }
-
-        // todo: Do something where you select the type of object you want and which RPC to send it.
-        public static void RPCOnObject(float radius = 20f)
-        {
-            int count = 0;
-            var center = Player.m_localPlayer.transform.position;
-
-            foreach (var door in Object.FindObjectsOfType<Door>())
-            {
-                if (Vector3.Distance(door.transform.position, center) <= radius)
-                {
-                    var znv = door.GetComponent<ZNetView>();
-                    znv.InvokeRPC("RPC_UseDoor", true);
-                    count++;
-                }
-            }
-
-            Show($"Forward {count} ship in {KnockbackRadius}m!");
         }
 
         public static void RPCOnInRange<T>(string rpcSuffix, float radius = 20f, params object[] rpcArgs)
