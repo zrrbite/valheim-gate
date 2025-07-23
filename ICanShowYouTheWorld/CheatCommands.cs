@@ -272,7 +272,7 @@ namespace ICanShowYouTheWorld
 
         // 1. Define the utilities you want to cycle through:
         private static readonly (string Name, Action Action)[] Utilities = {
-    //            ("Explore Map",             ExploreAll),
+    //          ("Explore Map",             ExploreAll),
                 ("Reveal Bosses",           RevealBosses),
                 ("Toggle Ghost Mode",       ToggleGhostMode),
                 ("Toggle Guardian Pwr",     ToggleGuardianPower),
@@ -290,12 +290,18 @@ namespace ICanShowYouTheWorld
                     }),
                 ("Smelt BlackIron Bars",      () =>
                     {
-                        CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "BlackMetalScrap", 5);
+                        CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "BlackMetalScrap", 5); //furnace is also a smelter
                         CheatCommands.RPCOnInRange<Smelter>("AddFuel", 5f, "Coal", 5);
                     }),
+                ("Cook rabbit",      () => //this should hit the oven
+                    {
+                        CheatCommands.RPCOnInRange<CookingStation>("AddItem", 5f, "MisthareSupremeUncooked", 1);
+                        CheatCommands.RPCOnInRange<CookingStation>("AddFuel", 5f, "Wood", 1);
+                    }),
                 ("Brew Eitr",              () => CheatCommands.RPCOnInRange<Fermenter>("AddItem", 5f, "MeadBaseEitrMinor", 10)),
-                ("Brew Health",              () => CheatCommands.RPCOnInRange<Fermenter>("AddItem", 5f, "MeadBaseHealthMajor", 10)),
-                ("Increase Skills",         IncreaseSkills)
+                ("Brew Health",            () => CheatCommands.RPCOnInRange<Fermenter>("AddItem", 5f, "MeadBaseHealthMajor", 10)),
+                ("Brew Health",            () => CheatCommands.RPCOnInRange<Fermenter>("AddItem", 5f, "MeadBaseHealthMajor", 10)),
+                ("Increase Skills",        IncreaseSkills)
             };
 
         // 2. Track which one is “current”
