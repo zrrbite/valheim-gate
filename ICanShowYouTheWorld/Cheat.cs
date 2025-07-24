@@ -20,10 +20,23 @@ namespace ICanShowYouTheWorld
     public class NotACheater : MonoBehaviour
     {
         private static GameObject cheatObject;
+        private static bool _initialized;
 
         public static void Run()
         {
-            DumpAllRPCsToFile();
+            //DumpAllRPCsToFile();
+
+            // If we've already run, notify the user and bail out
+            if (_initialized)
+            {
+                UnifiedPopup.Push(new WarningPopup(
+                    "ICanShowYouTheWorld",
+                    "Mod is already initialized!",
+                    () => UnifiedPopup.Pop()
+                ));
+                return;
+            }
+            _initialized = true;
 
             // 1) Get  version string
             string version = "0.220.5-3"; //ModVersion.VERSION;
