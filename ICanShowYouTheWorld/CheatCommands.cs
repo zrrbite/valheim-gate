@@ -185,12 +185,12 @@ namespace ICanShowYouTheWorld
                 origMaxCarryWeight = p.m_maxCarryWeight;
 
                 // 2) Snapshot food timers
-                origFoodTimes = new Dictionary<Player.Food, float>();
-                foreach (var food in p.GetFoods())
-                {
-                    origFoodTimes[food] = food.m_time;
-                    food.m_time = float.MaxValue;
-                }
+                //origFoodTimes = new Dictionary<Player.Food, float>();
+                //foreach (var food in p.GetFoods())
+                //{
+                //    origFoodTimes[food] = food.m_time;
+                //    food.m_time = float.MaxValue;
+                //}
 
                 // 3) Snapshot equipped items
                 origItemStats = new Dictionary<ItemDrop.ItemData, ItemSnapshot>();
@@ -239,9 +239,9 @@ namespace ICanShowYouTheWorld
                 p.m_maxCarryWeight = origMaxCarryWeight;
 
                 // 2) Revert food timers
-                foreach (var kv in origFoodTimes)
-                    kv.Key.m_time = kv.Value;
-                origFoodTimes = null;
+                //foreach (var kv in origFoodTimes)
+                //    kv.Key.m_time = kv.Value;
+                //origFoodTimes = null;
 
                 // 3) Revert items
                 foreach (var kv in origItemStats)
