@@ -240,7 +240,7 @@ namespace ICanShowYouTheWorld
 
                 // 2) Revert food timers
                 foreach (var kv in origFoodTimes)
-                    kv.Key.m_time = 0; // kv.Value;
+                    kv.Key.m_time = kv.Value;
                 origFoodTimes = null;
 
                 // 3) Revert items
@@ -272,6 +272,7 @@ namespace ICanShowYouTheWorld
         private static readonly (string Name, Action Action)[] Utilities = {
     //          ("Explore Map",             ExploreAll),
                 ("Reveal Bosses",           RevealBosses),
+                ("Puke",                    CheatCommands.Vomit),
                 ("Toggle Ghost Mode",       ToggleGhostMode),
                 ("Toggle Guardian Pwr",     ToggleGuardianPower),
                 ("Replenish Stacks",        ReplenishStacks),
@@ -514,7 +515,29 @@ namespace ICanShowYouTheWorld
             Player.m_localPlayer.SetNoPlacementCost(value: GodMode);
             Player.m_localPlayer.m_guardianPowerCooldown = 1f; //todo: this works if we place it in Gift
 
+            // Set all food to 30 mins
+            foreach (var food in Player.m_localPlayer.GetFoods())
+            {
+                food.m_time = 25 * 60;
+            }
+
             Show($"God Mode {(GodMode ? "ON" : "OFF")}");
+        }
+
+        public static void Vomit()
+        {
+            // create the Puke status effect (15s ttl, 2s tick by default)
+            var puke = ScriptableObject.CreateInstance<SE_Puke>();
+            puke.m_ttl = 10f;       // total duration
+
+            // apply it immediately (reset any existing puke)
+            Player.m_localPlayer.GetSEMan().AddStatusEffect(puke, resetTime: true);
+
+            // Reset food
+            foreach (var food in Player.m_localPlayer.GetFoods())
+            {
+                food.m_time = 0;
+            }
         }
 
         public static void ToggleGuardianPower()
