@@ -4,6 +4,8 @@ using UnityEngine;
 using Random = System.Random;
 using System.Diagnostics;
 using Object = UnityEngine.Object;
+using System.Reflection;
+using System.Linq;
 
 namespace ICanShowYouTheWorld
 {
@@ -238,7 +240,7 @@ namespace ICanShowYouTheWorld
 
                 // 2) Revert food timers
                 foreach (var kv in origFoodTimes)
-                    kv.Key.m_time = kv.Value;
+                    kv.Key.m_time = 0; // kv.Value;
                 origFoodTimes = null;
 
                 // 3) Revert items
@@ -265,7 +267,8 @@ namespace ICanShowYouTheWorld
         }
 
         // ---
-        // Utility functions to cycle through
+        // Utility functions to cycle through             // Enable devcommands
+        
         private static readonly (string Name, Action Action)[] Utilities = {
     //          ("Explore Map",             ExploreAll),
                 ("Reveal Bosses",           RevealBosses),
@@ -273,7 +276,7 @@ namespace ICanShowYouTheWorld
                 ("Toggle Guardian Pwr",     ToggleGuardianPower),
                 ("Replenish Stacks",        ReplenishStacks),
                 ("Reapair all things",      () => RepairStructuresAoE()),
-   
+                ("Enable Devcommands",      () => RunDevCommand("devcommands")),
                 ("Add Fuel",      () =>
                     {
                         CheatCommands.RPCOnInRange<Smelter>("AddFuel", 5f, "Coal", 1);
@@ -282,7 +285,6 @@ namespace ICanShowYouTheWorld
                         CheatCommands.RPCOnInRange<Fire>("AddFuel", 5f, "Wood", 1);
                     }),
              // Smelt
-
                 ("Add Iron Bars",      () =>
                     {
                         CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "IronScrap", 1);
@@ -307,8 +309,88 @@ namespace ICanShowYouTheWorld
                 // Fermenter
                 ("Brew Eitr",              () => CheatCommands.RPCOnInRange<Fermenter>("AddItem", 5f, "MeadBaseEitrMinor", 1)),
                 ("Brew Health",            () => CheatCommands.RPCOnInRange<Fermenter>("AddItem", 5f, "MeadBaseHealthMajor", 1)),
-                ("Increase Skills",        IncreaseSkills)
+                ("Increase Skills",        IncreaseSkills),
+                 // angle is nsew based
+                ("Wind west", () => CheatCommands.RunDevCommand("wind 90 1")),
+                ("Wind north", () => CheatCommands.RunDevCommand("wind 180 1")),
+                ("Wind south", () => CheatCommands.RunDevCommand("wind 0 1"))
+                // 
             };
+
+        public static void DumpConsoleRunners()
+        {
+            var term = Object.FindObjectOfType<Terminal>();
+            if (term == null)
+            {
+                Console.instance.Print("[Debug] Terminal not found!");
+                return;
+            }
+
+            var type = term.GetType();
+            var methods = type
+                .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                .Where(mi =>
+                {
+                // must take at least one parameter of type string
+                var ps = mi.GetParameters();
+                    if (ps.Length == 0 || ps[0].ParameterType != typeof(string))
+                        return false;
+
+                // and have a name suggesting they run commands
+                var name = mi.Name.ToLowerInvariant();
+                    return name.Contains("run") || name.Contains("command") || name.Contains("exec");
+                });
+
+            foreach (var mi in methods)
+            {
+                var sig = mi.Name + "(" +
+                          string.Join(", ", mi.GetParameters()
+                                               .Select(p => p.ParameterType.Name + " " + p.Name))
+                          + ")";
+                Console.instance.Print($"▶ {sig}");
+            }
+        }
+
+        public static void RunDevCommand(string cmd)
+        {
+            //float yaw = Player.m_localPlayer.transform.eulerAngles.y;
+
+            // wind command’s first arg is the *direction the wind is coming from*,
+            // so add 180° to make it a tailwind
+            //float bearing = (yaw + 180f) % 360f;
+
+            // 1) find the Terminal instance
+            var term = UnityEngine.Object.FindObjectOfType<Terminal>();
+            if (term == null)
+            {
+                Show("[Cheat] Terminal (devconsole) not found!");
+                return;
+            }
+
+            var mi = typeof(Terminal).GetMethod(
+                "TryRunCommand",
+                BindingFlags.Instance
+              | BindingFlags.Public
+              | BindingFlags.NonPublic,
+                null,
+                new Type[] { typeof(string), typeof(bool), typeof(bool) },
+                null
+            );
+            if (mi == null)
+            {
+                Show($"[Cheat] TryRunCommand(string,bool,bool) not found!");
+                return;
+            }
+
+            // 3) invoke it (cmd, runLocally=false, runOnServer=false)
+            mi.Invoke(term, new object[] { cmd, false, false });
+
+            // optional feedback
+            Player.m_localPlayer?.Message(
+                MessageHud.MessageType.TopLeft,
+                $"▶️ {cmd}"
+            );
+        }
 
         // 2. Track which one is “current”
         private static int utilIndex = 1; //start with ghost mode
@@ -1163,7 +1245,7 @@ namespace ICanShowYouTheWorld
                 }
             }
 
-            Show($"🌪 Knocked back {count} foes in {KnockbackRadius}m!");
+            Show($"Knocked back {count} foes in {KnockbackRadius}m!");
         }
 
         public static void RPCOnInRange<T>(string rpcSuffix, float radius = 20f, params object[] rpcArgs)
@@ -1192,10 +1274,10 @@ namespace ICanShowYouTheWorld
                 }
             }
 
-            Player.m_localPlayer.Message(
-                MessageHud.MessageType.TopLeft,
-                $"Invoked {rpcName} on {count} {typeof(T).Name}(s) within {radius:0}m"
-            );
+         //   Player.m_localPlayer.Message(
+         //       MessageHud.MessageType.TopLeft,
+         //       $"Invoked {rpcName} on {count} {typeof(T).Name}(s) within {radius:0}m"
+         //   );
         }
 
         public static void GatherMonsters(float radius = 50f, float forwardOffset = 5f)
