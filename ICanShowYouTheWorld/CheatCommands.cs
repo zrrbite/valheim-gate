@@ -115,6 +115,13 @@ namespace ICanShowYouTheWorld
             };
         private static int prefabIndex = 0;
         public static string CurrentPrefab => SpawnPrefabs[prefabIndex];
+        public static string PrevPrefab => (SpawnPrefabs != null && SpawnPrefabs.Length > 0)
+        ? SpawnPrefabs[(prefabIndex - 1 + SpawnPrefabs.Length) % SpawnPrefabs.Length]
+        : "";
+
+        public static string NextPrefab => (SpawnPrefabs != null && SpawnPrefabs.Length > 0)
+        ? SpawnPrefabs[(prefabIndex + 1 + SpawnPrefabs.Length) % SpawnPrefabs.Length]
+        : "";
 
         static CheatCommands()
         {
@@ -400,6 +407,16 @@ namespace ICanShowYouTheWorld
         private static int utilIndex = 1; //start with ghost mode
         public static string CurrentUtilityName
             => Utilities[utilIndex].Name;
+
+        public static string PrevUtilityName
+              => (Utilities != null && Utilities.Length > 0)
+            ? Utilities[(utilIndex - 1) % Utilities.Length].Name
+            : "";
+
+        public static string NextUtilityName
+            => (Utilities != null && Utilities.Length > 0)
+            ? Utilities[(utilIndex + 1) % Utilities.Length].Name
+            : "";
 
         // 3. Key‐handler to step to the next one
         public static void CycleUtility()

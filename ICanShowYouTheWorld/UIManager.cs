@@ -187,22 +187,28 @@ namespace ICanShowYouTheWorld
                 fontSize = 13
             };
 
+            var smallStyle = new GUIStyle(GUI.skin.label)
+            {
+                normal = { textColor = Color.white },
+                fontSize = 11
+            };
+
             // 2.A) Prefab label
             GUILayout.BeginHorizontal();
             GUI.contentColor = Color.white;
-            GUILayout.Label($"Prefab: {CheatCommands.CurrentPrefab}", highlightStyle, GUILayout.ExpandWidth(false));
+            GUILayout.Label($"Prefab: {CheatCommands.PrevPrefab} >{CheatCommands.CurrentPrefab}< {CheatCommands.NextPrefab}", highlightStyle, GUILayout.ExpandWidth(false));
             GUILayout.FlexibleSpace();
             GUILayout.EndHorizontal();
 
             var oldColor = GUI.contentColor;
 
             // small gap
-            GUILayout.Space(5);
+            GUILayout.Space(2);
 
             // Utility header
             GUILayout.BeginHorizontal();
             GUI.contentColor = Color.white;
-            GUILayout.Label($"Utility: {CheatCommands.CurrentUtilityName}", highlightStyle, GUILayout.ExpandWidth(false));
+            GUILayout.Label($"Util: {CheatCommands.PrevUtilityName} >{CheatCommands.CurrentUtilityName}< {CheatCommands.NextUtilityName}", smallStyle, GUILayout.ExpandWidth(false));
             GUILayout.FlexibleSpace();
             GUILayout.EndHorizontal();
             GUILayout.Space(5f);
