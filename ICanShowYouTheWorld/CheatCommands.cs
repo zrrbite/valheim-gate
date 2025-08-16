@@ -90,7 +90,7 @@ namespace ICanShowYouTheWorld
 
         // 1.A) The list of available prefabs
         private static readonly string[] SpawnPrefabs = {
-                "dne",
+                "skip",
                 //"Fader_MeteorSmash_AOE", // invis dmg
                 //"Fader_Fissure_AOE",
                // "Chicken",
@@ -99,11 +99,7 @@ namespace ICanShowYouTheWorld
                 "skip",
                 "Asksvin",
                 "skip",
-                "skip",
-                "DvergerStaffHeal",
-                "DvergerStaffIce",
-                "DvergerStaffSupport",
-                "DvergerSuitFire"
+                "skip"
                 //"Fader_Flamebreath_AOE", // "wall of fire"                
                 //"FenringIceNova_aoe", // slow?
                 //"shieldgenerator_attack",
