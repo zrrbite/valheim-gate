@@ -183,22 +183,23 @@ namespace ICanShowYouTheWorld
                     Execute     = CheatCommands.ToggleCloakOfFlames,
                     GetState    = () => CheatCommands.CloakActive
                 },
+
                 // ---- pets ? ----
                 //new CommandBinding {
                 //    Key         = KeyCode.Keypad7,
                 //    Description = "Combat pet",
                 //    Execute     = CheatCommands.SpawnCombatPet
                 //},
-                new CommandBinding {
-                    Key         = KeyCode.Keypad4,
-                    Description = "Pets follow",
-                    Execute     = () => CheatCommands.TameAll()
-                },
-               new CommandBinding {
-                    Key         = KeyCode.Keypad5,
-                    Description = "Pets stay",
-                    Execute     = () => CheatCommands.TameAll(true)
-                },
+               // new CommandBinding {
+               //     Key         = KeyCode.Keypad4,
+               //     Description = "Pets follow",
+               //     Execute     = () => CheatCommands.TameAll()
+              //  },
+              // new CommandBinding {
+              //      Key         = KeyCode.Keypad5,
+              //      Description = "Pets stay",
+              //      Execute     = () => CheatCommands.TameAll(true)
+               // },
                 new CommandBinding {
                     Key         = KeyCode.Keypad6,
                     Description = "Buff pets",
@@ -209,11 +210,11 @@ namespace ICanShowYouTheWorld
                     Description = "Tame targeted",
                     Execute     = CheatCommands.TameTargeted
                 },
-                new CommandBinding {
-                    Key         = KeyCode.Keypad9,
-                    Description = "Toggle Barrier", //stagger barrier
-                    Execute     = () => CheatCommands.ToggleBarrierAoE()
-                },
+                //new CommandBinding {
+                //    Key         = KeyCode.Keypad9,
+                //    Description = "Toggle Barrier", //stagger barrier
+                //    Execute     = () => CheatCommands.ToggleBarrierAoE()
+                //},
                 // --- aoe regen
                 new CommandBinding {
                     Key         = KeyCode.PageUp,
@@ -275,12 +276,22 @@ namespace ICanShowYouTheWorld
                     Description = "Next Prefab",
                     Execute     = CheatCommands.CyclePrefab,
                 },
+                //new CommandBinding {
+                //    Key         = KeyCode.KeypadPeriod,
+                //    Description = "Prev Prefab",
+                //    Execute     = CheatCommands.CyclePrefab,
+                //},
                 new CommandBinding {
                     Key         = KeyCode.KeypadEnter,
                     Description = "Spawn Prefab",
                     Execute     = CheatCommands.SpawnSelectedPrefab
                 },
-
+                new CommandBinding {
+                    Key         = KeyCode.Print,
+                    Description = "Prev Utility",
+                    Execute     = CheatCommands.CycleUtility,
+                    GetState    = null
+                },
                 new CommandBinding {
                     Key         = KeyCode.ScrollLock,
                     Description = "Next Utility",
