@@ -290,6 +290,7 @@
     <Compile Include="InputManager.cs" />
     <Compile Include="Utils.cs" />
     <Compile Include="Assets\CircleVisualizer.cs" />
+    <Compile Include="ListView.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Assets\" />

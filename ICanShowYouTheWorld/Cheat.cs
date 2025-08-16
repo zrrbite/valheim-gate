@@ -143,6 +143,11 @@ namespace ICanShowYouTheWorld
         {
             inputManager = new InputManager();
 
+            // Capture commands without state in a listview (utils?)
+            //var utilGO = new GameObject("UtilityListView");
+            //GameObject.DontDestroyOnLoad(utilGO);
+            //var utilView = utilGO.AddComponent<UtilityListView>();
+
             //TODO: We need two windows. one for modes and one for commands.
             // Build and register all your commands in one place:
             var commands = new[]

@@ -42,6 +42,7 @@ namespace ICanShowYouTheWorld
         public static string CurrentGuardianName => guardians[guardianIndex];
         private static readonly string[] guardians = { "GP_Eikthyr", "GP_Bonemass", "GP_Moder", "GP_Yagluth", "GP_Fader", "GP_Queen" };
         // private static readonly string[] combatPets = { "Wolf", "DvergerMageSupport", "Asksvin" };
+        private static readonly string[] housePets = { "Chicken" };
         private static readonly string[] combatPets = { "Skeleton_Friendly" };
         private static readonly string[] petNames = { "Bob", "Ralf", "Liam", "Olivia", "Elijah", "Kebober" };
 
@@ -90,8 +91,19 @@ namespace ICanShowYouTheWorld
         // 1.A) The list of available prefabs
         private static readonly string[] SpawnPrefabs = {
                 "dne",
-                "Fader_MeteorSmash_AOE", // invis dmg
-                "Fader_Fissure_AOE",
+                //"Fader_MeteorSmash_AOE", // invis dmg
+                //"Fader_Fissure_AOE",
+               // "Chicken",
+                "Hen",
+                "skip",
+                "skip",
+                "Asksvin",
+                "skip",
+                "skip",
+                "DvergerStaffHeal",
+                "DvergerStaffIce",
+                "DvergerStaffSupport",
+                "DvergerSuitFire"
                 //"Fader_Flamebreath_AOE", // "wall of fire"                
                 //"FenringIceNova_aoe", // slow?
                 //"shieldgenerator_attack",
@@ -285,36 +297,31 @@ namespace ICanShowYouTheWorld
                         CheatCommands.RPCOnInRange<Fireplace>("AddFuel", 5f, "Wood", 1);
                         CheatCommands.RPCOnInRange<Fire>("AddFuel", 5f, "Wood", 1);
                     }),
-             // Smelt
-                ("Add Iron Bars",      () =>
-                    {
-                        CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "IronScrap", 1);
-                    }),
-                ("Add Silver Bars",      () =>
-                    {
-                        CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "SilverOre", 1);
-                    }),
-                ("Add BlackIron Bars",      () =>
-                    {
-                        CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "BlackMetalScrap", 1); //furnace is also a smelter
-                    }),
+
+                // Smelt
+                ("Add Iron Bars",           () => CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "IronScrap", 1)),
+                ("Add Silver Bars",         () => CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "SilverOre", 1)),
+                ("Add BlackIron Bars",      () => CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "BlackMetalScrap", 1)),
+
                 // CookingStation
-                ("Cook rabbit",      () => //this should hit the oven
-                    {
-                        CheatCommands.RPCOnInRange<CookingStation>("AddItem", 5f, "MisthareSupremeUncooked", 1);
-                    }),
-                ("Cook meatplatter",      () => //this should hit the oven
-                    {
-                        CheatCommands.RPCOnInRange<CookingStation>("AddItem", 5f, "MeatPlatterUncooked", 1);
-                    }),
+                ("Cook rabbit",             () => CheatCommands.RPCOnInRange<CookingStation>("AddItem", 5f, "MisthareSupremeUncooked", 1)),
+                ("Cook Chicken",            () => CheatCommands.RPCOnInRange<CookingStation>("AddItem", 5f, "HoneyGlazedChickenUncooked", 1)),
+                ("Cook PiquantPie",         () => CheatCommands.RPCOnInRange<CookingStation>("AddItem", 5f, "PiquantPieUncooked", 1)),
+                ("Cook meatplatter",        () => CheatCommands.RPCOnInRange<CookingStation>("AddItem", 5f, "MeatPlatterUncooked", 1)),
+                ("Cook crust pie",          () => CheatCommands.RPCOnInRange<CookingStation>("AddItem", 5f, "RoastedCrustPieUncooked", 1)),
+
                 // Fermenter
                 ("Brew Eitr",              () => CheatCommands.RPCOnInRange<Fermenter>("AddItem", 5f, "MeadBaseEitrMinor", 1)),
                 ("Brew Health",            () => CheatCommands.RPCOnInRange<Fermenter>("AddItem", 5f, "MeadBaseHealthMajor", 1)),
+                ("Brew Stamina",           () => CheatCommands.RPCOnInRange<Fermenter>("AddItem", 5f, "MeadBaseStaminaMedium", 1)),
+
                 ("Increase Skills",        IncreaseSkills),
-                 // angle is nsew based
-                ("Wind west", () => CheatCommands.RunDevCommand("wind 90 1")),
-                ("Wind north", () => CheatCommands.RunDevCommand("wind 180 1")),
-                ("Wind south", () => CheatCommands.RunDevCommand("wind 0 1"))
+
+                // Other
+                // angle is nsew based
+               // ("Wind west", () => CheatCommands.RunDevCommand("wind 90 1")),
+               // ("Wind north", () => CheatCommands.RunDevCommand("wind 180 1")),
+               // ("Wind south", () => CheatCommands.RunDevCommand("wind 0 1"))
                 // 
             };
 
@@ -974,6 +981,7 @@ namespace ICanShowYouTheWorld
             p.RaiseSkill(Skills.SkillType.Jump, 2);
         }
 
+        // Old function
         // Guardian's Gift: major buff including Renewal
         public static void GuardianGift()
         {
