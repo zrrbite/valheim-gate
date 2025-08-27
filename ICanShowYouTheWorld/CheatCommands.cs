@@ -91,19 +91,33 @@ namespace ICanShowYouTheWorld
         // 1.A) The list of available prefabs
         private static readonly string[] SpawnPrefabs = {
                 "skip",
-                //"Fader_MeteorSmash_AOE", // invis dmg
-                //"Fader_Fissure_AOE",
-               // "Chicken",
+                "skip",
+
+                // --- Pets ------------
                 "Hen",
-                "skip",
-                "skip",
                 "Asksvin",
-                "skip",
-                "skip"
+                "Boar",
+                "Boar_piggy",
+                "Wolf",
+                "Wolf_cub",
+
+                // --- Spawners -----------
+                "Spawner_Charred",
+                "Spawner_Charred_Archer",
+                "Spawner_Twitcher",
+//                "Spawner_CharredStone_Elite",
+//                "Spawner_Charred_Mage",
+                "Spawner_Volture",
+
+                // --- aoes ------
+                "Fader_MeteorSmash_AOE", // invis dmg
+                //"Fader_Fissure_AOE",
                 //"Fader_Flamebreath_AOE", // "wall of fire"                
                 //"FenringIceNova_aoe", // slow?
                 //"shieldgenerator_attack",
                 //"aoe_nova",
+
+                // --- giant things -----
     //            "giant_arm",
     //            "giant_brain",
     //            "giant_helmet1",
@@ -818,21 +832,21 @@ namespace ICanShowYouTheWorld
         }
 
         // Can also be used to re-tame already tamed, not using tame all in area
-        public static void TameAll(bool clear = false)
+        public static void TameAll(bool clearFollow = false)
         {
             if (!RequireGodMode("Tame all")) return;
             int tamed = 0;
             GameObject followTarget = null;
-            if(!clear) followTarget = Player.m_localPlayer.gameObject;
+            if(!clearFollow) followTarget = Player.m_localPlayer.gameObject;
             //Tameable.TameAllInArea(Player.m_localPlayer.transform.position, 30.0f);
 
             List<Character> list = new List<Character>();
-            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 30.0f, list);
+            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 5.0f, list);
 
             // Set follow
             foreach (Character item in list)
             {
-                if (item.IsPlayer() || !item.IsTamed()) continue;
+                if (item.IsPlayer() /*|| !item.IsTamed()*/) continue;
 
                 //item.SetLevel(3); //Hmm, its kind of interesting that we could runtime just increase the level of mobs already in the world.
                 SetFollowTarget(item, followTarget);
@@ -841,13 +855,13 @@ namespace ICanShowYouTheWorld
                 //item.GetComponent<Character>().m_name = ... something to symbolise it has been augmented.
             }
 
-            if(clear)
+            if(clearFollow)
                 Show($"{tamed} pets staying");
             else
                 Show($"{tamed} pets following");
         }
 
-        public static void BuffTamed()
+        public static void BuffTamed(bool incrlevel = false)
         {
             if (!RequireGodMode("Buff tamed")) return;
 
@@ -859,7 +873,8 @@ namespace ICanShowYouTheWorld
             {
                 if (item.IsPlayer() || !item.IsTamed()) continue;
                 item.SetMaxHealth(1000);
-                item.m_runSpeed = 9;
+                if(incrlevel)
+                    item.SetLevel(2);
             }
 
             Show("Buff tamed");

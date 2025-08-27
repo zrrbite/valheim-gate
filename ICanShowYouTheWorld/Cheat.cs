@@ -183,8 +183,7 @@ namespace ICanShowYouTheWorld
                     Execute     = CheatCommands.ToggleCloakOfFlames,
                     GetState    = () => CheatCommands.CloakActive
                 },
-
-                // ---- pets ? ----
+                // ---- pets  ----
                 //new CommandBinding {
                 //    Key         = KeyCode.Keypad7,
                 //    Description = "Combat pet",
@@ -195,20 +194,20 @@ namespace ICanShowYouTheWorld
                //     Description = "Pets follow",
                //     Execute     = () => CheatCommands.TameAll()
               //  },
-              // new CommandBinding {
-              //      Key         = KeyCode.Keypad5,
-              //      Description = "Pets stay",
-              //      Execute     = () => CheatCommands.TameAll(true)
-               // },
-                new CommandBinding {
-                    Key         = KeyCode.Keypad6,
-                    Description = "Buff pets",
-                    Execute     = CheatCommands.BuffTamed
-                },
                 new CommandBinding {
                     Key         = KeyCode.Keypad7,
+                    Description = "Buff pets",
+                    Execute     = () => CheatCommands.BuffTamed(false)
+                },
+                new CommandBinding {
+                    Key         = KeyCode.Keypad8,
                     Description = "Tame targeted",
                     Execute     = CheatCommands.TameTargeted
+                },
+               new CommandBinding {
+                    Key         = KeyCode.Keypad9,
+                    Description = "Tame r, stay",
+                    Execute     = () => CheatCommands.TameAll(true)
                 },
                 //new CommandBinding {
                 //    Key         = KeyCode.Keypad9,
@@ -217,23 +216,23 @@ namespace ICanShowYouTheWorld
                 //},
                 // --- aoe regen
                 new CommandBinding {
-                    Key         = KeyCode.PageUp,
+                    Key         = KeyCode.KeypadPlus,
                     Description = "AOE Power++",
                     Execute     = CheatCommands.IncreaseAoePower,
                     GetState    = null
                 },
                 new CommandBinding {
-                    Key         = KeyCode.PageDown,
+                    Key         = KeyCode.KeypadMinus,
                     Description = "AOE Power--",
                     Execute     = CheatCommands.DecreaseAoePower,
                     GetState    = null
                 },
                 // ---------------------------------
-                new CommandBinding {
-                    Key         = KeyCode.UpArrow,
-                    Description = "Heal All",
-                    Execute     = CheatCommands.CastHealAOE
-                },
+                //new CommandBinding {
+                //    Key         = KeyCode.UpArrow,
+                //    Description = "Heal All",
+                //    Execute     = CheatCommands.CastHealAOE
+                //},
                 new CommandBinding {
                     Key         = KeyCode.RightArrow,
                     Description = "Speed++",
@@ -245,12 +244,12 @@ namespace ICanShowYouTheWorld
                     Execute     = CheatCommands.SpeedDown
                 },
                 new CommandBinding {
-                    Key         = KeyCode.KeypadPlus,
+                    Key         = KeyCode.UpArrow,
                     Description = "Damage++",
                     Execute     = CheatCommands.IncreaseDamageCounter
                 },
                 new CommandBinding {
-                    Key         = KeyCode.KeypadMinus,
+                    Key         = KeyCode.DownArrow,
                     Description = "Damage--",
                     Execute     = CheatCommands.DecreaseDamageCounter
                 },
@@ -287,12 +286,6 @@ namespace ICanShowYouTheWorld
                     Execute     = CheatCommands.SpawnSelectedPrefab
                 },
                 new CommandBinding {
-                    Key         = KeyCode.Print,
-                    Description = "Prev Utility",
-                    Execute     = CheatCommands.CycleUtility,
-                    GetState    = null
-                },
-                new CommandBinding {
                     Key         = KeyCode.ScrollLock,
                     Description = "Next Utility",
                     Execute     = CheatCommands.CycleUtility,
@@ -310,6 +303,7 @@ namespace ICanShowYouTheWorld
             // CheatCommands.TeleportMass
             // inputManager.Register(KeyCode.End, CheatCommands.TeleportSafe);
             // inputManager.Register(KeyCode.KeypadPlus, CheatCommands.CastDmgAOE);
+            // Heal all
             };
 
             foreach (var cmd in commands)
