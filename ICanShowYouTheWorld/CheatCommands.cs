@@ -26,6 +26,128 @@ namespace ICanShowYouTheWorld
         }
     }
 
+    public static class LocationCheats
+    {
+        static readonly BindingFlags BF = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+
+        // Try to extract a prefab/location name from a ZoneLocation, regardless of backing type.
+        static string GetLocationName(object zoneLocation)
+        {
+            if (zoneLocation == null) return null;
+            var t = zoneLocation.GetType();
+
+            // 1) Most versions have a direct string
+            var fName = t.GetField("m_prefabName", BF);
+            if (fName != null)
+                return fName.GetValue(zoneLocation) as string;
+
+            // 2) Some versions wrap the data in m_location
+            var fLoc = t.GetField("m_location", BF);
+            if (fLoc != null)
+            {
+                var inner = fLoc.GetValue(zoneLocation);
+                var innerName = inner?.GetType().GetField("m_prefabName", BF)?.GetValue(inner) as string;
+                if (!string.IsNullOrEmpty(innerName)) return innerName;
+            }
+
+            // 3) Fall back to m_prefab (GameObject in old builds, SoftReference in new builds)
+            var fPrefab = t.GetField("m_prefab", BF);
+            if (fPrefab != null)
+            {
+                var val = fPrefab.GetValue(zoneLocation);
+                if (val is GameObject go) return go.name;
+
+                if (val != null)
+                {
+                    // SoftReference cases: try common fields/properties
+                    var pName = val.GetType().GetField("m_name", BF)?.GetValue(val) as string
+                             ?? val.GetType().GetProperty("Name", BF)?.GetValue(val, null) as string;
+
+                    // Some soft refs expose an underlying UnityEngine.Object in "m_asset"
+                    var fAsset = val.GetType().GetField("m_asset", BF);
+                    if (fAsset != null)
+                    {
+                        var asset = fAsset.GetValue(val) as UnityEngine.Object;
+                        if (asset != null) return asset.name;
+                    }
+
+                    if (!string.IsNullOrEmpty(pName)) return pName;
+                }
+            }
+
+            return null;
+        }
+
+        // Reveal the closest instance of a RANDOM match for a filter (e.g., "MorgenHole")
+        public static void RevealClosestRandom(string filter,
+                                               Minimap.PinType pin = Minimap.PinType.Boss,
+                                               string labelOverride = null)
+        {
+            var names = LocationCheats.ListLocationNames(filter); // uses your soft-ref safe scanner
+            if (names == null || names.Count == 0)
+            {
+                CheatCommands.Show($"No locations found for \"{filter}\"");
+                return;
+            }
+
+            int idx = UnityEngine.Random.Range(0, names.Count);
+            string picked = names[idx];
+
+            bool ok = LocationCheats.RevealClosest(picked, pin, labelOverride ?? picked);
+            CheatCommands.Show(ok ? $"Revealed nearest {picked}" : $"Failed to reveal {picked}");
+        }
+
+        public static List<string> ListLocationNames(string filter = null)
+        {
+            var zs = ZoneSystem.instance;
+            var outList = new List<string>();
+            if (!zs) return outList;
+
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var zl in zs.m_locations)
+            {
+                var name = GetLocationName(zl);
+                if (string.IsNullOrEmpty(name)) continue;
+                if (!string.IsNullOrEmpty(filter) &&
+                    name.IndexOf(filter, StringComparison.OrdinalIgnoreCase) < 0) continue;
+
+                if (seen.Add(name)) outList.Add(name);
+            }
+            outList.Sort(StringComparer.OrdinalIgnoreCase);
+            return outList;
+        }
+
+        public static bool RevealClosest(string partialOrExactName,
+                                         Minimap.PinType pin = Minimap.PinType.Boss,
+                                         string displayName = null)
+        {
+            if (Game.instance == null || Player.m_localPlayer == null || ZoneSystem.instance == null)
+                return false;
+
+            // Find a matching name first (to avoid passing an unknown id)
+            string match = null;
+            foreach (var zl in ZoneSystem.instance.m_locations)
+            {
+                var name = GetLocationName(zl);
+                if (string.IsNullOrEmpty(name)) continue;
+                if (name.IndexOf(partialOrExactName, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    match = name;
+                    break;
+                }
+            }
+            if (match == null) return false;
+
+            Game.instance.DiscoverClosestLocation(
+                match,
+                Player.m_localPlayer.transform.position,
+                displayName ?? match,
+                (int)pin
+            );
+            return true;
+        }
+    }
+
     public static class CheatCommands
     {
         // States
@@ -148,6 +270,31 @@ namespace ICanShowYouTheWorld
 
             // Default values
             DamageCounter = 5;
+        }
+
+        public static void Discover(string discover = "")
+        {
+            // List matches in console
+            var hits = LocationCheats.ListLocationNames("Ashland");
+            foreach (var n in hits) Console.instance.Print("[Loc] " + n);
+
+            // Pin the closest Ashlands ruins
+            if (!LocationCheats.RevealClosest("AshlandRuins"))
+                Show("AshlandRuins not found");
+        }
+
+        // Convenience wrappers:
+        public static void RevealClosestAshlandsCave()
+        {
+            // Putrid Holes are MorgenHole1/2/3 – filter by prefix, pick one at random
+            LocationCheats.RevealClosestRandom("MorgenHole", Minimap.PinType.Boss, "Putrid Hole");
+        }
+
+        public static void RevealClosestRetoTomb()
+        {
+            // Exact ID is PlaceofMystery3; passing the full name keeps it deterministic
+            bool ok = LocationCheats.RevealClosest("PlaceofMystery3", Minimap.PinType.Boss, "Tomb of Lord Reto");
+            Show(ok ? "Revealed nearest Reto Tomb" : "Reto Tomb not found");
         }
 
         public static void ToggleAutoDodge()
