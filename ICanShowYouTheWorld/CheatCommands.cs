@@ -442,44 +442,54 @@ namespace ICanShowYouTheWorld
             }
         }
 
-        // ---
-        // Utility functions to cycle through             // Enable devcommands
-        
+        // ------------------------------------
+        // Utility functions to cycle through
+        // -------------------------------------
+        // 1. Prefer to create an item forril and then replenish the stack to maintain crafter name and not raise suspicion
+        // 
+        // -------------------------------------
         private static readonly (string Name, Action Action)[] Utilities = {
-    //          ("Explore Map",             ExploreAll),
-                ("Reveal Bosses",           RevealBosses),
-                ("Puke",                    CheatCommands.Vomit),
-                ("Toggle Ghost Mode",       ToggleGhostMode),
-                ("Toggle Guardian Pwr",     ToggleGuardianPower),
+                // Common
                 ("Replenish Stacks",        ReplenishStacks),
                 ("Reapair all things",      () => RepairStructuresAoE()),
-                ("Enable Devcommands",      () => RunDevCommand("devcommands")),
-                ("Add Fuel",      () =>
+//              ("Enable Devcommands",      () => RunDevCommand("devcommands")),
+                ("Fuel",      () =>
                     {
                         CheatCommands.RPCOnInRange<Smelter>("AddFuel", 5f, "Coal", 1);
                         CheatCommands.RPCOnInRange<CookingStation>("AddFuel", 5f, "Wood", 1);
                         CheatCommands.RPCOnInRange<Fireplace>("AddFuel", 5f, "Wood", 1);
                         CheatCommands.RPCOnInRange<Fire>("AddFuel", 5f, "Wood", 1);
                     }),
+                ("Toggle Ghost Mode",       ToggleGhostMode),
+                ("Increase Skills",         IncreaseSkills),
+                ("Puke",                    CheatCommands.Vomit),
+                ("Toggle Guardian Pwr",     ToggleGuardianPower),
 
+                /*
                 // Smelt
-                ("Add Iron Bars",           () => CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "IronScrap", 1)),
-                ("Add Silver Bars",         () => CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "SilverOre", 1)),
-                ("Add BlackIron Bars",      () => CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "BlackMetalScrap", 1)),
+                ("Smelt Iron",           () => CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "IronScrap", 1)),
+                ("Smelt Silver",         () => CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "SilverOre", 1)),
+                ("Smelt BlackIron",      () => CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "BlackMetalScrap", 1)),
+                ("Smelt Flametal",       () => CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "FlametalOre", 1)),
 
                 // CookingStation
                 ("Cook rabbit",             () => CheatCommands.RPCOnInRange<CookingStation>("AddItem", 5f, "MisthareSupremeUncooked", 1)),
                 ("Cook Chicken",            () => CheatCommands.RPCOnInRange<CookingStation>("AddItem", 5f, "HoneyGlazedChickenUncooked", 1)),
                 ("Cook PiquantPie",         () => CheatCommands.RPCOnInRange<CookingStation>("AddItem", 5f, "PiquantPieUncooked", 1)),
-                ("Cook meatplatter",        () => CheatCommands.RPCOnInRange<CookingStation>("AddItem", 5f, "MeatPlatterUncooked", 1)),
-                ("Cook crust pie",          () => CheatCommands.RPCOnInRange<CookingStation>("AddItem", 5f, "RoastedCrustPieUncooked", 1)),
+                ("Cook Meatplatter",        () => CheatCommands.RPCOnInRange<CookingStation>("AddItem", 5f, "MeatPlatterUncooked", 1)),
+                ("Cook Crust pie",          () => CheatCommands.RPCOnInRange<CookingStation>("AddItem", 5f, "RoastedCrustPieUncooked", 1)),
 
                 // Fermenter
                 ("Brew Eitr",              () => CheatCommands.RPCOnInRange<Fermenter>("AddItem", 5f, "MeadBaseEitrMinor", 1)),
                 ("Brew Health",            () => CheatCommands.RPCOnInRange<Fermenter>("AddItem", 5f, "MeadBaseHealthMajor", 1)),
                 ("Brew Stamina",           () => CheatCommands.RPCOnInRange<Fermenter>("AddItem", 5f, "MeadBaseStaminaMedium", 1)),
+                */
 
-                ("Increase Skills",        IncreaseSkills),
+                // dangerous
+                ("Reveal AshlandCaves",     () => CheatCommands.RevealClosestAshlandsCave()),
+               // ("Reveal AshlandTomb",     () => CheatCommands.RevealClosestRetoTomb()), // lord reto
+                ("Reveal Bosses",           RevealBosses),
+    //          ("Explore Map",             ExploreAll),
 
                 // Other
                 // angle is nsew based
