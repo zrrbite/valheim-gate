@@ -450,9 +450,9 @@ namespace ICanShowYouTheWorld
         // -------------------------------------
         private static readonly (string Name, Action Action)[] Utilities = {
                 // Common
-                ("Replenish Stacks",        ReplenishStacks),
-                ("Set me as crafter",        SetMeAsCrafterOfFood),
-                ("Reapair all things",      () => RepairStructuresAoE()),
+                ("Replenish Stacks",                    ReplenishStacks),
+                ("All your craft are belong to me",     SetMeAsCrafterOfFood),
+                ("Reapair all things",                  () => RepairStructuresAoE()),
 //              ("Enable Devcommands",      () => RunDevCommand("devcommands")),
                 ("Fuel",      () =>
                     {
@@ -461,32 +461,31 @@ namespace ICanShowYouTheWorld
                         CheatCommands.RPCOnInRange<Fireplace>("AddFuel", 5f, "Wood", 1);
                         CheatCommands.RPCOnInRange<Fire>("AddFuel", 5f, "Wood", 1);
                     }),
+                ("Toggle Guardian Pwr",     ToggleGuardianPower),
                 ("Toggle Ghost Mode",       ToggleGhostMode),
                 ("Increase Skills",         IncreaseSkills),
                 ("Puke",                    CheatCommands.Vomit),
-                ("Toggle Guardian Pwr",     ToggleGuardianPower),
-
-                /*
+                
                 // Smelt
-                ("Smelt Iron",           () => CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "IronScrap", 1)),
-                ("Smelt Silver",         () => CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "SilverOre", 1)),
-                ("Smelt BlackIron",      () => CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "BlackMetalScrap", 1)),
-                ("Smelt Flametal",       () => CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "FlametalOre", 1)),
+                //("Smelt Iron",           () => CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "IronScrap", 1)),
+                //("Smelt Silver",         () => CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "SilverOre", 1)),
+                //("Smelt BlackIron",      () => CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "BlackMetalScrap", 1)),
+                ("Smelt Flametal",       () => CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "FlametalOreNew", 1)),
 
-                // CookingStation
-                ("Cook rabbit",             () => CheatCommands.RPCOnInRange<CookingStation>("AddItem", 5f, "MisthareSupremeUncooked", 1)),
-                ("Cook Chicken",            () => CheatCommands.RPCOnInRange<CookingStation>("AddItem", 5f, "HoneyGlazedChickenUncooked", 1)),
-                ("Cook PiquantPie",         () => CheatCommands.RPCOnInRange<CookingStation>("AddItem", 5f, "PiquantPieUncooked", 1)),
-                ("Cook Meatplatter",        () => CheatCommands.RPCOnInRange<CookingStation>("AddItem", 5f, "MeatPlatterUncooked", 1)),
-                ("Cook Crust pie",          () => CheatCommands.RPCOnInRange<CookingStation>("AddItem", 5f, "RoastedCrustPieUncooked", 1)),
+                // CookingStation - Just do these from the prep table. Crafter name is applied to the uncooked only, and is stripped since its crafted by "Oven" technically
+                //("Cook rabbit",             () => CheatCommands.RPCOnInRange<CookingStation>("AddItem", 5f, "MisthareSupremeUncooked", 1)),
+                //("Cook Chicken",            () => CheatCommands.RPCOnInRange<CookingStation>("AddItem", 5f, "HoneyGlazedChickenUncooked", 1)),
+                //("Cook PiquantPie",         () => CheatCommands.RPCOnInRange<CookingStation>("AddItem", 5f, "PiquantPieUncooked", 1)),
+                //("Cook Meatplatter",        () => CheatCommands.RPCOnInRange<CookingStation>("AddItem", 5f, "MeatPlatterUncooked", 1)),
+                //("Cook Crust pie",          () => CheatCommands.RPCOnInRange<CookingStation>("AddItem", 5f, "RoastedCrustPieUncooked", 1)),
 
-                // Fermenter
-                ("Brew Eitr",              () => CheatCommands.RPCOnInRange<Fermenter>("AddItem", 5f, "MeadBaseEitrMinor", 1)),
-                ("Brew Health",            () => CheatCommands.RPCOnInRange<Fermenter>("AddItem", 5f, "MeadBaseHealthMajor", 1)),
-                ("Brew Stamina",           () => CheatCommands.RPCOnInRange<Fermenter>("AddItem", 5f, "MeadBaseStaminaMedium", 1)),
-                */
-
-                // dangerous
+                // Fermenter: Just do these from the Mead Kettil
+                //("Brew Eitr",              () => CheatCommands.RPCOnInRange<Fermenter>("AddItem", 5f, "MeadBaseEitrMinor", 1)),
+                //("Brew LingEitr",          () => CheatCommands.RPCOnInRange<Fermenter>("AddItem", 5f, "MeadBaseEitrLingering", 1)),
+                //("Brew Health",            () => CheatCommands.RPCOnInRange<Fermenter>("AddItem", 5f, "MeadBaseHealthMajor", 1)),
+                //("Brew Stamina",           () => CheatCommands.RPCOnInRange<Fermenter>("AddItem", 5f, "MeadBaseStaminaMedium", 1)),
+                
+                // Dangerous
                 ("Reveal AshlandCaves",     () => CheatCommands.RevealClosestAshlandsCave()),
                // ("Reveal AshlandTomb",     () => CheatCommands.RevealClosestRetoTomb()), // lord reto
                 ("Reveal Bosses",           RevealBosses),
