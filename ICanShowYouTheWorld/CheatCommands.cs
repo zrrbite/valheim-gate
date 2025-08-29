@@ -446,11 +446,12 @@ namespace ICanShowYouTheWorld
         // Utility functions to cycle through
         // -------------------------------------
         // 1. Prefer to create an item forril and then replenish the stack to maintain crafter name and not raise suspicion
-        // 
+        // 2. Redo food and pots in chests to have crafter name on it.
         // -------------------------------------
         private static readonly (string Name, Action Action)[] Utilities = {
                 // Common
                 ("Replenish Stacks",        ReplenishStacks),
+                ("Set me as crafter",        SetMeAsCrafterOfFood),
                 ("Reapair all things",      () => RepairStructuresAoE()),
 //              ("Enable Devcommands",      () => RunDevCommand("devcommands")),
                 ("Fuel",      () =>
@@ -1151,6 +1152,54 @@ namespace ICanShowYouTheWorld
                 item.m_shared.m_damages = updated;
             }
             Show($"Applied {DamageCounter} damage counters to weapons");
+        }
+
+        static readonly BindingFlags BF = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+        public static void SetMeAsCrafterOfFood()
+        {
+            var p = Player.m_localPlayer;
+            if (p == null) return;
+
+            string myName = p.GetPlayerName();
+
+            // Prefer Player.GetPlayerID() (long) to avoid Splatform types.
+            long myId = 0;
+            var getId = typeof(Player).GetMethod("GetPlayerID", BF, null, System.Type.EmptyTypes, null);
+            if (getId != null) myId = (long)getId.Invoke(p, null);
+
+            // Locate optional ItemData.SetCrafter(long,string)
+            var setCrafter = typeof(ItemDrop.ItemData)
+                .GetMethod("SetCrafter", BF, null, new[] { typeof(long), typeof(string) }, null);
+
+            var items = p.GetInventory().GetAllItems();
+            int stamped = 0;
+
+            for (int i = 0; i < items.Count; i++)
+            {
+                var it = items[i];
+                if (it == null || it.m_shared == null) continue;
+                if (it.m_shared.m_itemType != ItemDrop.ItemData.ItemType.Consumable) continue;
+
+                if (setCrafter != null)
+                {
+                    // Clean path on builds that support it
+                    setCrafter.Invoke(it, new object[] { myId, myName });
+                }
+                else
+                {
+                    // Minimal fallback: set fields directly
+                    it.m_crafterName = myName;
+
+                    var fId = typeof(ItemDrop.ItemData).GetField("m_crafterID", BF);
+                    if (fId != null && fId.FieldType == typeof(long))
+                        fId.SetValue(it, myId);
+                }
+                stamped++;
+            }
+
+            // UI will catch up when you hover/close/open inventory.
+            p.Message(MessageHud.MessageType.TopLeft, $"Crafter set on {stamped} consumables");
+            Console.instance?.Print($"[Crafter] Set on {stamped} items (ID={myId}, Name={myName})");
         }
 
         public static void IncreaseSkills()
