@@ -396,7 +396,7 @@ namespace ICanShowYouTheWorld
                     item.m_shared.m_durabilityDrain = 0.1f;
                     item.m_shared.m_maxDurability = 10000f;
                     item.m_durability = 10000f;
-                    item.m_shared.m_armor = item.m_shared.m_armor + 50f;
+                    item.m_shared.m_armor = item.m_shared.m_armor + 100f;
                 }
 
                 GiftActive = true;
