@@ -482,6 +482,7 @@ namespace ICanShowYouTheWorld
                 ("Toggle Ghost Mode",       ToggleGhostMode),
                 ("Increase Skills",         IncreaseSkills),
                 ("Puke",                    CheatCommands.Vomit),
+                ("Panic Jump",                    CheatCommands.PanicJumpBuff),
                 
                 // Smelt
                 //("Smelt Iron",           () => CheatCommands.RPCOnInRange<Smelter>("AddOre", 5f, "IronScrap", 1)),
@@ -1430,6 +1431,69 @@ namespace ICanShowYouTheWorld
                     killed++;
                 }
             Show($"Monsters killed: {killed}");
+        }
+
+        // --- Tunables (now driven by AoePower) ---
+        public static float PanicJumpDuration = 1.25f; // window to hit Space
+        public static float PanicJumpCooldown = 2.0f;  // seconds between uses
+        public static float PanicJumpStaminaUse = 0f;    // cheaper while buff is on
+
+        // Mapping from AoePower -> jump strength (tweak these, keep sane clamps)
+        public static float PanicJumpForceBase = 10f;  // up force at AoePower=0
+        public static float PanicJumpForcePerAoe = 0.25f; // extra up per AoePower
+        public static float PanicJumpForwardBase = 3f;   // forward at AoePower=0
+        public static float PanicJumpForwardPerAoe = 0.15f; // extra fwd per AoePower
+        public static Vector2 PanicJumpForceClamp = new Vector2(12f, 45f);
+        public static Vector2 PanicJumpForwardClamp = new Vector2(0f, 20f);
+
+        static float _cdUntil;
+
+        // Call this to arm the buff (then press Space during the duration)
+        public static void PanicJumpBuff()
+        {
+            var p = Player.m_localPlayer;
+            if (!p) return;
+
+            if (Time.time < _cdUntil)
+            {
+                float left = _cdUntil - Time.time;
+                p.Message(MessageHud.MessageType.TopLeft, $"Panic jump CD: {left:0.0}s");
+                return;
+            }
+
+            // derive forces from current AoePower
+            float up = Mathf.Clamp(PanicJumpForceBase + (AoePower * PanicJumpForcePerAoe), PanicJumpForceClamp.x, PanicJumpForceClamp.y);
+            float fwd = Mathf.Clamp(PanicJumpForwardBase + (AoePower * PanicJumpForwardPerAoe), PanicJumpForwardClamp.x, PanicJumpForwardClamp.y);
+
+            // capture current values
+            float jForce = p.m_jumpForce;
+            float jForward = p.m_jumpForceForward;
+            float jCost = p.m_jumpStaminaUsage;
+
+            // apply buff
+            p.m_jumpForce = up;
+            p.m_jumpForceForward = fwd;
+            p.m_jumpStaminaUsage = PanicJumpStaminaUse;
+
+            p.Message(MessageHud.MessageType.TopLeft, $"Panic jump ready — press Space!  (↑{up:0.0} →{fwd:0.0})");
+            Console.instance?.Print($"[Cheat] Panic jump buff: up={up:0.0}, fwd={fwd:0.0}, AoePower={AoePower}");
+
+            // auto-restore
+            p.StartCoroutine(RestoreJumpAfter(PanicJumpDuration, p, jForce, jForward, jCost));
+
+            _cdUntil = Time.time + PanicJumpCooldown;
+        }
+
+        static System.Collections.IEnumerator RestoreJumpAfter(float delay, Player p, float jForce, float jForward, float jCost)
+        {
+            yield return new WaitForSeconds(delay);
+            if (!p) yield break;
+
+            p.m_jumpForce = jForce;
+            p.m_jumpForceForward = jForward;
+            p.m_jumpStaminaUsage = jCost;
+
+            p.Message(MessageHud.MessageType.TopLeft, "Panic jump ended");
         }
 
         public static void TeleportSolo()
