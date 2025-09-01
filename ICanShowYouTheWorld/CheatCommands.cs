@@ -350,7 +350,7 @@ namespace ICanShowYouTheWorld
 
             if (!GiftActive)
             {
-                // 1) Snapshot all the player fields we’re about to change
+                // Snapshot player fields we’re about to change
                 origBaseHP = p.m_baseHP;
                 origBlockStaminaDrain = p.m_blockStaminaDrain;
                 origRunStaminaDrain = p.m_runStaminaDrain;
@@ -368,7 +368,7 @@ namespace ICanShowYouTheWorld
                 //    food.m_time = float.MaxValue;
                 //}
 
-                // 3) Snapshot equipped items
+                // Snapshot equipped items
                 origItemStats = new Dictionary<ItemDrop.ItemData, ItemSnapshot>();
                 foreach (var item in p.GetInventory().GetEquippedItems())
                 {
@@ -381,7 +381,7 @@ namespace ICanShowYouTheWorld
                     };
                 }
 
-                // 4) Apply the buff
+                // Buff stats
                 p.m_baseHP = p.m_baseHP + 100f;
                 p.m_blockStaminaDrain = 0.1f;
                 p.m_runStaminaDrain = 0.1f;
@@ -391,12 +391,25 @@ namespace ICanShowYouTheWorld
                 p.m_eitrRegenDelay = 0.1f;
                 p.m_maxCarryWeight = 99999f;
 
+                // Buff resists
+                var m = p.m_damageModifiers;
+                m.m_blunt = HitData.DamageModifier.VeryResistant;
+                m.m_slash = HitData.DamageModifier.VeryResistant;
+                m.m_pierce = HitData.DamageModifier.VeryResistant;
+                m.m_fire = HitData.DamageModifier.VeryResistant; //HitData.DamageModifier.Immune;        // fire hurts a lot—just immune it
+                m.m_frost = HitData.DamageModifier.VeryResistant;
+                m.m_lightning = HitData.DamageModifier.VeryResistant;
+                m.m_poison = HitData.DamageModifier.VeryResistant;
+                m.m_spirit = HitData.DamageModifier.VeryResistant;
+                m.m_chop = HitData.DamageModifier.VeryResistant;
+                m.m_pickaxe = HitData.DamageModifier.VeryResistant;
+
                 foreach (var item in p.GetInventory().GetEquippedItems())
                 {
                     item.m_shared.m_durabilityDrain = 0.1f;
                     item.m_shared.m_maxDurability = 10000f;
                     item.m_durability = 10000f;
-                    item.m_shared.m_armor = item.m_shared.m_armor + 100f;
+                    item.m_shared.m_armor = item.m_shared.m_armor + 150f;
                 }
 
                 GiftActive = true;
@@ -404,7 +417,7 @@ namespace ICanShowYouTheWorld
             }
             else
             {
-                // 1) Revert player stats
+                // Revert player stats
                 p.m_baseHP = origBaseHP;
                 p.m_blockStaminaDrain = origBlockStaminaDrain;
                 p.m_runStaminaDrain = origRunStaminaDrain;
@@ -414,12 +427,16 @@ namespace ICanShowYouTheWorld
                 p.m_eitrRegenDelay = origEitrRegenDelay;
                 p.m_maxCarryWeight = origMaxCarryWeight;
 
-                // 2) Revert food timers
+                // Revert food timers
                 //foreach (var kv in origFoodTimes)
                 //    kv.Key.m_time = kv.Value;
                 //origFoodTimes = null;
 
-                // 3) Revert items
+                // TODO: Revert resists
+                //
+                //
+
+                // Revert items
                 foreach (var kv in origItemStats)
                 {
                     var item = kv.Key;
