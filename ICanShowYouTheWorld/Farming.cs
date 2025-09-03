@@ -83,24 +83,38 @@ namespace ICanShowYouTheWorld
             float ox = -(cols - 1) * 0.5f;
             float oy = -(rows - 1) * 0.5f;
 
+            // inside PlantGrid(...)
+            float lastY = center.y;
+
             for (int r = 0; r < rows; r++)
             {
                 for (int c = 0; c < cols; c++)
                 {
                     Vector3 offset = (right * (ox + c) + fwd * (oy + r)) * spacing;
-                    Vector3 probe = center + offset + Vector3.up * RayUp;
+                    Vector3 xz = center + offset;
 
-                    RaycastHit hit;
-                    if (!Physics.Raycast(probe, Vector3.down, out hit, RayUp + RayDown))
+                    Vector3 hitPos, hitNormal;
+                    if (!TryGroundAt(xz, RayUp, RayDown, out hitPos, out hitNormal))
                         continue;
 
-                    // skip steep ground
-                    if (Vector3.Dot(hit.normal, Vector3.up) < cosMaxSlope)
+                    // slope gate
+                    if (Vector3.Dot(hitNormal, Vector3.up) < cosMaxSlope)
                         continue;
 
-                    Vector3 pos = hit.point + Vector3.up * 0.02f;
+                    // clamp big spikes (tree/rock lips)
+                    float y = ClampStep(lastY, hitPos.y, 1.25f);
+                    lastY = y;
 
-                    Object.Instantiate(prefab, pos, Quaternion.identity);
+                    Vector3 pos = new Vector3(hitPos.x, y + 0.02f, hitPos.z);
+
+                    // (optional) avoid overlaps
+                    // if (Physics.CheckSphere(pos, spacing * 0.45f)) continue;
+
+                    var go = Object.Instantiate(prefab, pos, Quaternion.identity);
+
+                    // (optional) align to ground a bit so visuals look snug
+                    // go.transform.up = Vector3.Slerp(go.transform.up, hitNormal, 0.6f);
+
                     planted++;
                 }
             }
@@ -135,6 +149,57 @@ namespace ICanShowYouTheWorld
             if (Player.m_localPlayer)
                 Player.m_localPlayer.Message(MessageHud.MessageType.TopLeft, s);
             if (Console.instance) Console.instance.Print(s);
+        }
+
+        // --- Ground sampling that prefers terrain and never returns “air” ---
+        // ray: cast from (xz + up) downward; choose the LOWEST non-Rigidbody hit.
+        // fallback: Heightmap.GetHeight when physics fails (e.g., no collider).
+        static bool TryGroundAt(Vector3 xz, float up, float down, out Vector3 point, out Vector3 normal)
+        {
+            Vector3 origin = xz + Vector3.up * up;
+            RaycastHit[] hits = Physics.RaycastAll(origin, Vector3.down, up + down, ~0, QueryTriggerInteraction.Ignore);
+
+            int best = -1;
+            float minY = float.PositiveInfinity;
+
+            for (int i = 0; i < hits.Length; i++)
+            {
+                var h = hits[i];
+                // Ignore dynamic things (trees/creatures often have rigidbodies)
+                if (h.collider && h.collider.attachedRigidbody != null) continue;
+
+                if (h.point.y < minY)
+                {
+                    minY = h.point.y;
+                    best = i;
+                }
+            }
+
+            if (best >= 0)
+            {
+                point = hits[best].point;
+                normal = hits[best].normal;
+                return true;
+            }
+
+            // Fallback: terrain height (never “air”)
+            float y;
+            if (Heightmap.GetHeight(new Vector3(xz.x, 0f, xz.z), out y))
+            {
+                point = new Vector3(xz.x, y, xz.z);
+                normal = Vector3.up;
+                return true;
+            }
+
+            point = xz;
+            normal = Vector3.up;
+            return false;
+        }
+
+        // Optional: reject huge vertical steps (e.g., from a tree branch) and clamp to last good Y.
+        static float ClampStep(float lastY, float newY, float maxStep = 1.25f)
+        {
+            return Mathf.Abs(newY - lastY) > maxStep ? lastY : newY;
         }
     }
 }
