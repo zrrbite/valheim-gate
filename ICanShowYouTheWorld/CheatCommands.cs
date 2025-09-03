@@ -287,13 +287,18 @@ namespace ICanShowYouTheWorld
         public static void RevealClosestAshlandsCave()
         {
             // Putrid Holes are MorgenHole1/2/3 – filter by prefix, pick one at random
-            LocationCheats.RevealClosestRandom("MorgenHole", Minimap.PinType.Boss, "Putrid Hole");
+            LocationCheats.RevealClosestRandom("MorgenHole", Minimap.PinType.Icon0, "Putrid Hole");
+        }
+
+        public static void RevealClosestAshlandsFortress()
+        {
+            LocationCheats.RevealClosestRandom("CharredFortress", Minimap.PinType.Icon1, "Fortress");
         }
 
         public static void RevealClosestRetoTomb()
         {
             // Exact ID is PlaceofMystery3; passing the full name keeps it deterministic
-            bool ok = LocationCheats.RevealClosest("PlaceofMystery3", Minimap.PinType.Boss, "Tomb of Lord Reto");
+            bool ok = LocationCheats.RevealClosest("PlaceofMystery3", Minimap.PinType.Icon2, "Tomb of Lord Reto");
             Show(ok ? "Revealed nearest Reto Tomb" : "Reto Tomb not found");
         }
 
@@ -505,6 +510,8 @@ namespace ICanShowYouTheWorld
                 
                 // Dangerous
                 ("Reveal AshlandCaves",     () => CheatCommands.RevealClosestAshlandsCave()),
+                ("Reveal Charred Fortress",     () => CheatCommands.RevealClosestAshlandsFortress()),
+
                // ("Reveal AshlandTomb",     () => CheatCommands.RevealClosestRetoTomb()), // lord reto
                 ("Reveal Bosses",           RevealBosses),
     //          ("Explore Map",             ExploreAll),
