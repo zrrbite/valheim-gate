@@ -1047,8 +1047,11 @@ namespace ICanShowYouTheWorld
             foreach (Character item in list)
             {
                 if (item.IsPlayer() || !item.IsTamed()) continue;
-                item.SetMaxHealth(1000);
-                if(incrlevel)
+                item.SetMaxHealth(1200);
+     
+
+
+                if (incrlevel)
                     item.SetLevel(2);
             }
 

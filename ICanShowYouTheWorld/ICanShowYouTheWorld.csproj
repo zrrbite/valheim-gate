@@ -291,6 +291,7 @@
     <Compile Include="Utils.cs" />
     <Compile Include="Assets\CircleVisualizer.cs" />
     <Compile Include="ListView.cs" />
+    <Compile Include="Farming.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Assets\" />

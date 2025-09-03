@@ -183,6 +183,21 @@ namespace ICanShowYouTheWorld
                     Execute     = CheatCommands.ToggleCloakOfFlames,
                     GetState    = () => CheatCommands.CloakActive
                 },
+                new CommandBinding {
+                    Key         = KeyCode.Keypad4,
+                    Description = "cycle -1",
+                    Execute     = () => PlantingTools.CycleSeed(-1)
+                },
+                new CommandBinding {
+                    Key         = KeyCode.Keypad5,
+                    Description = "Cycle +1",
+                    Execute     = () => PlantingTools.CycleSeed(+1)
+                },
+                new CommandBinding {
+                    Key         = KeyCode.Keypad6,
+                    Description = "Plant",
+                    Execute     = PlantingTools.PlantSelectedGrid
+                },
                 // ---- pets  ----
                 //new CommandBinding {
                 //    Key         = KeyCode.Keypad7,
