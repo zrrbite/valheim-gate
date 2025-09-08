@@ -183,7 +183,9 @@ namespace ICanShowYouTheWorld
                     Execute     = CheatCommands.ToggleCloakOfFlames,
                     GetState    = () => CheatCommands.CloakActive
                 },
-                new CommandBinding {
+ /*               // ---- Plant things -----
+  *               
+  *             new CommandBinding {
                     Key         = KeyCode.Keypad4,
                     Description = "cycle -1",
                     Execute     = () => PlantingTools.CycleSeed(-1)
@@ -198,32 +200,37 @@ namespace ICanShowYouTheWorld
                     Description = "Plant",
                     Execute     = PlantingTools.PlantSelectedGrid
                 },
+
                 // ---- pets  ----
-                //new CommandBinding {
-                //    Key         = KeyCode.Keypad7,
-                //    Description = "Combat pet",
-                //    Execute     = CheatCommands.SpawnCombatPet
-                //},
-               // new CommandBinding {
-               //     Key         = KeyCode.Keypad4,
-               //     Description = "Pets follow",
-               //     Execute     = () => CheatCommands.TameAll()
-              //  },
+                new CommandBinding {
+                    Key         = KeyCode.Keypad7,
+                    Description = "Combat pet",
+                    Execute     = CheatCommands.SpawnCombatPet
+                },
+                new CommandBinding {
+                    Key         = KeyCode.Keypad4,
+                    Description = "Pets follow",
+                    Execute     = () => CheatCommands.TameAll()
+                },
+ */
                 new CommandBinding {
                     Key         = KeyCode.Keypad7,
                     Description = "Buff pets",
                     Execute     = () => CheatCommands.BuffTamed(false)
                 },
+
                 new CommandBinding {
                     Key         = KeyCode.Keypad8,
                     Description = "Tame targeted",
                     Execute     = CheatCommands.TameTargeted
                 },
-               new CommandBinding {
+/*               new CommandBinding {
                     Key         = KeyCode.Keypad9,
                     Description = "Tame r, stay",
                     Execute     = () => CheatCommands.TameAll(true)
                 },
+ */
+
                 //new CommandBinding {
                 //    Key         = KeyCode.Keypad9,
                 //    Description = "Toggle Barrier", //stagger barrier

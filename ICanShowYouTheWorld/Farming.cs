@@ -10,12 +10,12 @@ namespace ICanShowYouTheWorld
     public static class PlantingTools
     {
         // Simple knobs
-        public static int GridRows = 5;
-        public static int GridCols = 5;
+        public static int GridRows = 4;
+        public static int GridCols = 4;
         public static float ExtraMargin = 0.25f;  // added to 2*growRadius
         public static float MaxSlopeDeg = 22f;    // skip steep ground
-        public static float RayUp = 12f;    // raycast up
-        public static float RayDown = 40f;    // raycast down
+        public static float RayUp = 20f;    // raycast up
+        public static float RayDown = 60f;    // raycast down
 
         // Cycle a few common saplings/crops (edit to taste)
         public static readonly string[] SeedPrefabs = {

@@ -387,7 +387,7 @@ namespace ICanShowYouTheWorld
                 }
 
                 // Buff stats
-                p.m_baseHP = p.m_baseHP + 100f;
+                //p.m_baseHP = p.m_baseHP + 100f; // Try without health buff
                 p.m_blockStaminaDrain = 0.1f;
                 p.m_runStaminaDrain = 0.1f;
                 p.m_staminaRegen = 50f;
@@ -398,16 +398,16 @@ namespace ICanShowYouTheWorld
 
                 // Buff resists
                 var m = p.m_damageModifiers;
-                m.m_blunt = HitData.DamageModifier.VeryResistant;
-                m.m_slash = HitData.DamageModifier.VeryResistant;
-                m.m_pierce = HitData.DamageModifier.VeryResistant;
+                m.m_blunt = HitData.DamageModifier.Resistant;
+                m.m_slash = HitData.DamageModifier.Resistant;
+                m.m_pierce = HitData.DamageModifier.Resistant;
                 m.m_fire = HitData.DamageModifier.VeryResistant; //HitData.DamageModifier.Immune;        // fire hurts a lot—just immune it
-                m.m_frost = HitData.DamageModifier.VeryResistant;
-                m.m_lightning = HitData.DamageModifier.VeryResistant;
-                m.m_poison = HitData.DamageModifier.VeryResistant;
-                m.m_spirit = HitData.DamageModifier.VeryResistant;
-                m.m_chop = HitData.DamageModifier.VeryResistant;
-                m.m_pickaxe = HitData.DamageModifier.VeryResistant;
+                m.m_frost = HitData.DamageModifier.Resistant;
+                m.m_lightning = HitData.DamageModifier.Resistant;
+                m.m_poison = HitData.DamageModifier.Resistant;
+                m.m_spirit = HitData.DamageModifier.Resistant;
+                m.m_chop = HitData.DamageModifier.Resistant;
+                m.m_pickaxe = HitData.DamageModifier.Resistant;
 
                 foreach (var item in p.GetInventory().GetEquippedItems())
                 {
@@ -1048,16 +1048,14 @@ namespace ICanShowYouTheWorld
             if (!RequireGodMode("Buff tamed")) return;
 
             List<Character> list = new List<Character>();
-            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 30.0f, list);
+            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 20.0f, list);
 
             // Set follow
             foreach (Character item in list)
             {
                 if (item.IsPlayer() || !item.IsTamed()) continue;
-                item.SetMaxHealth(1200);
+                item.SetMaxHealth(800);
      
-
-
                 if (incrlevel)
                     item.SetLevel(2);
             }
