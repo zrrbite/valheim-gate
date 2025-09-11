@@ -6,6 +6,6 @@ scp deck@192.168.86.42:/home/deck/.local/share/Steam/steamapps/common/Valheim/va
 #patch
 cp ../libraries/assembly_valheim.dll ../Patcher/bin/Debug/assembly_valheim.dll.org
 cd ../Patcher/bin/Debug/
-mono Patcher.exe
+mono Patcher.exe #now patched/assembly_valheim is ready to be linked against .. copy to libraries
 
 # ready for upload in /patched/
