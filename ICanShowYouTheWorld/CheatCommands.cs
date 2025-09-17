@@ -414,7 +414,7 @@ namespace ICanShowYouTheWorld
                     item.m_shared.m_durabilityDrain = 0.1f;
                     item.m_shared.m_maxDurability = 10000f;
                     item.m_durability = 10000f;
-                    item.m_shared.m_armor = item.m_shared.m_armor + 150f;
+//                    item.m_shared.m_armor = item.m_shared.m_armor + 150f; // Don't pad armor for now. Just use res.
                 }
 
                 GiftActive = true;
@@ -1277,7 +1277,7 @@ namespace ICanShowYouTheWorld
                 item.m_shared.m_maxDurability = 10000f;
                 item.m_shared.m_weight = 0.1f;
                 item.m_durability = 10000f;
-                item.m_shared.m_armor = 100;
+                //item.m_shared.m_armor = 100;
             }
 
             // Food - own func?
