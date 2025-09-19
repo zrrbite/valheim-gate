@@ -347,6 +347,65 @@ namespace ICanShowYouTheWorld
             Show($"AoE Knockback {(KnockbackAoEActive ? "ENABLED" : "DISABLED")}");
         }
 
+        static readonly HashSet<string> EitrTokens = new HashSet<string> {
+            "$item_helmet_mage", "$item_chest_mage", "$item_legs_mage"};
+        static readonly HashSet<string> EitrPrefabs = new HashSet<string> {
+            "HelmetMage", "ArmorMageChest", "ArmorMageLegs"};
+
+        static bool IsEitrWeave(ItemDrop.ItemData item)
+        {
+            if (item == null) return false;
+
+            // 1) Fast path: compare localization tokens (what m_shared.m_name stores)
+            if (!string.IsNullOrEmpty(item.m_shared.m_name) && EitrTokens.Contains(item.m_shared.m_name))
+                return true;
+
+            // 2) Fallback: compare prefab name if available
+            string prefabName = item.m_dropPrefab != null ? item.m_dropPrefab.name : null;
+            if (!string.IsNullOrEmpty(prefabName) && EitrPrefabs.Contains(prefabName))
+                return true;
+
+            return false;
+        }
+
+        public static bool immunityActive = false;
+        public static void ToggleImmunity()
+        {
+            if (!RequireGodMode("Immunity")) return;
+            var m = Player.m_localPlayer.m_damageModifiers;
+            if (!immunityActive)
+            {
+                m.m_blunt = HitData.DamageModifier.Immune;
+                m.m_slash = HitData.DamageModifier.Immune;
+                m.m_pierce = HitData.DamageModifier.Immune;
+                m.m_fire = HitData.DamageModifier.Immune;
+                m.m_frost = HitData.DamageModifier.Immune;
+                m.m_lightning = HitData.DamageModifier.Immune;
+                m.m_poison = HitData.DamageModifier.Immune;
+                m.m_spirit = HitData.DamageModifier.Immune;
+                m.m_chop = HitData.DamageModifier.Immune;
+                m.m_pickaxe = HitData.DamageModifier.Immune;
+                Show("Immunity: Godlike!");
+
+            }
+            else
+            {
+                m.m_blunt = HitData.DamageModifier.SlightlyResistant;
+                m.m_slash = HitData.DamageModifier.SlightlyResistant;
+                m.m_pierce = HitData.DamageModifier.SlightlyResistant;
+                m.m_fire = HitData.DamageModifier.SlightlyResistant;
+                m.m_frost = HitData.DamageModifier.SlightlyResistant;
+                m.m_lightning = HitData.DamageModifier.SlightlyResistant;
+                m.m_poison = HitData.DamageModifier.SlightlyResistant;
+                m.m_spirit = HitData.DamageModifier.SlightlyResistant;
+                m.m_chop = HitData.DamageModifier.SlightlyResistant;
+                m.m_pickaxe = HitData.DamageModifier.SlightlyResistant;
+                Show("Immunity: Normal");
+            }
+
+            immunityActive = !immunityActive;
+        }
+
         // --- guardian gift
         public static void ToggleGuardianGift()
         {
@@ -387,7 +446,7 @@ namespace ICanShowYouTheWorld
                 }
 
                 // Buff stats
-                //p.m_baseHP = p.m_baseHP + 100f; // Try without health buff
+                p.m_baseHP = p.m_baseHP + 100f; // Health buff is an easy way to delay death, while not touching resists.
                 p.m_blockStaminaDrain = 0.1f;
                 p.m_runStaminaDrain = 0.1f;
                 p.m_staminaRegen = 50f;
@@ -395,27 +454,34 @@ namespace ICanShowYouTheWorld
                 p.m_eiterRegen = 50f;
                 p.m_eitrRegenDelay = 0.1f;
                 p.m_maxCarryWeight = 99999f;
-
-                // Buff resists
-                var m = p.m_damageModifiers;
-                m.m_blunt = HitData.DamageModifier.Resistant;
-                m.m_slash = HitData.DamageModifier.Resistant;
-                m.m_pierce = HitData.DamageModifier.Resistant;
-                m.m_fire = HitData.DamageModifier.VeryResistant; //HitData.DamageModifier.Immune;        // fire hurts a lot—just immune it
-                m.m_frost = HitData.DamageModifier.Resistant;
-                m.m_lightning = HitData.DamageModifier.Resistant;
-                m.m_poison = HitData.DamageModifier.Resistant;
-                m.m_spirit = HitData.DamageModifier.Resistant;
-                m.m_chop = HitData.DamageModifier.Resistant;
-                m.m_pickaxe = HitData.DamageModifier.Resistant;
+                 
+                // Buff resists? Might be a bit too powerful. Move to a different buff "GodLike" and tone down things in this function.
+                // Standard should just be some extra hp and some extra armor.
 
                 foreach (var item in p.GetInventory().GetEquippedItems())
                 {
+                    // Only buff some equipped items to keep it more real
+                    if (!IsEitrWeave(item)) continue;
+
                     item.m_shared.m_durabilityDrain = 0.1f;
                     item.m_shared.m_maxDurability = 10000f;
                     item.m_durability = 10000f;
-//                    item.m_shared.m_armor = item.m_shared.m_armor + 150f; // Don't pad armor for now. Just use res.
+                    item.m_shared.m_armor = item.m_shared.m_armor + 30f; // Don't pad armor too much for now. Just use res?
                 }
+
+                var m = p.m_damageModifiers;
+                m.m_fire = HitData.DamageModifier.Resistant; //HitData.DamageModifier.Immune;        // fire hurts a lot—just immune it
+
+                m.m_blunt = HitData.DamageModifier.SlightlyResistant;
+                m.m_slash = HitData.DamageModifier.SlightlyResistant;
+                m.m_pierce = HitData.DamageModifier.SlightlyResistant;
+                m.m_fire = HitData.DamageModifier.SlightlyResistant;
+                m.m_frost = HitData.DamageModifier.SlightlyResistant;
+                m.m_lightning = HitData.DamageModifier.SlightlyResistant;
+                m.m_poison = HitData.DamageModifier.SlightlyResistant;
+                m.m_spirit = HitData.DamageModifier.SlightlyResistant;
+                m.m_chop = HitData.DamageModifier.SlightlyResistant;
+                m.m_pickaxe = HitData.DamageModifier.SlightlyResistant;
 
                 GiftActive = true;
                 Show("Guardian's Gift: ON");

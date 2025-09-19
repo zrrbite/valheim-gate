@@ -183,6 +183,15 @@ namespace ICanShowYouTheWorld
                     Execute     = CheatCommands.ToggleCloakOfFlames,
                     GetState    = () => CheatCommands.CloakActive
                 },
+
+                // Immunity
+                new CommandBinding {
+                    Key         = KeyCode.Keypad4,
+                    Description = "Immunity",
+                    Execute     = CheatCommands.ToggleImmunity,
+                    GetState    = () => CheatCommands.immunityActive
+                },
+
  /*               // ---- Plant things -----
   *               
   *             new CommandBinding {
