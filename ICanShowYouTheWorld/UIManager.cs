@@ -23,6 +23,7 @@ namespace ICanShowYouTheWorld
             TH
         );
 
+        // TODO: window positions are calculated when the game starts? Adjust that before starting the mod?
         private Rect modeWindow = new Rect(
             Screen.width - modeWidth,  // x
             Screen.height - modeHeight - 240f, // Margin from bottom
@@ -174,6 +175,8 @@ namespace ICanShowYouTheWorld
         }
         void DrawModes(int id)
         {
+            GUI.enabled = true;
+
             // 1) Opaque dark backdrop
             GUI.backgroundColor = new Color(0f, 0f, 0f, 0.8f);
             GUI.Box(new Rect(0, 0, modeWindow.width, modeWindow.height), GUIContent.none);
@@ -217,7 +220,7 @@ namespace ICanShowYouTheWorld
             var descStyle = new GUIStyle(GUI.skin.label)
             {
                 fontStyle = FontStyle.Bold,
-                normal = { textColor = Color.grey }
+                normal = { textColor = Color.white }
             };
             // column widths
             const float descW = 160f;  // room for description

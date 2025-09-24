@@ -148,6 +148,122 @@ namespace ICanShowYouTheWorld
         }
     }
 
+    public static class OreFinder
+    {
+        public static float MaxRange = 1500f;
+        public static int MaxPins = 8;
+        public static bool FilterMountains = false; // set true if you want
+
+        static string PrefabOf(GameObject go)
+        {
+            if (!go) return "";
+            var n = go.name;
+            int i = n.IndexOf('(');              // strips " (Clone)"
+            return i > 0 ? n.Substring(0, i) : n;
+        }
+        static float DistanceXZ(Vector3 a, Vector3 b)
+        {
+            float dx = a.x - b.x, dz = a.z - b.z;
+            return Mathf.Sqrt(dx * dx + dz * dz);
+        }
+        static bool IsSilverName(string n)
+        {
+            if (string.IsNullOrEmpty(n)) return false;
+            n = n.ToLowerInvariant();
+            // cover common variants
+            return n == "minerock_silver" || n == "silvervein" || n.Contains("silver");
+        }
+
+        public static void PinNearbySilver()
+        {
+            var p = Player.m_localPlayer; if (!p) return;
+            Vector3 me = p.transform.position;
+
+            var znvs = UnityEngine.Object.FindObjectsOfType<ZNetView>();
+            // simple arrays (no Linq)
+            const int MAXC = 512;
+            ZNetView[] found = new ZNetView[MAXC];
+            float[] dists = new float[MAXC];
+            int count = 0;
+
+            for (int i = 0; i < znvs.Length; i++)
+            {
+                var z = znvs[i];
+                if (!z || !z.IsValid()) continue;
+
+                string name = PrefabOf(z.gameObject);
+                if (!IsSilverName(name)) continue;
+
+                Vector3 pos = z.transform.position;
+                float d = DistanceXZ(pos, me);
+                if (d > MaxRange) continue;
+
+                if (FilterMountains)
+                {
+                    var biome = WorldGenerator.instance != null
+                        ? WorldGenerator.instance.GetBiome(pos)
+                        : Heightmap.Biome.Mountain;
+                    if ((biome & Heightmap.Biome.Mountain) == 0) continue;
+                }
+
+                if (count < MAXC)
+                {
+                    found[count] = z;
+                    dists[count] = d;
+                    count++;
+                }
+            }
+
+            if (count == 0)
+            {
+                // Help debug: show a few MineRock names so we can adjust filters
+                int shown = 0;
+                for (int i = 0; i < znvs.Length && shown < 10; i++)
+                {
+                    var z = znvs[i];
+                    if (!z || !z.IsValid()) continue;
+                    var n = PrefabOf(z.gameObject).ToLowerInvariant();
+                    if (n.Contains("minerock"))
+                    {
+                        Console.instance?.Print("[OreFinder] Nearby rock: " + n);
+                        shown++;
+                    }
+                }
+                Show("No loaded silver veins found nearby");
+                return;
+            }
+
+            // selection sort by distance
+            for (int a = 0; a < count - 1; a++)
+            {
+                int best = a;
+                for (int b = a + 1; b < count; b++)
+                    if (dists[b] < dists[best]) best = b;
+                if (best != a)
+                {
+                    var tz = found[a]; found[a] = found[best]; found[best] = tz;
+                    var td = dists[a]; dists[a] = dists[best]; dists[best] = td;
+                }
+            }
+
+            int pinned = 0;
+            for (int i = 0; i < count && pinned < MaxPins; i++)
+            {
+                var pos = found[i].transform.position;
+                Minimap.instance.AddPin(pos, Minimap.PinType.Icon0, "Silver", false, false);
+                pinned++;
+            }
+
+            Show("Pinned " + pinned + " silver vein(s)");
+        }
+
+        static void Show(string s)
+        {
+            Player.m_localPlayer?.Message(MessageHud.MessageType.TopLeft, s);
+            Console.instance?.Print(s);
+        }
+    }
+
     public static class CheatCommands
     {
         // States
@@ -577,6 +693,8 @@ namespace ICanShowYouTheWorld
                 // Dangerous
                 ("Reveal AshlandCaves",     () => CheatCommands.RevealClosestAshlandsCave()),
                 ("Reveal Charred Fortress",     () => CheatCommands.RevealClosestAshlandsFortress()),
+                ("Reveal Silver",                () => OreFinder.PinNearbySilver()),
+           
 
                // ("Reveal AshlandTomb",     () => CheatCommands.RevealClosestRetoTomb()), // lord reto
                 ("Reveal Bosses",           RevealBosses),

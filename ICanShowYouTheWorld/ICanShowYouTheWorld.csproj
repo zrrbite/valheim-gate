@@ -279,6 +279,9 @@
     <Reference Include="assembly_valheim">
       <HintPath>..\Patcher\bin\Debug\patched\assembly_valheim.dll</HintPath>
     </Reference>
+    <Reference Include="Splatform">
+      <HintPath>..\libraries\Splatform.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Cheat.cs" />
