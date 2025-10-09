@@ -39,7 +39,7 @@ namespace ICanShowYouTheWorld
             _initialized = true;
 
             // 1) Get  version string
-            string version = "0.221.4-1"; //ModVersion.VERSION;
+            string version = "0.221.5-1"; //ModVersion.VERSION;
 
             // 2) Create the cheat GameObject
             var cheatObject = new GameObject("ICanShowYouTheWorld");
@@ -179,18 +179,24 @@ namespace ICanShowYouTheWorld
                 },
                 new CommandBinding {
                     Key         = KeyCode.Keypad3,
+                    Description = "HoT Cheal",
+                    Execute = () => CheatCommands.ToggleRenewal()
+                },
+                // -------- COF, immunity ---------------
+                new CommandBinding {
+                    Key         = KeyCode.Keypad4,
                     Description = "Cloak of Flames",
                     Execute     = CheatCommands.ToggleCloakOfFlames,
                     GetState    = () => CheatCommands.CloakActive
                 },
-
                 // Immunity
                 new CommandBinding {
-                    Key         = KeyCode.Keypad4,
+                    Key         = KeyCode.Keypad5,
                     Description = "Immunity",
                     Execute     = CheatCommands.ToggleImmunity,
                     GetState    = () => CheatCommands.immunityActive
                 },
+                
 
  /*               // ---- Plant things -----
   *               
@@ -233,18 +239,11 @@ namespace ICanShowYouTheWorld
                     Description = "Tame targeted",
                     Execute     = CheatCommands.TameTargeted
                 },
-/*               new CommandBinding {
+               new CommandBinding {
                     Key         = KeyCode.Keypad9,
                     Description = "Tame r, stay",
                     Execute     = () => CheatCommands.TameAll(true)
                 },
- */
-
-                //new CommandBinding {
-                //    Key         = KeyCode.Keypad9,
-                //    Description = "Toggle Barrier", //stagger barrier
-                //    Execute     = () => CheatCommands.ToggleBarrierAoE()
-                //},
                 // --- aoe regen
                 new CommandBinding {
                     Key         = KeyCode.KeypadPlus,
@@ -256,6 +255,12 @@ namespace ICanShowYouTheWorld
                     Key         = KeyCode.KeypadMinus,
                     Description = "AOE Power--",
                     Execute     = CheatCommands.DecreaseAoePower,
+                    GetState    = null
+                },
+                new CommandBinding {
+                    Key         = KeyCode.KeypadMultiply,
+                    Description = "Replenish",
+                    Execute     = CheatCommands.ReplenishStacks,
                     GetState    = null
                 },
                 // ---------------------------------

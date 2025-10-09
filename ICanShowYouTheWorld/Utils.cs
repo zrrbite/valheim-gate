@@ -7,6 +7,89 @@ using Object = UnityEngine.Object;
 
 namespace ICanShowYouTheWorld
 {
+
+    public static class CleanupUtils
+    {
+        public static float TrashRadius = 1f;
+
+        // Things we never delete (prefab or display name substring match; case-insensitive)
+        static readonly string[] KeepNames = {
+        "Wishbone", "Yagluth", "DragonEgg", "BeltStrength", "$item_beltstrength"
+    };
+
+        static string PrefabOf(GameObject go)
+        {
+            if (!go) return "";
+            string n = go.name;
+            int i = n.IndexOf('(');              // strip " (Clone)"
+            return i > 0 ? n.Substring(0, i) : n;
+        }
+
+        static bool IsKept(string prefab, string display)
+        {
+            for (int i = 0; i < KeepNames.Length; i++)
+            {
+                string k = KeepNames[i];
+                if (!string.IsNullOrEmpty(prefab) && prefab.IndexOf(k, StringComparison.OrdinalIgnoreCase) >= 0) return true;
+                if (!string.IsNullOrEmpty(display) && display.IndexOf(k, StringComparison.OrdinalIgnoreCase) >= 0) return true;
+            }
+            return false;
+        }
+
+        // Destroys ground ItemDrop(s) in radius. Set dryRun=true to preview.
+        public static int DestroyNearbyDrops(float radius = -1f, bool dryRun = false)
+        {
+            var p = Player.m_localPlayer; if (!p) return 0;
+            if (radius <= 0f) radius = TrashRadius;
+
+            Vector3 center = p.transform.position;
+
+            // Grab colliders near feet (include triggers so item volumes are caught)
+            Collider[] hits = Physics.OverlapSphere(center, radius, ~0, QueryTriggerInteraction.Collide);
+
+            int removed = 0, seen = 0;
+            for (int i = 0; i < hits.Length; i++)
+            {
+                var col = hits[i]; if (!col) continue;
+                var drop = col.GetComponentInParent<ItemDrop>(); // robust even if collider is on child
+                if (!drop) continue;
+
+                // ignore anything currently equipped (paranoia guard)
+                if (drop.m_itemData != null && drop.m_itemData.m_equipped) continue;
+
+                string prefab = PrefabOf(drop.gameObject);
+                string disp = drop.m_itemData != null && drop.m_itemData.m_shared != null
+                              ? drop.m_itemData.m_shared.m_name
+                              : prefab;
+
+                if (IsKept(prefab, disp)) continue;
+
+                seen++;
+
+                if (dryRun)
+                {
+                    Console.instance?.Print($"[Cleanup] would remove: {disp} ({prefab})");
+                    continue;
+                }
+
+                var znv = drop.GetComponent<ZNetView>();
+                if (znv != null && znv.IsValid())
+                    ZNetScene.instance.Destroy(znv.gameObject); // network-safe
+                else
+                    UnityEngine.Object.Destroy(drop.gameObject);
+
+                removed++;
+            }
+
+            var msg = dryRun
+                ? $"Preview: {seen} drop(s) matched within {radius:0.0}m"
+                : $"Cleared {removed} drop(s) in {radius:0.0}m";
+            Player.m_localPlayer?.Message(MessageHud.MessageType.TopLeft, msg);
+            Console.instance?.Print("[Cleanup] " + msg);
+            return removed;
+        }
+    }
+
     // Utility helpers for teleporting and input conversion
     static class TeleportUtils
     {

@@ -6,6 +6,7 @@ using System.Diagnostics;
 using Object = UnityEngine.Object;
 using System.Reflection;
 using System.Linq;
+using System.Collections;
 
 namespace ICanShowYouTheWorld
 {
@@ -148,6 +149,345 @@ namespace ICanShowYouTheWorld
         }
     }
 
+    static class PinHelpers
+    {
+        // One place for flags
+        static readonly BindingFlags BF = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
+
+        // --- Owner (PlatformUserID) ---
+        public static object GetLocalOwner()
+        {
+            try
+            {
+                var prof = Game.instance != null ? Game.instance.GetPlayerProfile() : null;
+                if (prof == null) return null;
+                var mi = prof.GetType().GetMethod("GetPlatformUserID", BF & ~BindingFlags.Static);
+                return mi != null ? mi.Invoke(prof, null) : null;
+            }
+            catch { return null; }
+        }
+
+        // --- Add pin (owned by you) ---
+        public static Minimap.PinData AddPinWithOwner(Vector3 pos, Minimap.PinType type, string label, bool save, bool isChecked)
+        {
+            var mm = Minimap.instance; if (!mm) return null;
+            object owner = GetLocalOwner();
+
+            MethodInfo best = null;
+            var methods = typeof(Minimap).GetMethods(BF);
+            for (int i = 0; i < methods.Length; i++)
+            {
+                var m = methods[i]; if (m.Name != "AddPin") continue;
+                var ps = m.GetParameters();
+                if (ps.Length >= 5 &&
+                    ps[0].ParameterType == typeof(Vector3) &&
+                    ps[1].ParameterType == typeof(Minimap.PinType) &&
+                    ps[2].ParameterType == typeof(string) &&
+                    ps[3].ParameterType == typeof(bool) &&
+                    ps[4].ParameterType == typeof(bool))
+                {
+                    // prefer overload with PlatformUserID param
+                    if (ps.Length >= 6 && ps[5].ParameterType.Name.IndexOf("PlatformUserID", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        best = m; break;
+                    }
+                    if (best == null) best = m;
+                }
+            }
+            if (best == null) return null;
+
+            var parms = best.GetParameters();
+            object[] args = new object[parms.Length];
+            args[0] = pos; args[1] = type; args[2] = label; args[3] = save; args[4] = isChecked;
+            for (int i = 5; i < args.Length; i++)
+            {
+                if (owner != null && parms[i].ParameterType.Name.IndexOf("PlatformUserID", StringComparison.OrdinalIgnoreCase) >= 0)
+                    args[i] = owner;
+                else
+                    args[i] = Type.Missing;
+            }
+
+            var pin = best.Invoke(mm, args) as Minimap.PinData;
+
+            // fallback: set owner field post-creation
+            if (pin != null && owner != null)
+            {
+                try
+                {
+                    var t = pin.GetType();
+                    var fOwner = t.GetField("m_owner", BF) ?? t.GetField("m_ownerID", BF);
+                    if (fOwner != null && fOwner.FieldType.Name.IndexOf("PlatformUserID", StringComparison.OrdinalIgnoreCase) >= 0)
+                        fOwner.SetValue(pin, owner);
+                }
+                catch { }
+            }
+            return pin;
+        }
+
+        // Convenience wrappers
+        public static Minimap.PinData AddMinePinOwned(Vector3 pos, string label, bool save, bool isChecked)
+            => AddPinWithOwner(pos, Minimap.PinType.Icon0, label, save, isChecked);
+
+        public static Minimap.PinData AddMinePinHere(string label = "Silver", bool save = false, bool isChecked = false)
+        {
+            var p = Player.m_localPlayer; if (!p) return null;
+            return AddMinePinOwned(p.transform.position, label, save, isChecked);
+        }
+
+        public static Minimap.PinData AddPinHere(Minimap.PinType type, string label, bool save = false, bool isChecked = false)
+        {
+            var p = Player.m_localPlayer; if (!p) return null;
+            return AddPinWithOwner(p.transform.position, type, label, save, isChecked);
+        }
+
+        // --- Pins access (works across versions) ---
+        static IList GetPinsList()
+        {
+            var t = typeof(Minimap);
+
+            // static field layout?
+            var fiStatic = t.GetField("m_pins", BF);
+            if (fiStatic != null && fiStatic.IsStatic)
+                return fiStatic.GetValue(null) as IList;
+
+            // instance layout?
+            var mm = Minimap.instance; if (!mm) return null;
+            var fi = t.GetField("m_pins", BF & ~BindingFlags.Static);
+            return fi != null ? fi.GetValue(mm) as IList : null;
+        }
+
+        // Helpers for filtering/removal
+        static bool LooksLikeSilverPin(object pinObj)
+        {
+            if (pinObj == null) return false;
+            var pt = pinObj.GetType();
+
+            var fType = pt.GetField("m_type", BF);
+            var type = fType != null ? (Minimap.PinType)fType.GetValue(pinObj) : Minimap.PinType.Icon0;
+
+            var fName = pt.GetField("m_name", BF) ?? pt.GetField("m_Name", BF);
+            var name = fName != null ? (fName.GetValue(pinObj) as string ?? "") : "";
+
+            if (name.IndexOf("silver", StringComparison.OrdinalIgnoreCase) >= 0) return true;
+            if (type == Minimap.PinType.Icon0 && (name == "" || name == "Silver")) return true;
+            return false;
+        }
+
+        static bool IsMine(object ownerVal, object myOwner)
+        {
+            if (ownerVal == null || myOwner == null) return false;
+            return ownerVal.Equals(myOwner) || string.Equals(ownerVal.ToString(), myOwner.ToString(), StringComparison.Ordinal);
+        }
+
+        // --- Clear non-owned "Silver" pins ---
+        public static int ClearForeignSilverPins()
+        {
+            var mm = Minimap.instance; if (!mm) return 0;
+            var pins = GetPinsList(); if (pins == null) return 0;
+
+            object myOwner = GetLocalOwner();
+
+            var miRemove = typeof(Minimap).GetMethod("RemovePin",
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                null, new Type[] { typeof(Minimap.PinData) }, null);
+
+            int removed = 0;
+
+            for (int i = pins.Count - 1; i >= 0; i--)
+            {
+                var pin = pins[i];
+                if (!LooksLikeSilverPin(pin)) continue;
+
+                var fOwner = pin.GetType().GetField("m_owner", BF) ?? pin.GetType().GetField("m_ownerID", BF);
+                object ownerVal = fOwner != null ? fOwner.GetValue(pin) : null;
+
+                if (IsMine(ownerVal, myOwner)) continue;
+
+                if (miRemove != null && pin is Minimap.PinData pd)
+                    miRemove.Invoke(mm, new object[] { pd });
+                else
+                    pins.RemoveAt(i);
+
+                removed++;
+            }
+
+            Player.m_localPlayer?.Message(MessageHud.MessageType.TopLeft, $"Removed {removed} non-owned Silver pins");
+            Console.instance?.Print($"[Pins] Removed {removed} non-owned Silver pins");
+            return removed;
+        }
+    }
+
+    static class MinimapUtil
+    {
+        static readonly BindingFlags BF = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+
+
+        public static Minimap.PinData AddPinWithOwner(Vector3 pos, Minimap.PinType type, string label, bool save, bool isChecked)
+        {
+            var mm = Minimap.instance;
+            if (!mm) return null;
+
+            // 1) get local PlatformUserID via reflection
+            object owner = null;
+            try
+            {
+                var game = Game.instance;
+                if (game != null)
+                {
+                    var prof = game.GetPlayerProfile();
+                    if (prof != null)
+                    {
+                        var getPuid = prof.GetType().GetMethod("GetPlatformUserID", BF);
+                        if (getPuid != null) owner = getPuid.Invoke(prof, null);
+                    }
+                }
+            }
+            catch { /* ignore, fallback below */ }
+
+            // 2) find the best AddPin overload
+            MethodInfo best = null;
+            var methods = typeof(Minimap).GetMethods(BF);
+            for (int i = 0; i < methods.Length; i++)
+            {
+                var m = methods[i];
+                if (m.Name != "AddPin") continue;
+                var ps = m.GetParameters();
+                if (ps.Length >= 5 &&
+                    ps[0].ParameterType == typeof(Vector3) &&
+                    ps[1].ParameterType == typeof(Minimap.PinType) &&
+                    ps[2].ParameterType == typeof(string) &&
+                    ps[3].ParameterType == typeof(bool) &&
+                    ps[4].ParameterType == typeof(bool))
+                {
+                    // pick the first that either:
+                    //  - has a 6th param whose type name contains "PlatformUserID", or
+                    //  - otherwise remember a shorter one as fallback
+                    if (ps.Length >= 6 && ps[5].ParameterType.Name.IndexOf("PlatformUserID", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        best = m;
+                        break; // perfect match
+                    }
+                    if (best == null) best = m; // fallback candidate
+                }
+            }
+
+            if (best == null)
+            {
+                Warn("No Minimap.AddPin overload found");
+                return null;
+            }
+
+            // 3) build args
+            var parms = best.GetParameters();
+            object[] args = new object[parms.Length];
+            args[0] = pos;
+            args[1] = type;
+            args[2] = label;
+            args[3] = save;
+            args[4] = isChecked;
+
+            // if overload supports owner, use it; otherwise fill optional params with Type.Missing
+            for (int i = 5; i < args.Length; i++)
+            {
+                if (owner != null && parms[i].ParameterType.Name.IndexOf("PlatformUserID", StringComparison.OrdinalIgnoreCase) >= 0)
+                    args[i] = owner;
+                else
+                    args[i] = Type.Missing;
+            }
+
+            // 4) invoke and capture PinData
+            var pinObj = best.Invoke(mm, args) as Minimap.PinData;
+
+            // 5) if we couldn’t pass owner in, try to set it on the PinData
+            if (pinObj != null && owner != null)
+            {
+                try
+                {
+                    var t = pinObj.GetType();
+                    var fOwner = t.GetField("m_owner", BF) ?? t.GetField("m_ownerID", BF);
+                    if (fOwner != null && fOwner.FieldType.Name.IndexOf("PlatformUserID", StringComparison.OrdinalIgnoreCase) >= 0)
+                        fOwner.SetValue(pinObj, owner);
+                }
+                catch { /* best effort */ }
+            }
+
+            return pinObj;
+        }
+
+        static void Warn(string s)
+        {
+            Player.m_localPlayer?.Message(MessageHud.MessageType.TopLeft, s);
+            Console.instance?.Print(s);
+        }
+    }
+
+
+    public static class LootUtils
+    {
+        // pick everything in radius (void-return Pickup compatible)
+        public static int LootAll(float radius = 5f, bool includeNonAuto = true)
+        {
+            var player = Player.m_localPlayer; if (!player) return 0;
+            Vector3 center = player.transform.position;
+
+            // colliders near you (includes triggers, which ItemDrop often uses)
+            var hits = Physics.OverlapSphere(center, radius, ~0, QueryTriggerInteraction.Collide);
+
+            // de-dup across multiple colliders
+            var seen = new HashSet<ItemDrop>();
+            int looted = 0, skipped = 0;
+
+            for (int i = 0; i < hits.Length; i++)
+            {
+                var col = hits[i]; if (!col) continue;
+                var drop = col.GetComponentInParent<ItemDrop>(); if (!drop) continue;
+                if (seen.Contains(drop)) continue;
+                seen.Add(drop);
+
+                if (drop.m_itemData == null) continue;
+                if (!includeNonAuto && !drop.m_autoPickup) continue;
+
+                var znv = drop.GetComponent<ZNetView>();
+                if (znv != null && znv.IsValid() && !znv.IsOwner()) znv.ClaimOwnership();
+
+                // snapshot before
+                var go = drop.gameObject;
+                bool wasActive = go != null && go.activeInHierarchy;
+
+                // (optional) item count snapshot by token name; comment this out if CountItems doesn't exist on your build
+                int beforeCount = 0, afterCount = 0;
+                try { beforeCount = player.GetInventory().CountItems(drop.m_itemData.m_shared.m_name); } catch { }
+
+                // pickup (void on your build)
+                try { drop.Pickup(player); } catch { /* ignore */ }
+
+                // success heuristics:
+                // - many builds destroy/disable the ItemDrop on success
+                bool destroyedOrDisabled = (go == null) || !go || !go.activeInHierarchy || (znv != null && !znv.IsValid());
+
+                // - or inventory count increased (if CountItems is available)
+                bool countIncreased = false;
+                try
+                {
+                    afterCount = player.GetInventory().CountItems(drop.m_itemData.m_shared.m_name);
+                    countIncreased = afterCount > beforeCount;
+                }
+                catch { /* CountItems not available on some builds */ }
+
+                if (destroyedOrDisabled || countIncreased)
+                    looted++;
+                else
+                    skipped++;
+            }
+
+            player.Message(MessageHud.MessageType.TopLeft, $"Looted {looted}, skipped {skipped} (r={radius:0.0}m)");
+            Console.instance?.Print($"[LootAll] Looted {looted}, skipped {skipped}");
+            return looted;
+        }
+    }
+
+
+
     public static class OreFinder
     {
         public static float MaxRange = 1500f;
@@ -250,7 +590,8 @@ namespace ICanShowYouTheWorld
             for (int i = 0; i < count && pinned < MaxPins; i++)
             {
                 var pos = found[i].transform.position;
-                Minimap.instance.AddPin(pos, Minimap.PinType.Icon0, "Silver", false, false);
+                //Minimap.instance.AddPin(pos, Minimap.PinType.Icon0, "Silver", false, false);
+                PinHelpers.AddMinePinOwned(pos, "Silver", false, false);
                 pinned++;
             }
 
@@ -562,7 +903,7 @@ namespace ICanShowYouTheWorld
                 }
 
                 // Buff stats
-                p.m_baseHP = p.m_baseHP + 100f; // Health buff is an easy way to delay death, while not touching resists.
+                p.m_baseHP = p.m_baseHP + 30f; // Health buff is an easy way to delay death, while not touching resists.
                 p.m_blockStaminaDrain = 0.1f;
                 p.m_runStaminaDrain = 0.1f;
                 p.m_staminaRegen = 50f;
@@ -691,13 +1032,14 @@ namespace ICanShowYouTheWorld
                 //("Brew Stamina",           () => CheatCommands.RPCOnInRange<Fermenter>("AddItem", 5f, "MeadBaseStaminaMedium", 1)),
                 
                 // Dangerous
-                ("Reveal AshlandCaves",     () => CheatCommands.RevealClosestAshlandsCave()),
+                ("Reveal Morgen Hole",          () => CheatCommands.RevealClosestAshlandsCave()),
                 ("Reveal Charred Fortress",     () => CheatCommands.RevealClosestAshlandsFortress()),
                 ("Reveal Silver",                () => OreFinder.PinNearbySilver()),
-           
+                //("Reveal Silver",                () => PinHelpers.AddMinePinHere("Silver", false, false)),
+                //("Reveal Silver",                () => PinHelpers.ClearForeignSilverPins()),
 
-               // ("Reveal AshlandTomb",     () => CheatCommands.RevealClosestRetoTomb()), // lord reto
-                ("Reveal Bosses",           RevealBosses),
+        // ("Reveal AshlandTomb",     () => CheatCommands.RevealClosestRetoTomb()), // lord reto
+        ("Reveal Bosses",           RevealBosses),
     //          ("Explore Map",             ExploreAll),
 
                 // Other
@@ -910,7 +1252,7 @@ namespace ICanShowYouTheWorld
         public static void ToggleGodMode()
         {
             GodMode = !GodMode;
-            ToggleRenewal();
+            //ToggleRenewal(); // Try to disable this for god mode
             Player.m_localPlayer.SetGodMode(GodMode);
             Player.m_localPlayer.SetNoPlacementCost(value: GodMode);
             Player.m_localPlayer.m_guardianPowerCooldown = 1f; //todo: this works if we place it in Gift
@@ -1232,13 +1574,13 @@ namespace ICanShowYouTheWorld
             if (!RequireGodMode("Buff tamed")) return;
 
             List<Character> list = new List<Character>();
-            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 20.0f, list);
+            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 10.0f, list);
 
             // Set follow
             foreach (Character item in list)
             {
                 if (item.IsPlayer() || !item.IsTamed()) continue;
-                item.SetMaxHealth(800);
+                item.SetMaxHealth(1500);
      
                 if (incrlevel)
                     item.SetLevel(2);
