@@ -14,8 +14,16 @@ namespace ICanShowYouTheWorld
     public static class BossData
     {
         public static readonly (string prefab, string name)[] All = {
-            ("Eikthyrnir","Eikthyr"),("GDKing","The Elder"),("Bonemass","Bonemass"),
-            ("Dragonqueen","Moder"),("GoblinKing","Yagluth"),("FaderLocation","Fader")
+            //("Eikthyrnir","Eikthyr"),
+            //("GDKing","The Elder"),
+            //("Bonemass","Bonemass"),
+            //("Dragonqueen","Moder"),
+            ("GoblinKing","Yagluth"),
+            ("SeekerQueen","Queen"),
+            ("Mistlands_DvergrBossEntrance1","Queen"),
+            ("InfestedCitadel","Queen"),
+            ("Seekerqueen","Queen"),
+            ("FaderLocation","Fader")
         };
         public static void Reveal((string prefab, string name) b)
         {
@@ -747,6 +755,16 @@ namespace ICanShowYouTheWorld
             LocationCheats.RevealClosestRandom("MorgenHole", Minimap.PinType.Icon0, "Putrid Hole");
         }
 
+        public static void RevealClosestDvergrHouse()
+        {
+            LocationCheats.RevealClosestRandom("Mistlands_GuardTower1_new", Minimap.PinType.Icon1, "Dvergr 1");
+            LocationCheats.RevealClosestRandom("Mistlands_GuardTower1_ruined_new", Minimap.PinType.Icon1, "Dvergr 1 ruined");
+            LocationCheats.RevealClosestRandom("Mistlands_GuardTower3_ruined_new", Minimap.PinType.Icon1, "Dvergr 3 ruined");
+            LocationCheats.RevealClosestRandom("Mistlands_GuardTower3_new", Minimap.PinType.Icon1, "Dvergr 3");
+            LocationCheats.RevealClosestRandom("Mistlands_GuardTower2_new", Minimap.PinType.Icon1, "Dvergr 2");
+            LocationCheats.RevealClosestRandom("Mistlands_GuardTower2_ruined_new", Minimap.PinType.Icon1, "Dvergr 2 ruined");
+        }
+
         public static void RevealClosestAshlandsFortress()
         {
             LocationCheats.RevealClosestRandom("CharredFortress", Minimap.PinType.Icon1, "Fortress");
@@ -994,7 +1012,7 @@ namespace ICanShowYouTheWorld
         // 2. Redo food and pots in chests to have crafter name on it.
         // -------------------------------------
         private static readonly (string Name, Action Action)[] Utilities = {
-                // Common
+                // Commonƒƒ
                 ("Replenish Stacks",                    ReplenishStacks),
                 ("All your craft are belong to me",     SetMeAsCrafterOfFood),
                 ("Reapair all things",                  () => RepairStructuresAoE()),
@@ -1035,12 +1053,14 @@ namespace ICanShowYouTheWorld
                 ("Reveal Morgen Hole",          () => CheatCommands.RevealClosestAshlandsCave()),
                 ("Reveal Charred Fortress",     () => CheatCommands.RevealClosestAshlandsFortress()),
                 ("Reveal Silver",                () => OreFinder.PinNearbySilver()),
+                ("Reveal Dvergr house",                () => CheatCommands.RevealClosestDvergrHouse()),
+                
                 //("Reveal Silver",                () => PinHelpers.AddMinePinHere("Silver", false, false)),
                 //("Reveal Silver",                () => PinHelpers.ClearForeignSilverPins()),
 
         // ("Reveal AshlandTomb",     () => CheatCommands.RevealClosestRetoTomb()), // lord reto
         ("Reveal Bosses",           RevealBosses),
-    //          ("Explore Map",             ExploreAll),
+            ("Explore Map",             ExploreAll),
 
                 // Other
                 // angle is nsew based
@@ -1575,18 +1595,51 @@ namespace ICanShowYouTheWorld
 
             List<Character> list = new List<Character>();
             Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 10.0f, list);
-
-            // Set follow
-            foreach (Character item in list)
+            float total_dmg = 0;
+            foreach (Character ch in list)
             {
-                if (item.IsPlayer() || !item.IsTamed()) continue;
-                item.SetMaxHealth(1500);
-     
+                var mult = 1.2f; // Buff again to bumpo up dmg by .2
+                if (ch.IsPlayer() || !ch.IsTamed()) continue;
+                ch.SetMaxHealth(5000);
+
+                var h = ch as Humanoid;
+                if (h == null) return;
+                
+                var items = h.GetInventory()?.GetEquippedItems();
+                if (items == null) return;
+
+               
+                for (int i = 0; i < items.Count; i++)
+                {
+                    var it = items[i];
+                    if (!it.IsWeapon()) continue;
+
+                    var d = it.m_shared.m_damages;      // HitData.DamageTypes
+                    d.m_blunt *= mult;
+                    d.m_slash *= mult;
+                    d.m_pierce *= mult;
+                    //                   d.m_fire *= mult;
+                    //                   d.m_frost *= mult;
+                    //                   d.m_lightning *= mult;
+                    //                   d.m_poison *= mult;
+                    //                   d.m_spirit *= mult;
+                    //                   d.m_chop *= mult;
+                    //                   d.m_pickaxe *= mult;
+                    //                   d.m_damage *= mult;
+
+                    if(total_dmg == 0)
+                        total_dmg = d.m_blunt + d.m_slash + d.m_pierce;
+
+                    it.m_shared.m_damages = d;
+                    it.m_durability = it.m_shared.m_maxDurability;
+                }
+
                 if (incrlevel)
-                    item.SetLevel(2);
+                    ch.SetLevel(2);
             }
 
-            Show("Buff tamed");
+            Show("Buffed tamed: 5k hp + " + total_dmg + " dmg");
+
         }
 
         public static void SetFollowTarget(Character c, GameObject target)

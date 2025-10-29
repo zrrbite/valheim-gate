@@ -39,7 +39,7 @@ namespace ICanShowYouTheWorld
             _initialized = true;
 
             // 1) Get  version string
-            string version = "0.221.5-1"; //ModVersion.VERSION;
+            string version = "0.221.5-2"; //ModVersion.VERSION;
 
             // 2) Create the cheat GameObject
             var cheatObject = new GameObject("ICanShowYouTheWorld");
