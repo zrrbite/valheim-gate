@@ -237,7 +237,7 @@ static class DamageHelpers
             CheatCommands.Show("Buffed " + touched + " pets (x" + GROUP_MULT.ToString("0.0") + boosted.ToString() + ")");
         }
 
-        public static void ResetPetDmg()
+        public static void SetBaselinePetDmg()
         {
             if (!CheatCommands.RequireGodMode("Reset pet dmg")) return;
 
@@ -245,8 +245,8 @@ static class DamageHelpers
             const float FIXED_BLUNT = 20f;
             const float FIXED_SLASH = 20f;
             const float FIXED_PIERCE = 20f;
-            const float FIXED_FROST = 20f;
-            const float FIXED_FIRE = 20f;
+            const float FIXED_FROST = 0f; // 20f;
+            const float FIXED_FIRE = 0f; // 20f;
             const float FIXED_GENERIC = 0f;
             const float FIXED_CHOP = 0f;
             const float FIXED_PICK = 0f;
@@ -1918,6 +1918,7 @@ static class DamageHelpers
                 var mult = 1.2f; // Buff again to bumpo up dmg by .2
                 if (ch.IsPlayer() || !ch.IsTamed()) continue;
                 ch.SetMaxHealth(5000);
+                ch.Heal(ch.GetMaxHealth(), false);
 
                 var h = ch as Humanoid;
                 if (h == null) return;

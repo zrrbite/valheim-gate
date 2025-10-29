@@ -236,7 +236,7 @@ namespace ICanShowYouTheWorld
                 new CommandBinding {
                     Key         = KeyCode.Keypad8,
                     Description = "Reset pets",
-                    Execute     = PetBuff.ResetPetDmg //PetBuff.ResetPetBuffs
+                    Execute     = PetBuff.SetBaselinePetDmg //PetBuff.ResetPetBuffs
                 },
                // new CommandBinding {
                //     Key         = KeyCode.Keypad8,
