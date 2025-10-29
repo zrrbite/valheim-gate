@@ -35,6 +35,322 @@ namespace ICanShowYouTheWorld
         }
     }
 
+static class DamageHelpers
+    {
+        public static HitData.DamageTypes Copy(HitData.DamageTypes src)
+        {
+            var d = new HitData.DamageTypes();
+            d.m_blunt = src.m_blunt;
+            d.m_slash = src.m_slash;
+            d.m_pierce = src.m_pierce;
+            d.m_fire = src.m_fire;
+            d.m_frost = src.m_frost;
+            d.m_lightning = src.m_lightning;
+            d.m_poison = src.m_poison;
+            d.m_spirit = src.m_spirit;
+            d.m_chop = src.m_chop;
+            d.m_pickaxe = src.m_pickaxe;
+            d.m_damage = src.m_damage;
+            return d;
+        }
+
+        public static float Score(HitData.DamageTypes d)
+        {
+            // keep your score simple/physical
+            return d.m_blunt
+                 + d.m_slash
+                 + d.m_pierce
+                 + d.m_damage
+                 + d.m_chop
+                 + d.m_pickaxe;
+        }
+
+        public static HitData.DamageTypes Scaled(HitData.DamageTypes d, float mult)
+        {
+            var o = new HitData.DamageTypes();
+            o.m_blunt = d.m_blunt * mult;
+            o.m_slash = d.m_slash * mult;
+            o.m_pierce = d.m_pierce * mult;
+            o.m_fire = d.m_fire * mult;
+            o.m_frost = d.m_frost * mult;
+            o.m_lightning = d.m_lightning * mult;
+            o.m_poison = d.m_poison * mult;
+            o.m_spirit = d.m_spirit * mult;
+            o.m_chop = d.m_chop * mult;
+            o.m_pickaxe = d.m_pickaxe * mult;
+            o.m_damage = d.m_damage * mult;
+            return o;
+        }
+
+        public static string DebugString(HitData.DamageTypes d)
+        {
+            // compact readable dump of key types
+            return "blunt=" + d.m_blunt.ToString("0.0") +
+                   " slash=" + d.m_slash.ToString("0.0") +
+                   " pierce=" + d.m_pierce.ToString("0.0") +
+                   " dmg=" + d.m_damage.ToString("0.0") +
+                   " chop=" + d.m_chop.ToString("0.0") +
+                   " pick=" + d.m_pickaxe.ToString("0.0");
+        }
+    }
+
+    public static class PetBuff
+    {
+        private static Dictionary<string, HitData.DamageTypes> OriginalWeaponDamage =
+            new Dictionary<string, HitData.DamageTypes>();
+
+        private static HitData.DamageTypes GroupBaseline;
+        private static bool GroupBaselineValid = false;
+
+        private const float GROUP_MULT = 1.2f;
+        private const float PET_RADIUS = 10f;
+
+        private static void ComputeGroupBaseline()
+        {
+            GroupBaselineValid = false;
+            float bestScore = -1f;
+
+            var list = new List<Character>();
+            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, PET_RADIUS, list);
+
+            for (int i = 0; i < list.Count; i++)
+            {
+                var ch = list[i];
+                if (ch == null) continue;
+                if (!ch.IsTamed() || ch.IsPlayer()) continue;
+
+                var hum = ch as Humanoid;
+                if (hum == null) continue;
+
+                var inv = hum.GetInventory();
+                if (inv == null) continue;
+
+                var eq = inv.GetEquippedItems();
+                if (eq == null) continue;
+
+                for (int w = 0; w < eq.Count; w++)
+                {
+                    var it = eq[w];
+                    if (!it.IsWeapon()) continue;
+
+                    string wName = it.m_shared.m_name;
+
+                    // capture original prefab stats once
+                    if (!OriginalWeaponDamage.ContainsKey(wName))
+                    {
+                        OriginalWeaponDamage[wName] = DamageHelpers.Copy(it.m_shared.m_damages);
+                    }
+
+                    var baseDmg = OriginalWeaponDamage[wName];
+                    float score = DamageHelpers.Score(baseDmg);
+
+                    if (!GroupBaselineValid)
+                    {
+                        GroupBaseline = DamageHelpers.Copy(baseDmg);
+                        bestScore = score;
+                        GroupBaselineValid = true;
+                    }
+                    else
+                    {
+                        if (score < bestScore)
+                        {
+                            GroupBaseline = DamageHelpers.Copy(baseDmg);
+                            bestScore = score;
+                        }
+                    }
+                }
+            }
+
+            if (GroupBaselineValid)
+            {
+                // Debug print baseline
+                string dbg = DamageHelpers.DebugString(GroupBaseline);
+                Console.instance?.Print("[PetBuff] Baseline score=" + bestScore.ToString("0.0") + " dmg=" + dbg);
+                CheatCommands.Show("Pet baseline dmg set: " + dbg);
+            }
+            else
+            {
+                CheatCommands.Show("No pet weapons found for baseline");
+            }
+        }
+
+        public static void BuffAllPets(bool incrLevel = false)
+        {
+            if (!CheatCommands.RequireGodMode("Buff tamed")) return;
+
+            ComputeGroupBaseline();
+            if (!GroupBaselineValid)
+            {
+                CheatCommands.Show("No baseline, nothing buffed");
+                return;
+            }
+
+            var boosted = DamageHelpers.Scaled(GroupBaseline, GROUP_MULT);
+
+            var list = new List<Character>();
+            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, PET_RADIUS, list);
+
+            int touched = 0;
+            for (int i = 0; i < list.Count; i++)
+            {
+                var ch = list[i];
+                if (ch == null) continue;
+                if (!ch.IsTamed() || ch.IsPlayer()) continue;
+
+                // HP buff
+                ch.SetMaxHealth(5000f);
+                ch.Heal(ch.GetMaxHealth(), false);
+
+                // Only affects humanoid-style pets (skeletons, dvergr support mages, etc.)
+                Humanoid hum = ch as Humanoid;
+                if (hum != null)
+                {
+                    var inv = hum.GetInventory();
+                    if (inv != null)
+                    {
+                        var eq = inv.GetEquippedItems();
+                        if (eq != null)
+                        {
+                            for (int w = 0; w < eq.Count; w++)
+                            {
+                                var it = eq[w];
+                                if (!it.IsWeapon()) continue;
+
+                                // Apply boosted damage
+                                it.m_shared.m_damages = DamageHelpers.Copy(boosted);
+                                it.m_durability = it.m_shared.m_maxDurability;
+
+                                // Debug per weapon
+                                string afterDbg = DamageHelpers.DebugString(it.m_shared.m_damages);
+                                Console.instance?.Print("[PetBuff] Applied to " + ch.GetHoverName() + " weapon " + it.m_shared.m_name + ": " + afterDbg);
+                            }
+                        }
+                    }
+                }
+
+                if (incrLevel)
+                    ch.SetLevel(2);
+
+                touched++;
+            }
+
+            CheatCommands.Show("Buffed " + touched + " pets (x" + GROUP_MULT.ToString("0.0") + boosted.ToString() + ")");
+        }
+
+        public static void ResetPetDmg()
+        {
+            if (!CheatCommands.RequireGodMode("Reset pet dmg")) return;
+
+            // fixed stats you want pets to have after reset
+            const float FIXED_BLUNT = 20f;
+            const float FIXED_SLASH = 20f;
+            const float FIXED_PIERCE = 20f;
+            const float FIXED_FROST = 20f;
+            const float FIXED_FIRE = 20f;
+            const float FIXED_GENERIC = 0f;
+            const float FIXED_CHOP = 0f;
+            const float FIXED_PICK = 0f;
+
+            int changed = 0;
+
+            var list = new List<Character>();
+            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 10f, list);
+
+            foreach (Character ch in list)
+            {
+                // only touch tamed non-player followers
+                if (ch == null) continue;
+                if (!ch.IsTamed() || ch.IsPlayer()) continue;
+
+                // we only support humanoid-style followers here (skeletons, dvergr mages, etc.)
+                Humanoid h = ch as Humanoid;
+                if (h == null) continue;
+
+                var inv = h.GetInventory();
+                if (inv == null) continue;
+
+                var eq = inv.GetEquippedItems();
+                if (eq == null) continue;
+
+                foreach (var it in eq)
+                {
+                    if (!it.IsWeapon()) continue;
+
+                    // slam damage to fixed template
+                    var fixedDmg = new HitData.DamageTypes
+                    {
+                        m_blunt = FIXED_BLUNT,
+                        m_slash = FIXED_SLASH,
+                        m_pierce = FIXED_PIERCE,
+                        m_damage = FIXED_GENERIC,
+                        m_chop = FIXED_CHOP,
+                        m_pickaxe = FIXED_PICK,
+                        // elemental
+                        m_fire = 0f,
+                        m_frost = FIXED_FROST,
+                        m_lightning = FIXED_FIRE,
+                        m_poison = 0f,
+                        m_spirit = 0f
+                    };
+
+                    it.m_shared.m_damages = fixedDmg;
+                    it.m_durability = it.m_shared.m_maxDurability;
+                    changed++;
+                }
+            }
+
+            CheatCommands.Show("Reset pet dmg on " + changed + " weapons to fixed template");
+        }
+
+        public static void ResetPetBuffs()
+        {
+            var list = new List<Character>();
+            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, PET_RADIUS, list);
+
+            int touched = 0;
+            for (int i = 0; i < list.Count; i++)
+            {
+                var ch = list[i];
+                if (ch == null) continue;
+                if (!ch.IsTamed() || ch.IsPlayer()) continue;
+
+                Humanoid hum = ch as Humanoid;
+                if (hum != null)
+                {
+                    var inv = hum.GetInventory();
+                    if (inv != null)
+                    {
+                        var eq = inv.GetEquippedItems();
+                        if (eq != null)
+                        {
+                            for (int w = 0; w < eq.Count; w++)
+                            {
+                                var it = eq[w];
+                                if (!it.IsWeapon()) continue;
+
+                                string wName = it.m_shared.m_name;
+
+                                HitData.DamageTypes orig;
+                                if (OriginalWeaponDamage.TryGetValue(wName, out orig))
+                                {
+                                    it.m_shared.m_damages = DamageHelpers.Copy(orig);
+                                    it.m_durability = it.m_shared.m_maxDurability;
+
+                                    string dbg = DamageHelpers.DebugString(orig);
+                                    Console.instance?.Print("[PetBuff] Reset " + ch.GetHoverName() + " weapon " + it.m_shared.m_name + " to " + dbg);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                touched++;
+            }
+
+            CheatCommands.Show("Reset " + touched + " pets to original weapon dmg");
+        }
+    }
+
     public static class LocationCheats
     {
         static readonly BindingFlags BF = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
@@ -1219,7 +1535,7 @@ namespace ICanShowYouTheWorld
         public static void HandlePeriodic() => PeriodicManager.HandlePeriodic();
 
         // Permission check
-        private static bool RequireGodMode(string ability)
+        public static bool RequireGodMode(string ability)
         {
             if (!GodMode)
             {
@@ -1589,6 +1905,7 @@ namespace ICanShowYouTheWorld
                 Show($"{tamed} pets following");
         }
 
+        public static float base_pet_dmg = 30.0f;
         public static void BuffTamed(bool incrlevel = false)
         {
             if (!RequireGodMode("Buff tamed")) return;
@@ -1608,7 +1925,6 @@ namespace ICanShowYouTheWorld
                 var items = h.GetInventory()?.GetEquippedItems();
                 if (items == null) return;
 
-               
                 for (int i = 0; i < items.Count; i++)
                 {
                     var it = items[i];

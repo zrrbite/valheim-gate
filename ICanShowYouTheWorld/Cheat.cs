@@ -230,15 +230,19 @@ namespace ICanShowYouTheWorld
  */
                 new CommandBinding {
                     Key         = KeyCode.Keypad7,
-                    Description = "Buff pets",
-                    Execute     = () => CheatCommands.BuffTamed(false)
+                    Description = "Buff pets (normalize)",
+                    Execute     = () => CheatCommands.BuffTamed(false) //PetBuff.BuffAllPets(false)
                 },
-
                 new CommandBinding {
                     Key         = KeyCode.Keypad8,
-                    Description = "Tame targeted",
-                    Execute     = CheatCommands.TameTargeted
+                    Description = "Reset pets",
+                    Execute     = PetBuff.ResetPetDmg //PetBuff.ResetPetBuffs
                 },
+               // new CommandBinding {
+               //     Key         = KeyCode.Keypad8,
+               //     Description = "Tame targeted",
+               //     Execute     = CheatCommands.TameTargeted
+               // },
                new CommandBinding {
                     Key         = KeyCode.Keypad9,
                     Description = "Tame r, stay",
