@@ -180,7 +180,8 @@ namespace ICanShowYouTheWorld
                 new CommandBinding {
                     Key         = KeyCode.Keypad3,
                     Description = "HoT Cheal",
-                    Execute = () => CheatCommands.ToggleRenewal()
+                    Execute = CheatCommands.ToggleRenewal,
+                    GetState    = () => CheatCommands.RenewalActive
                 },
                 // -------- COF, immunity ---------------
                 new CommandBinding {
