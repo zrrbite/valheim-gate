@@ -302,6 +302,78 @@ static class DamageHelpers
             CheatCommands.Show("Reset pet dmg on " + changed + " weapons to fixed template");
         }
 
+        public static void ResetPetDmg()
+        {
+            if (!CheatCommands.RequireGodMode("Reset pet dmg")) return;
+
+            const float FIXED_GENERIC = 100f;  // if weapon uses only m_damage
+            const float FIXED_TYPED = 50f;   // if weapon uses typed channels
+
+            int changed = 0;
+            var list = new List<Character>();
+            Character.GetCharactersInRange(Player.m_localPlayer.transform.position, 10f, list);
+
+            foreach (var ch in list)
+            {
+                if (ch == null || ch.IsPlayer() || !ch.IsTamed()) continue;
+
+                var h = ch as Humanoid;
+                if (h == null) continue;
+
+                var eq = h.GetInventory()?.GetEquippedItems();
+                if (eq == null) continue;
+
+                foreach (var it in eq)
+                {
+                    if (!it.IsWeapon()) continue;
+
+                    var baseD = it.m_shared.m_damages;
+
+                    bool usesGeneric = baseD.m_damage > 0f;
+                    bool usesTyped =
+                        baseD.m_blunt > 0f || baseD.m_slash > 0f || baseD.m_pierce > 0f ||
+                        baseD.m_fire > 0f || baseD.m_frost > 0f || baseD.m_lightning > 0f ||
+                        baseD.m_poison > 0f || baseD.m_spirit > 0f || baseD.m_chop > 0f ||
+                        baseD.m_pickaxe > 0f;
+
+                    var upd = baseD; // start from what it already uses
+
+                    if (usesGeneric)
+                    {
+                        // weapon relies on generic damage only
+                        upd.m_damage = FIXED_GENERIC;
+                        // don't zero the typed channels; just leave as-is to avoid surprises
+                    }
+                    else if (usesTyped)
+                    {
+                        // normalize only the channels it actually had
+                        if (baseD.m_blunt > 0f) upd.m_blunt = FIXED_TYPED;
+                        if (baseD.m_slash > 0f) upd.m_slash = FIXED_TYPED;
+                        if (baseD.m_pierce > 0f) upd.m_pierce = FIXED_TYPED;
+                        if (baseD.m_fire > 0f) upd.m_fire = FIXED_TYPED;
+                        if (baseD.m_frost > 0f) upd.m_frost = FIXED_TYPED;
+                        if (baseD.m_lightning > 0f) upd.m_lightning = FIXED_TYPED;
+                        if (baseD.m_poison > 0f) upd.m_poison = FIXED_TYPED;
+                        if (baseD.m_spirit > 0f) upd.m_spirit = FIXED_TYPED;
+                        if (baseD.m_chop > 0f) upd.m_chop = FIXED_TYPED;
+                        if (baseD.m_pickaxe > 0f) upd.m_pickaxe = FIXED_TYPED;
+                    }
+                    else
+                    {
+                        // Edge case: everything is 0 (projectile/ability weapon).
+                        // Leave it alone to avoid forcing 0; consider logging.
+                        continue;
+                    }
+
+                    it.m_shared.m_damages = upd;
+                    it.m_durability = it.m_shared.m_maxDurability;
+                    changed++;
+                }
+            }
+
+            CheatCommands.Show($"Reset pet dmg on {changed} weapons (preserved active channels)");
+        }
+
         public static void ResetPetBuffs()
         {
             var list = new List<Character>();
@@ -1064,6 +1136,14 @@ static class DamageHelpers
                 Show("AshlandRuins not found");
         }
 
+        public static void RevealClosestMysterious()
+        {
+            LocationCheats.RevealClosestRandom("PlaceOfMystery1", Minimap.PinType.Icon0, "Mystery");
+            LocationCheats.RevealClosestRandom("PlaceOfMystery2", Minimap.PinType.Icon0, "Mystery");
+            LocationCheats.RevealClosestRandom("PlaceOfMystery3", Minimap.PinType.Icon0, "Mystery");
+
+        }
+
         // Convenience wrappers:
         public static void RevealClosestAshlandsCave()
         {
@@ -1367,7 +1447,7 @@ static class DamageHelpers
                 
                 // Dangerous
                 ("Reveal Morgen Hole",          () => CheatCommands.RevealClosestAshlandsCave()),
-                ("Reveal Charred Fortress",     () => CheatCommands.RevealClosestAshlandsFortress()),
+                ("Reveal Mystery",     () => CheatCommands.RevealClosestMysterious()),
                 ("Reveal Silver",                () => OreFinder.PinNearbySilver()),
                 ("Reveal Dvergr house",                () => CheatCommands.RevealClosestDvergrHouse()),
                 
