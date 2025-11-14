@@ -1,22 +1,72 @@
-#####################################
-# Downlods, patches- and uploads main game assembly again
-# - This is almost always something you'd want to do, unless the patcher needs to change, which is raare.
-# - This leaves only the hax binary to be recompiled against the new game bin and maybe unity. 
-#      - Then upload manually.
-##########################################
+#!/bin/bash
+# Complete workflow: Download, patch, and upload Valheim assembly
+# This is the most common operation when Valheim updates
 
-# Download important binaries
+set -e  # Exit on error
 
-## Main game
-scp deck@192.168.86.42:/home/deck/.local/share/Steam/steamapps/common/Valheim/valheim_Data/Managed/assembly_valheim.dll ../libraries  
-## Unity things
-scp deck@192.168.86.42:/home/deck/.local/share/Steam/steamapps/common/Valheim/valheim_Data/Managed/UnityEngine.UI.dll ../libraries  
+# Load configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/config.sh"
 
-# Patch main assembly and push it back
-cp ../libraries/assembly_valheim.dll ../Patcher/bin/Debug/assembly_valheim.dll.org
-cd ../Patcher/bin/Debug/
-mono Patcher.exe
+echo ""
+print_info "=========================================="
+print_info "Valheim Assembly Update Workflow"
+print_info "=========================================="
+echo ""
 
-# ready for upload
-scp patched/assembly_valheim.dll deck@192.168.86.42:/home/deck/.local/share/Steam/steamapps/common/Valheim/valheim_Data/Managed/
+# Step 1: Download
+print_info "STEP 1: Downloading assemblies from Steam Deck..."
+mkdir -p "$LIBRARIES_DIR"
+mkdir -p "$PATCHER_DIR"
 
+if scp "$DECK_HOST:$DECK_VALHEIM_MANAGED/assembly_valheim.dll" "$LIBRARIES_DIR/"; then
+    print_success "Downloaded assembly_valheim.dll"
+else
+    print_error "Failed to download assembly_valheim.dll"
+    exit 1
+fi
+
+if scp "$DECK_HOST:$DECK_VALHEIM_MANAGED/UnityEngine.UI.dll" "$LIBRARIES_DIR/"; then
+    print_success "Downloaded UnityEngine.UI.dll"
+else
+    print_error "Failed to download UnityEngine.UI.dll"
+    exit 1
+fi
+
+echo ""
+
+# Step 2: Backup and Patch
+print_info "STEP 2: Patching assembly..."
+cp "$LIBRARIES_DIR/assembly_valheim.dll" "$PATCHER_DIR/assembly_valheim.dll.org"
+print_success "Original assembly backed up"
+
+cd "$PATCHER_DIR"
+if mono Patcher.exe; then
+    print_success "Assembly patched successfully!"
+else
+    print_error "Patching failed!"
+    exit 1
+fi
+
+echo ""
+
+# Step 3: Upload
+print_info "STEP 3: Uploading patched assembly to Steam Deck..."
+if scp "$PATCHED_ASSEMBLY" "$DECK_HOST:$DECK_VALHEIM_MANAGED/"; then
+    print_success "Patched assembly uploaded!"
+else
+    print_error "Upload failed!"
+    exit 1
+fi
+
+echo ""
+print_success "=========================================="
+print_success "All done! Valheim assembly updated."
+print_success "=========================================="
+echo ""
+print_info "Next steps:"
+print_info "  1. Copy patched assembly to libraries for linking:"
+print_info "     cp $PATCHED_ASSEMBLY $LIBRARIES_DIR/"
+print_info "  2. Rebuild your mod if needed"
+print_info "  3. Upload mod: $SCRIPT_DIR/upload_hax.sh"
+echo ""

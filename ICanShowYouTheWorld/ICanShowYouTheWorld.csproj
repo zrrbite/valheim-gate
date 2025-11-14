@@ -287,7 +287,7 @@
     <Compile Include="Cheat.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Helpers.cs" />
-    <Compile Include="VersionTemplate.cs" />
+    <Compile Include="Assets\Version.cs" />
     <Compile Include="UIManager.cs" />
     <Compile Include="CheatCommands.cs" />
     <Compile Include="InputManager.cs" />
