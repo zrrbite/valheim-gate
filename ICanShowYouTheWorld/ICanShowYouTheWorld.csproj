@@ -295,9 +295,16 @@
     <Compile Include="Assets\CircleVisualizer.cs" />
     <Compile Include="ListView.cs" />
     <Compile Include="Farming.cs" />
+    <Compile Include="Core\Configuration.cs" />
+    <Compile Include="Core\ServiceContainer.cs" />
+    <Compile Include="Core\ServiceContainer.Example.cs" />
+    <Compile Include="Game\IGameAPI.cs" />
+    <Compile Include="Game\ValheimGameAPI.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Assets\" />
+    <Folder Include="Core\" />
+    <Folder Include="Game\" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
 </Project>
