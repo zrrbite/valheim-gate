@@ -298,13 +298,23 @@
     <Compile Include="Core\Configuration.cs" />
     <Compile Include="Core\ServiceContainer.cs" />
     <Compile Include="Core\ServiceContainer.Example.cs" />
-    <Compile Include="Game\IGameAPI.cs" />
-    <Compile Include="Game\ValheimGameAPI.cs" />
+    <Compile Include="Core\ModBootstrap.cs" />
+    <Compile Include="GameAPI\IGameAPI.cs" />
+    <Compile Include="GameAPI\ValheimGameAPI.cs" />
+    <Compile Include="Services\ITeleportService.cs" />
+    <Compile Include="Services\TeleportService.cs" />
+    <Compile Include="Services\ICombatService.cs" />
+    <Compile Include="Services\CombatService.cs" />
+    <Compile Include="Services\IPetService.cs" />
+    <Compile Include="Services\PetService.cs" />
+    <Compile Include="Services\ISpawnService.cs" />
+    <Compile Include="Services\SpawnService.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Assets\" />
     <Folder Include="Core\" />
-    <Folder Include="Game\" />
+    <Folder Include="GameAPI\" />
+    <Folder Include="Services\" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
 </Project>
