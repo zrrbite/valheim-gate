@@ -154,6 +154,34 @@ Copy `assembly_valheim.dll` and `ICanShowYouTheWorld.dll` to...
 - Location: `~/.config/unity3d/IronGate/Valheim/ICanShowYouTheWorld.json`
 - Edit settings without redeploying DLL (restart game to apply)
 
+### Viewing/Editing Configuration on Steam Deck
+
+Via SSH:
+```bash
+# View the configuration
+ssh deck@<steam-deck-ip>
+cat ~/.config/unity3d/IronGate/Valheim/ICanShowYouTheWorld.json
+
+# Edit with nano
+nano ~/.config/unity3d/IronGate/Valheim/ICanShowYouTheWorld.json
+# (Ctrl+X to exit, Y to save)
+
+# Edit with vi
+vi ~/.config/unity3d/IronGate/Valheim/ICanShowYouTheWorld.json
+```
+
+Or download, edit locally, and re-upload:
+```bash
+# Download from Deck
+scp deck@<steam-deck-ip>:~/.config/unity3d/IronGate/Valheim/ICanShowYouTheWorld.json ./
+
+# Edit locally with your preferred editor
+code ICanShowYouTheWorld.json  # or vim, nano, etc.
+
+# Upload back to Deck
+scp ICanShowYouTheWorld.json deck@<steam-deck-ip>:~/.config/unity3d/IronGate/Valheim/
+```
+
 After starting up the game go to the  Credits menu (If  the "Valheim" logo appears during game startup, the `assembly_valheim.dll` is compliant. Otherwise it may be corrupted somehow and you'll need to either repair or replace the patched version with your backup). This registers the patched assemblies / code to be called by the main game loop.
 
 Through SSH, example:
