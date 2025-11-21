@@ -139,6 +139,28 @@ namespace ICanShowYouTheWorld.Services
         /// </summary>
         void DecreaseDamageCounter();
 
+        // --- Movement Speed ---
+        /// <summary>
+        /// Current player run speed.
+        /// </summary>
+        float CurrentRunSpeed { get; }
+
+        /// <summary>
+        /// Increase player run speed by configured increment.
+        /// </summary>
+        void SpeedUp();
+
+        /// <summary>
+        /// Decrease player run speed by configured increment.
+        /// </summary>
+        void SpeedDown();
+
+        /// <summary>
+        /// Set player run speed to specific value.
+        /// </summary>
+        /// <param name="speed">Target run speed.</param>
+        void SetSpeed(float speed);
+
         // --- Tunables ---
         /// <summary>
         /// Knockback radius for knockback AoE (default: 10f).

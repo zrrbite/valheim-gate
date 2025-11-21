@@ -1896,8 +1896,17 @@ static class DamageHelpers
             Show("Map fully explored");
         }
 
-        public static void SpeedUp() => SetSpeed(Player.m_localPlayer.m_runSpeed + 1);
-        public static void SpeedDown() => SetSpeed(Player.m_localPlayer.m_runSpeed - 1);
+        public static void SpeedUp()
+        {
+            var combat = Core.ModBootstrap.GetService<Services.ICombatService>();
+            combat.SpeedUp();
+        }
+
+        public static void SpeedDown()
+        {
+            var combat = Core.ModBootstrap.GetService<Services.ICombatService>();
+            combat.SpeedDown();
+        }
 
         public static void ToggleGhostMode()
         {

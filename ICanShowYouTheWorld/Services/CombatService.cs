@@ -435,6 +435,40 @@ namespace ICanShowYouTheWorld.Services
             ApplySuperWeapon();
         }
 
+        // --- Movement Speed ---
+        public float CurrentRunSpeed
+        {
+            get
+            {
+                if (!_game.IsLocalPlayerValid) return 0f;
+                return _game.LocalPlayer.m_runSpeed;
+            }
+        }
+
+        public void SpeedUp()
+        {
+            if (!_game.IsLocalPlayerValid) return;
+            SetSpeed(_game.LocalPlayer.m_runSpeed + _config.SpeedIncrement);
+        }
+
+        public void SpeedDown()
+        {
+            if (!_game.IsLocalPlayerValid) return;
+            SetSpeed(_game.LocalPlayer.m_runSpeed - _config.SpeedIncrement);
+        }
+
+        public void SetSpeed(float speed)
+        {
+            if (!_game.IsLocalPlayerValid) return;
+
+            var p = _game.LocalPlayer;
+            p.m_runSpeed = p.m_walkSpeed = speed;
+            p.m_jumpForce = speed;
+            p.m_jumpForceForward = speed;
+
+            _game.ShowMessage($"Speed: {speed:0.0}", MessageType.TopLeft);
+        }
+
         private void ApplySuperWeapon()
         {
             if (!_game.IsLocalPlayerValid) return;
