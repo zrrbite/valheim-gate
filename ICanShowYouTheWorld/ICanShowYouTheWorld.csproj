@@ -309,6 +309,8 @@
     <Compile Include="Services\PetService.cs" />
     <Compile Include="Services\ISpawnService.cs" />
     <Compile Include="Services\SpawnService.cs" />
+    <Compile Include="Services\IBuffService.cs" />
+    <Compile Include="Services\BuffService.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Assets\" />

@@ -64,6 +64,11 @@ namespace ICanShowYouTheWorld.Core
                 container.RegisterInstance<ISpawnService>(spawnService);
                 Debug.Log("[ICanShowYouTheWorld] SpawnService registered");
 
+                // BuffService depends on IGameAPI, IConfiguration, and ICombatService
+                var buffService = new BuffService(gameAPI, config, combatService);
+                container.RegisterInstance<IBuffService>(buffService);
+                Debug.Log("[ICanShowYouTheWorld] BuffService registered");
+
                 _initialized = true;
                 Debug.Log($"[ICanShowYouTheWorld] Initialization complete! All services registered.");
 
