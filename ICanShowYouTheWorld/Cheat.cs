@@ -38,6 +38,9 @@ namespace ICanShowYouTheWorld
             }
             _initialized = true;
 
+            // Initialize the new service-based architecture
+            Core.ModBootstrap.Initialize();
+
             // 1) Get version string
             string version = ModVersion.VERSION;
 
