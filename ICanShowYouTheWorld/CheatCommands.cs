@@ -1559,15 +1559,22 @@ static class DamageHelpers
         // 3. Key‐handler to step to the next one
         public static void CycleUtility()
         {
-            utilIndex = (utilIndex + 1) % Utilities.Length;
-            Show($"Selected Utility: {CurrentUtilityName}");
+            var utility = Core.ModBootstrap.GetService<Services.IUtilityService>();
+            utility.CycleNext();
+        }
+
+        public static void CycleUtilityBackward()
+        {
+            var utility = Core.ModBootstrap.GetService<Services.IUtilityService>();
+            utility.CyclePrevious();
         }
 
         // 4. Key‐handler to execute the selected one
         public static void ExecuteUtility()
         {
             if (!RequireGodMode("Utilities")) return;
-            Utilities[utilIndex].Action();
+            var utility = Core.ModBootstrap.GetService<Services.IUtilityService>();
+            utility.ExecuteCurrent();
         }
 
         // 1) Call this to de-aggro every monster in radius
@@ -1721,8 +1728,14 @@ static class DamageHelpers
         // 1.B) Cycle to the next prefab in the list
         public static void CyclePrefab()
         {
-            prefabIndex = (prefabIndex + 1) % SpawnPrefabs.Length;
-            Show($"Selected prefab: {CurrentPrefab}");
+            var spawn = Core.ModBootstrap.GetService<Services.ISpawnService>();
+            spawn.CyclePrefab();
+        }
+
+        public static void CyclePrefabBackward()
+        {
+            var spawn = Core.ModBootstrap.GetService<Services.ISpawnService>();
+            spawn.CyclePrefabBackward();
         }
 
         // Spawn whatever is currently selected

@@ -27,6 +27,27 @@ namespace ICanShowYouTheWorld.Services
         void CyclePrefab();
 
         /// <summary>
+        /// Cycle to the previous prefab in the available prefab list.
+        /// </summary>
+        void CyclePrefabBackward();
+
+        /// <summary>
+        /// Get prefab name at offset from current (-2, -1, 0, +1, +2).
+        /// Returns empty string if out of bounds.
+        /// </summary>
+        string GetPrefabAtOffset(int offset);
+
+        /// <summary>
+        /// Current prefab index (0-based).
+        /// </summary>
+        int CurrentPrefabIndex { get; }
+
+        /// <summary>
+        /// Total number of prefabs available.
+        /// </summary>
+        int TotalPrefabCount { get; }
+
+        /// <summary>
         /// Spawn the currently selected prefab at the mouse cursor world position.
         /// Requires god mode.
         /// </summary>

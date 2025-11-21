@@ -69,6 +69,11 @@ namespace ICanShowYouTheWorld.Core
                 container.RegisterInstance<IBuffService>(buffService);
                 Debug.Log("[ICanShowYouTheWorld] BuffService registered");
 
+                // UtilityService depends on IGameAPI and IConfiguration
+                var utilityService = new UtilityService(gameAPI, config);
+                container.RegisterInstance<IUtilityService>(utilityService);
+                Debug.Log("[ICanShowYouTheWorld] UtilityService registered");
+
                 _initialized = true;
                 Debug.Log($"[ICanShowYouTheWorld] Initialization complete! All services registered.");
 

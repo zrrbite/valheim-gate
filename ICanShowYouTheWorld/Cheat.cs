@@ -319,11 +319,11 @@ namespace ICanShowYouTheWorld
                     Description = "Next Prefab",
                     Execute     = CheatCommands.CyclePrefab,
                 },
-                //new CommandBinding {
-                //    Key         = KeyCode.KeypadPeriod,
-                //    Description = "Prev Prefab",
-                //    Execute     = CheatCommands.CyclePrefab,
-                //},
+                new CommandBinding {
+                    Key         = KeyCode.Delete,
+                    Description = "Prev Prefab",
+                    Execute     = CheatCommands.CyclePrefabBackward,
+                },
                 new CommandBinding {
                     Key         = KeyCode.KeypadEnter,
                     Description = "Spawn Prefab",
@@ -333,6 +333,12 @@ namespace ICanShowYouTheWorld
                     Key         = KeyCode.ScrollLock,
                     Description = "Next Utility",
                     Execute     = CheatCommands.CycleUtility,
+                    GetState    = null
+                },
+                new CommandBinding {
+                    Key         = KeyCode.PageDown,
+                    Description = "Prev Utility",
+                    Execute     = CheatCommands.CycleUtilityBackward,
                     GetState    = null
                 },
                 // Execute the current utility (e.g. KeypadEnter)

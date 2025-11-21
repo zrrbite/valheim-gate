@@ -14,6 +14,8 @@ namespace ICanShowYouTheWorld
         const float TW = 300, TH = 250f;
         const float modeWidth = 325f;
         const float modeHeight = 550f;
+        const float selectionWidth = 240f;
+        const float selectionHeight = 320f;
 
         //private Rect trackWindow = new Rect(250, Screen.height - 250, 250, 150);
         private Rect trackWindow = new Rect(
@@ -30,6 +32,15 @@ namespace ICanShowYouTheWorld
             modeWidth,                  // width
             modeHeight                  // height
         );
+
+        // Selection window (prefabs + utilities) - positioned to the left of modeWindow
+        private Rect selectionWindow = new Rect(
+            Screen.width - modeWidth - selectionWidth - 10f,  // x: left of modes window
+            Screen.height - selectionHeight - 240f,           // y: same as modes window
+            selectionWidth,                                    // width
+            selectionHeight                                    // height
+        );
+
         // Pets panel, just to the right of tracking
         private Rect petWindow = new Rect(
             20f,
@@ -79,6 +90,15 @@ namespace ICanShowYouTheWorld
             petWindow = GUILayout.Window(
                 2, petWindow, DrawPets, "Group",
                 GUILayout.Width(200f), GUILayout.Height(TH)
+            );
+            // ID = 3 for Selection (prefabs + utilities)
+            selectionWindow = GUILayout.Window(
+                3,
+                selectionWindow,
+                DrawSelection,
+                "Selection",
+                GUILayout.MinWidth(selectionWidth),
+                GUILayout.MinHeight(selectionHeight)
             );
         }
 
@@ -173,6 +193,114 @@ namespace ICanShowYouTheWorld
             GUI.contentColor = old;
             GUI.DragWindow();
         }
+
+        void DrawSelection(int id)
+        {
+            // Opaque dark backdrop
+            GUI.backgroundColor = new Color(0f, 0f, 0f, 0.8f);
+            GUI.Box(new Rect(0, 0, selectionWindow.width, selectionWindow.height), GUIContent.none);
+            GUI.backgroundColor = Color.white;
+
+            var highlightStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontStyle = FontStyle.Bold,
+                normal = { textColor = Color.white },
+                fontSize = 13
+            };
+
+            var contextStyle = new GUIStyle(GUI.skin.label) { fontSize = 10 };
+            var currentStyle = new GUIStyle(GUI.skin.label) { fontSize = 11, fontStyle = FontStyle.Bold };
+
+            // === PREFAB SECTION ===
+            var spawn = Core.ModBootstrap.GetService<Services.ISpawnService>();
+
+            // Header with count
+            GUILayout.BeginHorizontal();
+            GUI.contentColor = Color.cyan;
+            GUILayout.Label($"▼ PREFAB ({spawn.CurrentPrefabIndex + 1}/{spawn.TotalPrefabCount})", highlightStyle);
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+            GUILayout.Space(2);
+
+            // Context window showing ±2 prefabs
+            for (int offset = -2; offset <= 2; offset++)
+            {
+                string prefabName = spawn.GetPrefabAtOffset(offset);
+                if (string.IsNullOrEmpty(prefabName)) continue;
+
+                GUILayout.BeginHorizontal();
+                if (offset == 0)
+                {
+                    GUI.contentColor = Color.yellow;
+                    GUILayout.Label($"  ► {prefabName} ◄", currentStyle);
+                }
+                else
+                {
+                    GUI.contentColor = new Color(0.7f, 0.7f, 0.7f);
+                    GUILayout.Label($"    {prefabName}", contextStyle);
+                }
+                GUILayout.FlexibleSpace();
+                GUILayout.EndHorizontal();
+            }
+
+            // Keybind hints
+            GUILayout.Space(2);
+            GUILayout.BeginHorizontal();
+            GUI.contentColor = new Color(0.5f, 0.5f, 0.5f);
+            GUILayout.Label("  [←Del] [Enter] [Period→]", new GUIStyle(GUI.skin.label) { fontSize = 9 });
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(12);
+
+            // === UTILITY SECTION ===
+            var utility = Core.ModBootstrap.GetService<Services.IUtilityService>();
+
+            // Header with count
+            GUILayout.BeginHorizontal();
+            GUI.contentColor = Color.green;
+            GUILayout.Label($"▼ UTILITY ({utility.CurrentIndex + 1}/{utility.TotalCount})", highlightStyle);
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+            GUILayout.Space(2);
+
+            // Context window showing ±2 utilities with categories
+            for (int offset = -2; offset <= 2; offset++)
+            {
+                var util = utility.GetUtilityAtOffset(offset);
+                if (util == null) continue;
+
+                GUILayout.BeginHorizontal();
+                if (offset == 0)
+                {
+                    // Current item - highlighted
+                    GUI.contentColor = util.CategoryColor;
+                    GUILayout.Label($"  ► ", currentStyle);
+                    GUILayout.Label(util.CategoryTag, new GUIStyle(GUI.skin.label) { fontSize = 10, normal = { textColor = util.CategoryColor } });
+                    GUI.contentColor = Color.yellow;
+                    GUILayout.Label($" {util.Name}", currentStyle);
+                }
+                else
+                {
+                    // Context items - subdued
+                    GUI.contentColor = new Color(0.5f, 0.5f, 0.5f);
+                    GUILayout.Label($"    {util.CategoryTag} {util.Name}", contextStyle);
+                }
+                GUILayout.FlexibleSpace();
+                GUILayout.EndHorizontal();
+            }
+
+            // Keybind hints
+            GUILayout.Space(2);
+            GUILayout.BeginHorizontal();
+            GUI.contentColor = new Color(0.5f, 0.5f, 0.5f);
+            GUILayout.Label("  [←PgDn] [Pause] [Scroll→]", new GUIStyle(GUI.skin.label) { fontSize = 9 });
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+
+            GUI.DragWindow();
+        }
+
         void DrawModes(int id)
         {
             GUI.enabled = true;
@@ -196,25 +324,8 @@ namespace ICanShowYouTheWorld
                 fontSize = 11
             };
 
-            // 2.A) Prefab label
-            GUILayout.BeginHorizontal();
-            GUI.contentColor = Color.white;
-            GUILayout.Label($"Prefab: {CheatCommands.PrevPrefab} >{CheatCommands.CurrentPrefab}< {CheatCommands.NextPrefab}", highlightStyle, GUILayout.ExpandWidth(false));
-            GUILayout.FlexibleSpace();
-            GUILayout.EndHorizontal();
-
             var oldColor = GUI.contentColor;
-
-            // small gap
-            GUILayout.Space(2);
-
-            // Utility header
-            GUILayout.BeginHorizontal();
-            GUI.contentColor = Color.white;
-            GUILayout.Label($"Util: {CheatCommands.PrevUtilityName} >{CheatCommands.CurrentUtilityName}< {CheatCommands.NextUtilityName}", smallStyle, GUILayout.ExpandWidth(false));
-            GUILayout.FlexibleSpace();
-            GUILayout.EndHorizontal();
-            GUILayout.Space(5f);
+            GUILayout.Space(10f);
 
             // precompute description style
             var descStyle = new GUIStyle(GUI.skin.label)

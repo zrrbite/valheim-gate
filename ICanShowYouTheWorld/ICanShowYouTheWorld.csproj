@@ -311,6 +311,8 @@
     <Compile Include="Services\SpawnService.cs" />
     <Compile Include="Services\IBuffService.cs" />
     <Compile Include="Services\BuffService.cs" />
+    <Compile Include="Services\IUtilityService.cs" />
+    <Compile Include="Services\UtilityService.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Assets\" />

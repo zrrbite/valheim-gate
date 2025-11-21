@@ -63,6 +63,22 @@ namespace ICanShowYouTheWorld.Services
             _game.ShowMessage($"Selected prefab: {CurrentPrefab}", MessageType.TopLeft);
         }
 
+        public void CyclePrefabBackward()
+        {
+            _prefabIndex = (_prefabIndex - 1 + _spawnPrefabs.Length) % _spawnPrefabs.Length;
+            _game.ShowMessage($"Selected prefab: {CurrentPrefab}", MessageType.TopLeft);
+        }
+
+        public string GetPrefabAtOffset(int offset)
+        {
+            if (_spawnPrefabs == null || _spawnPrefabs.Length == 0) return "";
+            int targetIndex = (_prefabIndex + offset + _spawnPrefabs.Length) % _spawnPrefabs.Length;
+            return targetIndex >= 0 && targetIndex < _spawnPrefabs.Length ? _spawnPrefabs[targetIndex] : "";
+        }
+
+        public int CurrentPrefabIndex => _prefabIndex;
+        public int TotalPrefabCount => _spawnPrefabs?.Length ?? 0;
+
         public void SpawnSelectedPrefab()
         {
             SpawnPrefabAtCursor(CurrentPrefab);
