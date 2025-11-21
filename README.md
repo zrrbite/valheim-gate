@@ -1,6 +1,65 @@
 # valheim-gate
 In Valheim, teleport to your bind spot or anywhere on the map. Binaries are cross-platform.
 
+## Architecture
+
+**ICanShowYouTheWorld** is a Valheim mod built using IL patching (Mono.Cecil) with a service-based architecture and dependency injection. The mod injects into Valheim's `FejdStartup.OnCredits()` method, allowing initialization when accessing the credits menu.
+
+### Key Components
+
+**Foundation Layer:**
+- `Core/ServiceContainer.cs` - Dependency injection container
+- `Core/Configuration.cs` - JSON-based configuration system with auto-save
+- `Core/ModBootstrap.cs` - Central initialization and service registration
+- `GameAPI/IGameAPI.cs` + `ValheimGameAPI.cs` - Abstraction layer for Valheim game objects
+
+**Service Layer:**
+- `Services/ITeleportService.cs` + `TeleportService.cs` - Teleportation (bind, solo, mass, safe)
+- `Services/ICombatService.cs` + `CombatService.cs` - God mode, buffs, damage modifiers, healing
+- `Services/IPetService.cs` + `PetService.cs` - Pet taming, buffing, following, damage scaling
+- `Services/ISpawnService.cs` + `SpawnService.cs` - Prefab spawning, structure repair, AoE stagger
+
+**UI & Input:**
+- `UIManager.cs` - IMGUI-based overlay windows (tracking, modes, pets)
+- `InputManager.cs` - Hotkey system with command registration
+- `CheatController.cs` - MonoBehaviour managing Update() loop and input handling
+
+### Initialization Flow
+
+```
+Game Startup
+  → FejdStartup.OnCredits() [IL-patched entry point]
+    → NotACheater.Run() [Cheat.cs:25]
+      → ModBootstrap.Initialize() [Cheat.cs:42]
+        → ServiceContainer.Instance created
+        → Configuration loaded from JSON (auto-creates defaults if missing)
+        → ValheimGameAPI instantiated
+        → All services registered with dependencies
+        → CheatController & UIManager added to GameObject
+```
+
+### Configuration System
+
+**Location:**
+- Linux/Steam Deck: `~/.config/unity3d/IronGate/Valheim/ICanShowYouTheWorld.json`
+- Windows: `%USERPROFILE%\AppData\LocalLow\IronGate\Valheim\ICanShowYouTheWorld.json`
+
+**Features:**
+- Auto-created with sensible defaults on first run
+- Hot-editable without DLL redeployment (changes apply on game restart)
+- Contains teleport settings, combat modifiers, pet scaling, buff durations
+- Saved automatically on mod shutdown
+
+**Accessing Services:**
+```csharp
+// From anywhere after ModBootstrap.Initialize()
+var teleport = ModBootstrap.GetService<ITeleportService>();
+teleport.TeleportToBindPoint();
+
+var combat = ModBootstrap.GetService<ICombatService>();
+combat.ToggleGodMode();
+```
+
 # TODO
 * Better overview of various update scenarios
 * Scripts to automate various scenarios
@@ -81,11 +140,19 @@ Instructions:
 Writing patched library to ./patched/assembly_valheim.dll`
 ```
    
+## Deployment
+
 Copy `assembly_valheim.dll` and `ICanShowYouTheWorld.dll` to...
 
-- Linux / Steam-deck:  `/home/deck/.local/share/Steam/steamapps`
-- Windows:  `Steam\steamapps\common\Valheim\valheim_Data\Managed` 
+- Linux / Steam-deck:  `/home/deck/.local/share/Steam/steamapps/common/Valheim/valheim_Data/Managed`
+- Windows:  `Steam\steamapps\common\Valheim\valheim_Data\Managed`
+
 (The assemblies are cross-platform compliant due to .NET IL and Mono/Proton)
+
+**Configuration File:**
+- No manual upload needed! The JSON configuration auto-creates with defaults on first run
+- Location: `~/.config/unity3d/IronGate/Valheim/ICanShowYouTheWorld.json`
+- Edit settings without redeploying DLL (restart game to apply)
 
 After starting up the game go to the  Credits menu (If  the "Valheim" logo appears during game startup, the `assembly_valheim.dll` is compliant. Otherwise it may be corrupted somehow and you'll need to either repair or replace the patched version with your backup). This registers the patched assemblies / code to be called by the main game loop.
 
@@ -204,7 +271,42 @@ foreach (Character toon in Character.GetAllCharacters()) {
 
 # Key-bindings
 
-- `HOME` =  "Gate" / Teleport to bind spot.
-- `INS`   = Teleport to where your mouse cursor is while having the map open (obviously difficult on a steam deck). (edited)
+### UI & Navigation
+- `F1` - Toggle Cheat Window
+- `HOME` - "Gate" / Teleport to bind spot
+- `INS` - Teleport to where your mouse cursor is (with map open)
+
+### Combat Modes (Numpad)
+- `Keypad 0` - God Mode (also toggles Renewal/resets forsaken power timer)
+- `Keypad 1` - Guardian Gift
+- `Keypad 2` - AoE Renewal
+- `Keypad 3` - HoT Cheal (Heal over Time)
+- `Keypad 4` - Cloak of Flames
+- `Keypad 5` - Immunity
+
+### Pets (Numpad)
+- `Keypad 7` - Buff pets (normalize)
+- `Keypad 8` - Reset pets
+- `Keypad 9` - Tame all in radius, make them stay
+
+### Power & Inventory
+- `Keypad +` - AOE Power++
+- `Keypad -` - AOE Power--
+- `Keypad *` - Replenish item stacks
+
+### Modifiers
+- `Arrow Up` - Damage++
+- `Arrow Down` - Damage--
+- `Arrow Right` - Speed++
+- `Arrow Left` - Speed--
+
+### Spawning (Numpad)
+- `Keypad .` (Period) - Next Prefab
+- `Keypad Enter` - Spawn selected prefab at cursor
+
+### Utilities
+- `Numlock` - Kill all monsters
+- `Scroll Lock` - Next Utility
+- `Pause` - Run selected utility
 
 <screenshots>

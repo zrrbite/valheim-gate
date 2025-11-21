@@ -54,14 +54,71 @@ The Patcher tool modifies `assembly_valheim.dll` to inject a call to `ICanShowYo
 
 The patcher also modifies `Minimap.m_pins` from private to public static to allow mod access.
 
-### Core Components
+### Service-Based Architecture (New)
 
-- **NotACheater.Run()** - Entry point that creates a persistent GameObject with DontDestroyOnLoad and attaches the CheatController and UIManager components
-- **CheatController** (Cheat.cs) - Main MonoBehaviour that manages lifecycle and command registration
-- **CheatCommands.cs** - Implementations of all cheat commands (teleportation, buffs, spawning, etc.)
+The mod now uses a modern service-based architecture with dependency injection:
+
+**Initialization Flow:**
+```
+FejdStartup.OnCredits()
+  → NotACheater.Run()
+    → ModBootstrap.Initialize()
+      → Creates ServiceContainer singleton
+      → Loads Configuration from JSON
+      → Creates ValheimGameAPI
+      → Instantiates and registers all services:
+        - CombatService
+        - TeleportService
+        - PetService
+        - SpawnService
+      → Attaches CheatController and UIManager components
+```
+
+**Core Components:**
+
+**Foundation Layer:**
+- **ModBootstrap** (`Core/ModBootstrap.cs`) - Entry point that initializes the dependency injection container and all services
+- **ServiceContainer** (`Core/ServiceContainer.cs`) - Thread-safe DI container supporting singleton/factory/instance registration
+- **Configuration** (`Core/Configuration.cs`) - JSON-based configuration system with auto-save/load
+- **IGameAPI** (`GameAPI/IGameAPI.cs`) - Abstraction layer over Valheim's game API for testability
+
+**Service Layer:**
+- **ITeleportService** (`Services/ITeleportService.cs`) - Teleportation to map cursor, spawn, safe pins
+- **ICombatService** (`Services/ICombatService.cs`) - God mode, AoE damage/healing, defensive abilities, weapon scaling
+- **IPetService** (`Services/IPetService.cs`) - Tamed creature buffing and damage management
+- **ISpawnService** (`Services/ISpawnService.cs`) - Prefab spawning at cursor/player, structure repair, AoE effects
+
+**Legacy Components (to be refactored):**
+- **NotACheater.Run()** - Entry point that calls ModBootstrap and creates persistent GameObject
+- **CheatController** (Cheat.cs) - Main MonoBehaviour managing lifecycle and command registration
+- **CheatCommands.cs** - Legacy static command implementations (being gradually replaced by services)
 - **UIManager.cs** - On-screen UI overlay using Unity's IMGUI system
 - **InputManager.cs** - Keyboard input polling and command dispatch
-- **CommandRegistry** - Global list of all keyboard bindings using CommandBinding pattern
+- **CommandRegistry** - Global list of keyboard bindings using CommandBinding pattern
+
+### Configuration System
+
+Configuration is stored in JSON at:
+- **Linux/Steam Deck**: `~/.config/unity3d/IronGate/Valheim/ICanShowYouTheWorld.json`
+- **Windows**: `%USERPROFILE%\AppData\LocalLow\IronGate\Valheim\ICanShowYouTheWorld.json`
+
+**Features:**
+- Auto-created with defaults on first run
+- Hot-editable (restart game to apply changes)
+- No DLL redeployment needed for config changes
+- 28+ configurable settings (pet buffs, AoE power, combat tunables, etc.)
+
+### Service Access Pattern
+
+Services can be accessed via the ServiceContainer:
+```csharp
+// From anywhere after ModBootstrap.Initialize()
+var teleport = ModBootstrap.GetService<ITeleportService>();
+teleport.TeleportToMapCursor();
+
+var combat = ModBootstrap.GetService<ICombatService>();
+combat.ToggleGodMode();
+```
 
 ### Command Pattern
 Commands are registered using the `CommandBinding` class which encapsulates:
