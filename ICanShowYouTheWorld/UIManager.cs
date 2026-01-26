@@ -236,7 +236,7 @@ namespace ICanShowYouTheWorld
                 }
                 else
                 {
-                    GUI.contentColor = new Color(0.7f, 0.7f, 0.7f);
+                    GUI.contentColor = new Color(0.9f, 0.9f, 0.9f);
                     GUILayout.Label($"    {prefabName}", contextStyle);
                 }
                 GUILayout.FlexibleSpace();
@@ -283,7 +283,7 @@ namespace ICanShowYouTheWorld
                 else
                 {
                     // Context items - subdued
-                    GUI.contentColor = new Color(0.5f, 0.5f, 0.5f);
+                    GUI.contentColor = new Color(0.75f, 0.75f, 0.75f);
                     GUILayout.Label($"    {util.CategoryTag} {util.Name}", contextStyle);
                 }
                 GUILayout.FlexibleSpace();
