@@ -88,10 +88,10 @@ positioned once at startup.
 "runSkillGainRate": 3.0            // Skill XP gain multiplier during runs
 "runMoveStaminaRate": 0.5          // Stamina drain rate multiplier during runs
 "runStaminaRegenRate": 1.5         // Stamina regeneration multiplier during runs
-"runHeatEnemyDamageWeight": 0.05   // Enemy damage contribution to heat value
-"runHeatEnemyLevelUpWeight": 0.05  // Enemy level-up contribution to heat value
-"runHeatScoreWeight": 0.1          // Score contribution to heat value
-"runParTimeMinutes": 240.0         // Target time for each challenge (minutes)
+"runHeatEnemyDamageWeight": 0.05   // Heat→enemy damage: multiplier = 1 + heat × weight
+"runHeatEnemyLevelUpWeight": 0.05  // Heat→enemy star chance: multiplier = 1 + heat × weight
+"runHeatScoreWeight": 0.1          // Heat→score: multiplier = 1 + heat × weight
+"runParTimeMinutes": 240.0         // Par time for the WHOLE run; score scales by par/actual
 "runDeathHeatPenalty": 3.0         // Heat penalty when player dies
 "runRerollHeatCost": 1.0           // Heat cost to reroll challenge
 "runChallengeRefillSeconds": 120.0 // Challenge refill timer (seconds)
