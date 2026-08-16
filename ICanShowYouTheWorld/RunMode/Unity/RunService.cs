@@ -459,9 +459,16 @@ namespace ICanShowYouTheWorld.RunMode
         private void DetectRespawnAndReapplyPassives()
         {
             var player = Player.m_localPlayer;
-            if (player == _trackedPlayer) return;
 
-            bool isRespawn = _trackedPlayer != null;
+            // Deliberately ReferenceEquals, not ==: Player derives from UnityEngine.Object, whose
+            // overloaded == treats a destroyed-but-not-yet-null-in-C#-terms object as "== null".
+            // By the time a fresh Player exists, _trackedPlayer holds exactly that — a destroyed
+            // object — so Unity's == would report "still the same (null) player" and this would
+            // never fire. ReferenceEquals compares the actual C# reference, which is what "did the
+            // component instance change" really means here.
+            if (ReferenceEquals(player, _trackedPlayer)) return;
+
+            bool isRespawn = !ReferenceEquals(_trackedPlayer, null);
             _trackedPlayer = player;
             if (!isRespawn || player == null) return;
 
@@ -862,7 +869,7 @@ namespace ICanShowYouTheWorld.RunMode
             }
 
             _challenges.RestoreActive(Zip(s.activeChallengeIds, s.activeChallengeProgress));
-            _boons.RestoreHeld(Zip(s.heldBoonIds, s.heldBoonCooldowns), s.heldBoonCharges);
+            _boons.RestoreHeld(Zip(s.heldBoonIds, s.heldBoonCooldowns), BuildRestoreCharges(s));
 
             // RestoreHeld is silent by design, so reapply effects for whatever survived — but
             // only the snapshot/buff-type passives (fleet/sharp/pack): their live player/item
@@ -884,6 +891,28 @@ namespace ICanShowYouTheWorld.RunMode
             _restorePending = true;
 
             _active = true;
+        }
+
+        /// <summary>
+        /// Charges to hand BoonEngine.RestoreHeld, aligned by index to heldBoonIds. A save
+        /// written before heldBoonCharges existed (null) — or, defensively, one shorter than the
+        /// id list — carries no charge data at all; defaulting everything to 0 would silently
+        /// zero out an unused Waystone charge and permanently dead-end that boon for the rest of
+        /// the run. Only "way" gets the generous default of 1 (its starting grant); every other
+        /// boon genuinely does start at 0 charges, saved data or not.
+        /// </summary>
+        private static List<int> BuildRestoreCharges(RunSaveState s)
+        {
+            if (s.heldBoonIds == null) return null;
+
+            bool hasFullData = s.heldBoonCharges != null && s.heldBoonCharges.Count >= s.heldBoonIds.Count;
+            var result = new List<int>(s.heldBoonIds.Count);
+
+            for (int i = 0; i < s.heldBoonIds.Count; i++)
+            {
+                result.Add(hasFullData ? s.heldBoonCharges[i] : (s.heldBoonIds[i] == "way" ? 1 : 0));
+            }
+            return result;
         }
 
         private static IEnumerable<KeyValuePair<string, float>> Zip(List<string> ids, List<float> values)

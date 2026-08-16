@@ -62,11 +62,15 @@ namespace ICanShowYouTheWorld.RunMode
         private FleetSnapshot _fleetSnapshot;
         private bool _fleetSnapshotTaken;
 
-        // sharp: per-weapon-instance snapshot. Keying by the item instance makes re-applying
-        // idempotent per item — an item already in here (already boosted) is left alone, so a
-        // respawn reapply only touches genuinely fresh gear, never double-multiplies survivors.
-        private readonly Dictionary<ItemDrop.ItemData, HitData.DamageTypes> _sharpSnapshots =
-            new Dictionary<ItemDrop.ItemData, HitData.DamageTypes>();
+        // sharp: keyed by the SHARED damage block (ItemDrop.ItemData.m_shared), not the ItemData
+        // instance. m_shared is per-PREFAB, not per-instance — a fresh ItemData handed out after
+        // respawn still points at the same SharedData object the pre-death item used. Keying by
+        // instance would treat that as "new gear", re-snapshot an already-1.2x'd value, and stack
+        // to 1.44x, with Unapply later stomping the prefab's true original with whichever
+        // snapshot happened to restore last. Keying by the shared block itself makes "already
+        // boosted" a property of the block, not the transient instance pointing at it.
+        private readonly Dictionary<ItemDrop.ItemData.SharedData, HitData.DamageTypes> _sharpSnapshots =
+            new Dictionary<ItemDrop.ItemData.SharedData, HitData.DamageTypes>();
 
         /// <summary>Set by a failed Activate() with a boon-specific reason; null means "not ready" is generic enough.</summary>
         public string LastActivationMessage { get; private set; }
@@ -242,10 +246,12 @@ namespace ICanShowYouTheWorld.RunMode
             foreach (var item in inventory.GetEquippedItems())
             {
                 if (item == null || !item.IsWeapon()) continue;
-                if (_sharpSnapshots.ContainsKey(item)) continue; // already boosted — don't stack
 
-                _sharpSnapshots[item] = DamageHelpers.Copy(item.m_shared.m_damages);
-                item.m_shared.m_damages = DamageHelpers.Scaled(item.m_shared.m_damages, SharpDamageMultiplier);
+                var shared = item.m_shared;
+                if (shared == null || _sharpSnapshots.ContainsKey(shared)) continue; // already boosted — don't stack
+
+                _sharpSnapshots[shared] = DamageHelpers.Copy(shared.m_damages);
+                shared.m_damages = DamageHelpers.Scaled(shared.m_damages, SharpDamageMultiplier);
             }
         }
 
@@ -253,9 +259,9 @@ namespace ICanShowYouTheWorld.RunMode
         {
             foreach (var kvp in _sharpSnapshots)
             {
-                var item = kvp.Key;
-                if (item == null) continue; // guard: no longer reachable, nothing to restore
-                item.m_shared.m_damages = kvp.Value;
+                var shared = kvp.Key;
+                if (shared == null) continue; // guard: no longer reachable, nothing to restore
+                shared.m_damages = kvp.Value;
             }
             _sharpSnapshots.Clear();
         }
@@ -274,8 +280,22 @@ namespace ICanShowYouTheWorld.RunMode
                 return false;
             }
 
-            WithLegacyGodModeBracket(CheatCommands.ToggleAoeRenewal);
+            // Flag set BEFORE the call, not after: ToggleAoeRenewal can flip the live static and
+            // THEN throw (e.g. CheatVisualizer failing) — setting the flag first means a later
+            // step throwing (scheduling, cooldown) can never skip it and strand an on-but-
+            // unflagged effect. A throw from the toggle call itself rolls the flag back, since in
+            // that case we can't tell whether the live flag actually flipped.
             _aoeRenewalOnByUs = true;
+            try
+            {
+                WithLegacyGodModeBracket(CheatCommands.ToggleAoeRenewal);
+            }
+            catch
+            {
+                _aoeRenewalOnByUs = false;
+                throw;
+            }
+
             RemovePending("wind");
             SchedulePending("wind", WindOnSeconds, ForceAoeRenewalOff);
 
@@ -294,8 +314,18 @@ namespace ICanShowYouTheWorld.RunMode
                 return false;
             }
 
-            WithLegacyGodModeBracket(CheatCommands.ToggleCloakOfFlames);
+            // See ActivateWind for why this is set before the call, not after.
             _cloakOnByUs = true;
+            try
+            {
+                WithLegacyGodModeBracket(CheatCommands.ToggleCloakOfFlames);
+            }
+            catch
+            {
+                _cloakOnByUs = false;
+                throw;
+            }
+
             RemovePending("ember");
             SchedulePending("ember", EmberOnSeconds, ForceCloakOff);
 

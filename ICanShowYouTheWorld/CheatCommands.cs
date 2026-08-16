@@ -2373,6 +2373,8 @@ static class DamageHelpers
 
         public static void AoeRegen(float radius)
         {
+            if (Player.m_localPlayer == null) return;
+
             var list = new List<Character>();
             Character.GetCharactersInRange(
                 Player.m_localPlayer.transform.position,
@@ -2574,6 +2576,8 @@ static class DamageHelpers
 
         public static void DamageAoE(float radius)
         {
+            if (Player.m_localPlayer == null) return;
+
             var list = new List<Character>();
             Character.GetCharactersInRange(
                 Player.m_localPlayer.transform.position,
