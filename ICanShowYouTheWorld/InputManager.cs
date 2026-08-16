@@ -12,6 +12,13 @@ namespace ICanShowYouTheWorld
     {
         private readonly Dictionary<KeyCode, Action> mappings = new Dictionary<KeyCode, Action>();
 
+        /// <summary>
+        /// Optional filter checked before a mapped action fires. Returning false swallows the
+        /// keypress. Null means everything is allowed. Set by CheatController to shut GM-mode
+        /// commands off while a run is live.
+        /// </summary>
+        public Func<KeyCode, bool> Gate;
+
         public void Register(KeyCode key, Action action)
         {
             mappings[key] = action;
@@ -22,7 +29,10 @@ namespace ICanShowYouTheWorld
             foreach (var kv in mappings)
             {
                 if (Input.GetKeyDown(kv.Key))
+                {
+                    if (Gate != null && !Gate(kv.Key)) continue;
                     kv.Value.Invoke();
+                }
             }
         }
     }

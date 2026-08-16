@@ -202,6 +202,7 @@ namespace ICanShowYouTheWorld.RunMode
 
                 // --- Committed: from here on we mutate state. ---
                 ForceGodModeOff();
+                ForceLegacyCheatsOff();
 
                 _loggedFailures.Clear();
                 _consecutiveTickFailures = 0;
@@ -682,6 +683,33 @@ namespace ICanShowYouTheWorld.RunMode
             catch (Exception ex)
             {
                 LogOnce("godmode-off-service", ex);
+            }
+        }
+
+        /// <summary>
+        /// Clears any legacy cheat toggles the player left on before the run started —
+        /// Renewal, AoE Renewal, Cloak of Flames, Guardian's Gift, Immunity. Uses the
+        /// flag-only setters (or the raw field for immunityActive), never the ToggleX
+        /// methods: those carry side effects (Show() messages, visual rings, stat
+        /// snapshots/reversion) that don't belong at run start.
+        ///
+        /// BoonEffects rides the same statics (notably AOERenewalActive/CloakActive) to drive
+        /// wind/ember boons mid-run, so this only runs once at StartRun — never mid-run — and
+        /// boons flip their own flags back on afterward as they're granted.
+        /// </summary>
+        private void ForceLegacyCheatsOff()
+        {
+            try
+            {
+                CheatCommands.SetRenewalActive(false);
+                CheatCommands.SetAoeRenewalActive(false);
+                CheatCommands.SetCloakActive(false);
+                CheatCommands.SetGuardianGiftActive(false);
+                CheatCommands.immunityActive = false;
+            }
+            catch (Exception ex)
+            {
+                LogOnce("legacy-cheats-off", ex);
             }
         }
 

@@ -366,7 +366,24 @@ namespace ICanShowYouTheWorld
 
                 // ...and hook into input handling
                 inputManager.Register(cmd.Key, cmd.Execute);
-            }            
+            }
+
+            // GM-mode commands are dead while a run is live — this both enforces the mode's
+            // fairness and resolves the Keypad1-6 collision with boon offer/activate keys in
+            // RunService.Tick. Resolved lazily/cached: the service container may not be ready
+            // yet at Awake time, and this runs on every keypress.
+            InputManager gatedInputManager = inputManager;
+            Services.IRunService gateRunService = null;
+            gatedInputManager.Gate = key =>
+            {
+                if (gateRunService == null && Core.ModBootstrap.IsInitialized)
+                {
+                    gateRunService = Core.ModBootstrap.GetService<Services.IRunService>();
+                }
+
+                if (gateRunService == null || !gateRunService.IsRunActive) return true; // GM mode: everything allowed
+                return key == KeyCode.F1 || key == KeyCode.End;                        // run mode: UI toggles only
+            };
         }
 
         void Update()

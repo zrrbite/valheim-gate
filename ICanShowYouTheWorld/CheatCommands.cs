@@ -1689,6 +1689,17 @@ static class DamageHelpers
             player.SetNoPlacementCost(value: enabled);
         }
 
+        /// <summary>
+        /// Flag-only setters for the periodic/persistent cheat toggles: no Show() message, no
+        /// visual ring, no stat reversion — just the static flag. Use these instead of the
+        /// ToggleX methods when a caller wants a clean off state without side effects,
+        /// notably Run Mode forcing legacy cheats off at the start of a run.
+        /// </summary>
+        public static void SetRenewalActive(bool enabled) => RenewalActive = enabled;
+        public static void SetAoeRenewalActive(bool enabled) => AOERenewalActive = enabled;
+        public static void SetCloakActive(bool enabled) => CloakActive = enabled;
+        public static void SetGuardianGiftActive(bool enabled) => GiftActive = enabled;
+
         public static void ToggleGodMode()
         {
             //ToggleRenewal(); // Try to disable this for god mode
