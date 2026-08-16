@@ -68,9 +68,19 @@ The exact path depends on Unity's `Application.persistentDataPath` for the Valhe
 "modesWindowHeight": 550.0     // Modes window height (pixels)
 "petsWindowWidth": 200.0       // Pets window width (pixels)
 "petsWindowHeight": 250.0      // Pets window height (pixels)
+"uiScale": 0.0                 // 0 = auto, or a factor like 1.5
 "trackingRange": 100.0         // How far to track enemies (meters)
 "petDisplayRange": 50.0        // How far to show pets in UI (meters)
 ```
+
+**`uiScale`** exists because IMGUI works in raw pixels, so the windows shrink
+as the display resolution grows — the sizes above were tuned for the Steam
+Deck's 800px-tall screen. At `0.0` the mod scales itself by
+`screen height / 800`, clamped to 0.75–3.0, which keeps the panels at the same
+relative size everywhere. Set a number to override, per machine: the config is
+per-install, so a 4K desktop and the Deck can differ without touching the code.
+Windows are also re-anchored whenever the resolution changes, rather than being
+positioned once at startup.
 
 ### Debug & System
 ```json

@@ -43,6 +43,7 @@ namespace ICanShowYouTheWorld.Core
         float ModesWindowHeight { get; set; }
         float PetsWindowWidth { get; set; }
         float PetsWindowHeight { get; set; }
+        float UiScale { get; set; }
         float TrackingRange { get; set; }
         float PetDisplayRange { get; set; }
 
@@ -98,6 +99,9 @@ namespace ICanShowYouTheWorld.Core
         [SerializeField] private float modesWindowHeight = 550f;
         [SerializeField] private float petsWindowWidth = 200f;
         [SerializeField] private float petsWindowHeight = 250f;
+        // 0 = auto: scale the UI so it keeps the same relative size it has on
+        // a 800px-tall screen (the Steam Deck). Set explicitly to override.
+        [SerializeField] private float uiScale = 0f;
         [SerializeField] private float trackingRange = 100f;
         [SerializeField] private float petDisplayRange = 50f;
 
@@ -135,6 +139,7 @@ namespace ICanShowYouTheWorld.Core
         public float ModesWindowHeight { get => modesWindowHeight; set => modesWindowHeight = value; }
         public float PetsWindowWidth { get => petsWindowWidth; set => petsWindowWidth = value; }
         public float PetsWindowHeight { get => petsWindowHeight; set => petsWindowHeight = value; }
+        public float UiScale { get => uiScale; set => uiScale = value; }
         public float TrackingRange { get => trackingRange; set => trackingRange = value; }
         public float PetDisplayRange { get => petDisplayRange; set => petDisplayRange = value; }
 

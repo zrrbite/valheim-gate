@@ -22,6 +22,7 @@
     "modesWindowHeight": 550.0,
     "petsWindowWidth": 200.0,
     "petsWindowHeight": 250.0,
+    "uiScale": 0.0,
     "trackingRange": 100.0,
     "petDisplayRange": 50.0,
     "enableDebugMode": false,

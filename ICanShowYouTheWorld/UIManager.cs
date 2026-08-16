@@ -17,37 +17,58 @@ namespace ICanShowYouTheWorld
         const float selectionWidth = 240f;
         const float selectionHeight = 320f;
 
-        //private Rect trackWindow = new Rect(250, Screen.height - 250, 250, 150);
-        private Rect trackWindow = new Rect(
-            250,
-            Screen.height - TH - 20f,
-            TW,
-            TH
-        );
+        // The screen height these window sizes were tuned against (the Steam
+        // Deck). Auto scaling keeps the UI at the same relative size on
+        // taller displays instead of shrinking into a corner.
+        const float referenceHeight = 800f;
 
-        // TODO: window positions are calculated when the game starts? Adjust that before starting the mod?
-        private Rect modeWindow = new Rect(
-            Screen.width - modeWidth,  // x
-            Screen.height - modeHeight - 240f, // Margin from bottom
-            modeWidth,                  // width
-            modeHeight                  // height
-        );
+        private Rect trackWindow;
+        private Rect modeWindow;
+        private Rect selectionWindow;
+        private Rect petWindow;
 
-        // Selection window (prefabs + utilities) - positioned to the left of modeWindow
-        private Rect selectionWindow = new Rect(
-            Screen.width - modeWidth - selectionWidth - 10f,  // x: left of modes window
-            Screen.height - selectionHeight - 240f,           // y: same as modes window
-            selectionWidth,                                    // width
-            selectionHeight                                    // height
-        );
+        // Layout inputs from the last time the windows were placed. Rects used
+        // to be built in field initialisers, which read the screen size once at
+        // construction — in the menu, before the play resolution applies — and
+        // never again.
+        private float laidOutForWidth = -1f;
+        private float laidOutForHeight = -1f;
+        private float currentScale = 1f;
 
-        // Pets panel, just to the right of tracking
-        private Rect petWindow = new Rect(
-            20f,
-            300f,
-            200f, TH
-        );
         void Awake() => Instance = this;
+
+        private float ResolveScale()
+        {
+            float configured = 0f;
+            try { configured = Core.ModBootstrap.GetService<Core.IConfiguration>().UiScale; }
+            catch { /* config unavailable: fall through to auto */ }
+
+            if (configured > 0f) return configured;
+            return Mathf.Clamp(Screen.height / referenceHeight, 0.75f, 3f);
+        }
+
+        // Places the windows in the scaled coordinate space, where the usable
+        // area is the screen divided by the scale factor.
+        private void LayoutWindows(float viewWidth, float viewHeight)
+        {
+            trackWindow = new Rect(250f, viewHeight - TH - 20f, TW, TH);
+
+            modeWindow = new Rect(
+                viewWidth - modeWidth,
+                Mathf.Max(10f, viewHeight - modeHeight - 240f),
+                modeWidth,
+                modeHeight
+            );
+
+            selectionWindow = new Rect(
+                viewWidth - modeWidth - selectionWidth - 10f,
+                Mathf.Max(10f, viewHeight - selectionHeight - 240f),
+                selectionWidth,
+                selectionHeight
+            );
+
+            petWindow = new Rect(20f, 300f, 200f, TH);
+        }
 
         public void ToggleVisible() => visible = !visible;
 
@@ -68,8 +89,24 @@ namespace ICanShowYouTheWorld
 
             if (!visible) return;
 
-            //trackWindow = GUILayout.Window(0, trackWindow, DrawTracking, "Tracking");
+            // Scale the whole GUI, which sizes fonts along with the windows —
+            // IMGUI is otherwise pure pixels and shrinks as resolution grows.
+            currentScale = ResolveScale();
+            var savedMatrix = GUI.matrix;
+            GUIUtility.ScaleAroundPivot(Vector2.one * currentScale, Vector2.zero);
 
+            float viewWidth = Screen.width / currentScale;
+            float viewHeight = Screen.height / currentScale;
+
+            // Re-place the windows whenever the usable area changes: at first
+            // draw, on a resolution change, and when the scale is edited.
+            if (!Mathf.Approximately(viewWidth, laidOutForWidth) ||
+                !Mathf.Approximately(viewHeight, laidOutForHeight))
+            {
+                LayoutWindows(viewWidth, viewHeight);
+                laidOutForWidth = viewWidth;
+                laidOutForHeight = viewHeight;
+            }
 
             trackWindow = GUILayout.Window(
                 0,
@@ -100,6 +137,8 @@ namespace ICanShowYouTheWorld
                 GUILayout.MinWidth(selectionWidth),
                 GUILayout.MinHeight(selectionHeight)
             );
+
+            GUI.matrix = savedMatrix;
         }
 
         void DrawTracking(int id)
