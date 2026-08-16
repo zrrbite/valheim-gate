@@ -57,7 +57,6 @@ namespace Patcher
             app.Write(donePath);
 
             Console.WriteLine("Have fun!");
-            Environment.Exit(1);
         }
     }
 }
