@@ -195,6 +195,53 @@ Machine-specific notes:
   /Get-CapabilityInfo /CapabilityName:OpenSSH.Server~~~~0.0.1.0` instead to
   query/install.
 
+#### Open: key auth is still refused (2026-08-16)
+
+Verified from the Mac: TCP 22 is reachable across the subnets and the host key
+is recorded, but authentication fails —
+
+```
+debug1: Offering public key: ...ED25519 SHA256:ESiWY9q+0LQ/ifNA7jhdPeu9NzVqagYwmbDglOAo2+k
+Authentications that can continue: publickey,password,keyboard-interactive
+```
+
+So sshd is running and reachable; it just does not accept this key. The key
+the Mac offers is:
+
+```
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAxdCkir1pfwTmAztEsURMuVQ5f+Eu2nzJeKIHyvQ8WY
+```
+
+Check these on the Windows box, in order of likelihood:
+
+1. **Wrong file.** For the administrator account `kjeld`, the per-user
+   `C:\Users\kjeld\.ssh\authorized_keys` is *ignored*. The key must be in
+   `C:\ProgramData\ssh\administrators_authorized_keys`.
+   ```powershell
+   Get-Content C:\ProgramData\ssh\administrators_authorized_keys
+   ```
+2. **Encoding.** PowerShell's `Out-File`/`Add-Content` can write UTF-16 or add
+   a BOM, which sshd cannot parse — the file looks correct on screen and still
+   fails. Rewrite it as ASCII:
+   ```powershell
+   Set-Content -Path C:\ProgramData\ssh\administrators_authorized_keys `
+     -Value 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAxdCkir1pfwTmAztEsURMuVQ5f+Eu2nzJeKIHyvQ8WY' `
+     -Encoding ascii
+   ```
+3. **ACLs** must be Administrators + SYSTEM only:
+   ```powershell
+   icacls.exe C:\ProgramData\ssh\administrators_authorized_keys /inheritance:r `
+     /grant "Administrators:F" /grant "SYSTEM:F"
+   Restart-Service sshd
+   ```
+4. **Read the reason.** sshd logs the actual rejection (e.g. "Authentication
+   refused: bad ownership or modes"):
+   Event Viewer → Applications and Services Logs → OpenSSH → Operational, or
+   ```powershell
+   Get-WinEvent -LogName OpenSSH/Operational -MaxEvents 20 |
+     Select-Object TimeCreated, Message | Format-List
+   ```
+
 ---
 
 ## macOS (no SSH required)
