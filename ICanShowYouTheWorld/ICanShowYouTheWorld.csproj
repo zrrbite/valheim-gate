@@ -310,12 +310,14 @@
     <Compile Include="Services\BuffService.cs" />
     <Compile Include="Services\IUtilityService.cs" />
     <Compile Include="Services\UtilityService.cs" />
+    <Compile Include="Services\IRunService.cs" />
     <Compile Include="RunMode\HeatModel.cs" />
     <Compile Include="RunMode\ChallengeEngine.cs" />
     <Compile Include="RunMode\BoonEngine.cs" />
     <Compile Include="RunMode\Unity\GameEvents.cs" />
     <Compile Include="RunMode\Unity\RunStorage.cs" />
     <Compile Include="RunMode\Unity\WorldModifiers.cs" />
+    <Compile Include="RunMode\Unity\RunService.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Assets\" />

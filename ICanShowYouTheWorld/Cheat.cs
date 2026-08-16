@@ -142,6 +142,9 @@ namespace ICanShowYouTheWorld
     {
         private InputManager inputManager;
 
+        // Cached so Update() doesn't hit the service container every frame.
+        private Services.IRunService runService;
+
         void Awake()
         {
             inputManager = new InputManager();
@@ -370,6 +373,13 @@ namespace ICanShowYouTheWorld
         {
             inputManager.HandleInput();
             CheatCommands.HandlePeriodic();
+
+            if (runService == null && Core.ModBootstrap.IsInitialized)
+            {
+                runService = Core.ModBootstrap.GetService<Services.IRunService>();
+            }
+
+            runService?.Tick(Time.deltaTime);
         }
     }
 }

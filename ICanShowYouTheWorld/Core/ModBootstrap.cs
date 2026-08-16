@@ -74,6 +74,12 @@ namespace ICanShowYouTheWorld.Core
                 container.RegisterInstance<IUtilityService>(utilityService);
                 Debug.Log("[ICanShowYouTheWorld] UtilityService registered");
 
+                // RunService depends on IGameAPI and IConfiguration; it resolves
+                // ICombatService lazily so registration order stays flexible.
+                var runService = new RunMode.RunService(gameAPI, config);
+                container.RegisterInstance<Services.IRunService>(runService);
+                Debug.Log("[ICanShowYouTheWorld] RunService registered");
+
                 _initialized = true;
                 Debug.Log($"[ICanShowYouTheWorld] Initialization complete! All services registered.");
 
