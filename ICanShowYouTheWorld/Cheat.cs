@@ -376,13 +376,23 @@ namespace ICanShowYouTheWorld
             Services.IRunService gateRunService = null;
             gatedInputManager.Gate = key =>
             {
-                if (gateRunService == null && Core.ModBootstrap.IsInitialized)
+                // Never let a resolution error swallow input: HandleInput loops over every
+                // mapped key, so a throw here would kill F1/End along with everything else.
+                // Fail open (allow) on any exception.
+                try
                 {
-                    gateRunService = Core.ModBootstrap.GetService<Services.IRunService>();
-                }
+                    if (gateRunService == null && Core.ModBootstrap.IsInitialized)
+                    {
+                        gateRunService = Core.ModBootstrap.GetService<Services.IRunService>();
+                    }
 
-                if (gateRunService == null || !gateRunService.IsRunActive) return true; // GM mode: everything allowed
-                return key == KeyCode.F1 || key == KeyCode.End;                        // run mode: UI toggles only
+                    if (gateRunService == null || !gateRunService.IsRunActive) return true; // GM mode: everything allowed
+                    return key == KeyCode.F1 || key == KeyCode.End;                        // run mode: UI toggles only
+                }
+                catch
+                {
+                    return true;
+                }
             };
         }
 

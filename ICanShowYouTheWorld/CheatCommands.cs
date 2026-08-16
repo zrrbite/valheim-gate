@@ -1396,6 +1396,12 @@ static class DamageHelpers
                 }
                 origItemStats = null;
 
+                // Revert resists. The ON branch overwrites every field to SlightlyResistant;
+                // the vanilla player carries no innate modifiers, so a fresh instance is the
+                // correct "off" state (mirrors nothing stored — unlike the item/stat snapshots
+                // above, Gift never captured the pre-buff modifiers).
+                p.m_damageModifiers = new HitData.DamageModifiers();
+
                 GiftActive = false;
                 Show("Guardian's Gift: OFF");
             }
@@ -1690,15 +1696,18 @@ static class DamageHelpers
         }
 
         /// <summary>
-        /// Flag-only setters for the periodic/persistent cheat toggles: no Show() message, no
-        /// visual ring, no stat reversion — just the static flag. Use these instead of the
-        /// ToggleX methods when a caller wants a clean off state without side effects,
-        /// notably Run Mode forcing legacy cheats off at the start of a run.
+        /// Flag-only setters for the periodic cheat toggles: no Show() message and no
+        /// CheatVisualizer ring — just the static flag. Safe only because Renewal/AoE
+        /// Renewal/Cloak have no persistent state beyond the flag itself (PeriodicManager just
+        /// checks it each tick). Guardian's Gift and Immunity are NOT flag-only-safe — they
+        /// apply real, persistent player state (damage modifiers, stat buffs) that only their
+        /// real ToggleX methods revert, so there is deliberately no SetGiftActive/SetImmunity
+        /// here; route those through ToggleGuardianGift/ToggleImmunity instead (see
+        /// RunService.ForceLegacyCheatsOff for the pattern).
         /// </summary>
         public static void SetRenewalActive(bool enabled) => RenewalActive = enabled;
         public static void SetAoeRenewalActive(bool enabled) => AOERenewalActive = enabled;
         public static void SetCloakActive(bool enabled) => CloakActive = enabled;
-        public static void SetGuardianGiftActive(bool enabled) => GiftActive = enabled;
 
         public static void ToggleGodMode()
         {

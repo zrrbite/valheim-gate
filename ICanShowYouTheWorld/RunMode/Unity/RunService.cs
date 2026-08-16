@@ -201,8 +201,12 @@ namespace ICanShowYouTheWorld.RunMode
                 }
 
                 // --- Committed: from here on we mutate state. ---
-                ForceGodModeOff();
+                // Legacy cheats first: Immunity/Gift's OFF toggles gate on CheatCommands.GodMode
+                // and are bracketed to run with it temporarily on if needed (see
+                // ForceLegacyCheatsOff) — ForceGodModeOff must come after so the final state is
+                // god-mode-off either way.
                 ForceLegacyCheatsOff();
+                ForceGodModeOff();
 
                 _loggedFailures.Clear();
                 _consecutiveTickFailures = 0;
@@ -688,10 +692,25 @@ namespace ICanShowYouTheWorld.RunMode
 
         /// <summary>
         /// Clears any legacy cheat toggles the player left on before the run started —
-        /// Renewal, AoE Renewal, Cloak of Flames, Guardian's Gift, Immunity. Uses the
-        /// flag-only setters (or the raw field for immunityActive), never the ToggleX
-        /// methods: those carry side effects (Show() messages, visual rings, stat
-        /// snapshots/reversion) that don't belong at run start.
+        /// Renewal, AoE Renewal, Cloak of Flames, Guardian's Gift, Immunity.
+        ///
+        /// Renewal/AoE Renewal/Cloak are periodic-only (PeriodicManager just checks the flag
+        /// each tick) with no persistent state, so the flag-only setters are enough — using the
+        /// ToggleX methods would only add an unwanted Show() toast and, for AoE Renewal/Cloak, a
+        /// CheatVisualizer ring.
+        ///
+        /// Immunity and Guardian's Gift are different: they apply real, persistent state to the
+        /// player (Immunity overwrites every HitData.DamageModifier to Immune; Gift buffs HP,
+        /// stamina/eitr regen, carry weight, and equipped-item durability/armor). A flag-only
+        /// clear would leave that state applied for the whole run, so these two are routed
+        /// through their real ToggleX methods to run the OFF/revert branch.
+        ///
+        /// Both toggles gate on CheatCommands.GodMode (RequireGodMode) and silently no-op if
+        /// it's off — which it may already be, independent of whether god mode is still on right
+        /// now (the player could have toggled Immunity/Gift on, then god mode off, before the
+        /// run started). WithLegacyGodModeBracket brackets god mode on just long enough for the
+        /// synchronous toggle call. This method runs BEFORE ForceGodModeOff in StartRun, so the
+        /// final state is god-mode-off regardless of which branch this bracket takes.
         ///
         /// BoonEffects rides the same statics (notably AOERenewalActive/CloakActive) to drive
         /// wind/ember boons mid-run, so this only runs once at StartRun — never mid-run — and
@@ -704,12 +723,55 @@ namespace ICanShowYouTheWorld.RunMode
                 CheatCommands.SetRenewalActive(false);
                 CheatCommands.SetAoeRenewalActive(false);
                 CheatCommands.SetCloakActive(false);
-                CheatCommands.SetGuardianGiftActive(false);
-                CheatCommands.immunityActive = false;
             }
             catch (Exception ex)
             {
-                LogOnce("legacy-cheats-off", ex);
+                LogOnce("legacy-cheats-off-flags", ex);
+            }
+
+            try
+            {
+                if (CheatCommands.immunityActive) WithLegacyGodModeBracket(CheatCommands.ToggleImmunity);
+            }
+            catch (Exception ex)
+            {
+                LogOnce("legacy-cheats-off-immunity", ex);
+            }
+
+            try
+            {
+                if (CheatCommands.GiftActive) WithLegacyGodModeBracket(CheatCommands.ToggleGuardianGift);
+            }
+            catch (Exception ex)
+            {
+                LogOnce("legacy-cheats-off-gift", ex);
+            }
+        }
+
+        /// <summary>
+        /// Brackets a synchronous legacy-toggle call with CheatCommands.GodMode temporarily on,
+        /// if it wasn't already — mirrors BoonEffects.WithLegacyGodModeBracket (private to that
+        /// class, so mirrored here rather than shared). weTurnedOn is latched before calling
+        /// SetGodMode(true) so the finally still restores it even if the bracketed action itself
+        /// throws partway through.
+        /// </summary>
+        private static void WithLegacyGodModeBracket(Action action)
+        {
+            if (action == null) return;
+
+            bool weTurnedOn = false;
+            try
+            {
+                if (!CheatCommands.GodMode)
+                {
+                    weTurnedOn = true;
+                    CheatCommands.SetGodMode(true);
+                }
+                action();
+            }
+            finally
+            {
+                if (weTurnedOn) CheatCommands.SetGodMode(false);
             }
         }
 
