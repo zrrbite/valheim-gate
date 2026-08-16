@@ -87,5 +87,66 @@ static class ChallengeEngineTests
 
         e3.Tick(60f);
         Check.That(e3.Active.Count == 3, "second slot refilled after its own ~120s cooldown");
+
+        RestoreActiveTests();
+    }
+
+    static void RestoreActiveTests()
+    {
+        // Restores ids and progress from a save.
+        var e = new ChallengeEngine(Pool(), new Random(3), 120f);
+        e.RestoreActive(new[]
+        {
+            new KeyValuePair<string, float>("alt", 90f),
+            new KeyValuePair<string, float>("wood", 25f),
+        });
+        Check.That(e.Active.Count == 2, "restore fills only the saved slots");
+        Check.That(e.Active[0].Def.Id == "alt" && e.Active[0].Progress == 90f, "restored id and progress");
+        Check.That(e.Active[1].Def.Id == "wood" && e.Active[1].Progress == 25f, "restored second slot");
+
+        // Tick tops the shortfall back up to 3 without disturbing what was restored.
+        e.Tick(0.1f);
+        Check.That(e.Active.Count == 3, "restore shortfall tops up on next tick");
+        Check.That(e.Active.Any(a => a.Def.Id == "alt" && a.Progress == 90f), "topping up preserved restored progress");
+        Check.That(e.Active.Select(a => a.Def.Id).Distinct().Count() == 3, "still distinct after top-up");
+
+        // Ids the engine's own pool doesn't have are ignored — this is what keeps a
+        // kill-filtered pool from resurrecting kill challenges on resume.
+        var filtered = new ChallengeEngine(
+            Pool().Where(d => d.Kind != ChallengeKind.KillPrefab).ToList(), new Random(3), 120f);
+        filtered.RestoreActive(new[]
+        {
+            new KeyValuePair<string, float>("k-grey", 4f),
+            new KeyValuePair<string, float>("alt", 10f),
+            new KeyValuePair<string, float>("nonsense", 1f),
+        });
+        Check.That(filtered.Active.Count == 1 && filtered.Active[0].Def.Id == "alt",
+            "restore ignores ids outside the engine's own pool");
+
+        // Duplicates dropped, 3-slot cap respected.
+        var capped = new ChallengeEngine(Pool(), new Random(3), 120f);
+        capped.RestoreActive(new[]
+        {
+            new KeyValuePair<string, float>("alt", 1f),
+            new KeyValuePair<string, float>("alt", 2f),
+            new KeyValuePair<string, float>("wood", 3f),
+            new KeyValuePair<string, float>("naked", 4f),
+            new KeyValuePair<string, float>("build", 5f),
+            new KeyValuePair<string, float>("k-grey", 6f),
+        });
+        Check.That(capped.Active.Count == 3, "restore caps at 3 slots");
+        Check.That(capped.Active.Select(a => a.Def.Id).Distinct().Count() == 3, "restore drops duplicate ids");
+        Check.That(capped.Active[0].Progress == 1f, "restore keeps the first of a duplicated id");
+
+        // Restoring over an existing set replaces it wholesale.
+        var replaced = new ChallengeEngine(Pool(), new Random(5), 120f);
+        replaced.Tick(0.1f);
+        replaced.RestoreActive(new[] { new KeyValuePair<string, float>("naked", 2f) });
+        Check.That(replaced.Active.Count == 1 && replaced.Active[0].Def.Id == "naked",
+            "restore replaces the previous active set");
+
+        // Null input clears rather than throwing.
+        replaced.RestoreActive(null);
+        Check.That(replaced.Active.Count == 0, "restore(null) clears the active set");
     }
 }

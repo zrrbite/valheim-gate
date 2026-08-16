@@ -66,6 +66,28 @@ namespace ICanShowYouTheWorld.RunMode
             return true;
         }
 
+        /// <summary>
+        /// Replaces the held set with saved id/cooldown pairs, resolved against this engine's
+        /// own pool. Unknown and duplicate ids are ignored. Deliberately silent — it raises no
+        /// Gained events, so the caller reapplies effects for whatever ends up held.
+        /// </summary>
+        public void RestoreHeld(IEnumerable<KeyValuePair<string, float>> idToCooldown)
+        {
+            held.Clear();
+            if (idToCooldown == null) return;
+
+            var byId = pool.GroupBy(d => d.Id).ToDictionary(g => g.Key, g => g.First());
+            var seen = new HashSet<string>();
+
+            foreach (var entry in idToCooldown)
+            {
+                if (entry.Key == null || !seen.Add(entry.Key)) continue;
+                if (!byId.TryGetValue(entry.Key, out var def)) continue;
+
+                held.Add(new HeldBoon { Def = def, CooldownRemaining = entry.Value });
+            }
+        }
+
         public void Tick(float dt)
         {
             if (offer.Count > 0)

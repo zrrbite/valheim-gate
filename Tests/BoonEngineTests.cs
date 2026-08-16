@@ -56,5 +56,49 @@ static class BoonEngineTests
             c.Tick(4f);
             Check.That(Math.Abs(c.Held[0].CooldownRemaining - 6f) < 0.001f, "cooldown ticks");
         }
+
+        RestoreHeldTests();
+    }
+
+    static void RestoreHeldTests()
+    {
+        var e = new BoonEngine(Pool(), new Random(11), 45f);
+        int gained = 0;
+        e.Gained += _ => gained++;
+
+        e.RestoreHeld(new[]
+        {
+            new KeyValuePair<string, float>("fleet", 0f),
+            new KeyValuePair<string, float>("wind", 42f),
+        });
+        Check.That(e.Held.Count == 2, "restore holds the saved boons");
+        Check.That(e.Held[0].Def.Id == "fleet" && e.Held[1].Def.Id == "wind", "restored ids in order");
+        Check.That(Math.Abs(e.Held[1].CooldownRemaining - 42f) < 0.001f, "restored cooldown");
+        Check.That(gained == 0, "restore raises no Gained events");
+
+        // Restored cooldowns keep ticking normally.
+        e.Tick(2f);
+        Check.That(Math.Abs(e.Held[1].CooldownRemaining - 40f) < 0.001f, "restored cooldown ticks down");
+
+        // Restored passives are not offered again.
+        e.CreateOffer();
+        Check.That(!e.CurrentOffer.Any(d => d.Id == "fleet"), "restored passive is not re-offered");
+
+        // Unknown and duplicate ids ignored.
+        var f = new BoonEngine(Pool(), new Random(11), 45f);
+        f.RestoreHeld(new[]
+        {
+            new KeyValuePair<string, float>("nonsense", 1f),
+            new KeyValuePair<string, float>("ember", 5f),
+            new KeyValuePair<string, float>("ember", 9f),
+        });
+        Check.That(f.Held.Count == 1 && f.Held[0].Def.Id == "ember", "restore ignores unknown and duplicate ids");
+        Check.That(Math.Abs(f.Held[0].CooldownRemaining - 5f) < 0.001f, "restore keeps the first of a duplicated id");
+
+        // Restoring replaces; null clears.
+        f.RestoreHeld(new[] { new KeyValuePair<string, float>("pack", 0f) });
+        Check.That(f.Held.Count == 1 && f.Held[0].Def.Id == "pack", "restore replaces the previous held set");
+        f.RestoreHeld(null);
+        Check.That(f.Held.Count == 0, "restore(null) clears the held set");
     }
 }

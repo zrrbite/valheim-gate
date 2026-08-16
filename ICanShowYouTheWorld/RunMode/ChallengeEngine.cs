@@ -87,6 +87,31 @@ namespace ICanShowYouTheWorld.RunMode
             }
         }
 
+        /// <summary>
+        /// Replaces the active set with saved id/progress pairs, resolved against this engine's
+        /// own pool. Unknown ids are ignored (so a pool that excluded, say, kill challenges will
+        /// not resurrect them), duplicates are dropped, and no more than 3 slots are filled.
+        /// Any shortfall is topped up by the next Tick, as usual.
+        /// </summary>
+        public void RestoreActive(IEnumerable<KeyValuePair<string, float>> idToProgress)
+        {
+            active.Clear();
+            pendingRefills.Clear();
+            if (idToProgress == null) return;
+
+            var byId = pool.GroupBy(d => d.Id).ToDictionary(g => g.Key, g => g.First());
+            var seen = new HashSet<string>();
+
+            foreach (var entry in idToProgress)
+            {
+                if (active.Count >= 3) break;
+                if (entry.Key == null || !seen.Add(entry.Key)) continue;
+                if (!byId.TryGetValue(entry.Key, out var def)) continue;
+
+                active.Add(new ActiveChallenge { Def = def, Progress = entry.Value });
+            }
+        }
+
         public bool Reroll(int slotIndex)
         {
             if (slotIndex < 0 || slotIndex >= active.Count) return false;
