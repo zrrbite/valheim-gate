@@ -45,10 +45,12 @@ namespace ICanShowYouTheWorld.RunMode
         private readonly WorldModifiers _worldModifiers = new WorldModifiers();
         private readonly HashSet<string> _loggedFailures = new HashSet<string>();
 
-        // --- Boon effect seams. Task 10 assigns these; until then they are no-ops. ---
+        // --- Boon effect seams, wired to BoonEffects in the constructor below. ---
         internal Action<string> ApplyBoonEffect = _ => { };
         internal Action<string> UnapplyBoonEffect = _ => { };
         internal Action UnapplyAllBoonEffects = () => { };
+
+        private readonly BoonEffects _boonEffects;
 
         // --- Run state ---
         private HeatModel _heat = new HeatModel();
@@ -91,6 +93,13 @@ namespace ICanShowYouTheWorld.RunMode
         {
             _game = game;
             _cfg = cfg;
+
+            // _boons doesn't exist yet at construction time — captured by reference, resolved
+            // lazily whenever BoonEffects actually needs the held set.
+            _boonEffects = new BoonEffects(() => _boons?.Held, UndefeatedBossLocations);
+            ApplyBoonEffect = _boonEffects.Apply;
+            UnapplyBoonEffect = _boonEffects.Unapply;
+            UnapplyAllBoonEffects = _boonEffects.UnapplyAll;
 
             // Subscribed for the lifetime of the service; the handler no-ops while inactive.
             GameEvents.OnCharacterDied += OnCharacterDied;
@@ -336,9 +345,11 @@ namespace ICanShowYouTheWorld.RunMode
             _graceElapsed += dt;
             _challenges?.Tick(dt);
             _boons?.Tick(dt);
+            _boonEffects.Tick(dt);
 
             WarnIfKillHookDead();
             HandleBoonOfferInput();
+            HandleBoonActivationInput();
 
             _pollTimer += dt;
             if (_pollTimer >= BossPollIntervalSeconds)
@@ -399,6 +410,28 @@ namespace ICanShowYouTheWorld.RunMode
             if (Input.GetKeyDown(KeyCode.Keypad1)) _boons.Pick(0);
             else if (Input.GetKeyDown(KeyCode.Keypad2)) _boons.Pick(1);
             else if (Input.GetKeyDown(KeyCode.Keypad3)) _boons.Pick(2);
+        }
+
+        /// <summary>
+        /// Keypad4/5/6 activate held wind/ember/way while a run is active. Gated on there being
+        /// no boon offer pending, matching the brief; the offer keys (1/2/3) don't overlap with
+        /// these anyway, so this is a UX choice, not a conflict-avoidance one.
+        /// </summary>
+        private void HandleBoonActivationInput()
+        {
+            if (_boons == null || _boons.CurrentOffer.Count > 0) return;
+
+            if (Input.GetKeyDown(KeyCode.Keypad4)) TryActivateHeldBoon("wind");
+            else if (Input.GetKeyDown(KeyCode.Keypad5)) TryActivateHeldBoon("ember");
+            else if (Input.GetKeyDown(KeyCode.Keypad6)) TryActivateHeldBoon("way");
+        }
+
+        private void TryActivateHeldBoon(string boonId)
+        {
+            var held = _boons.Held.FirstOrDefault(h => h.Def.Id == boonId);
+            if (held == null) return; // Not held — key does nothing.
+
+            if (!_boonEffects.Activate(boonId)) Message($"{held.Def.Display} not ready.");
         }
 
         private void PollBosses()
@@ -892,6 +925,18 @@ namespace ICanShowYouTheWorld.RunMode
         {
             if (string.IsNullOrEmpty(key)) return false;
             return zone.GetGlobalKey(key);
+        }
+
+        /// <summary>Location prefab names for bosses not yet defeated on the current world — feeds the "way" boon's altar search.</summary>
+        private IEnumerable<string> UndefeatedBossLocations()
+        {
+            var zone = ZoneSystem.instance;
+            if (zone == null) yield break;
+
+            foreach (var boss in Bosses)
+            {
+                if (!SafeGetGlobalKey(zone, boss.defeatKey)) yield return boss.locName;
+            }
         }
 
         private void SafeUnapplyAllBoonEffects()
