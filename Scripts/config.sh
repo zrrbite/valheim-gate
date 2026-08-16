@@ -6,6 +6,12 @@
 DECK_HOST="deck@192.168.86.42"
 DECK_VALHEIM_MANAGED="/home/deck/.local/share/Steam/steamapps/common/Valheim/valheim_Data/Managed"
 
+# Windows machine (needs the optional OpenSSH Server feature enabled).
+# Use forward slashes; a path without spaces saves a lot of quoting pain, e.g.
+# a library on D: rather than the default under "Program Files (x86)".
+WIN_HOST="${WIN_HOST:-}"                    # e.g. martin@192.168.86.50
+WIN_VALHEIM_MANAGED="${WIN_VALHEIM_MANAGED:-C:/Program Files (x86)/Steam/steamapps/common/Valheim/valheim_Data/Managed}"
+
 # Project paths (auto-detected relative to script location)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"

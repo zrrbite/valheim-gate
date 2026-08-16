@@ -199,9 +199,25 @@ original Developer ID one would fail), verifies the result, and keeps backups
 
 ### Windows
 
-Same as the Deck but with a local copy into
-`steamapps\common\Valheim\valheim_Data\Managed\`. No signing constraints.
-Patch that machine's own assembly (`Patcher.exe <input> <output>`).
+Push from the Mac over SSH, mirroring the Deck flow. No signing constraints.
+
+```bash
+Scripts/download_windows.sh   # pull that machine's assembly, patch -> patched/windows/
+Scripts/upload_windows.sh     # deploy both DLLs
+```
+
+Setup: enable the optional **OpenSSH Server** feature on Windows
+(`Start-Service sshd; Set-Service -Name sshd -StartupType Automatic`) and set
+`WIN_HOST` in `Scripts/config.sh`. Two gotchas, both handled/explained by
+`Scripts/win_common.sh`:
+
+- For an **administrator** account, Windows OpenSSH ignores
+  `~/.ssh/authorized_keys`; the key belongs in
+  `C:\ProgramData\ssh\administrators_authorized_keys` with ACLs restricted to
+  Administrators and SYSTEM.
+- The default Steam path contains spaces, and `scp` passes remote paths
+  through `cmd.exe`. Pointing `WIN_VALHEIM_MANAGED` at a space-free Steam
+  library sidesteps the quoting entirely.
 
 ## Update Scenarios
 
