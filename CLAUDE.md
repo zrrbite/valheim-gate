@@ -206,10 +206,10 @@ Scripts/download_windows.sh   # pull that machine's assembly, patch -> patched/w
 Scripts/upload_windows.sh     # deploy both DLLs
 ```
 
-Setup: enable the optional **OpenSSH Server** feature on Windows
-(`Start-Service sshd; Set-Service -Name sshd -StartupType Automatic`) and set
-`WIN_HOST` in `Scripts/config.sh`. Two gotchas, both handled/explained by
-`Scripts/win_common.sh`:
+Setup: see **[SSH_SETUP.md](SSH_SETUP.md)** for enabling SSH on every push
+target (SteamOS and Windows 11). Short version: enable the optional **OpenSSH
+Server** feature on Windows and set `WIN_HOST` in `Scripts/config.sh`. Two
+gotchas, both handled/explained by `Scripts/win_common.sh`:
 
 - For an **administrator** account, Windows OpenSSH ignores
   `~/.ssh/authorized_keys`; the key belongs in

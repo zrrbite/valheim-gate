@@ -6,8 +6,13 @@ Improved deployment scripts with error handling, validation, and colored output.
 
 All scripts use **`config.sh`** for shared settings. Edit this file to change:
 - Steam Deck IP address
+- Windows host (`WIN_HOST`) and its Managed path
 - Remote paths
 - Local project paths
+
+Deploy targets are reached over SSH with key auth — see
+**[../SSH_SETUP.md](../SSH_SETUP.md)** for enabling and troubleshooting it on
+SteamOS and Windows 11.
 
 ## Scripts Overview
 
