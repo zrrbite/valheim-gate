@@ -20,13 +20,30 @@ namespace Patcher
 
         static void Main(string[] args)
         {
-            // Optional overrides: Patcher.exe [input.dll] [output.dll]
+            // Optional overrides: Patcher.exe [input.dll] [output.dll] [mod.dll]
+            // The third argument matters when the working directory is not the
+            // Patcher's own folder, which is the case for the Windows installer.
             var inPath = args.Length > 0 ? args[0] : appPath;
             var outPath = args.Length > 1 ? args[1] : donePath;
+            var symPath = args.Length > 2 ? args[2] : injPath;
             System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(outPath)));
 
-            var app = AssemblyDefinition.ReadAssembly(inPath);
-            var inj = AssemblyDefinition.ReadAssembly(injPath);
+            // Resolve dependencies from the folders the assemblies actually
+            // live in. Cecil's default resolver only searches the working
+            // directory, which made patching succeed or fail depending on
+            // where it was invoked from.
+            // A 4th argument names the folder holding the game's other
+            // assemblies — needed when the input is a backup kept outside the
+            // game directory, where UnityEngine.CoreModule and friends are not
+            // sitting next to it.
+            var resolver = new DefaultAssemblyResolver();
+            resolver.AddSearchDirectory(System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(inPath)));
+            resolver.AddSearchDirectory(System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(symPath)));
+            if (args.Length > 3) resolver.AddSearchDirectory(System.IO.Path.GetFullPath(args[3]));
+            var readParams = new ReaderParameters { AssemblyResolver = resolver };
+
+            var app = AssemblyDefinition.ReadAssembly(inPath, readParams);
+            var inj = AssemblyDefinition.ReadAssembly(symPath, readParams);
 
             // Set scope of m_pins on the minimap to public static
             //

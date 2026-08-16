@@ -21,6 +21,8 @@ print_success "Original staged: $MAC_ORG"
 
 print_info "Patching (macOS)..."
 cd "$PATCHER_DIR"
-mono Patcher.exe "$MAC_ORG" "$MAC_PATCHED"
+# Args: input, output, mod DLL (symbol source), folder holding the game's
+# other assemblies for dependency resolution.
+mono Patcher.exe "$MAC_ORG" "$MAC_PATCHED" "$PATCHER_DIR/ICanShowYouTheWorld.dll" "$MAC_MANAGED"
 print_success "Patched assembly: $MAC_PATCHED"
 print_info "Deploy with: $SCRIPT_DIR/deploy_local.sh"

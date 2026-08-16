@@ -112,8 +112,23 @@ foreach ($f in @($modSource, $patcher)) {
     if (-not (Test-Path $f)) { Write-Err "Missing bundled file: $f"; exit 1 }
 }
 
-# Compare the Steam build against what these binaries were built for
-$appManifest = Join-Path (Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $ManagedPath))) 'appmanifest_892970.acf'
+# Writing into Program Files needs elevation; fail with a clear reason
+# rather than a raw access-denied halfway through.
+try {
+    $probe = Join-Path $ManagedPath ('.write-probe-{0}' -f ([guid]::NewGuid()))
+    New-Item -ItemType File -Path $probe -ErrorAction Stop | Out-Null
+    Remove-Item $probe -Force
+} catch {
+    Write-Err "Cannot write to $ManagedPath"
+    Write-Info 'Re-run this script from an elevated PowerShell (Run as Administrator).'
+    exit 1
+}
+
+# Compare the Steam build against what these binaries were built for.
+# Managed -> valheim_Data -> Valheim -> common -> steamapps (four levels up).
+$steamapps = $ManagedPath
+1..4 | ForEach-Object { $steamapps = Split-Path -Parent $steamapps }
+$appManifest = Join-Path $steamapps 'appmanifest_892970.acf'
 if (Test-Path $appManifest) {
     $m = [regex]::Match((Get-Content $appManifest -Raw), '"buildid"\s+"(\d+)"')
     if ($m.Success) {
@@ -141,14 +156,13 @@ if (-not (Test-Path $vanilla)) {
 $patchedOut = Join-Path $env:TEMP 'valheim-patched\assembly_valheim.dll'
 New-Item -ItemType Directory -Force -Path (Split-Path -Parent $patchedOut) | Out-Null
 
-# Run with the patcher folder as the working directory: the Patcher resolves
-# the mod DLL it reads symbols from relative to the current directory.
-Push-Location $patcherDir
-try {
-    & $patcher $vanilla $patchedOut
-    if ($LASTEXITCODE -ne 0) { throw "Patcher exited with code $LASTEXITCODE" }
-} finally {
-    Pop-Location
+# All three paths are passed explicitly, so this does not depend on the
+# working directory — PowerShell's location and a child process's actual
+# current directory are not the same thing.
+& $patcher $vanilla $patchedOut $modSource $ManagedPath
+if ($LASTEXITCODE -ne 0) {
+    Write-Err "Patcher exited with code $LASTEXITCODE"
+    exit 1
 }
 if (-not (Test-Path $patchedOut)) { Write-Err 'Patcher produced no output.'; exit 1 }
 Write-Ok 'Assembly patched.'
