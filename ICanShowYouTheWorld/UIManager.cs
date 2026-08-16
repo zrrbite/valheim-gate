@@ -35,6 +35,10 @@ namespace ICanShowYouTheWorld
         private float laidOutForHeight = -1f;
         private float currentScale = 1f;
 
+        // Run Mode's own UI (strip, Heat HUD, lobby, boon offer). Drawn inside the same scaled
+        // GUI.matrix as the GM windows, and — during a run — instead of them.
+        private readonly RunMode.RunWindow runWindow = new RunMode.RunWindow();
+
         void Awake() => Instance = this;
 
         private float ResolveScale()
@@ -72,6 +76,9 @@ namespace ICanShowYouTheWorld
 
         public void ToggleVisible() => visible = !visible;
 
+        /// <summary>End key: opens the Run Mode lobby, or the Heat HUD while a run is live.</summary>
+        public void ToggleRunWindow() => runWindow.ToggleVisible();
+
         void OnGUI()
         {
             // stash old color
@@ -87,7 +94,10 @@ namespace ICanShowYouTheWorld
             // restore
             GUI.contentColor = oldColor;
 
-            if (!visible) return;
+            // A live run draws its timer/heat strip whether or not the cheat UI is up, and the
+            // lobby answers the End key on its own — so "nothing visible" is no longer just !visible.
+            bool runActive = runWindow.RunActive;
+            if (!visible && !runWindow.WantsDraw) return;
 
             // Scale the whole GUI, which sizes fonts along with the windows —
             // IMGUI is otherwise pure pixels and shrinks as resolution grows.
@@ -108,35 +118,43 @@ namespace ICanShowYouTheWorld
                 laidOutForHeight = viewHeight;
             }
 
-            trackWindow = GUILayout.Window(
-                0,
-                trackWindow,
-                DrawTracking,
-                "Tracking",
-                GUILayout.MinWidth(TW),
-                GUILayout.MinHeight(TH)
-            );
-            modeWindow = GUILayout.Window(
-                1,
-                modeWindow,
-                DrawModes,
-                "Modes",
-                GUILayout.MinWidth(modeWidth)
-            );
-            // ID = 2 for Pets
-            petWindow = GUILayout.Window(
-                2, petWindow, DrawPets, "Group",
-                GUILayout.Width(200f), GUILayout.Height(TH)
-            );
-            // ID = 3 for Selection (prefabs + utilities)
-            selectionWindow = GUILayout.Window(
-                3,
-                selectionWindow,
-                DrawSelection,
-                "Selection",
-                GUILayout.MinWidth(selectionWidth),
-                GUILayout.MinHeight(selectionHeight)
-            );
+            // The GM windows are the sandbox; a run replaces them wholesale with the Heat HUD.
+            if (visible && !runActive)
+            {
+                trackWindow = GUILayout.Window(
+                    0,
+                    trackWindow,
+                    DrawTracking,
+                    "Tracking",
+                    GUILayout.MinWidth(TW),
+                    GUILayout.MinHeight(TH)
+                );
+                modeWindow = GUILayout.Window(
+                    1,
+                    modeWindow,
+                    DrawModes,
+                    "Modes",
+                    GUILayout.MinWidth(modeWidth)
+                );
+                // ID = 2 for Pets
+                petWindow = GUILayout.Window(
+                    2, petWindow, DrawPets, "Group",
+                    GUILayout.Width(200f), GUILayout.Height(TH)
+                );
+                // ID = 3 for Selection (prefabs + utilities)
+                selectionWindow = GUILayout.Window(
+                    3,
+                    selectionWindow,
+                    DrawSelection,
+                    "Selection",
+                    GUILayout.MinWidth(selectionWidth),
+                    GUILayout.MinHeight(selectionHeight)
+                );
+            }
+
+            // Run UI last, and never allowed to throw: it owns window ids 10-12.
+            runWindow.CheatUiVisible = visible;
+            runWindow.Draw(viewWidth, viewHeight);
 
             GUI.matrix = savedMatrix;
         }

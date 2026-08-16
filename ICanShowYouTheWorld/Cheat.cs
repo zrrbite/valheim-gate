@@ -165,6 +165,12 @@ namespace ICanShowYouTheWorld
                     GetState    = () => true
                 },
                 new CommandBinding {
+                    Key         = KeyCode.End,
+                    Description = "Run Mode window",
+                    Execute     = () => UIManager.Instance.ToggleRunWindow(),
+                    GetState    = () => true
+                },
+                new CommandBinding {
                     Key         = KeyCode.Keypad0,
                     Description = "God Mode", // Also toggles Renewal / resets forsaken power timer
                     Execute     = CheatCommands.ToggleGodMode,

@@ -319,6 +319,7 @@
     <Compile Include="RunMode\Unity\RunStorage.cs" />
     <Compile Include="RunMode\Unity\WorldModifiers.cs" />
     <Compile Include="RunMode\Unity\RunService.cs" />
+    <Compile Include="RunMode\Unity\RunWindow.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Assets\" />
