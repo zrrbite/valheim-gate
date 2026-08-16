@@ -41,10 +41,20 @@ namespace ICanShowYouTheWorld
 
         void Awake() => Instance = this;
 
+        // Cached: ResolveScale runs on every OnGUI pass — and during a run OnGUI no longer
+        // early-returns, so this is now a hot path whether or not the cheat UI is up.
+        private Core.IConfiguration config;
+
         private float ResolveScale()
         {
             float configured = 0f;
-            try { configured = Core.ModBootstrap.GetService<Core.IConfiguration>().UiScale; }
+            try
+            {
+                // TryGet, not ModBootstrap.GetService: the latter throws when the service is
+                // missing, which OnGUI cannot survive.
+                if (config == null) config = Core.ServiceContainer.Instance.TryGet<Core.IConfiguration>();
+                if (config != null) configured = config.UiScale;
+            }
             catch { /* config unavailable: fall through to auto */ }
 
             if (configured > 0f) return configured;
@@ -94,10 +104,18 @@ namespace ICanShowYouTheWorld
             // restore
             GUI.contentColor = oldColor;
 
+            // A deferred [Start Run]/[Abandon run] click lands here, at a Layout event and before
+            // anything reads the run state — so this pass, GM windows included, sees one
+            // consistent answer and the set of live windows only changes between passes.
+            runWindow.ApplyPendingActions();
+
+            // Read once per pass: RunActive hits the service, and a mid-pass change of mind
+            // between the early-return test and the window block would desync GUILayout.
+            bool runActive = runWindow.RunActive;
+
             // A live run draws its timer/heat strip whether or not the cheat UI is up, and the
             // lobby answers the End key on its own — so "nothing visible" is no longer just !visible.
-            bool runActive = runWindow.RunActive;
-            if (!visible && !runWindow.WantsDraw) return;
+            if (!visible && !runActive && !runWindow.Visible) return;
 
             // Scale the whole GUI, which sizes fonts along with the windows —
             // IMGUI is otherwise pure pixels and shrinks as resolution grows.

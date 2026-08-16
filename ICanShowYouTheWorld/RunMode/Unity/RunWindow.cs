@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using ICanShowYouTheWorld.Core;
 using ICanShowYouTheWorld.Services;
 using UnityEngine;
@@ -54,7 +55,21 @@ namespace ICanShowYouTheWorld.RunMode
         private float _laidOutForHeight = -1f;
 
         private float _lastAbandonPress = float.NegativeInfinity;
-        private bool _loggedFailure;
+        private Vector2 _hudScroll;
+
+        // Deferred lifecycle actions. A button that flips IsRunActive mid-pass would change the
+        // window set between GUILayout's Layout and Repaint passes, which IMGUI answers with a
+        // stream of "Mismatched LayoutGroup" errors. The buttons only raise these flags; they
+        // are consumed at a Layout event (see ApplyPendingActions), so the window set only ever
+        // changes between passes.
+        private bool _pendingStart;
+        private bool _pendingAbandon;
+
+        // Failure sites already logged, keyed by site + message: a new fault still gets a line,
+        // a repeating one doesn't flood OnGUI. Capped so a fault with a varying message
+        // (positions, timings) can't grow the set without bound.
+        private const int MaxLoggedFailures = 32;
+        private readonly HashSet<string> _loggedFailures = new HashSet<string>();
 
         // Styles are built once and reused; a new GUIStyle per OnGUI call would churn every frame.
         private GUIStyle _stripStyle;
@@ -80,14 +95,43 @@ namespace ICanShowYouTheWorld.RunMode
                 }
                 catch (Exception ex)
                 {
-                    LogOnce(ex);
+                    LogOnce("run-active", ex);
                     return false;
                 }
             }
         }
 
-        /// <summary>Anything to draw at all? Lets UIManager skip the scale/layout work entirely.</summary>
-        public bool WantsDraw => Visible || RunActive;
+        /// <summary>
+        /// Applies a [Start Run] / [Abandon run] click raised on an earlier pass, but only at a
+        /// Layout event — the one point in the IMGUI cycle where changing which windows exist is
+        /// safe. Called by UIManager BEFORE it reads <see cref="RunActive"/>, so the whole pass
+        /// (GM windows included) sees one consistent run state; also called at the top of
+        /// <see cref="Draw"/>, which is idempotent, so the guarantee holds for any caller.
+        /// </summary>
+        public void ApplyPendingActions()
+        {
+            if (!_pendingStart && !_pendingAbandon) return;
+            if (Event.current == null || Event.current.type != EventType.Layout) return;
+
+            bool start = _pendingStart;
+            bool abandon = _pendingAbandon;
+            _pendingStart = false;
+            _pendingAbandon = false;
+
+            try
+            {
+                var run = Service;
+                if (run == null) return;
+
+                // Abandon wins if both somehow queued: it is the safer of the two to honour.
+                if (abandon) run.AbandonRun();
+                else if (start) run.StartRun();
+            }
+            catch (Exception ex)
+            {
+                LogOnce("pending-action", ex);
+            }
+        }
 
         /// <summary>
         /// Cached, null-safe service lookup. ModBootstrap.GetService throws when a service is
@@ -113,6 +157,8 @@ namespace ICanShowYouTheWorld.RunMode
         {
             try
             {
+                ApplyPendingActions();
+
                 var run = Service;
                 if (run == null) return;
 
@@ -145,7 +191,7 @@ namespace ICanShowYouTheWorld.RunMode
             }
             catch (Exception ex)
             {
-                LogOnce(ex);
+                LogOnce("draw", ex);
             }
         }
 
@@ -228,11 +274,22 @@ namespace ICanShowYouTheWorld.RunMode
 
         private void DrawHud(int id)
         {
+            // Each window body is its own try/catch: an exception escaping a GUILayout.Window
+            // callback leaves IMGUI's clip/layout stacks unbalanced for every window after it.
+            try { DrawHudBody(); }
+            catch (Exception ex) { LogOnce("hud", ex); }
+
+            GUI.DragWindow();
+        }
+
+        private void DrawHudBody()
+        {
             var run = Service;
             if (run == null) return;
 
             Backdrop(_hudRect);
 
+            // --- Header: stays out of the scroll view, so time/heat/score are always on screen. ---
             GUILayout.Label(FormatTime(run.ElapsedSeconds), _timerStyle);
 
             GUILayout.BeginHorizontal();
@@ -243,6 +300,37 @@ namespace ICanShowYouTheWorld.RunMode
 
             GUILayout.Space(6f);
 
+            // The window height is fixed, so the body — which grows with splits, challenges and
+            // held boons — scrolls. Without this it would overflow and clip the Abandon button
+            // out of reach, and with the input gate on, that button is the only way out of a run.
+            _hudScroll = GUILayout.BeginScrollView(_hudScroll, GUILayout.ExpandHeight(true));
+            // finally, not a plain call: a throw inside the body must still close the group,
+            // or every window drawn after this one inherits a broken layout stack.
+            try { DrawHudSections(run); }
+            finally { GUILayout.EndScrollView(); }
+
+            // --- Abandon, behind a two-press confirm so a stray click can't end a run. Outside
+            //     the scroll view, so it is always reachable however long the body gets. ---
+            bool armed = Time.realtimeSinceStartup - _lastAbandonPress <= AbandonConfirmSeconds;
+            GUI.contentColor = armed ? Color.red : Color.white;
+            if (GUILayout.Button(armed ? "Abandon run — click again" : "Abandon run"))
+            {
+                if (armed)
+                {
+                    _lastAbandonPress = float.NegativeInfinity;
+                    _pendingAbandon = true; // Applied at the next Layout pass.
+                }
+                else
+                {
+                    _lastAbandonPress = Time.realtimeSinceStartup;
+                }
+            }
+            GUI.contentColor = Color.white;
+        }
+
+        /// <summary>Splits, challenges and held boons — the part of the HUD that scrolls.</summary>
+        private void DrawHudSections(IRunService run)
+        {
             // --- Splits ---
             GUILayout.Label("SPLITS", _headerStyle);
             var splits = run.Splits;
@@ -305,26 +393,6 @@ namespace ICanShowYouTheWorld.RunMode
                 }
             }
 
-            GUILayout.FlexibleSpace();
-
-            // --- Abandon, behind a two-press confirm so a stray click can't end a run. ---
-            bool armed = Time.realtimeSinceStartup - _lastAbandonPress <= AbandonConfirmSeconds;
-            GUI.contentColor = armed ? Color.red : Color.white;
-            if (GUILayout.Button(armed ? "Abandon run — click again" : "Abandon run"))
-            {
-                if (armed)
-                {
-                    _lastAbandonPress = float.NegativeInfinity;
-                    run.AbandonRun();
-                }
-                else
-                {
-                    _lastAbandonPress = Time.realtimeSinceStartup;
-                }
-            }
-            GUI.contentColor = Color.white;
-
-            GUI.DragWindow();
         }
 
         /// <summary>Cooldown/charges plus the activation key for the three active boons.</summary>
@@ -356,6 +424,14 @@ namespace ICanShowYouTheWorld.RunMode
 
         private void DrawLobby(int id)
         {
+            try { DrawLobbyBody(); }
+            catch (Exception ex) { LogOnce("lobby", ex); }
+
+            GUI.DragWindow();
+        }
+
+        private void DrawLobbyBody()
+        {
             var run = Service;
             if (run == null) return;
 
@@ -379,24 +455,30 @@ namespace ICanShowYouTheWorld.RunMode
             }
 
             GUILayout.Space(8f);
-            if (GUILayout.Button("Start Run")) run.StartRun();
+            // Deferred: starting a run here would change the window set mid-pass.
+            if (GUILayout.Button("Start Run")) _pendingStart = true;
 
             GUILayout.Space(6f);
             GUILayout.Label("GM mode is disabled while a run is live.", _smallStyle);
 
-            if (!run.KillHookAvailable)
-            {
-                GUI.contentColor = Color.yellow;
-                GUILayout.Label("Re-patch assembly for kill challenges.", _smallStyle);
-                GUI.contentColor = Color.white;
-            }
-
-            GUI.DragWindow();
+            // No kill-hook warning here by design: KillHookAvailable is unconditionally true
+            // outside a run (the grace clock only advances while one is in progress, and the
+            // injected hook cannot prove itself until something dies), so a lobby line would
+            // either never appear or cry wolf. The real surface is RunService's in-run notice,
+            // raised on the strip once the 60s grace window closes with the hook still silent.
         }
 
         // --- Boon offer (display only; picks are handled in RunService.Tick) ---
 
         private void DrawOffer(int id)
+        {
+            try { DrawOfferBody(); }
+            catch (Exception ex) { LogOnce("offer", ex); }
+
+            GUI.DragWindow();
+        }
+
+        private void DrawOfferBody()
         {
             var boons = Service?.Boons;
             if (boons == null) return;
@@ -419,8 +501,6 @@ namespace ICanShowYouTheWorld.RunMode
 
             GUILayout.FlexibleSpace();
             GUILayout.Label("press Keypad 1/2/3", _smallStyle);
-
-            GUI.DragWindow();
         }
 
         // --- Helpers ---
@@ -439,12 +519,21 @@ namespace ICanShowYouTheWorld.RunMode
             return $"{total / 60:00}:{total % 60:00}";
         }
 
-        /// <summary>One log line per session: OnGUI runs many times a frame and would flood.</summary>
-        private void LogOnce(Exception ex)
+        /// <summary>
+        /// Logs a failure once per distinct site+message. OnGUI runs several times a frame, so
+        /// an unfiltered log would flood — but a single bool would mean the first fault ever
+        /// silences every later, unrelated one. Mirrors RunService.LogOnce, with the exception's
+        /// message folded into the key so a different failure at the same site still surfaces.
+        /// </summary>
+        private void LogOnce(string site, Exception ex)
         {
-            if (_loggedFailure) return;
-            _loggedFailure = true;
-            Debug.LogError($"[ICanShowYouTheWorld] Run UI failed (further occurrences suppressed): {ex}");
+            string key = site + ":" + (ex?.Message ?? string.Empty);
+            if (_loggedFailures.Contains(key)) return;
+            if (_loggedFailures.Count >= MaxLoggedFailures) return;
+
+            _loggedFailures.Add(key);
+            Debug.LogError(
+                $"[ICanShowYouTheWorld] Run UI '{site}' failed (further identical occurrences suppressed): {ex}");
         }
     }
 }
