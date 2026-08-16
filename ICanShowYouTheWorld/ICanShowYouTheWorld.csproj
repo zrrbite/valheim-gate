@@ -207,9 +207,6 @@
     <Reference Include="UnityEngine.PerformanceReportingModule">
       <HintPath>..\libraries\UnityEngine.PerformanceReportingModule.dll</HintPath>
     </Reference>
-    <Reference Include="UnityEngine.ProfilerModule">
-      <HintPath>..\libraries\UnityEngine.ProfilerModule.dll</HintPath>
-    </Reference>
     <Reference Include="UnityEngine.PropertiesModule">
       <HintPath>..\libraries\UnityEngine.PropertiesModule.dll</HintPath>
     </Reference>
