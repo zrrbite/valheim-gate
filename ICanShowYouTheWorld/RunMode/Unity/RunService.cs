@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using ICanShowYouTheWorld.Core;
 using ICanShowYouTheWorld.GameAPI;
@@ -33,6 +34,11 @@ namespace ICanShowYouTheWorld.RunMode
         private const float BossPollIntervalSeconds = 1f;
         private const float AutosaveIntervalSeconds = 5f;
         private const float KillHookGraceSeconds = 60f;
+        private const int ConsecutiveFailuresBeforeNotice = 5;
+
+        private const string FrozenNotice = "Run paused — world not loaded.";
+        private const string WrongWorldNotice = "Run paused — this is not the world the run started in.";
+        private const string KillHookNotice = "Kill hook never fired — kill challenges will not progress.";
 
         private readonly IGameAPI _game;
         private readonly IConfiguration _cfg;
@@ -50,26 +56,35 @@ namespace ICanShowYouTheWorld.RunMode
         private BoonEngine _boons;
         private Random _rng;
         private int _rngSeed;
+        private string _worldId;
 
         private bool _active;
         private float _elapsed;
         private float _pollTimer;
         private float _saveTimer;
         private float _noArmorSeconds;
-        private float _sinceFirstTick;
+        private float _graceElapsed;
+        private bool _killHookWarned;
+        private bool _frozen;
 
         private readonly List<string> _splitLabels = new List<string>();
         private readonly List<float> _splitTimes = new List<float>();
+
+        /// <summary>Ids of the NoArmorMinutes challenges currently active, so a newly drawn one starts from zero.</summary>
+        private readonly HashSet<string> _noArmorChallengeIds = new HashSet<string>();
 
         /// <summary>Boss keys that must not produce a split: already true when the run began, or already recorded.</summary>
         private readonly HashSet<string> _accountedBossKeys = new HashSet<string>();
 
         private bool _resumeAttempted;
+        private RunSaveState _pendingResume;
+        private bool _restorePending;
+        private int _consecutiveTickFailures;
 
         /// <summary>Score of the most recently finished run; surfaced by the HUD until dismissed.</summary>
         internal float LastScore;
 
-        /// <summary>Transient notice for the HUD (e.g. kill hook unavailable). Null when there is nothing to say.</summary>
+        /// <summary>Transient notice for the HUD. Null when there is nothing to say.</summary>
         internal string HudNotice;
 
         public RunService(IGameAPI game, IConfiguration cfg)
@@ -108,7 +123,12 @@ namespace ICanShowYouTheWorld.RunMode
             }
         }
 
-        public bool KillHookAvailable => GameEvents.HookInstalled || _sinceFirstTick < KillHookGraceSeconds;
+        /// <summary>
+        /// The grace window runs from StartRun (or resume), not from mod init: the injected
+        /// death hook can only prove itself once something dies, so a fresh run assumes it
+        /// works and finds out within the first minute.
+        /// </summary>
+        public bool KillHookAvailable => GameEvents.HookInstalled || _graceElapsed < KillHookGraceSeconds;
 
         public string LobbySummary()
         {
@@ -127,6 +147,7 @@ namespace ICanShowYouTheWorld.RunMode
         {
             try
             {
+                // --- Validate first: a refused start must change nothing. ---
                 if (_active)
                 {
                     Message("A run is already in progress.");
@@ -136,37 +157,43 @@ namespace ICanShowYouTheWorld.RunMode
                 var player = Player.m_localPlayer;
                 if (player == null)
                 {
-                    Message("Run Mode needs a spawned character.");
+                    // ShowMessage routes through the local player, so it would go nowhere here.
+                    Announce("Run Mode needs a spawned character.");
                     return;
                 }
-
-                // Cheats and runs don't mix — make sure god mode ends up OFF.
-                ForceGodModeOff();
 
                 var zone = ZoneSystem.instance;
                 if (zone == null)
                 {
-                    Message("Run Mode could not reach the world (ZoneSystem missing).");
+                    Announce("Run Mode could not reach the world (ZoneSystem missing).");
                     return;
                 }
 
                 // A used world may already have kills. Those bosses are excluded from splits;
                 // if the FINAL boss is already down there is no run to be had.
-                _accountedBossKeys.Clear();
+                var preDefeated = new HashSet<string>();
                 foreach (var boss in Bosses)
                 {
-                    if (SafeGetGlobalKey(zone, boss.defeatKey))
-                    {
-                        _accountedBossKeys.Add(boss.defeatKey);
-                    }
+                    if (SafeGetGlobalKey(zone, boss.defeatKey)) preDefeated.Add(boss.defeatKey);
                 }
 
-                if (_accountedBossKeys.Contains(_cfg.RunFinalBossKey))
+                if (preDefeated.Contains(_cfg.RunFinalBossKey))
                 {
-                    _accountedBossKeys.Clear();
                     Message("The final boss is already dead on this world — start Run Mode on a fresh one.");
                     return;
                 }
+
+                // --- Committed: from here on we mutate state. ---
+                ForceGodModeOff();
+
+                _loggedFailures.Clear();
+                _consecutiveTickFailures = 0;
+                _killHookWarned = false;
+                _frozen = false;
+                HudNotice = null;
+
+                _worldId = WorldIdentifier();
+                _graceElapsed = 0f;
 
                 _rngSeed = Environment.TickCount;
                 _rng = new Random(_rngSeed);
@@ -178,28 +205,33 @@ namespace ICanShowYouTheWorld.RunMode
                 _pollTimer = 0f;
                 _saveTimer = 0f;
                 _noArmorSeconds = 0f;
+                _noArmorChallengeIds.Clear();
                 _splitLabels.Clear();
                 _splitTimes.Clear();
+                _accountedBossKeys.Clear();
+                foreach (var key in preDefeated) _accountedBossKeys.Add(key);
                 LastScore = 0f;
 
                 RevealBosses(player);
 
                 _worldModifiers.ApplyBaseline(_cfg);
                 _worldModifiers.ApplyHeat(0f, _cfg);
+                _restorePending = true;
 
                 _active = true;
                 _resumeAttempted = true;
+                _pendingResume = null;
 
                 SaveState();
 
-                Debug.Log($"[ICanShowYouTheWorld] Run Mode started (seed={_rngSeed}, " +
+                Debug.Log($"[ICanShowYouTheWorld] Run Mode started (seed={_rngSeed}, world={_worldId}, " +
                           $"pre-defeated={_accountedBossKeys.Count}).");
                 Message("Run Mode started. Good luck.");
             }
             catch (Exception ex)
             {
                 LogOnce("start-run", ex);
-                Message("Run Mode failed to start — see the log.");
+                Announce("Run Mode failed to start — see the log.");
             }
         }
 
@@ -209,7 +241,7 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 if (!_active) return;
 
-                _worldModifiers.RestoreAll();
+                _restorePending = !_worldModifiers.RestoreAll();
                 SafeUnapplyAllBoonEffects();
                 DeleteState();
                 EndRun();
@@ -228,6 +260,12 @@ namespace ICanShowYouTheWorld.RunMode
             try
             {
                 if (!_active || _challenges == null) return;
+
+                if (_heat.Heat < _cfg.RunRerollHeatCost)
+                {
+                    HudNotice = $"Not enough heat to reroll (need {_cfg.RunRerollHeatCost:0.#}).";
+                    return;
+                }
 
                 // Charge only on a reroll that actually happened — a rejected slot index
                 // or an exhausted pool should not cost heat.
@@ -248,10 +286,17 @@ namespace ICanShowYouTheWorld.RunMode
             try
             {
                 TickInner(dt);
+                _consecutiveTickFailures = 0;
             }
             catch (Exception ex)
             {
                 LogOnce("tick", ex);
+
+                _consecutiveTickFailures++;
+                if (_consecutiveTickFailures >= ConsecutiveFailuresBeforeNotice)
+                {
+                    HudNotice = "Run Mode error — check Player.log.";
+                }
             }
         }
 
@@ -259,18 +304,40 @@ namespace ICanShowYouTheWorld.RunMode
 
         private void TickInner(float dt)
         {
-            _sinceFirstTick += dt;
-
             if (!_active)
             {
+                // A restore deferred because the world was gone still owes the world its
+                // original rates; keep trying until ZoneSystem is back.
+                if (_restorePending && _worldModifiers.RestoreAll()) _restorePending = false;
+
                 TryResume();
                 return;
             }
 
+            // Freeze rather than run against a missing or foreign world: no elapsed time,
+            // no polling, no autosave (which would otherwise overwrite good state with
+            // half-loaded nonsense).
+            if (ZoneSystem.instance == null || Player.m_localPlayer == null)
+            {
+                SetFrozen(true, FrozenNotice);
+                return;
+            }
+
+            string world = WorldIdentifier();
+            if (_worldId != null && world != null && world != _worldId)
+            {
+                SetFrozen(true, WrongWorldNotice);
+                return;
+            }
+
+            SetFrozen(false, null);
+
             _elapsed += dt;
+            _graceElapsed += dt;
             _challenges?.Tick(dt);
             _boons?.Tick(dt);
 
+            WarnIfKillHookDead();
             HandleBoonOfferInput();
 
             _pollTimer += dt;
@@ -281,10 +348,7 @@ namespace ICanShowYouTheWorld.RunMode
                 PollBosses();
 
                 // PollBosses may have finished the run.
-                if (_active)
-                {
-                    PollMeasures(pollDt);
-                }
+                if (_active) PollMeasures(pollDt);
             }
 
             if (!_active) return;
@@ -295,6 +359,37 @@ namespace ICanShowYouTheWorld.RunMode
                 _saveTimer = 0f;
                 SaveState();
             }
+        }
+
+        private void SetFrozen(bool frozen, string notice)
+        {
+            if (frozen == _frozen) return;
+
+            _frozen = frozen;
+            if (frozen)
+            {
+                HudNotice = notice;
+                Debug.Log($"[ICanShowYouTheWorld] Run Mode frozen: {notice}");
+            }
+            else if (HudNotice == FrozenNotice || HudNotice == WrongWorldNotice)
+            {
+                HudNotice = null;
+            }
+        }
+
+        /// <summary>
+        /// Once the grace window closes without the injected hook ever firing, say so.
+        /// Kill challenges already in the active set are left alone; re-drawing the pool
+        /// mid-run is deliberately deferred.
+        /// </summary>
+        private void WarnIfKillHookDead()
+        {
+            if (_killHookWarned || KillHookAvailable) return;
+            if (_challenges == null || !_challenges.Active.Any(a => a.Def.Kind == ChallengeKind.KillPrefab)) return;
+
+            _killHookWarned = true;
+            HudNotice = KillHookNotice;
+            Debug.LogWarning("[ICanShowYouTheWorld] " + KillHookNotice);
         }
 
         private void HandleBoonOfferInput()
@@ -355,6 +450,18 @@ namespace ICanShowYouTheWorld.RunMode
                 }
             }
 
+            // A newly drawn no-armor challenge must not inherit a timer the player banked
+            // before it existed, or it completes the moment it is dealt.
+            var noArmorNow = _challenges.Active
+                .Where(a => a.Def.Kind == ChallengeKind.NoArmorMinutes)
+                .Select(a => a.Def.Id)
+                .ToList();
+
+            if (noArmorNow.Any(id => !_noArmorChallengeIds.Contains(id))) _noArmorSeconds = 0f;
+
+            _noArmorChallengeIds.Clear();
+            foreach (var id in noArmorNow) _noArmorChallengeIds.Add(id);
+
             // GetBodyArmor() is the aggregate of every equipped item's m_shared.m_armor,
             // so "no armor" is simply a zero total.
             bool noArmor = player.GetBodyArmor() <= 0f;
@@ -372,7 +479,7 @@ namespace ICanShowYouTheWorld.RunMode
             try { PermanentRecord.RecordScore(Player.m_localPlayer, LastScore); }
             catch (Exception ex) { LogOnce("record-score", ex); }
 
-            _worldModifiers.RestoreAll();
+            _restorePending = !_worldModifiers.RestoreAll();
             SafeUnapplyAllBoonEffects();
             DeleteState();
 
@@ -401,7 +508,12 @@ namespace ICanShowYouTheWorld.RunMode
             _pollTimer = 0f;
             _saveTimer = 0f;
             _noArmorSeconds = 0f;
+            _noArmorChallengeIds.Clear();
             _accountedBossKeys.Clear();
+            _worldId = null;
+            _frozen = false;
+            _killHookWarned = false;
+            HudNotice = null;
         }
 
         private void BuildEngines(List<ChallengeDefinition> pool)
@@ -417,12 +529,7 @@ namespace ICanShowYouTheWorld.RunMode
         private List<ChallengeDefinition> BuildChallengePool()
         {
             var pool = DefaultPool();
-
-            if (KillHookAvailable)
-            {
-                HudNotice = null;
-                return pool;
-            }
+            if (KillHookAvailable) return pool;
 
             HudNotice = "Kill hook unavailable — kill challenges disabled this run.";
             Debug.LogWarning("[ICanShowYouTheWorld] " + HudNotice);
@@ -450,21 +557,32 @@ namespace ICanShowYouTheWorld.RunMode
             }
         }
 
+        /// <summary>
+        /// Ends with god mode OFF on both switches. The player's actual god mode is the legacy
+        /// static CheatCommands.GodMode (Keypad0 → Player.SetGodMode); ICombatService keeps its
+        /// own flag, and nothing keeps the two in sync, so both have to be cleared.
+        /// </summary>
         private void ForceGodModeOff()
         {
+            try
+            {
+                if (CheatCommands.GodMode) CheatCommands.ToggleGodMode();
+            }
+            catch (Exception ex)
+            {
+                LogOnce("godmode-off-legacy", ex);
+            }
+
             try
             {
                 // Resolved lazily: RunService is constructed alongside the other services,
                 // so the container may not have handed out ICombatService yet at ctor time.
                 var combat = ModBootstrap.GetService<ICombatService>();
-                if (combat != null && combat.GodMode)
-                {
-                    combat.ToggleGodMode();
-                }
+                if (combat != null && combat.GodMode) combat.ToggleGodMode();
             }
             catch (Exception ex)
             {
-                LogOnce("godmode-off", ex);
+                LogOnce("godmode-off-service", ex);
             }
         }
 
@@ -502,7 +620,7 @@ namespace ICanShowYouTheWorld.RunMode
         {
             try
             {
-                if (!_active || c == null) return;
+                if (!_active || _frozen || c == null) return;
 
                 if (c == Player.m_localPlayer)
                 {
@@ -511,14 +629,9 @@ namespace ICanShowYouTheWorld.RunMode
 
                     // RemoveLatest raises Lost, which unapplies the effect.
                     var lost = _boons?.RemoveLatest();
-                    if (lost != null)
-                    {
-                        Message($"Death: -{_cfg.RunDeathHeatPenalty:0.#} heat, lost {lost.Def.Display}.");
-                    }
-                    else
-                    {
-                        Message($"Death: -{_cfg.RunDeathHeatPenalty:0.#} heat.");
-                    }
+                    Message(lost != null
+                        ? $"Death: -{_cfg.RunDeathHeatPenalty:0.#} heat, lost {lost.Def.Display}."
+                        : $"Death: -{_cfg.RunDeathHeatPenalty:0.#} heat.");
 
                     SaveState();
                     return;
@@ -544,8 +657,15 @@ namespace ICanShowYouTheWorld.RunMode
 
         private void TryResume()
         {
+            // Loaded but waiting for the right world to come up — recheck without touching disk.
+            if (_pendingResume != null)
+            {
+                TryResumePending();
+                return;
+            }
+
             if (_resumeAttempted) return;
-            if (Player.m_localPlayer == null) return;
+            if (Player.m_localPlayer == null || ZoneSystem.instance == null) return;
 
             string name = CharacterName();
             if (name == null) return;
@@ -556,22 +676,56 @@ namespace ICanShowYouTheWorld.RunMode
             var state = RunStorage.TryLoad(name);
             if (state == null) return;
 
+            _pendingResume = state;
+            TryResumePending();
+        }
+
+        private void TryResumePending()
+        {
+            var state = _pendingResume;
+            string world = WorldIdentifier();
+            if (world == null) return; // World still coming up; try again next tick.
+
+            if (!string.IsNullOrEmpty(state.worldId) && state.worldId != world)
+            {
+                // Another world's run. Leave the file alone — the player may load that world later.
+                if (HudNotice != WrongWorldNotice)
+                {
+                    HudNotice = WrongWorldNotice;
+                    Debug.Log($"[ICanShowYouTheWorld] Saved run belongs to world '{state.worldId}', " +
+                              $"current world is '{world}'; not resuming.");
+                }
+                return;
+            }
+
+            _pendingResume = null;
+
             try
             {
-                RestoreFrom(state);
+                RestoreFrom(state, world);
                 Debug.Log($"[ICanShowYouTheWorld] Run Mode run resumed at {FormatTime(_elapsed)}.");
                 Message($"Run resumed — {FormatTime(_elapsed)}.");
             }
             catch (Exception ex)
             {
+                string name = CharacterName();
                 Debug.LogError($"[ICanShowYouTheWorld] Failed to resume run for '{name}', discarding state: {ex}");
-                RunStorage.Delete(name);
+                if (name != null) RunStorage.Delete(name);
                 EndRun();
             }
         }
 
-        private void RestoreFrom(RunSaveState s)
+        private void RestoreFrom(RunSaveState s, string world)
         {
+            _loggedFailures.Clear();
+            _consecutiveTickFailures = 0;
+            _killHookWarned = false;
+            _frozen = false;
+            HudNotice = null;
+
+            _worldId = string.IsNullOrEmpty(s.worldId) ? world : s.worldId;
+            _graceElapsed = 0f;
+
             _rngSeed = s.rngSeed;
             _rng = new Random(_rngSeed);
 
@@ -584,6 +738,7 @@ namespace ICanShowYouTheWorld.RunMode
             _pollTimer = 0f;
             _saveTimer = 0f;
             _noArmorSeconds = 0f;
+            _noArmorChallengeIds.Clear();
 
             _splitLabels.Clear();
             _splitTimes.Clear();
@@ -598,73 +753,50 @@ namespace ICanShowYouTheWorld.RunMode
                 foreach (var key in s.defeatedBossKeys) _accountedBossKeys.Add(key);
             }
 
-            RestoreChallenges(s);
-            RestoreBoons(s);
+            _challenges.RestoreActive(Zip(s.activeChallengeIds, s.activeChallengeProgress));
+            _boons.RestoreHeld(Zip(s.heldBoonIds, s.heldBoonCooldowns));
+
+            // RestoreHeld is silent by design, so reapply the effects for whatever survived.
+            foreach (var h in _boons.Held)
+            {
+                try { ApplyBoonEffect?.Invoke(h.Def.Id); }
+                catch (Exception ex) { LogOnce("boon-reapply", ex); }
+            }
+
+            // Seed the world's TRUE pre-run values before touching any global key. Without
+            // this, ApplyBaseline would capture the run's own inflated rates as "original"
+            // and RestoreAll would make them permanent — Valheim saves valued global keys
+            // with the world.
+            if (s.modifierKeys != null && s.modifierKeys.Count > 0)
+            {
+                _worldModifiers.ImportOriginals(s.modifierKeys, s.modifierValues);
+            }
+            else
+            {
+                Debug.LogWarning("[ICanShowYouTheWorld] Resumed run has no saved world-modifier " +
+                                 "originals; falling back to vanilla defaults on restore.");
+                _worldModifiers.ImportOriginals(
+                    new List<int> { (int)GlobalKeys.ResourceRate, (int)GlobalKeys.SkillGainRate,
+                                    (int)GlobalKeys.MoveStaminaRate, (int)GlobalKeys.StaminaRegenRate,
+                                    (int)GlobalKeys.EnemyDamage, (int)GlobalKeys.EnemyLevelUpRate },
+                    new List<float> { 1f, 1f, 1f, 1f, 1f, 1f });
+            }
 
             _worldModifiers.ApplyBaseline(_cfg);
             _worldModifiers.ApplyHeat(_heat.Heat, _cfg);
+            _restorePending = true;
 
             _active = true;
         }
 
-        private void RestoreChallenges(RunSaveState s)
+        private static IEnumerable<KeyValuePair<string, float>> Zip(List<string> ids, List<float> values)
         {
-            if (s.activeChallengeIds == null || s.activeChallengeIds.Count == 0) return;
+            if (ids == null) yield break;
 
-            // ChallengeEngine exposes its active list as IReadOnlyList over the backing List,
-            // so the restore writes through that. Guarded: if the backing type ever changes,
-            // the run simply redraws challenges instead of throwing.
-            var active = _challenges.Active as List<ActiveChallenge>;
-            if (active == null)
+            for (int i = 0; i < ids.Count; i++)
             {
-                LogOnce("restore-challenges", new InvalidOperationException(
-                    "ChallengeEngine.Active is no longer a writable List<ActiveChallenge>; challenges were redrawn."));
-                return;
-            }
-
-            var byId = DefaultPool().ToDictionary(d => d.Id, d => d);
-
-            active.Clear();
-            for (int i = 0; i < s.activeChallengeIds.Count; i++)
-            {
-                if (!byId.TryGetValue(s.activeChallengeIds[i], out var def)) continue;
-
-                active.Add(new ActiveChallenge
-                {
-                    Def = def,
-                    Progress = i < s.activeChallengeProgress?.Count ? s.activeChallengeProgress[i] : 0f
-                });
-            }
-        }
-
-        private void RestoreBoons(RunSaveState s)
-        {
-            if (s.heldBoonIds == null || s.heldBoonIds.Count == 0) return;
-
-            var held = _boons.Held as List<HeldBoon>;
-            if (held == null)
-            {
-                LogOnce("restore-boons", new InvalidOperationException(
-                    "BoonEngine.Held is no longer a writable List<HeldBoon>; held boons were dropped."));
-                return;
-            }
-
-            var byId = DefaultBoons().ToDictionary(d => d.Id, d => d);
-
-            held.Clear();
-            for (int i = 0; i < s.heldBoonIds.Count; i++)
-            {
-                if (!byId.TryGetValue(s.heldBoonIds[i], out var def)) continue;
-
-                held.Add(new HeldBoon
-                {
-                    Def = def,
-                    CooldownRemaining = i < s.heldBoonCooldowns?.Count ? s.heldBoonCooldowns[i] : 0f
-                });
-
-                // Adding directly bypasses the Gained event, so reapply explicitly.
-                try { ApplyBoonEffect?.Invoke(def.Id); }
-                catch (Exception ex) { LogOnce("boon-reapply", ex); }
+                yield return new KeyValuePair<string, float>(
+                    ids[i], values != null && i < values.Count ? values[i] : 0f);
             }
         }
 
@@ -687,7 +819,10 @@ namespace ICanShowYouTheWorld.RunMode
                 activeChallengeProgress = active.Select(a => a.Progress).ToList(),
                 heldBoonIds = held.Select(h => h.Def.Id).ToList(),
                 heldBoonCooldowns = held.Select(h => h.CooldownRemaining).ToList(),
-                rngSeed = _rngSeed
+                rngSeed = _rngSeed,
+                worldId = _worldId,
+                modifierKeys = _worldModifiers.ExportOriginalKeys(),
+                modifierValues = _worldModifiers.ExportOriginalValues()
             });
         }
 
@@ -719,6 +854,30 @@ namespace ICanShowYouTheWorld.RunMode
             }
         }
 
+        /// <summary>
+        /// Stable identity of the loaded world, or null if no world is loaded. GetWorldName()
+        /// is null-safe in game code and empty when there is no world, which is what guards
+        /// the GetWorldUID() call below (it dereferences m_world unchecked).
+        /// </summary>
+        private string WorldIdentifier()
+        {
+            try
+            {
+                var znet = ZNet.instance;
+                if (znet == null) return null;
+
+                string name = znet.GetWorldName();
+                if (string.IsNullOrEmpty(name)) return null;
+
+                return znet.GetWorldUID().ToString(CultureInfo.InvariantCulture) + ":" + name;
+            }
+            catch (Exception ex)
+            {
+                LogOnce("world-id", ex);
+                return null;
+            }
+        }
+
         // --- Misc helpers ---
 
         private static bool SafeGetGlobalKey(ZoneSystem zone, string key)
@@ -733,10 +892,19 @@ namespace ICanShowYouTheWorld.RunMode
             catch (Exception ex) { LogOnce("boon-unapply-all", ex); }
         }
 
+        /// <summary>On-screen HUD message. Silently does nothing when there is no local player.</summary>
         private void Message(string text)
         {
             try { _game?.ShowMessage(text, MessageType.Center); }
             catch { /* HUD messages are never worth failing a run over. */ }
+        }
+
+        /// <summary>Log + console, for things the player must see even with no character in the world.</summary>
+        private void Announce(string text)
+        {
+            Debug.Log("[ICanShowYouTheWorld] " + text);
+            try { Console.instance?.Print(text); }
+            catch { /* console may not exist yet */ }
         }
 
         private static string FormatTime(float seconds)
@@ -746,7 +914,7 @@ namespace ICanShowYouTheWorld.RunMode
             return $"{total / 60:00}:{total % 60:00}";
         }
 
-        /// <summary>Logs a given failure site once per session so a per-frame fault can't flood the log.</summary>
+        /// <summary>Logs a given failure site once per run so a per-frame fault can't flood the log.</summary>
         private void LogOnce(string site, Exception ex)
         {
             if (!_loggedFailures.Add(site)) return;
