@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using ICanShowYouTheWorld.Core;
 using UnityEngine;
 
@@ -55,10 +57,13 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>
         /// Restores every world-modifier key touched by this instance back to its
         /// pre-run value (1f, the vanilla default, for any key that had none set).
+        /// Returns false if the world is not loaded, in which case the saved originals are
+        /// deliberately kept so the caller can retry once ZoneSystem comes back.
         /// </summary>
-        public void RestoreAll()
+        public bool RestoreAll()
         {
-            if (ZoneSystem.instance == null) return;
+            if (_originalValues.Count == 0) return true;
+            if (ZoneSystem.instance == null) return false;
 
             foreach (var kv in _originalValues)
             {
@@ -68,6 +73,36 @@ namespace ICanShowYouTheWorld.RunMode
             Debug.Log($"[ICanShowYouTheWorld] Run Mode world modifiers restored ({_originalValues.Count} key(s)).");
 
             _originalValues.Clear();
+            return true;
+        }
+
+        /// <summary>Enum values of every key whose pre-run value has been captured.</summary>
+        public List<int> ExportOriginalKeys() => _originalValues.Keys.Select(k => (int)k).ToList();
+
+        /// <summary>Pre-run values, in the same order as <see cref="ExportOriginalKeys"/>.</summary>
+        public List<float> ExportOriginalValues() => _originalValues.Values.ToList();
+
+        /// <summary>
+        /// Seeds the saved-originals dictionary from a previous session WITHOUT reading the
+        /// live world. This is what stops a resumed run from mistaking its own inflated rates
+        /// for the world's originals and baking them in permanently — Valheim persists valued
+        /// global keys with the world save, so a wrong capture here is forever. Keys seeded
+        /// this way make later SaveOriginal calls no-ops, exactly as if we had captured them
+        /// ourselves before the run started.
+        /// </summary>
+        public void ImportOriginals(List<int> keys, List<float> values)
+        {
+            if (keys == null || values == null) return;
+
+            int n = Math.Min(keys.Count, values.Count);
+            for (int i = 0; i < n; i++)
+            {
+                var key = (GlobalKeys)keys[i];
+                if (_originalValues.ContainsKey(key)) continue;
+                _originalValues[key] = values[i];
+            }
+
+            Debug.Log($"[ICanShowYouTheWorld] Run Mode world modifier originals imported ({n} key(s)).");
         }
 
         private void SaveOriginal(GlobalKeys key)

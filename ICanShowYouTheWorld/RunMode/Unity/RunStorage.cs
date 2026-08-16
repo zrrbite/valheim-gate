@@ -26,6 +26,22 @@ namespace ICanShowYouTheWorld.RunMode
         public List<string> heldBoonIds;
         public List<float> heldBoonCooldowns;
         public int rngSeed;
+
+        /// <summary>
+        /// The world this run belongs to. A saved run must never be resumed against a
+        /// different world — its boss keys and world modifiers would be meaningless there.
+        /// </summary>
+        public string worldId;
+
+        /// <summary>
+        /// Pre-run values of the world-modifier global keys, as GlobalKeys enum values.
+        /// Carried across a reload so a resumed run restores the world's ORIGINAL rates
+        /// rather than baking its own inflated ones in permanently.
+        /// </summary>
+        public List<int> modifierKeys;
+
+        /// <summary>Pre-run values, in the same order as <see cref="modifierKeys"/>.</summary>
+        public List<float> modifierValues;
     }
 
     /// <summary>
