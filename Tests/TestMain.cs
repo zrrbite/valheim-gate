@@ -20,6 +20,7 @@ static class TestMain
         SelfTest();
         HeatModelTests.Run();
         ChallengeEngineTests.Run();
+        BoonEngineTests.Run();
         Console.WriteLine(Check.Failures == 0 ? "ALL PASS" : $"{Check.Failures} FAILURES");
         return Check.Failures == 0 ? 0 : 1;
     }
