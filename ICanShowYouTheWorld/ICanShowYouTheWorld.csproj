@@ -314,6 +314,7 @@
     <Compile Include="RunMode\ChallengeEngine.cs" />
     <Compile Include="RunMode\BoonEngine.cs" />
     <Compile Include="RunMode\Unity\GameEvents.cs" />
+    <Compile Include="RunMode\Unity\RunStorage.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Assets\" />
