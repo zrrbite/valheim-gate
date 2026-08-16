@@ -130,6 +130,15 @@ Commands are registered using the `CommandBinding` class which encapsulates:
 
 InputManager polls keyboard in Update() and dispatches to appropriate commands.
 
+**Controller setups**: every command is keyboard-only and numpad-heavy, so on
+a machine played with a gamepad (Steam Deck, or a couch Windows setup) the
+commands need **Steam Input** remaps — bind controller inputs to the keyboard
+keys, e.g. R3 → `F1` for the cheat window. The Deck's on-screen keyboard is no
+help: it has no F-keys and its digits send the main row, not `Keypad 0-9`.
+Note the trade-off if a controller shows double inputs (a known 8BitDo/Steam
+quirk): the usual fix of disabling Steam Input for Valheim also removes the
+keyboard-remap ability the mod relies on.
+
 ### MonoBehaviour Lifecycle
 - `Awake()` - Component initialization
 - `Update()` - Per-frame input handling
