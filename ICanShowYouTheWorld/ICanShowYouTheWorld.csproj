@@ -310,12 +310,14 @@
     <Compile Include="Services\BuffService.cs" />
     <Compile Include="Services\IUtilityService.cs" />
     <Compile Include="Services\UtilityService.cs" />
+    <Compile Include="RunMode\HeatModel.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Assets\" />
     <Folder Include="Core\" />
     <Folder Include="GameAPI\" />
     <Folder Include="Services\" />
+    <Folder Include="RunMode\" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
 </Project>
