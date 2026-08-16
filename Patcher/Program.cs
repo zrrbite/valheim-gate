@@ -20,7 +20,12 @@ namespace Patcher
 
         static void Main(string[] args)
         {
-            var app = AssemblyDefinition.ReadAssembly(appPath);
+            // Optional overrides: Patcher.exe [input.dll] [output.dll]
+            var inPath = args.Length > 0 ? args[0] : appPath;
+            var outPath = args.Length > 1 ? args[1] : donePath;
+            System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(outPath)));
+
+            var app = AssemblyDefinition.ReadAssembly(inPath);
             var inj = AssemblyDefinition.ReadAssembly(injPath);
 
             // Set scope of m_pins on the minimap to public static
@@ -53,8 +58,8 @@ namespace Patcher
                 Console.WriteLine($"\t{instruction.Offset:X2}: {instruction.OpCode} \"{instruction.Operand}\"");
 
             Console.WriteLine("\n");
-            Console.WriteLine("Writing patched library to {0}", donePath);
-            app.Write(donePath);
+            Console.WriteLine("Writing patched library to {0}", outPath);
+            app.Write(outPath);
 
             Console.WriteLine("Have fun!");
         }
