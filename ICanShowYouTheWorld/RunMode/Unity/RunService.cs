@@ -69,6 +69,14 @@ namespace ICanShowYouTheWorld.RunMode
         private bool _killHookWarned;
         private bool _frozen;
 
+        /// <summary>
+        /// Player.m_localPlayer as of the last tick. Death recreates the Player component with
+        /// fresh fields, silently wiping fleet's speed boost and sharp's item snapshots even
+        /// though the boon is still held — a reference change here (while active) is a respawn,
+        /// and triggers a re-apply of every held passive against the new player.
+        /// </summary>
+        private Player _trackedPlayer;
+
         private readonly List<string> _splitLabels = new List<string>();
         private readonly List<float> _splitTimes = new List<float>();
 
@@ -227,6 +235,8 @@ namespace ICanShowYouTheWorld.RunMode
                 _worldModifiers.ApplyHeat(0f, _cfg);
                 _restorePending = true;
 
+                _trackedPlayer = player;
+
                 _active = true;
                 _resumeAttempted = true;
                 _pendingResume = null;
@@ -340,6 +350,7 @@ namespace ICanShowYouTheWorld.RunMode
             }
 
             SetFrozen(false, null);
+            DetectRespawnAndReapplyPassives();
 
             _elapsed += dt;
             _graceElapsed += dt;
@@ -431,7 +442,44 @@ namespace ICanShowYouTheWorld.RunMode
             var held = _boons.Held.FirstOrDefault(h => h.Def.Id == boonId);
             if (held == null) return; // Not held — key does nothing.
 
-            if (!_boonEffects.Activate(boonId)) Message($"{held.Def.Display} not ready.");
+            if (!_boonEffects.Activate(boonId))
+            {
+                Message(_boonEffects.LastActivationMessage ?? $"{held.Def.Display} not ready.");
+            }
+        }
+
+        /// <summary>
+        /// Death recreates Player.m_localPlayer with fresh fields — fleet's speed boost and
+        /// sharp's item snapshots vanish even though the boon is still held. A reference change
+        /// while a run is active (as opposed to null→player at start/resume, which isn't a
+        /// respawn) re-applies every held PASSIVE boon against the new player/gear. Actives
+        /// (wind/ember/way) carry no player-field state, so they're excluded — see
+        /// <see cref="ReapplyPassiveBoonEffects"/>.
+        /// </summary>
+        private void DetectRespawnAndReapplyPassives()
+        {
+            var player = Player.m_localPlayer;
+            if (player == _trackedPlayer) return;
+
+            bool isRespawn = _trackedPlayer != null;
+            _trackedPlayer = player;
+            if (!isRespawn || player == null) return;
+
+            ReapplyPassiveBoonEffects();
+        }
+
+        /// <summary>Re-runs Apply for every held passive boon (fleet/sharp/pack) — used after a respawn and NOT after a resume (way's charge is persisted separately; re-running Apply("way") there would grant a free charge).</summary>
+        private void ReapplyPassiveBoonEffects()
+        {
+            if (_boons == null) return;
+
+            foreach (var h in _boons.Held.ToList())
+            {
+                if (!h.Def.IsPassive) continue;
+
+                try { ApplyBoonEffect?.Invoke(h.Def.Id); }
+                catch (Exception ex) { LogOnce("boon-reapply-passive", ex); }
+            }
         }
 
         private void PollBosses()
@@ -546,6 +594,7 @@ namespace ICanShowYouTheWorld.RunMode
             _worldId = null;
             _frozen = false;
             _killHookWarned = false;
+            _trackedPlayer = null;
             HudNotice = null;
         }
 
@@ -765,6 +814,11 @@ namespace ICanShowYouTheWorld.RunMode
                 string name = CharacterName();
                 Debug.LogError($"[ICanShowYouTheWorld] Failed to resume run for '{name}', discarding state: {ex}");
                 if (name != null) RunStorage.Delete(name);
+
+                // RestoreFrom may have partially applied boon effects (BuildEngines/RestoreHeld
+                // succeeded before whatever threw) — unwind them rather than leaving a cheat
+                // toggle or a snapshot boost stuck on with no active run to own it.
+                SafeUnapplyAllBoonEffects();
                 EndRun();
             }
         }
@@ -808,14 +862,16 @@ namespace ICanShowYouTheWorld.RunMode
             }
 
             _challenges.RestoreActive(Zip(s.activeChallengeIds, s.activeChallengeProgress));
-            _boons.RestoreHeld(Zip(s.heldBoonIds, s.heldBoonCooldowns));
+            _boons.RestoreHeld(Zip(s.heldBoonIds, s.heldBoonCooldowns), s.heldBoonCharges);
 
-            // RestoreHeld is silent by design, so reapply the effects for whatever survived.
-            foreach (var h in _boons.Held)
-            {
-                try { ApplyBoonEffect?.Invoke(h.Def.Id); }
-                catch (Exception ex) { LogOnce("boon-reapply", ex); }
-            }
+            // RestoreHeld is silent by design, so reapply effects for whatever survived — but
+            // only the snapshot/buff-type passives (fleet/sharp/pack): their live player/item
+            // state doesn't persist across a reload. Actives (wind/ember/way) keep their
+            // persisted cooldown/charges as-is; re-running Apply("way") here would hand out a
+            // free charge on every resume.
+            ReapplyPassiveBoonEffects();
+
+            _trackedPlayer = Player.m_localPlayer;
 
             // Seed the world's TRUE pre-run values before touching any global key. Without
             // this, ApplyBaseline would capture the run's own inflated rates as "original"
@@ -860,6 +916,7 @@ namespace ICanShowYouTheWorld.RunMode
                 activeChallengeProgress = active.Select(a => a.Progress).ToList(),
                 heldBoonIds = held.Select(h => h.Def.Id).ToList(),
                 heldBoonCooldowns = held.Select(h => h.CooldownRemaining).ToList(),
+                heldBoonCharges = held.Select(h => h.Charges).ToList(),
                 rngSeed = _rngSeed,
                 worldId = _worldId,
                 modifierKeys = _worldModifiers.ExportOriginalKeys(),

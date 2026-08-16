@@ -25,6 +25,9 @@ namespace ICanShowYouTheWorld.RunMode
         public List<float> activeChallengeProgress;
         public List<string> heldBoonIds;
         public List<float> heldBoonCooldowns;
+
+        /// <summary>Charges per held boon, same index pairing as <see cref="heldBoonIds"/> (way's single-charge active; 0 for everything else).</summary>
+        public List<int> heldBoonCharges;
         public int rngSeed;
 
         /// <summary>

@@ -73,18 +73,33 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         public void RestoreHeld(IEnumerable<KeyValuePair<string, float>> idToCooldown)
         {
+            RestoreHeld(idToCooldown, null);
+        }
+
+        /// <summary>
+        /// Same as <see cref="RestoreHeld(IEnumerable{KeyValuePair{string, float}})"/>, plus a
+        /// charges list positioned by index against <paramref name="idToCooldown"/>'s own
+        /// enumeration order (before duplicate/unknown filtering) — the same pairing the caller
+        /// already uses to zip ids with cooldowns. Missing or short lists default to 0 charges.
+        /// </summary>
+        public void RestoreHeld(IEnumerable<KeyValuePair<string, float>> idToCooldown, IEnumerable<int> charges)
+        {
             held.Clear();
             if (idToCooldown == null) return;
 
             var byId = pool.GroupBy(d => d.Id).ToDictionary(g => g.Key, g => g.First());
             var seen = new HashSet<string>();
+            var chargeList = charges?.ToList();
 
+            int index = -1;
             foreach (var entry in idToCooldown)
             {
+                index++;
                 if (entry.Key == null || !seen.Add(entry.Key)) continue;
                 if (!byId.TryGetValue(entry.Key, out var def)) continue;
 
-                held.Add(new HeldBoon { Def = def, CooldownRemaining = entry.Value });
+                int charge = (chargeList != null && index < chargeList.Count) ? chargeList[index] : 0;
+                held.Add(new HeldBoon { Def = def, CooldownRemaining = entry.Value, Charges = charge });
             }
         }
 

@@ -100,5 +100,52 @@ static class BoonEngineTests
         Check.That(f.Held.Count == 1 && f.Held[0].Def.Id == "pack", "restore replaces the previous held set");
         f.RestoreHeld(null);
         Check.That(f.Held.Count == 0, "restore(null) clears the held set");
+
+        RestoreHeldChargesTests();
+    }
+
+    static void RestoreHeldChargesTests()
+    {
+        // Charges are positioned by index against the id/cooldown sequence, same pairing RunService uses.
+        var g = new BoonEngine(Pool(), new Random(3), 45f);
+        g.RestoreHeld(
+            new[]
+            {
+                new KeyValuePair<string, float>("way", 0f),
+                new KeyValuePair<string, float>("wind", 90f),
+            },
+            new[] { 2, 0 });
+        Check.That(g.Held.Count == 2, "restore-with-charges holds the saved boons");
+        Check.That(g.Held[0].Charges == 2, "restored way charges");
+        Check.That(g.Held[1].Charges == 0, "restored wind charges default");
+
+        // A short/missing charges list defaults the rest to 0 rather than throwing.
+        var h = new BoonEngine(Pool(), new Random(3), 45f);
+        h.RestoreHeld(
+            new[]
+            {
+                new KeyValuePair<string, float>("way", 0f),
+                new KeyValuePair<string, float>("fleet", 0f),
+            },
+            new[] { 1 });
+        Check.That(h.Held[0].Charges == 1 && h.Held[1].Charges == 0, "short charges list defaults remaining entries to 0");
+
+        // Omitting charges entirely (the single-arg overload) still defaults to 0, not a crash.
+        var i = new BoonEngine(Pool(), new Random(3), 45f);
+        i.RestoreHeld(new[] { new KeyValuePair<string, float>("way", 0f) });
+        Check.That(i.Held[0].Charges == 0, "single-arg overload still defaults charges to 0");
+
+        // Charges line up against the PRE-FILTER index, not the post-filter one — an unknown id
+        // ahead of a known one must not shift the pairing.
+        var j = new BoonEngine(Pool(), new Random(3), 45f);
+        j.RestoreHeld(
+            new[]
+            {
+                new KeyValuePair<string, float>("nonsense", 0f),
+                new KeyValuePair<string, float>("way", 0f),
+            },
+            new[] { 9, 3 });
+        Check.That(j.Held.Count == 1 && j.Held[0].Def.Id == "way" && j.Held[0].Charges == 3,
+            "charges align to pre-filter index, skipping unknown ids correctly");
     }
 }
