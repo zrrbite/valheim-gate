@@ -70,6 +70,20 @@ namespace Patcher
             ipl.InsertBefore(firstInstruction, injectInstruction);
             Console.WriteLine("done\n");
 
+            // Second injection: Character.OnDeath -> GameEvents.CharacterDied(this)
+            var charType = app.MainModule.Types.Single(t => t.Name == "Character");
+            var onDeath = charType.Methods.Single(m => m.Name == "OnDeath" && !m.HasParameters);
+            var evType = inj.MainModule.Types.Single(t => t.Name == "GameEvents");
+            var evMethod = evType.Methods.Single(m => m.Name == "CharacterDied");
+
+            var deathIl = onDeath.Body.GetILProcessor();
+            var deathFirst = deathIl.Body.Instructions[0];
+            Console.Write("Patching {0}->{1}.. ", charType.Name, onDeath.Name);
+            deathIl.InsertBefore(deathFirst, deathIl.Create(Mono.Cecil.Cil.OpCodes.Ldarg_0));
+            deathIl.InsertBefore(deathFirst, deathIl.Create(Mono.Cecil.Cil.OpCodes.Call,
+                app.MainModule.ImportReference(evMethod.Resolve())));
+            Console.WriteLine("done");
+
             Console.WriteLine("Instructions:\n");
             foreach (var instruction in appMethod.Body.Instructions)
                 Console.WriteLine($"\t{instruction.Offset:X2}: {instruction.OpCode} \"{instruction.Operand}\"");

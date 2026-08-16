@@ -20,6 +20,7 @@ cp "$MAC_MANAGED/assembly_valheim.dll" "$MAC_ORG"
 print_success "Original staged: $MAC_ORG"
 
 print_info "Patching (macOS)..."
+cp "$MOD_DLL" "$PATCHER_DIR/ICanShowYouTheWorld.dll"
 cd "$PATCHER_DIR"
 # Args: input, output, mod DLL (symbol source), folder holding the game's
 # other assemblies for dependency resolution.

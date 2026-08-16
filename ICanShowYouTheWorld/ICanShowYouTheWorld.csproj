@@ -313,6 +313,7 @@
     <Compile Include="RunMode\HeatModel.cs" />
     <Compile Include="RunMode\ChallengeEngine.cs" />
     <Compile Include="RunMode\BoonEngine.cs" />
+    <Compile Include="RunMode\Unity\GameEvents.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Assets\" />

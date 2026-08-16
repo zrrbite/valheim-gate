@@ -38,6 +38,7 @@ print_success "Backup created: assembly_valheim.dll.org"
 
 # Patch the assembly
 print_info "Patching assembly_valheim.dll..."
+cp "$PROJECT_ROOT/ICanShowYouTheWorld/bin/Debug/ICanShowYouTheWorld.dll" "$PATCHER_DIR/ICanShowYouTheWorld.dll" 2>/dev/null || true
 cd "$PATCHER_DIR"
 
 if mono Patcher.exe; then
