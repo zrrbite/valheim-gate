@@ -47,6 +47,21 @@ namespace ICanShowYouTheWorld.Core
         float TrackingRange { get; set; }
         float PetDisplayRange { get; set; }
 
+        // === Run Mode ===
+        float RunResourceRate { get; set; }
+        float RunSkillGainRate { get; set; }
+        float RunMoveStaminaRate { get; set; }
+        float RunStaminaRegenRate { get; set; }
+        float RunHeatEnemyDamageWeight { get; set; }
+        float RunHeatEnemyLevelUpWeight { get; set; }
+        float RunHeatScoreWeight { get; set; }
+        float RunParTimeMinutes { get; set; }
+        float RunDeathHeatPenalty { get; set; }
+        float RunRerollHeatCost { get; set; }
+        float RunChallengeRefillSeconds { get; set; }
+        float RunBoonOfferTimeoutSeconds { get; set; }
+        string RunFinalBossKey { get; set; }
+
         // === Debug & System ===
         bool EnableDebugMode { get; set; }
         bool EnableDebugLogs { get; set; }
@@ -105,6 +120,21 @@ namespace ICanShowYouTheWorld.Core
         [SerializeField] private float trackingRange = 100f;
         [SerializeField] private float petDisplayRange = 50f;
 
+        // === Run Mode ===
+        [SerializeField] private float runResourceRate = 3f;
+        [SerializeField] private float runSkillGainRate = 3f;
+        [SerializeField] private float runMoveStaminaRate = 0.5f;
+        [SerializeField] private float runStaminaRegenRate = 1.5f;
+        [SerializeField] private float runHeatEnemyDamageWeight = 0.05f;
+        [SerializeField] private float runHeatEnemyLevelUpWeight = 0.05f;
+        [SerializeField] private float runHeatScoreWeight = 0.1f;
+        [SerializeField] private float runParTimeMinutes = 240f;
+        [SerializeField] private float runDeathHeatPenalty = 3f;
+        [SerializeField] private float runRerollHeatCost = 1f;
+        [SerializeField] private float runChallengeRefillSeconds = 120f;
+        [SerializeField] private float runBoonOfferTimeoutSeconds = 45f;
+        [SerializeField] private string runFinalBossKey = "defeated_goblinking";
+
         // === Debug & System ===
         [SerializeField] private bool enableDebugMode = false;
         [SerializeField] private bool enableDebugLogs = false;
@@ -142,6 +172,20 @@ namespace ICanShowYouTheWorld.Core
         public float UiScale { get => uiScale; set => uiScale = value; }
         public float TrackingRange { get => trackingRange; set => trackingRange = value; }
         public float PetDisplayRange { get => petDisplayRange; set => petDisplayRange = value; }
+
+        public float RunResourceRate { get => runResourceRate; set => runResourceRate = value; }
+        public float RunSkillGainRate { get => runSkillGainRate; set => runSkillGainRate = value; }
+        public float RunMoveStaminaRate { get => runMoveStaminaRate; set => runMoveStaminaRate = value; }
+        public float RunStaminaRegenRate { get => runStaminaRegenRate; set => runStaminaRegenRate = value; }
+        public float RunHeatEnemyDamageWeight { get => runHeatEnemyDamageWeight; set => runHeatEnemyDamageWeight = value; }
+        public float RunHeatEnemyLevelUpWeight { get => runHeatEnemyLevelUpWeight; set => runHeatEnemyLevelUpWeight = value; }
+        public float RunHeatScoreWeight { get => runHeatScoreWeight; set => runHeatScoreWeight = value; }
+        public float RunParTimeMinutes { get => runParTimeMinutes; set => runParTimeMinutes = value; }
+        public float RunDeathHeatPenalty { get => runDeathHeatPenalty; set => runDeathHeatPenalty = value; }
+        public float RunRerollHeatCost { get => runRerollHeatCost; set => runRerollHeatCost = value; }
+        public float RunChallengeRefillSeconds { get => runChallengeRefillSeconds; set => runChallengeRefillSeconds = value; }
+        public float RunBoonOfferTimeoutSeconds { get => runBoonOfferTimeoutSeconds; set => runBoonOfferTimeoutSeconds = value; }
+        public string RunFinalBossKey { get => runFinalBossKey; set => runFinalBossKey = value; }
 
         public bool EnableDebugMode { get => enableDebugMode; set => enableDebugMode = value; }
         public bool EnableDebugLogs { get => enableDebugLogs; set => enableDebugLogs = value; }

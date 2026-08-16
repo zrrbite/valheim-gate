@@ -82,6 +82,23 @@ per-install, so a 4K desktop and the Deck can differ without touching the code.
 Windows are also re-anchored whenever the resolution changes, rather than being
 positioned once at startup.
 
+### Run Mode
+```json
+"runResourceRate": 3.0             // Resource gain multiplier during runs
+"runSkillGainRate": 3.0            // Skill XP gain multiplier during runs
+"runMoveStaminaRate": 0.5          // Stamina drain rate multiplier during runs
+"runStaminaRegenRate": 1.5         // Stamina regeneration multiplier during runs
+"runHeatEnemyDamageWeight": 0.05   // Enemy damage contribution to heat value
+"runHeatEnemyLevelUpWeight": 0.05  // Enemy level-up contribution to heat value
+"runHeatScoreWeight": 0.1          // Score contribution to heat value
+"runParTimeMinutes": 240.0         // Target time for each challenge (minutes)
+"runDeathHeatPenalty": 3.0         // Heat penalty when player dies
+"runRerollHeatCost": 1.0           // Heat cost to reroll challenge
+"runChallengeRefillSeconds": 120.0 // Challenge refill timer (seconds)
+"runBoonOfferTimeoutSeconds": 45.0 // Boon offer expiration timer (seconds)
+"runFinalBossKey": "defeated_goblinking" // Key for detecting final boss defeat
+```
+
 ### Debug & System
 ```json
 "enableDebugMode": false       // Enable debug features
