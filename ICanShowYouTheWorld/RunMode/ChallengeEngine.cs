@@ -23,14 +23,14 @@ namespace ICanShowYouTheWorld.RunMode
         public bool Done => Progress >= Def.Target;
     }
 
-    /// <summary>Keeps up to 3 distinct challenges active; refills after a cooldown.</summary>
+    /// <summary>Keeps up to 3 distinct challenges active; each refills after its own cooldown.</summary>
     public class ChallengeEngine
     {
         private readonly List<ChallengeDefinition> pool;
         private readonly Random rng;
         private readonly float refillCooldown;
         private readonly List<ActiveChallenge> active = new List<ActiveChallenge>();
-        private float cooldownRemaining;
+        private readonly List<float> pendingRefills = new List<float>();
 
         public IReadOnlyList<ActiveChallenge> Active => active;
         public event Action<ChallengeDefinition> Completed;
@@ -44,20 +44,29 @@ namespace ICanShowYouTheWorld.RunMode
 
         public void Tick(float dt)
         {
-            // Fire completions and vacate their slots.
+            // (1) Fire completions and vacate their slots.
             foreach (var a in active.Where(a => a.Done).ToList())
             {
                 active.Remove(a);
-                cooldownRemaining = refillCooldown;
+                pendingRefills.Add(refillCooldown);
                 Completed?.Invoke(a.Def);
             }
 
-            if (cooldownRemaining > 0f)
+            // (2) Decrement pending refill timers and draw replacements when ready.
+            for (int i = pendingRefills.Count - 1; i >= 0; i--)
             {
-                cooldownRemaining -= dt;
-                if (cooldownRemaining > 0f) return;
+                pendingRefills[i] -= dt;
+                if (pendingRefills[i] <= 0f)
+                {
+                    pendingRefills.RemoveAt(i);
+                    TryDraw(out var drawnDef);
+                    if (drawnDef != null)
+                        active.Add(new ActiveChallenge { Def = drawnDef });
+                }
             }
-            while (active.Count < 3 && TryDraw(out var def))
+
+            // (3) Top up to 3 total (active + pending).
+            while (active.Count + pendingRefills.Count < 3 && TryDraw(out var def))
                 active.Add(new ActiveChallenge { Def = def });
         }
 

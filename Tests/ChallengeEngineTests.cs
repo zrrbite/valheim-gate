@@ -53,5 +53,39 @@ static class ChallengeEngineTests
         Check.That(e2.Active[0].Progress == 0f, "non-matching kill ignored");
         e2.ReportKill("Greydwarf");
         Check.That(e2.Active[0].Progress == 1f, "matching kill counts");
+
+        // Per-slot cooldown: each completed slot refills independently
+        var e3 = new ChallengeEngine(Pool(), new Random(99), 120f);
+        e3.Tick(0.1f);
+        Check.That(e3.Active.Count == 3, "starts with 3");
+
+        // Complete first challenge (by kind, to avoid hardcoding which one is which)
+        var first = e3.Active[0];
+        if (first.Def.Kind == ChallengeKind.KillPrefab)
+            for (int i = 0; i < (int)first.Def.Target; i++) e3.ReportKill(first.Def.Param);
+        else
+            e3.ReportMeasure(first.Def.Kind, first.Def.Param, first.Def.Target);
+
+        e3.Tick(0.1f);
+        Check.That(e3.Active.Count == 2, "first completes, slot vacates");
+
+        e3.Tick(60f);
+        Check.That(e3.Active.Count == 2, "after 60s total, first slot still pending");
+
+        // Complete second challenge
+        var second = e3.Active[0];
+        if (second.Def.Kind == ChallengeKind.KillPrefab)
+            for (int i = 0; i < (int)second.Def.Target; i++) e3.ReportKill(second.Def.Param);
+        else
+            e3.ReportMeasure(second.Def.Kind, second.Def.Param, second.Def.Target);
+
+        e3.Tick(0.1f);
+        Check.That(e3.Active.Count == 1, "second completes, now only third remains");
+
+        e3.Tick(61f);
+        Check.That(e3.Active.Count == 2, "first slot refilled at ~120s mark, second still pending at ~181s mark");
+
+        e3.Tick(60f);
+        Check.That(e3.Active.Count == 3, "second slot refilled after its own ~120s cooldown");
     }
 }
