@@ -159,14 +159,49 @@ Current Unity version: 6000.0.58 (Unity 6, since Valheim 0.221.6)
 
 ## Deployment
 
-**Target**: Steam Deck at 192.168.86.42
-**Path**: `/home/deck/.local/share/Steam/steamapps/common/Valheim/valheim_Data/Managed/`
+The same `ICanShowYouTheWorld.dll` works on every platform (pure IL). Only the
+patched `assembly_valheim.dll` is per-platform: each install's *own* original
+must be patched, since the binaries differ between platforms even at the same
+game version. All installs must be on the same game version — the deploy
+scripts enforce this with a version guard (`Scripts/game_version.sh`, which
+reads the version out of the assembly's IL).
 
-Files to deploy:
-- `ICanShowYouTheWorld.dll` (from ICanShowYouTheWorld/bin/Debug/)
-- `assembly_valheim.dll` (from Patcher/bin/Debug/patched/)
+**Activation** (all platforms): start Valheim and navigate to the Credits menu.
 
-**Activation**: Start Valheim and navigate to Credits menu to initialize the mod.
+### Steam Deck (Linux)
+
+**Target**: 192.168.86.42, `/home/deck/.local/share/Steam/steamapps/common/Valheim/valheim_Data/Managed/`
+
+```bash
+Scripts/download.sh        # pull assembly, patch to patched/
+Scripts/upload_hax.sh      # ICanShowYouTheWorld.dll
+Scripts/upload_valheim.sh  # patched assembly_valheim.dll
+```
+
+### macOS (native build, Apple Silicon)
+
+**Target**: `~/Library/Application Support/Steam/steamapps/common/Valheim/valheim.app/Contents/Resources/Data/Managed/`
+
+```bash
+Scripts/download_macos.sh      # patch from the local install -> patched/macos/
+Scripts/deploy_local.sh        # deploy + re-sign + verify
+Scripts/deploy_local.sh --restore   # back to vanilla
+```
+
+**Critical — code signing**: every file inside a `.app` is covered by the
+bundle's signature seal. Changing *or adding* one invalidates it, and Apple
+Silicon then refuses to launch with *"valheim.app is damaged and can't be
+opened"* — which prompts macOS to suggest trashing the app. `deploy_local.sh`
+handles this: it re-signs ad-hoc after deploying (preserving entitlements and
+the hardened-runtime flag, regenerating the designated requirement, which the
+original Developer ID one would fail), verifies the result, and keeps backups
+*outside* the bundle. Never hand-copy DLLs into `valheim.app`.
+
+### Windows
+
+Same as the Deck but with a local copy into
+`steamapps\common\Valheim\valheim_Data\Managed\`. No signing constraints.
+Patch that machine's own assembly (`Patcher.exe <input> <output>`).
 
 ## Update Scenarios
 
