@@ -18,6 +18,17 @@ From this folder, in PowerShell:
 Then start Valheim and open the **Credits** menu — that's what activates the
 mod. The popup should read **v0.221.12-1**.
 
+**Picking up a mod change** (the common case — no Valheim update involved) only
+needs the mod DLL, which is identical on every platform:
+
+```powershell
+git pull
+.\Install-Mod.ps1 -ModOnly
+```
+
+A full run is only required after the *game* updates, since that overwrites
+`assembly_valheim.dll` and the patch has to be redone.
+
 Roll back at any time:
 
 ```powershell

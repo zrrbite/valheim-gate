@@ -12,6 +12,10 @@
     currently installed — patching an already-patched assembly would inject
     the mod's entry point twice.
 
+.PARAMETER ModOnly
+    Copy just the mod DLL, skipping the patch step. This is the normal way to
+    pick up mod changes; a full run is only needed after a Valheim update.
+
 .PARAMETER Restore
     Put the vanilla assembly back and remove the mod DLL.
 
@@ -25,6 +29,7 @@
 #>
 [CmdletBinding()]
 param(
+    [switch]$ModOnly,
     [switch]$Restore,
     [string]$ManagedPath
 )
@@ -122,6 +127,21 @@ try {
     Write-Err "Cannot write to $ManagedPath"
     Write-Info 'Re-run this script from an elevated PowerShell (Run as Administrator).'
     exit 1
+}
+
+# Mod-only refresh: the mod DLL is pure IL and identical on every platform, so
+# a change to the mod alone needs no re-patching — the patched assembly already
+# installed stays valid until the GAME updates.
+if ($ModOnly) {
+    if (-not (Test-Path $vanilla)) {
+        Write-Err 'No vanilla backup found, so the assembly has never been patched here.'
+        Write-Info 'Run a full install first: .\Install-Mod.ps1'
+        exit 1
+    }
+    Copy-Item $modSource $modTarget -Force
+    Write-Ok 'Updated ICanShowYouTheWorld.dll (assembly left as-is).'
+    Write-Info 'Restart Valheim and open Credits to load the new build.'
+    exit 0
 }
 
 # Compare the Steam build against what these binaries were built for.
