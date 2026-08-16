@@ -15,8 +15,9 @@ Development is done on macOS, with deployment to Steam Deck (Linux/Proton). Asse
 
 ### Build the solution
 ```bash
-/Applications/"Visual Studio".app/Contents/MacOS/vstool build -t:Build -c:"Debug" "Valheim.sln"
+msbuild Valheim.sln -p:Configuration=Debug -v:minimal
 ```
+(vstool from the discontinued Visual Studio for Mac crashes; use Mono's msbuild.)
 
 ### Standard update workflow (after Valheim patch)
 ```bash
@@ -154,7 +155,7 @@ Extract both to the same folder and copy to:
 1. `libraries/` folder (for development/linking)
 2. Steam Deck `/home/deck/.local/share/Steam/steamapps/common/Valheim/valheim_Data/Managed/` (for runtime)
 
-Current Unity version: 2022.3.50
+Current Unity version: 6000.0.58 (Unity 6, since Valheim 0.221.6)
 
 ## Deployment
 
