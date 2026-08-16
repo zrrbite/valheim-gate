@@ -166,6 +166,35 @@ WIN_HOST="martin@192.168.86.50"
 WIN_VALHEIM_MANAGED="D:/SteamLibrary/steamapps/common/Valheim/valheim_Data/Managed"
 ```
 
+### This project's Windows box (as configured 2026-08-16)
+
+| | |
+|---|---|
+| Hostname | `zrrbite-pc` |
+| User | `kjeld` (administrator — key lives in `administrators_authorized_keys`) |
+| LAN address | `192.168.111.4` (DHCP, gateway `192.168.111.1` — **reservation still pending**) |
+| SSH from the Mac | `ssh kjeld@192.168.111.4` |
+| `config.sh` | `WIN_HOST="kjeld@192.168.111.4"` |
+
+State after setup: OpenSSH Server installed, `sshd` running with startup type
+Automatic, firewall rule `OpenSSH-Server-In-TCP` enabled, default shell left
+as `cmd.exe`. The Mac's ed25519 key is installed with correct ACLs.
+
+Machine-specific notes:
+
+- **The Ethernet profile kept defaulting to Public**, which blocks inbound SSH
+  even with the firewall rule enabled. It was switched to Private
+  (`Set-NetConnectionProfile -InterfaceAlias 'Ethernet' -NetworkCategory
+  Private`). If SSH stops working after a network change, check this first.
+- **This box is on a different subnet** (`192.168.111.x`) than the Deck
+  examples above (`192.168.86.x`). The Mac must have a route to it, or use
+  Tailscale — which is installed on this box but currently **logged out**;
+  log it in and prefer its stable address if the LAN route proves flaky.
+- `Add-WindowsCapability` fails here with *"Class not registered"* (a DISM
+  cmdlet defect under PowerShell 7). Use `dism.exe /online
+  /Get-CapabilityInfo /CapabilityName:OpenSSH.Server~~~~0.0.1.0` instead to
+  query/install.
+
 ---
 
 ## macOS (no SSH required)
