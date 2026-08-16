@@ -311,6 +311,7 @@
     <Compile Include="Services\IUtilityService.cs" />
     <Compile Include="Services\UtilityService.cs" />
     <Compile Include="RunMode\HeatModel.cs" />
+    <Compile Include="RunMode\ChallengeEngine.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Assets\" />

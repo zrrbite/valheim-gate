@@ -19,6 +19,7 @@ static class TestMain
         Console.WriteLine("RunMode tests");
         SelfTest();
         HeatModelTests.Run();
+        ChallengeEngineTests.Run();
         Console.WriteLine(Check.Failures == 0 ? "ALL PASS" : $"{Check.Failures} FAILURES");
         return Check.Failures == 0 ? 0 : 1;
     }
