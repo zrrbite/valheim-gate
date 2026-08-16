@@ -526,6 +526,12 @@ namespace ICanShowYouTheWorld.RunMode
             _boons.Lost += OnBoonLost;
         }
 
+        /// <summary>
+        /// The full v1 pool. Because the grace window is reset by StartRun and resume, this is
+        /// optimistic in practice — the filtered branch below only bites if the grace window is
+        /// ever configured away. A run that turns out to have a dead hook gets a HUD notice from
+        /// <see cref="WarnIfKillHookDead"/> instead; the active set is not re-drawn mid-run.
+        /// </summary>
         private List<ChallengeDefinition> BuildChallengePool()
         {
             var pool = DefaultPool();
@@ -561,12 +567,16 @@ namespace ICanShowYouTheWorld.RunMode
         /// Ends with god mode OFF on both switches. The player's actual god mode is the legacy
         /// static CheatCommands.GodMode (Keypad0 → Player.SetGodMode); ICombatService keeps its
         /// own flag, and nothing keeps the two in sync, so both have to be cleared.
+        ///
+        /// Uses the side-effect-free setters, never the toggles: ToggleGodMode also resets the
+        /// forsaken power cooldown and refills every food timer, which would hand the player a
+        /// buff at the exact moment cheats are supposed to stop.
         /// </summary>
         private void ForceGodModeOff()
         {
             try
             {
-                if (CheatCommands.GodMode) CheatCommands.ToggleGodMode();
+                CheatCommands.SetGodMode(false);
             }
             catch (Exception ex)
             {
@@ -578,7 +588,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // Resolved lazily: RunService is constructed alongside the other services,
                 // so the container may not have handed out ICombatService yet at ctor time.
                 var combat = ModBootstrap.GetService<ICombatService>();
-                if (combat != null && combat.GodMode) combat.ToggleGodMode();
+                combat?.SetGodMode(false);
             }
             catch (Exception ex)
             {
@@ -700,6 +710,17 @@ namespace ICanShowYouTheWorld.RunMode
 
             _pendingResume = null;
 
+            // A save with no captured originals predates that field. Guessing vanilla 1f would
+            // permanently rewrite any world using Valheim's own world-modifier presets, so the
+            // only safe answer is to refuse the resume.
+            if (state.modifierKeys == null || state.modifierKeys.Count == 0)
+            {
+                string stale = CharacterName();
+                if (stale != null) RunStorage.Delete(stale);
+                Announce("Run save from an older version — cannot resume; run discarded.");
+                return;
+            }
+
             try
             {
                 RestoreFrom(state, world);
@@ -766,21 +787,8 @@ namespace ICanShowYouTheWorld.RunMode
             // Seed the world's TRUE pre-run values before touching any global key. Without
             // this, ApplyBaseline would capture the run's own inflated rates as "original"
             // and RestoreAll would make them permanent — Valheim saves valued global keys
-            // with the world.
-            if (s.modifierKeys != null && s.modifierKeys.Count > 0)
-            {
-                _worldModifiers.ImportOriginals(s.modifierKeys, s.modifierValues);
-            }
-            else
-            {
-                Debug.LogWarning("[ICanShowYouTheWorld] Resumed run has no saved world-modifier " +
-                                 "originals; falling back to vanilla defaults on restore.");
-                _worldModifiers.ImportOriginals(
-                    new List<int> { (int)GlobalKeys.ResourceRate, (int)GlobalKeys.SkillGainRate,
-                                    (int)GlobalKeys.MoveStaminaRate, (int)GlobalKeys.StaminaRegenRate,
-                                    (int)GlobalKeys.EnemyDamage, (int)GlobalKeys.EnemyLevelUpRate },
-                    new List<float> { 1f, 1f, 1f, 1f, 1f, 1f });
-            }
+            // with the world. Saves lacking these are refused before we ever get here.
+            _worldModifiers.ImportOriginals(s.modifierKeys, s.modifierValues);
 
             _worldModifiers.ApplyBaseline(_cfg);
             _worldModifiers.ApplyHeat(_heat.Heat, _cfg);

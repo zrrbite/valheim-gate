@@ -20,6 +20,14 @@ namespace ICanShowYouTheWorld.Services
         void ToggleGodMode();
 
         /// <summary>
+        /// Set god mode with no side effects — invulnerability and placement cost only, with
+        /// none of <see cref="ToggleGodMode"/>'s extras (forsaken power reset, food refresh).
+        /// Use this where god mode must change without also buffing the player.
+        /// </summary>
+        /// <param name="enabled">Desired god mode state.</param>
+        void SetGodMode(bool enabled);
+
+        /// <summary>
         /// Check if god mode is active. If not, shows message to user.
         /// </summary>
         /// <param name="ability">Name of ability requiring god mode.</param>

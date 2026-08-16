@@ -64,9 +64,9 @@ namespace ICanShowYouTheWorld.Services
         // --- God Mode ---
         public bool GodMode => _godMode;
 
-        public void ToggleGodMode()
+        public void SetGodMode(bool enabled)
         {
-            _godMode = !_godMode;
+            _godMode = enabled;
 
             if (!_game.IsLocalPlayerValid)
             {
@@ -74,14 +74,24 @@ namespace ICanShowYouTheWorld.Services
             }
 
             var player = _game.LocalPlayer;
-            player.SetGodMode(_godMode);
-            player.SetNoPlacementCost(_godMode);
-            player.m_guardianPowerCooldown = 1f;
+            player.SetGodMode(enabled);
+            player.SetNoPlacementCost(enabled);
+        }
 
-            // Set all food to 30 mins
-            foreach (var food in player.GetFoods())
+        public void ToggleGodMode()
+        {
+            SetGodMode(!_godMode);
+
+            if (_game.IsLocalPlayerValid)
             {
-                food.m_time = 25 * 60;
+                var player = _game.LocalPlayer;
+                player.m_guardianPowerCooldown = 1f;
+
+                // Set all food to 30 mins
+                foreach (var food in player.GetFoods())
+                {
+                    food.m_time = 25 * 60;
+                }
             }
 
             _game.ShowMessage($"God Mode {(_godMode ? "ON" : "OFF")}", MessageType.TopLeft);

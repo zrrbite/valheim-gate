@@ -33,9 +33,13 @@ namespace ICanShowYouTheWorld.Services
         ICanShowYouTheWorld.RunMode.BoonEngine Boons { get; }
 
         /// <summary>
-        /// Whether the injected Character.OnDeath hook can be relied upon. True once the
-        /// hook has actually fired, and optimistically true during a short startup grace
-        /// period. When false, kill-based challenges are excluded from the pool.
+        /// Whether the injected Character.OnDeath hook can be relied upon. True once the hook
+        /// has actually fired, and optimistically true for a 60s grace window from the start
+        /// of a run — the hook can only prove itself once something dies.
+        ///
+        /// The challenge pool is built optimistically, so kill challenges are dealt regardless.
+        /// If the window closes with the hook still silent, the run raises a HUD notice; the
+        /// active set is not re-drawn mid-run.
         /// </summary>
         bool KillHookAvailable { get; }
 

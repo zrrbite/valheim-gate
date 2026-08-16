@@ -1672,18 +1672,37 @@ static class DamageHelpers
         }
         // ---------------------------------------------
 
+        /// <summary>
+        /// Sets god mode with no side effects: invulnerability, free placement, and the
+        /// static flag, nothing else. Use this when god mode has to change without also
+        /// handing the player a forsaken-power reset and full food timers — notably when
+        /// Run Mode forces cheats off at the start of a run.
+        /// </summary>
+        public static void SetGodMode(bool enabled)
+        {
+            GodMode = enabled;
+
+            var player = Player.m_localPlayer;
+            if (player == null) return;
+
+            player.SetGodMode(enabled);
+            player.SetNoPlacementCost(value: enabled);
+        }
+
         public static void ToggleGodMode()
         {
-            GodMode = !GodMode;
             //ToggleRenewal(); // Try to disable this for god mode
-            Player.m_localPlayer.SetGodMode(GodMode);
-            Player.m_localPlayer.SetNoPlacementCost(value: GodMode);
-            Player.m_localPlayer.m_guardianPowerCooldown = 1f; //todo: this works if we place it in Gift
+            SetGodMode(!GodMode);
 
-            // Set all food to 30 mins
-            foreach (var food in Player.m_localPlayer.GetFoods())
+            if (Player.m_localPlayer != null)
             {
-                food.m_time = 25 * 60;
+                Player.m_localPlayer.m_guardianPowerCooldown = 1f; //todo: this works if we place it in Gift
+
+                // Set all food to 30 mins
+                foreach (var food in Player.m_localPlayer.GetFoods())
+                {
+                    food.m_time = 25 * 60;
+                }
             }
 
             Show($"God Mode {(GodMode ? "ON" : "OFF")}");
