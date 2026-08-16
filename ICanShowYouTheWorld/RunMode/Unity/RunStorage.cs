@@ -139,7 +139,8 @@ namespace ICanShowYouTheWorld.RunMode
             var sb = new StringBuilder(characterName.Length);
             foreach (char c in characterName)
             {
-                sb.Append(char.IsLetterOrDigit(c) ? c : '_');
+                bool ok = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
+                sb.Append(ok ? c : '_');
             }
             return sb.ToString();
         }
