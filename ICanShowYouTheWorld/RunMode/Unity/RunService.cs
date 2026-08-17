@@ -138,6 +138,9 @@ namespace ICanShowYouTheWorld.RunMode
         // --- IRunService ---
 
         public bool IsRunActive => _active;
+
+        /// <summary>Exposed for the HUD, which must hide reroll controls while frozen (see RunWindow).</summary>
+        internal bool IsFrozen => _frozen;
         public float ElapsedSeconds => _active ? _elapsed : 0f;
         public float Heat => _active ? _heat.Heat : 0f;
         public ChallengeEngine Challenges => _active ? _challenges : null;
@@ -336,7 +339,7 @@ namespace ICanShowYouTheWorld.RunMode
         {
             try
             {
-                if (!_active || _challenges == null) return;
+                if (!_active || _frozen || _challenges == null) return;
 
                 if (_heat.Heat < _cfg.RunRerollHeatCost)
                 {
@@ -460,7 +463,7 @@ namespace ICanShowYouTheWorld.RunMode
                 HudNotice = notice;
                 Debug.Log($"[ICanShowYouTheWorld] Run Mode frozen: {notice}");
             }
-            else if (HudNotice == FrozenNotice || HudNotice == WrongWorldNotice)
+            else if (HudNotice == FrozenNotice || HudNotice == WrongWorldNotice || HudNotice == AbandonWrongWorldNotice)
             {
                 HudNotice = null;
             }

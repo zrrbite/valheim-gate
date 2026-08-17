@@ -354,6 +354,11 @@ namespace ICanShowYouTheWorld.RunMode
             }
             else
             {
+                // Frozen (wrong/missing world): rerolling here would write ApplyHeat's
+                // enemy-damage/level-up modifiers into a world the run doesn't own — hide the
+                // button rather than let it fire against the wrong save.
+                bool frozen = _concrete?.IsFrozen ?? false;
+
                 // Indexed, not foreach: the reroll button needs the slot index the engine uses.
                 for (int i = 0; i < challenges.Active.Count; i++)
                 {
@@ -364,12 +369,12 @@ namespace ICanShowYouTheWorld.RunMode
                     GUILayout.Label($"{a.Def.Display}  {a.Progress:0}/{a.Def.Target:0}", _smallStyle);
                     GUI.contentColor = Color.white;
                     GUILayout.FlexibleSpace();
-                    if (GUILayout.Button("reroll", GUILayout.Width(55f))) run.RerollChallenge(i);
+                    if (!frozen && GUILayout.Button("reroll", GUILayout.Width(55f))) run.RerollChallenge(i);
                     GUILayout.EndHorizontal();
                 }
 
                 float cost = Config?.RunRerollHeatCost ?? 0f;
-                if (cost > 0f) GUILayout.Label($"  reroll costs {cost:0.#} heat", _smallStyle);
+                if (!frozen && cost > 0f) GUILayout.Label($"  reroll costs {cost:0.#} heat", _smallStyle);
             }
 
             GUILayout.Space(6f);
