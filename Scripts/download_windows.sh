@@ -22,6 +22,10 @@ win_scp_from "assembly_valheim.dll" "$WIN_ORG"
 print_success "Original staged: $WIN_ORG"
 
 print_info "Patching (Windows)..."
+# The patcher reads the injected call's symbols out of the mod DLL next to it
+# (default ./ICanShowYouTheWorld.dll), so stage a fresh build first — otherwise
+# it patches against a stale DLL, or fails outright on a symbol added since.
+cp "$MOD_DLL" "$PATCHER_DIR/ICanShowYouTheWorld.dll"
 cd "$PATCHER_DIR"
 mono Patcher.exe "$WIN_ORG" "$WIN_PATCHED"
 print_success "Patched assembly: $WIN_PATCHED"

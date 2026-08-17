@@ -454,6 +454,16 @@ namespace ICanShowYouTheWorld.RunMode
                 GUILayout.Label($"Last run score: {run.CurrentScore:0.##}", _smallStyle);
             }
 
+            // Outside a run the strip isn't drawn, so this is the only place a notice can be
+            // seen — and the ones raised here (a refused start, an unreadable run save) are
+            // exactly the ones the player must read before pressing Start again.
+            string notice = _concrete?.HudNotice;
+            if (!string.IsNullOrEmpty(notice))
+            {
+                GUILayout.Space(4f);
+                GUILayout.Label(notice, _noticeStyle);
+            }
+
             GUILayout.Space(8f);
             // Deferred: starting a run here would change the window set mid-pass.
             if (GUILayout.Button("Start Run")) _pendingStart = true;

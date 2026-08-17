@@ -31,6 +31,9 @@ namespace ICanShowYouTheWorld.RunMode
             ("GoblinKing",  "Yagluth",   "defeated_goblinking"),
         };
 
+        /// <summary>Used when <see cref="IConfiguration.RunFinalBossKey"/> names something that isn't a boss.</summary>
+        private const string DefaultFinalBossKey = "defeated_goblinking";
+
         private const float BossPollIntervalSeconds = 1f;
         private const float AutosaveIntervalSeconds = 5f;
         private const float KillHookGraceSeconds = 60f;
@@ -39,6 +42,9 @@ namespace ICanShowYouTheWorld.RunMode
         private const string FrozenNotice = "Run paused — world not loaded.";
         private const string WrongWorldNotice = "Run paused — this is not the world the run started in.";
         private const string KillHookNotice = "Kill hook never fired — kill challenges will not progress.";
+        private const string AbandonWrongWorldNotice = "Load the run's world to abandon it.";
+        private const string CorruptSaveNotice =
+            "Run save could not be read — file kept as .corrupt; run cannot be resumed.";
 
         private readonly IGameAPI _game;
         private readonly IConfiguration _cfg;
@@ -59,6 +65,12 @@ namespace ICanShowYouTheWorld.RunMode
         private Random _rng;
         private int _rngSeed;
         private string _worldId;
+
+        /// <summary>
+        /// The boss whose defeat key ends the run, resolved from config once per run
+        /// (see <see cref="ResolveFinalBossKey"/>) so a typo can't silently make the run unfinishable.
+        /// </summary>
+        private string _finalBossKey = DefaultFinalBossKey;
 
         private bool _active;
         private float _elapsed;
@@ -89,6 +101,16 @@ namespace ICanShowYouTheWorld.RunMode
         private bool _resumeAttempted;
         private RunSaveState _pendingResume;
         private bool _restorePending;
+
+        /// <summary>
+        /// World the deferred restore belongs to. World modifiers are global keys saved WITH the
+        /// world, so a restore owed to world A must never be flushed into world B — the retry in
+        /// <see cref="TickInner"/> waits for this world to come back. Survives <see cref="EndRun"/>
+        /// (which clears <see cref="_worldId"/>) precisely because the debt outlives the run.
+        /// Null means "unknown world" (legacy state), which is allowed to restore anywhere.
+        /// </summary>
+        private string _restoreWorldId;
+
         private int _consecutiveTickFailures;
 
         /// <summary>Score of the most recently finished run; surfaced by the HUD until dismissed.</summary>
@@ -171,6 +193,19 @@ namespace ICanShowYouTheWorld.RunMode
                     return;
                 }
 
+                // A loaded-but-unresumed run belongs to another world, and its save file holds the
+                // ONLY copy of that world's original modifier values. Run state is per-character,
+                // so starting here would overwrite it and strand those rates permanently.
+                if (_pendingResume != null)
+                {
+                    string pendingWorld = ReadableWorldName(_pendingResume.worldId);
+                    string busy = $"An unfinished run exists on world '{pendingWorld}' — " +
+                                  "load that world to resume or abandon it first.";
+                    Announce(busy);
+                    HudNotice = busy;
+                    return;
+                }
+
                 var player = Player.m_localPlayer;
                 if (player == null)
                 {
@@ -186,6 +221,8 @@ namespace ICanShowYouTheWorld.RunMode
                     return;
                 }
 
+                string finalBossKey = ResolveFinalBossKey();
+
                 // A used world may already have kills. Those bosses are excluded from splits;
                 // if the FINAL boss is already down there is no run to be had.
                 var preDefeated = new HashSet<string>();
@@ -194,7 +231,7 @@ namespace ICanShowYouTheWorld.RunMode
                     if (SafeGetGlobalKey(zone, boss.defeatKey)) preDefeated.Add(boss.defeatKey);
                 }
 
-                if (preDefeated.Contains(_cfg.RunFinalBossKey))
+                if (preDefeated.Contains(finalBossKey))
                 {
                     Message("The final boss is already dead on this world — start Run Mode on a fresh one.");
                     return;
@@ -215,6 +252,7 @@ namespace ICanShowYouTheWorld.RunMode
                 HudNotice = null;
 
                 _worldId = WorldIdentifier();
+                _finalBossKey = finalBossKey;
                 _graceElapsed = 0f;
 
                 _rngSeed = Environment.TickCount;
@@ -239,6 +277,7 @@ namespace ICanShowYouTheWorld.RunMode
                 _worldModifiers.ApplyBaseline(_cfg);
                 _worldModifiers.ApplyHeat(0f, _cfg);
                 _restorePending = true;
+                _restoreWorldId = _worldId;
 
                 _trackedPlayer = player;
 
@@ -265,7 +304,21 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 if (!_active) return;
 
+                // Abandoning is a write to the WORLD: RestoreAll pushes the run's captured
+                // originals back into global keys, which Valheim saves with whatever world is
+                // loaded. Doing that from a different world would stamp world A's rates onto
+                // world B and then delete the only record of them. Refuse and stay frozen —
+                // the run (and its state file) survive until its own world is loaded.
+                string world = WorldIdentifier();
+                if (_worldId != null && (world == null || world != _worldId))
+                {
+                    HudNotice = AbandonWrongWorldNotice;
+                    Announce(AbandonWrongWorldNotice);
+                    return;
+                }
+
                 _restorePending = !_worldModifiers.RestoreAll();
+                _restoreWorldId = _restorePending ? _worldId : null;
                 SafeUnapplyAllBoonEffects();
                 DeleteState();
                 EndRun();
@@ -331,8 +384,17 @@ namespace ICanShowYouTheWorld.RunMode
             if (!_active)
             {
                 // A restore deferred because the world was gone still owes the world its
-                // original rates; keep trying until ZoneSystem is back.
-                if (_restorePending && _worldModifiers.RestoreAll()) _restorePending = false;
+                // original rates; keep trying until THAT world is back. Flushing it into
+                // whichever world happens to load next would write one world's rates into
+                // another's save permanently.
+                if (_restorePending && RestoreWorldLoaded())
+                {
+                    if (_worldModifiers.RestoreAll())
+                    {
+                        _restorePending = false;
+                        _restoreWorldId = null;
+                    }
+                }
 
                 TryResume();
                 return;
@@ -515,7 +577,7 @@ namespace ICanShowYouTheWorld.RunMode
 
                 Message($"{boss.display} down — {FormatTime(_elapsed)}");
 
-                if (boss.defeatKey == _cfg.RunFinalBossKey) finished = true;
+                if (boss.defeatKey == _finalBossKey) finished = true;
             }
 
             if (finished) FinishRun();
@@ -573,6 +635,7 @@ namespace ICanShowYouTheWorld.RunMode
             catch (Exception ex) { LogOnce("record-score", ex); }
 
             _restorePending = !_worldModifiers.RestoreAll();
+            _restoreWorldId = _restorePending ? _worldId : null;
             SafeUnapplyAllBoonEffects();
             DeleteState();
 
@@ -862,8 +925,22 @@ namespace ICanShowYouTheWorld.RunMode
             // One shot: whatever happens below, don't hit the disk again every frame.
             _resumeAttempted = true;
 
-            var state = RunStorage.TryLoad(name);
-            if (state == null) return;
+            bool corrupt;
+            var state = RunStorage.TryLoad(name, out corrupt);
+            if (state == null)
+            {
+                // "No file" is the normal case and says nothing. "File there but unreadable" is
+                // a loss the player must hear about: RunStorage has quarantined it as .corrupt
+                // rather than deleting it, because it holds the only copy of the world's
+                // original modifier values — those rates are now stuck at the run's inflated
+                // ones until the file is repaired by hand.
+                if (corrupt)
+                {
+                    HudNotice = CorruptSaveNotice;
+                    Announce(CorruptSaveNotice);
+                }
+                return;
+            }
 
             _pendingResume = state;
             TryResumePending();
@@ -929,6 +1006,7 @@ namespace ICanShowYouTheWorld.RunMode
             HudNotice = null;
 
             _worldId = string.IsNullOrEmpty(s.worldId) ? world : s.worldId;
+            _finalBossKey = ResolveFinalBossKey();
             _graceElapsed = 0f;
 
             _rngSeed = s.rngSeed;
@@ -979,6 +1057,7 @@ namespace ICanShowYouTheWorld.RunMode
             _worldModifiers.ApplyBaseline(_cfg);
             _worldModifiers.ApplyHeat(_heat.Heat, _cfg);
             _restorePending = true;
+            _restoreWorldId = _worldId;
 
             _active = true;
         }
@@ -1096,6 +1175,43 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         // --- Misc helpers ---
+
+        /// <summary>
+        /// The configured final-boss key if it names one of the five bosses, otherwise Yagluth.
+        /// A typo in the config must not brick the mode: with an unknown key nothing would ever
+        /// match in <see cref="PollBosses"/> and the run could never finish, so warn and fall back.
+        /// </summary>
+        private string ResolveFinalBossKey()
+        {
+            string key = _cfg.RunFinalBossKey;
+            if (Bosses.Any(b => b.defeatKey == key)) return key;
+
+            Announce($"runFinalBossKey '{key}' is not a known boss key — " +
+                     $"using {DefaultFinalBossKey} (Yagluth) for this run.");
+            return DefaultFinalBossKey;
+        }
+
+        /// <summary>
+        /// True when a deferred restore may be flushed: either it belongs to the world that is
+        /// loaded right now, or its world was never recorded (legacy state), which is the only
+        /// case where restoring anywhere is the lesser evil.
+        /// </summary>
+        private bool RestoreWorldLoaded()
+        {
+            if (_restoreWorldId == null) return true;
+
+            string world = WorldIdentifier();
+            return world != null && world == _restoreWorldId;
+        }
+
+        /// <summary>Human-readable half of a "UID:name" world identifier, for messages.</summary>
+        private static string ReadableWorldName(string identifier)
+        {
+            if (string.IsNullOrEmpty(identifier)) return "unknown";
+
+            int sep = identifier.IndexOf(':');
+            return sep >= 0 && sep + 1 < identifier.Length ? identifier.Substring(sep + 1) : identifier;
+        }
 
         private static bool SafeGetGlobalKey(ZoneSystem zone, string key)
         {

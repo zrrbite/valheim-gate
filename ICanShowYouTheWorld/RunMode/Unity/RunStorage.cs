@@ -97,26 +97,101 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         public static RunSaveState TryLoad(string characterName)
         {
+            bool ignored;
+            return TryLoad(characterName, out ignored);
+        }
+
+        /// <summary>
+        /// Load the run state for the named character, distinguishing "no run saved" from
+        /// "a run was saved but the file can't be read".
+        ///
+        /// The two cases could not be less alike: the first is the normal state of a character
+        /// that isn't mid-run, the second means an in-progress run — and, more importantly, the
+        /// only surviving copy of that world's ORIGINAL modifier values — just became
+        /// unreadable. Returning a bare null for both let that loss pass in silence.
+        ///
+        /// An unreadable file is renamed to "&lt;name&gt;.json.corrupt" rather than deleted,
+        /// precisely because of those originals: a human can still salvage the numbers out of it.
+        /// </summary>
+        /// <param name="existedButCorrupt">
+        /// True when a file was present but could not be read or parsed (and has been
+        /// quarantined). False when there simply was no run saved.
+        /// </param>
+        public static RunSaveState TryLoad(string characterName, out bool existedButCorrupt)
+        {
+            existedButCorrupt = false;
+
             if (string.IsNullOrEmpty(characterName))
             {
                 return null;
             }
 
+            string path = null;
             try
             {
-                string path = PathForCharacter(characterName);
+                path = PathForCharacter(characterName);
                 if (!File.Exists(path))
                 {
                     return null;
                 }
 
                 string json = File.ReadAllText(path);
-                return JsonUtility.FromJson<RunSaveState>(json);
+                var state = JsonUtility.FromJson<RunSaveState>(json);
+
+                // JsonUtility answers empty/"null" JSON with a null object rather than throwing.
+                if (state == null)
+                {
+                    Debug.LogError($"[ICanShowYouTheWorld] Run state for '{characterName}' is empty or not an object.");
+                    existedButCorrupt = true;
+                    QuarantineCorrupt(path, characterName);
+                    return null;
+                }
+
+                return state;
             }
             catch (Exception ex)
             {
                 Debug.LogError($"[ICanShowYouTheWorld] Failed to load run state for '{characterName}': {ex.Message}");
+                existedButCorrupt = true;
+                QuarantineCorrupt(path, characterName);
                 return null;
+            }
+        }
+
+        /// <summary>
+        /// Moves an unreadable run-state file aside so the next load reads as "no run" instead of
+        /// failing forever, while keeping the file itself — it is the only record of the world's
+        /// pre-run modifier values. An existing quarantine file is never overwritten; a colliding
+        /// rename gets a timestamp instead.
+        /// </summary>
+        private static void QuarantineCorrupt(string path, string characterName)
+        {
+            if (string.IsNullOrEmpty(path))
+            {
+                return;
+            }
+
+            try
+            {
+                if (!File.Exists(path))
+                {
+                    return;
+                }
+
+                string target = path + ".corrupt";
+                if (File.Exists(target))
+                {
+                    target = path + "." + DateTime.UtcNow.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture) +
+                             ".corrupt";
+                }
+
+                File.Move(path, target);
+                Debug.LogWarning($"[ICanShowYouTheWorld] Unreadable run state for '{characterName}' kept as {target}.");
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError(
+                    $"[ICanShowYouTheWorld] Failed to quarantine run state for '{characterName}': {ex.Message}");
             }
         }
 
