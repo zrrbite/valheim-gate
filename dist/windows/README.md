@@ -72,7 +72,10 @@ The mod DLL itself is pure IL and identical on every platform, so the one in
 | `patcher\Mono.Cecil*.dll` | Patcher dependencies |
 | `patcher\ICanShowYouTheWorld.dll` | The mod — also the symbol source the patcher reads |
 
-Built from tag **`0.221.12-1`** against Valheim 0.221.12 / Unity 6000.0.61.
+Built from the **`feature/run-mode`** branch (Run Mode preview), against Valheim
+0.221.12 / Unity 6000.0.61. It is ahead of tag `0.221.12-1`, but the version
+constant is only regenerated at tagging time, so the in-game popup still reads
+**v0.221.12-1** — that is expected, not a stale DLL.
 The script warns if this machine's Steam buildid differs from the tested one
 (`21981559`); it will still patch correctly, but the mod DLL was compiled
 against that version's API, so a large version gap wants a rebuild on the Mac.
