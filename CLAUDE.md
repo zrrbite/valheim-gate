@@ -144,6 +144,32 @@ keyboard-remap ability the mod relies on.
 - `Update()` - Per-frame input handling
 - `OnGUI()` - Immediate-mode UI rendering (IMGUI)
 
+### Run Mode ("Saga")
+
+A roguelite challenge mode layered on the mod (branch `feature/run-mode`;
+design in `docs/superpowers/specs/`, build notes in `docs/superpowers/`).
+`End` opens the Run window: lobby outside a run, Heat HUD during one. While a
+run is live, GM-mode commands are gated off (`InputManager.Gate`) and F1 shows
+the Heat HUD instead of the cheat windows.
+
+Key pieces: pure engines in `RunMode/` (`HeatModel`, `ChallengeEngine`,
+`BoonEngine` — unit-tested via `Tests/run_tests.sh`), game-coupled code in
+`RunMode/Unity/` (`RunService` orchestrator, `WorldModifiers` global-key
+control, `RunStorage` persistence, `BoonEffects`, `RunWindow` UI,
+`GameEvents`). The Patcher injects a second call — `Character.OnDeath` →
+`GameEvents.CharacterDied` — used for kill challenges and death penalties.
+Empowerment and heat ride Valheim's world-modifier global keys
+(`ResourceRate`, `SkillGainRate`, `EnemyDamage`, …), which PERSIST with the
+world save — all writes are guarded by world-identity checks and pre-run
+originals stored in the run state. Live run state: per-character JSON next to
+the config. Permanent record: `Player.m_customData` (`ICSYTW_saga_*` keys).
+
+Two codebase facts that bite here: the legacy `CheatCommands` statics (ticked
+by `CheatCommands.HandlePeriodic`) and the DI services are parallel,
+UNSYNCED worlds — effects must ride the legacy pipeline, which is the one
+actually ticked; and cached Unity objects need `ReferenceEquals`, not
+`== null`, across destruction (destroyed objects compare equal to null).
+
 ## Unity Version Management
 
 **Critical**: Unity version must match between development and deployed game. Valheim updates may change Unity versions.

@@ -1,8 +1,34 @@
 # Run Mode — build notes and review findings
 
-*Status as of 2026-08-16, paused after Task 10 of 13. Branch `feature/run-mode`,
-HEAD `307d9e1`, nothing pushed. 58 unit tests green (`Tests/run_tests.sh`),
-solution builds clean.*
+*Status as of 2026-08-17: ALL 13 tasks implemented and reviewed; final
+whole-branch review done, its five merge-blockers fixed and re-verified, plus
+one residual (freeze-gated rerolls). Branch `feature/run-mode`, nothing
+pushed. Deployed to the Mac (both patcher injections, signature valid).
+**Remaining: the in-game smoke checklist below, then merge.***
+
+## Smoke checklist (Martin, on the Mac)
+
+1. Launch Valheim → Credits → mod loads (log shows RunService registered).
+2. `End` → lobby appears; F1 still shows GM windows (no run yet).
+3. Start Run → bosses pinned, timer strip top-center, F1 now shows Heat HUD,
+   numpad GM keys dead (try Keypad0 — no god mode, no toast).
+4. Complete an easy challenge (hold 100 wood) → heat rises, boon offer panel
+   → pick with Keypad2 → boon in HUD. Check a greydwarf hits harder.
+5. Keypad4/5 must NOT fire GM Cloak/Immunity toasts (gate + boon routing).
+6. Die on purpose → heat −3, newest boon gone; respawn → passive boons still
+   apply (fleet speed).
+7. Quit to menu, relaunch, rejoin → run resumes (elapsed/heat/challenges).
+8. Abandon → GM mode instantly back; drop a beech: normal wood amounts
+   (ResourceRate restored).
+9. `Player.log` free of [ICanShowYouTheWorld] errors throughout.
+
+Spec amendments awaiting sign-off (from final review): hardcoded v1 challenge
+pool (config-driven is v2), no config clamping, boon magnitudes (fleet
++2×increment, sharp ×1.2), Waystone = nearest undefeated altar.
+
+---
+
+*Earlier status (2026-08-16, after Task 10):*
 
 Companion documents: the design is
 [specs/2026-08-16-run-mode-design.md](specs/2026-08-16-run-mode-design.md),
