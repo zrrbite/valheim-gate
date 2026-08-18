@@ -45,4 +45,98 @@ Collect and append under RESULTS below:
 
 ### RESULTS (Windows side appends here)
 
-*(pending)*
+Collected 2026-08-18 ~15:20 local, after `git pull` (89ea95e).
+
+**1. Build during the buggy session: alpha2, NOT alpha1.** The alpha2 kit was
+installed at 14:55 today and the buggy session started 14:56 — Player.log
+line 329 confirms `Starting initialization (v0.221.12-run.alpha2)`.
+
+- `git log --oneline -3`: `89ea95e` (handoff task), `32081f1` alpha2 kit,
+  `eb85815` alpha2 bump.
+- `git status --short`: 11 files show modified, but `git diff
+  --ignore-cr-at-eol` is empty — pure CRLF churn from the Windows checkout,
+  no real local changes.
+- Installed files: `assembly_valheim.dll` 18/08 14:55:50,
+  `ICanShowYouTheWorld.dll` 18/08 14:55:22 (vanilla backup 23/02 07:33).
+- The *previous* session (Player-prev.log, 17/08 17:27–17:40) ran **alpha1**
+  and is where the run was started.
+
+**2. Mod log lines, in timeline order.**
+
+Player-prev.log (17/08, alpha1) — run start, on world `hjklgggggggg`:
+
+```
+[ICanShowYouTheWorld] Starting initialization (v0.221.12-run.alpha1)
+08/17/2026 17:27:14: Load world: hjklgggggggg (hjklgggggggg)
+[ICanShowYouTheWorld] Run Mode baseline world modifiers applied (resource=3, skill=3, moveStamina=0.5, staminaRegen=1.5).
+[ICanShowYouTheWorld] Run Mode started (seed=220064750, world=4511032380:hjklgggggggg, pre-defeated=1).
+[ICanShowYouTheWorld] Kill hook never fired — kill challenges will not progress.
+```
+
+Player.log (18/08, alpha2) — the buggy session:
+
+```
+[ICanShowYouTheWorld] Starting initialization (v0.221.12-run.alpha2)
+08/18/2026 14:56:31: Load world: hjklgggggggg (hjklgggggggg)     <- character Draupnir
+[ICanShowYouTheWorld] Run Mode world modifier originals imported (6 key(s)).
+[ICanShowYouTheWorld] Run Mode baseline world modifiers applied (resource=3, skill=3, moveStamina=0.5, staminaRegen=1.5).
+[ICanShowYouTheWorld] Run Mode run resumed at 12:51.             <- resume on the CORRECT world
+08/18/2026 14:56:48: Shutting down                               <- logout to menu
+[ICanShowYouTheWorld] Run Mode frozen: Run paused — world not loaded.
+08/18/2026 14:57:16: Cloud Save: .../characters/naked.fch.new    <- NEW character "naked" created
+08/18/2026 14:57:45: Load world: heatheat (heatheat)             <- NEW world, freshly created
+08/18/2026 14:57:45:   missing /worlds/heatheat.db
+   ...intro/YOU DIED text plays (brand-new world)...
+   (NO [ICanShowYouTheWorld] resume/freeze/mismatch line after the heatheat load)
+[ICanShowYouTheWorld] Load the run's world to abandon it.        <- x5, ~15:02-15:03
+08/18/2026 15:03:47: Game - OnApplicationQuit
+```
+
+Note: **no "belongs to another world" line appears in either log.** After the
+heatheat load the mod logs nothing at all until the five abandon refusals.
+The `world=` value at run start is verbatim `4511032380:hjklgggggggg`.
+
+**3. Run state files.** Exactly one, no `.corrupt`:
+`ICSYTW_run_Draupnir.json`, LastWriteTime **17/08/2026 17:40:45** — i.e. it
+was never rewritten during today's session despite the resume.
+`elapsedSeconds` 771.97 ≈ 12:51, matching the resume line exactly — the
+persisted timer never advanced past yesterday's value. Full contents:
+
+```json
+{
+    "elapsedSeconds": 771.968017578125,
+    "heat": 1.0,
+    "defeatedBossKeys": [ "defeated_eikthyr" ],
+    "splitLabels": [],
+    "splitTimes": [],
+    "activeChallengeIds": [ "alt-150", "k-skeleton" ],
+    "activeChallengeProgress": [ 53.61872482299805, 0.0 ],
+    "heldBoonIds": [ "wind" ],
+    "heldBoonCooldowns": [ 105.24357604980469 ],
+    "heldBoonCharges": [ 0 ],
+    "rngSeed": 220064750,
+    "worldId": "4511032380:hjklgggggggg",
+    "modifierKeys": [ 4, 9, 7, 8, 1, 12 ],
+    "modifierValues": [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ]
+}
+```
+
+**4. Installed assembly injections** (byte-scan of the live
+`assembly_valheim.dll` in Managed): `NotACheater` **True**, `CharacterDied`
+**True** — both injections present during the buggy session.
+
+**5. Update to alpha2:** already on it — the full `Install-Mod.ps1` run at
+14:55 today (before the buggy session) is what installed it, and `git pull`
+now only fetched this handoff file, so no reinstall was performed. Injection
+presence was verified directly via the byte-scan in (4) instead.
+
+**Observation (no fix attempted):** the run belongs to character *Draupnir*;
+there is no `ICSYTW_run_naked.json`, yet the abandon refusals fired while
+playing the brand-new character *naked* on the brand-new world *heatheat*.
+The in-memory run (with the `wind` boon) evidently survived the
+logout/character-switch inside one game process, still in its
+menu-time frozen state — which would also explain the non-counting timers
+(frozen) and the abandon refusal (world-identity guard). Whether the "run
+resumed" toast Martin saw on the new world came from this same surviving
+state at 14:56 or a separate resume, the logs only show the one resume line,
+on the correct world.
