@@ -187,6 +187,30 @@ if ($LASTEXITCODE -ne 0) {
 if (-not (Test-Path $patchedOut)) { Write-Err 'Patcher produced no output.'; exit 1 }
 Write-Ok 'Assembly patched.'
 
+# ---- Verify the injections actually landed ------------------------------
+
+# A zero exit code is not proof. A stale bundled patcher/ folder injects the
+# entry point and silently omits the death hook, producing an assembly that
+# loads the mod but never fires kill events — Run Mode's kill challenges then
+# sit at 0 forever, with only a subtle in-game notice to explain it. Both names
+# live in the assembly's metadata string heap, so a string scan settles it.
+# Checked before the install copy, so a bad patch never reaches the game folder.
+$patchedBytes = [IO.File]::ReadAllBytes($patchedOut)
+$patchedText  = [Text.Encoding]::ASCII.GetString($patchedBytes)
+
+if (-not $patchedText.Contains('NotACheater')) {
+    Write-Err 'Patched assembly is missing the mod entry point — aborting.'
+    Write-Info 'Nothing was installed; the game folder is untouched.'
+    exit 1
+}
+if (-not $patchedText.Contains('CharacterDied')) {
+    Write-Err 'Patched assembly is missing the Character.OnDeath hook — your patcher/ folder is stale.'
+    Write-Info 'Run git pull on the Mac, re-copy dist\windows, and retry.'
+    Write-Info 'Nothing was installed; the game folder is untouched.'
+    exit 1
+}
+Write-Ok 'Verified both injections present (entry point + death hook).'
+
 # ---- Install ------------------------------------------------------------
 
 Copy-Item $patchedOut $installed -Force
