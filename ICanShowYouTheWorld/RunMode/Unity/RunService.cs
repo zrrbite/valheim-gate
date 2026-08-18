@@ -39,14 +39,22 @@ namespace ICanShowYouTheWorld.RunMode
         private const int ConsecutiveFailuresBeforeNotice = 5;
 
         /// <summary>
-        /// How long ZNet/ZoneSystem must report no world before an active run is suspended rather
-        /// than merely frozen. Loading screens and zone transitions produce brief nulls that must
-        /// not tear a live run down; a genuine trip to the main menu never comes back inside this
-        /// window.
+        /// How long ZNet must report no world at all before an active run is suspended rather than
+        /// merely frozen. Loading screens produce brief gaps that must not tear a live run down; a
+        /// genuine trip to the main menu never comes back inside this window.
         /// </summary>
         private const float WorldGoneSuspendSeconds = 5f;
 
+        /// <summary>
+        /// How long the world must be CONTINUOUSLY present before the outage clock is cleared.
+        /// Without this hysteresis a world identity that flickered once a frame would reset the
+        /// clock forever and the run would never suspend — the exact failure suspending exists
+        /// to prevent.
+        /// </summary>
+        private const float WorldPresentResetSeconds = 1f;
+
         private const string FrozenNotice = "Run paused — world not loaded.";
+        private const string RespawnNotice = "Run paused — waiting for respawn.";
         private const string WrongWorldNotice = "Run paused — this is not the world the run started in.";
         private const string AbandonWrongWorldNotice = "Load the run's world to abandon it.";
         private const string MultiplayerNotice = "Run Mode v1 supports local/hosted worlds only.";
@@ -87,10 +95,23 @@ namespace ICanShowYouTheWorld.RunMode
         private bool _frozen;
 
         /// <summary>
-        /// Seconds the world has been unavailable under an ACTIVE run. Zeroed on every healthy
-        /// tick, so it only ever measures one continuous outage — see <see cref="WorldGoneSuspendSeconds"/>.
+        /// Seconds ZNet has reported NO world under an active run. Cleared only after the world
+        /// has been continuously present for <see cref="WorldPresentResetSeconds"/>, so it measures
+        /// one real outage rather than the gaps between flickers — see
+        /// <see cref="WorldGoneSuspendSeconds"/>.
         /// </summary>
         private float _worldGoneSeconds;
+
+        /// <summary>Seconds the world has been continuously present; drives the hysteresis on <see cref="_worldGoneSeconds"/>.</summary>
+        private float _worldPresentSeconds;
+
+        /// <summary>
+        /// Set on every playable tick, cleared by the one save taken when the world goes away.
+        /// While set, that save is retried on each outage tick — a single attempt could silently
+        /// no-op (no player profile on that exact frame) and lose everything played since the last
+        /// autosave.
+        /// </summary>
+        private bool _outageSaveOwed;
 
         /// <summary>
         /// Character the current run belongs to, captured when the run starts or resumes. Used for
@@ -302,7 +323,7 @@ namespace ICanShowYouTheWorld.RunMode
                 _loggedFailures.Clear();
                 _consecutiveTickFailures = 0;
                 _frozen = false;
-                _worldGoneSeconds = 0f;
+                ResetOutageTracking();
                 HudNotice = null;
 
                 _worldId = WorldIdentifier();
@@ -472,36 +493,24 @@ namespace ICanShowYouTheWorld.RunMode
                 return;
             }
 
-            // The world can disappear under an active run two ways, and both used to freeze it in
-            // place — which left the run resident in memory for the rest of the process, wearing
-            // the previous character's HUD on somebody else's world. Freezing is now only the
-            // TRANSIENT answer; a sustained outage or a genuinely different world suspends it (see
-            // SuspendRun), so a run never exists outside the world it belongs to.
-            if (ZoneSystem.instance == null || Player.m_localPlayer == null)
-            {
-                bool firstOutageTick = _worldGoneSeconds <= 0f;
-
-                // Floored so a zero dt can't leave the accumulator at zero and re-trigger the
-                // "first tick" save on every frame of the outage.
-                _worldGoneSeconds += Mathf.Max(dt, 0.001f);
-
-                // The previous tick was healthy play on the run's own world, and the player
-                // profile may survive another moment — this is the best (often the only) chance
-                // to flush the seconds played since the last autosave.
-                if (firstOutageTick) SaveState();
-
-                if (_worldGoneSeconds < WorldGoneSuspendSeconds)
-                {
-                    SetFrozen(true, FrozenNotice);
-                    return;
-                }
-
-                SuspendRun("world unloaded");
-                return;
-            }
-
+            // WORLD IDENTITY, and nothing else, decides whether a run is suspended. A null player
+            // or a null ZoneSystem while the identity still matches is a state the run comes back
+            // from inside its own world — and death is exactly that: Character.OnDeath hands the
+            // player to Game.RequestRespawn on a ten-second timer, so Player.m_localPlayer is null
+            // for longer than the suspend threshold on EVERY death while the world never moves.
+            // Suspending there would tear the run down and rebuild it from disk mid-death (a
+            // spurious "resumed" toast, the pending boon offer dropped, the no-armor timer reset,
+            // a restore-debt round trip) and would leave DetectRespawnAndReapplyPassives with
+            // nothing to detect. Those states freeze, indefinitely, and thaw when the player
+            // returns.
+            //
+            // WorldIdentifier() is ZNet-driven (instance + a non-empty world name), so it is the
+            // one signal that means "this game process still has this world open"; ZoneSystem and
+            // the player both lag it during a load and both vanish for reasons that aren't a world
+            // change. Suspension is therefore keyed to the identity alone.
             string world = WorldIdentifier();
-            if (_worldId != null && world != null && world != _worldId)
+
+            if (world != null && _worldId != null && world != _worldId)
             {
                 // A different world is fully up: no grace period, and deliberately no save —
                 // SaveState keys the file by the CURRENT profile, which after a character switch
@@ -510,7 +519,48 @@ namespace ICanShowYouTheWorld.RunMode
                 return;
             }
 
-            _worldGoneSeconds = 0f;
+            // Floored so a zero dt can't stall either accumulator.
+            float step = Mathf.Max(dt, 0.001f);
+            if (world == null)
+            {
+                _worldPresentSeconds = 0f;
+                _worldGoneSeconds += step;
+            }
+            else
+            {
+                // Hysteresis: a single world-present frame does NOT clear the outage clock. A
+                // flickering ZNet would otherwise reset it every other tick and hold the run
+                // frozen at the menu forever, which is the fault suspending exists to prevent.
+                _worldPresentSeconds += step;
+                if (_worldPresentSeconds >= WorldPresentResetSeconds) _worldGoneSeconds = 0f;
+            }
+
+            bool playable = world != null && ZoneSystem.instance != null && Player.m_localPlayer != null;
+
+            if (!playable)
+            {
+                // One flush of the seconds played since the last autosave, retried on every
+                // outage tick until it lands: on the first tick of a logout the player profile is
+                // often already gone, and a single silent no-op there is how a whole resumed
+                // session used to vanish. Guarded on the run's OWN character, because during a
+                // world switch the next profile can be up before ZNet reports the next world —
+                // saving then would stamp this run onto somebody else's file.
+                if (_outageSaveOwed && CharacterName() == _runCharacter && SaveState())
+                {
+                    _outageSaveOwed = false;
+                }
+
+                if (world == null && _worldGoneSeconds >= WorldGoneSuspendSeconds)
+                {
+                    SuspendRun("world unloaded");
+                    return;
+                }
+
+                SetFrozen(true, world == null ? FrozenNotice : RespawnNotice);
+                return;
+            }
+
+            _outageSaveOwed = true;
             SetFrozen(false, null);
             DetectRespawnAndReapplyPassives();
 
@@ -553,7 +603,8 @@ namespace ICanShowYouTheWorld.RunMode
                 HudNotice = notice;
                 Debug.Log($"[ICanShowYouTheWorld] Run Mode frozen: {notice}");
             }
-            else if (HudNotice == FrozenNotice || HudNotice == WrongWorldNotice || HudNotice == AbandonWrongWorldNotice)
+            else if (HudNotice == FrozenNotice || HudNotice == RespawnNotice ||
+                     HudNotice == WrongWorldNotice || HudNotice == AbandonWrongWorldNotice)
             {
                 HudNotice = null;
             }
@@ -781,9 +832,17 @@ namespace ICanShowYouTheWorld.RunMode
             _worldId = null;
             _runCharacter = null;
             _frozen = false;
-            _worldGoneSeconds = 0f;
+            ResetOutageTracking();
             _trackedPlayer = null;
             HudNotice = null;
+        }
+
+        /// <summary>Clears the world-outage clocks and the pending outage flush; no run, nothing owed.</summary>
+        private void ResetOutageTracking()
+        {
+            _worldGoneSeconds = 0f;
+            _worldPresentSeconds = 0f;
+            _outageSaveOwed = false;
         }
 
         /// <summary>
@@ -1277,7 +1336,7 @@ namespace ICanShowYouTheWorld.RunMode
             _loggedFailures.Clear();
             _consecutiveTickFailures = 0;
             _frozen = false;
-            _worldGoneSeconds = 0f;
+            ResetOutageTracking();
             HudNotice = null;
 
             _worldId = string.IsNullOrEmpty(s.worldId) ? world : s.worldId;
@@ -1383,10 +1442,15 @@ namespace ICanShowYouTheWorld.RunMode
             }
         }
 
-        private void SaveState()
+        /// <summary>
+        /// Writes the run to disk. Returns false when there is no player profile to key the file
+        /// by this tick — the outage flush retries on that answer rather than losing the write
+        /// (RunStorage.Save handles IO failures itself, and they are logged there).
+        /// </summary>
+        private bool SaveState()
         {
             string name = CharacterName();
-            if (name == null) return; // No profile this tick — skip rather than throw.
+            if (name == null) return false; // No profile this tick — skip rather than throw.
 
             var active = _challenges?.Active ?? (IReadOnlyList<ActiveChallenge>)new List<ActiveChallenge>();
             var held = _boons?.Held ?? (IReadOnlyList<HeldBoon>)new List<HeldBoon>();
@@ -1408,6 +1472,8 @@ namespace ICanShowYouTheWorld.RunMode
                 modifierKeys = _worldModifiers.ExportOriginalKeys(),
                 modifierValues = _worldModifiers.ExportOriginalValues()
             });
+
+            return true;
         }
 
         private void DeleteState()
