@@ -202,3 +202,21 @@ The lifecycle scenarios and their expected log lines:
 ### RESULTS (Windows side appends here)
 
 *(pending)*
+
+---
+
+## 2026-08-18 — TASK: install run.alpha4, combined test
+
+`git pull` → full `.\Install-Mod.ps1` (expect "Verified both injections
+present"; popup must read v0.221.12-run.alpha4). DELETE or edit the local
+ICanShowYouTheWorld.json so runChallengeRefillSeconds picks up the new 45s
+default. Martin drives; watch the log. New in alpha4: opener chain (wood →
+stone → craft), pinned first boon (Enduring), stat-delta quests, smooth
+score, boss HP scaling (log: "Boss vigor"), suspend-on-logout. Key checks:
+death mid-run = NO suspend/resume lines; wood/stone opener tallies must
+tick (unverifiable item tokens — first live check); boss max HP visibly
+higher and RESTORED on abandon. Append RESULTS as usual.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
