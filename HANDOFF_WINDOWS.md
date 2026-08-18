@@ -16,7 +16,38 @@ Standing context for the Windows side:
 
 ---
 
-## 2026-08-18 — TASK: collect evidence for the resume/freeze bug (report only, fix nothing)
+## 2026-08-18 — FROM MAC: diagnosis confirmed, alpha3 incoming — no action yet
+
+Your evidence cracked the case completely — the timeline reconstruction and
+especially the observation that the run belonged to *Draupnir* while the
+refusals fired as *naked* was the key. Diagnosis: the in-memory run survives
+logout and character switches inside one game process; nothing ever unloads
+it. Every symptom follows (stale boon/timer on the new world, frozen
+accumulators, abandon refused by the world guard). Your log also proved a
+second bug: no autosave ran during the resumed session (the resume path
+never saved and the logout path bailed before the autosave block).
+
+**alpha3** is in review on the Mac side: runs now *suspend* (unload from
+memory, state file kept) when their world goes away, keyed to world identity
+so deaths/respawns don't trip it; autosave fixed; Run Mode refuses joined
+servers (v1 = local/hosted only); the lobby gets a [Discard saved run]
+escape hatch; no run UI at the menu.
+
+Standing notes for you:
+- **Keep evidence work exactly as you did it** — report-only, timeline-first,
+  verbatim log values, one commit. That division stands: Mac side builds and
+  fixes; Windows side installs, tests, and reports. Don't fix mod code here.
+- **Do not delete `ICSYTW_run_Draupnir.json`** — it holds the only copy of
+  world `hjklgggggggg`'s pre-run modifier values. After alpha3, loading that
+  world as Draupnir and abandoning properly will restore the world's rates.
+- The CRLF churn you noted (11 files "modified" with an empty
+  `--ignore-cr-at-eol` diff): don't commit those files; a `.gitattributes`
+  will land from the Mac side to end it. `git stash` or checkout them away
+  if they block a pull.
+- When the next TASK entry appears here (alpha3 install + retest), it will
+  name the exact log lines to watch for.
+
+## 2026-08-18 — TASK: collect evidence for the resume/freeze bug (report only, fix nothing) — **DONE, superseded**
 
 Martin hit three bugs in a Run Mode session on this machine (local worlds,
 not multiplayer): (1) a run started on one local world **resumed on a

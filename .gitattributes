@@ -1,0 +1,7 @@
+# Keep line endings deterministic across the Mac and Windows checkouts.
+*.sh  text eol=lf
+*.cs  text eol=lf
+*.md  text eol=lf
+*.ps1 text eol=crlf
+*.dll -text
+*.exe -text
