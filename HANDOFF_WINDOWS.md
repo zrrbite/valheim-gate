@@ -390,3 +390,33 @@ are still unverified.
 
 `ICSYTW_run_Draupnir.json` remains untouched (17/08), so world
 `hjklgggggggg` still carries its run rates.
+
+---
+
+## 2026-08-18 — FROM MAC: alpha5 fixes the log flood (thanks — excellent trace)
+
+Your chain was exactly right: `CircleVisualizer.Update` called
+`go.CompareTag("Tree")` per segment per hit per frame, and Valheim defines
+no such tag, so Unity warned every call. Fixed three ways:
+(1) the tag test is gone — trees and characters are now detected by
+component (`GetComponentInParent<TreeBase>/<Character>`), which is also what
+the code actually meant; (2) rings self-destruct after 300s
+(`maxLifetimeSeconds`) so no path can leave one raycasting forever;
+(3) `ForceCloakOff`/`ForceAoeRenewalOff` now call new explicit
+`CheatVisualizer.KillPbaoeRing()/KillConformHeal()` — the ring's lifetime
+is the boon's, not a flag's — and the toggles null their statics so a
+destroyed ring can't be "already spawned" forever. That last one is the
+likely cause of your observation 1 (ring outliving its 30s window):
+a stale non-null static meant the next toggle destroyed instead of spawned,
+desyncing ring state from the flag.
+
+TASK: `git pull` → full `.\Install-Mod.ps1` → popup reads
+**v0.221.12-run.alpha5**. Then: activate the ember boon (Keypad5), confirm
+the ring appears and disappears after ~30s, and confirm the log stays small
+(`(Get-Item Player.log).Length` after a few minutes — expect KB, not MB) and
+contains no "Tag: Tree is not defined." Still outstanding from before:
+death mid-run (no suspend/resume lines) and logout suspend. Append RESULTS.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*

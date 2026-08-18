@@ -512,6 +512,9 @@ namespace ICanShowYouTheWorld.RunMode
             _aoeRenewalOnByUs = false;
 
             if (CheatCommands.AOERenewalActive) WithLegacyGodModeBracket(CheatCommands.ToggleAoeRenewal);
+
+            // See ForceCloakOff: the ring's lifetime must not depend on a flag staying in sync.
+            CheatVisualizer.KillConformHeal();
         }
 
         private void ForceCloakOff()
@@ -521,6 +524,11 @@ namespace ICanShowYouTheWorld.RunMode
             _cloakOnByUs = false;
 
             if (CheatCommands.CloakActive) WithLegacyGodModeBracket(CheatCommands.ToggleCloakOfFlames);
+
+            // The toggle owns the ring, but a desynced flag would strand it drawing (and
+            // raycasting) forever — a field session produced a 28MB log that way. Killing it
+            // explicitly makes the ring's lifetime the boon's, not the flag's.
+            CheatVisualizer.KillPbaoeRing();
         }
 
         /// <summary>

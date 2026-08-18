@@ -80,8 +80,11 @@ public class GroundConformingRing : MonoBehaviour
     public float maxAlpha = 0.6f;
     [Tooltip("Maximum allowed change in height between adjacent segments")]
     public float maxStepHeight = 1f;
+    [Tooltip("Self-destruct after this many seconds; 0 = live forever. The ring is pure eye candy, so a hard cap means no code path can leave one raycasting per-frame indefinitely.")]
+    public float maxLifetimeSeconds = 300f;
     private LineRenderer _lr;
     private Transform _target;
+    private float _bornAt;
 
     /// <summary>
     /// Call once after AddComponent to tell it who to follow.
@@ -89,6 +92,7 @@ public class GroundConformingRing : MonoBehaviour
     public void Init(Transform followTarget)
     {
         _target = followTarget;
+        _bornAt = Time.time;
     }
 
     void Awake()
@@ -103,6 +107,11 @@ public class GroundConformingRing : MonoBehaviour
 
     void Update()
     {
+        if (maxLifetimeSeconds > 0f && Time.time - _bornAt > maxLifetimeSeconds)
+        {
+            Destroy(gameObject);
+            return;
+        }
         if (_target == null) return;
         Vector3 center = _target.position;
 
@@ -131,8 +140,12 @@ public class GroundConformingRing : MonoBehaviour
                 foreach (var h in hits)
                 {
                     var go = h.collider.gameObject;
-                    // skip branches (tagged "Tree") and any Character
-                    if (go.CompareTag("Tree") || go.GetComponent<Character>() != null)
+                    // Skip trees and any Character. Component checks, NOT CompareTag:
+                    // Valheim's TagManager defines no "Tree" tag, so CompareTag emitted a
+                    // "Tag: Tree is not defined." warning on EVERY call — segments × hits ×
+                    // frames ≈ thousands of log lines per second while a ring was up.
+                    if (go.GetComponentInParent<TreeBase>() != null ||
+                        go.GetComponentInParent<Character>() != null)
                         continue;
                     if (h.point.y < minY) minY = h.point.y;
                 }

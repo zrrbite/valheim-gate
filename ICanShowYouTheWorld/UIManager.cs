@@ -563,7 +563,14 @@ namespace ICanShowYouTheWorld
                 ring.maxAlpha = 1f;
                 ring.Init(Player.m_localPlayer.transform);
             }
-            else Object.Destroy(_healRing);
+            else { Object.Destroy(_healRing); _healRing = null; }
+        }
+
+        /// <summary>Unconditionally remove the heal ring, whatever state the toggles think they're in.</summary>
+        public static void KillConformHeal()
+        {
+            if (_healRing != null) Object.Destroy(_healRing);
+            _healRing = null;
         }
 
         public static void TogglePbaoeRing(float radius)
@@ -582,7 +589,14 @@ namespace ICanShowYouTheWorld
                 ring.maxAlpha = 0.6f;
                 ring.Init(Player.m_localPlayer.transform);
             }
-            else Object.Destroy(_dmgRing);
+            else { Object.Destroy(_dmgRing); _dmgRing = null; }
+        }
+
+        /// <summary>Unconditionally remove the Cloak of Flames ring, whatever state the toggles think they're in.</summary>
+        public static void KillPbaoeRing()
+        {
+            if (_dmgRing != null) Object.Destroy(_dmgRing);
+            _dmgRing = null;
         }
 
         private static GameObject _barrierRing;
