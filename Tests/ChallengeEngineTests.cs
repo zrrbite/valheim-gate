@@ -91,6 +91,124 @@ static class ChallengeEngineTests
         RestoreActiveTests();
         TierTests();
         CollectFoodTests();
+        StatDeltaTests();
+        BaselineRoundTripTests();
+    }
+
+    static List<ChallengeDefinition> StatPool() => new List<ChallengeDefinition>
+    {
+        new ChallengeDefinition { Id="s-chop", Kind=ChallengeKind.StatDelta, Param="TreeChops", Target=15, HeatReward=1, Display="Chop 15 trees" },
+        new ChallengeDefinition { Id="s-jump", Kind=ChallengeKind.StatDelta, Param="Jumps",     Target=30, HeatReward=1, Display="Jump 30 times" },
+    };
+
+    /// <summary>
+    /// StatDelta is param-scoped like CollectItem: a report about one stat must not move a
+    /// challenge measuring another, and it keeps the same max-semantics as every other measure.
+    /// </summary>
+    static void StatDeltaTests()
+    {
+        var e = new ChallengeEngine(StatPool(), new Random(31), 120f);
+        e.Tick(0.1f);
+        Check.That(e.Active.Count == 2, "both stat challenges are drawn");
+
+        var chop = e.Active.First(a => a.Def.Id == "s-chop");
+        var jump = e.Active.First(a => a.Def.Id == "s-jump");
+
+        e.ReportMeasure(ChallengeKind.StatDelta, "TreeChops", 7f);
+        Check.That(chop.Progress == 7f, "stat report lands on the matching param");
+        Check.That(jump.Progress == 0f, "stat report does not touch a different param");
+
+        // Max-semantics, same as every other measure.
+        e.ReportMeasure(ChallengeKind.StatDelta, "TreeChops", 3f);
+        Check.That(chop.Progress == 7f, "stat progress never regresses");
+
+        // A stat name nothing is measuring is simply ignored.
+        e.ReportMeasure(ChallengeKind.StatDelta, "DoorsOpened", 99f);
+        Check.That(chop.Progress == 7f && jump.Progress == 0f, "unmatched stat param moves nothing");
+
+        // Cross-kind isolation, both directions: CollectItem's param scoping and StatDelta's
+        // must not leak into one another even when the param strings coincide.
+        e.ReportMeasure(ChallengeKind.CollectItem, "TreeChops", 50f);
+        Check.That(chop.Progress == 7f, "a CollectItem report never satisfies a StatDelta slot");
+
+        e.ReportMeasure(ChallengeKind.StatDelta, "TreeChops", 15f);
+        Check.That(chop.Done, "stat challenge completes at target");
+
+        // Fresh slots carry no baseline: that is the caller's job, and NaN is how it knows.
+        Check.That(float.IsNaN(jump.Baseline), "a freshly dealt slot has no baseline");
+        Check.That(float.IsNaN(new ActiveChallenge().Baseline), "Baseline defaults to NaN");
+    }
+
+    /// <summary>
+    /// Baselines survive a save/restore round trip aligned to the SAVED sequence, not to the
+    /// slots that survive it — an entry dropped as unknown/duplicate/over-cap still consumes its
+    /// index, because saves write the two lists from one active set.
+    /// </summary>
+    static void BaselineRoundTripTests()
+    {
+        var e = new ChallengeEngine(StatPool(), new Random(37), 120f);
+        e.RestoreActive(
+            new[]
+            {
+                new KeyValuePair<string, float>("s-chop", 4f),
+                new KeyValuePair<string, float>("s-jump", 9f),
+            },
+            new List<float> { 120f, 55f });
+
+        Check.That(e.Active.Count == 2, "restore fills both saved slots");
+        Check.That(e.Active[0].Def.Id == "s-chop" && e.Active[0].Baseline == 120f, "baseline restored with its slot");
+        Check.That(e.Active[1].Baseline == 55f, "second baseline restored");
+        Check.That(e.Active[0].Progress == 4f, "progress still restored alongside the baseline");
+
+        // Round trip: what a save would write back out is what came in.
+        var savedIds = e.Active.Select(a => a.Def.Id).ToList();
+        var savedBaselines = e.Active.Select(a => a.Baseline).ToList();
+        var e2 = new ChallengeEngine(StatPool(), new Random(37), 120f);
+        e2.RestoreActive(savedIds.Select(id => new KeyValuePair<string, float>(id, 0f)), savedBaselines);
+        Check.That(e2.Active[0].Baseline == 120f && e2.Active[1].Baseline == 55f, "baselines survive a round trip");
+
+        // A dropped entry must not shift the baselines of the entries after it.
+        var skewed = new ChallengeEngine(StatPool(), new Random(41), 120f);
+        skewed.RestoreActive(
+            new[]
+            {
+                new KeyValuePair<string, float>("nonsense", 0f),  // not in the pool — dropped
+                new KeyValuePair<string, float>("s-chop", 1f),
+                new KeyValuePair<string, float>("s-chop", 2f),    // duplicate — dropped
+                new KeyValuePair<string, float>("s-jump", 3f),
+            },
+            new List<float> { 999f, 120f, 888f, 55f });
+        Check.That(skewed.Active.Count == 2, "dropped entries don't take a slot");
+        Check.That(skewed.Active[0].Def.Id == "s-chop" && skewed.Active[0].Baseline == 120f,
+            "baseline index follows the saved sequence past a dropped entry");
+        Check.That(skewed.Active[1].Def.Id == "s-jump" && skewed.Active[1].Baseline == 55f,
+            "baseline index survives a dropped duplicate too");
+
+        // No baselines at all (a pre-baseline save) leaves every slot NaN for the caller to fill.
+        var legacy = new ChallengeEngine(StatPool(), new Random(43), 120f);
+        legacy.RestoreActive(new[] { new KeyValuePair<string, float>("s-chop", 6f) });
+        Check.That(legacy.Active[0].Progress == 6f && float.IsNaN(legacy.Active[0].Baseline),
+            "the one-argument restore leaves baselines unset");
+
+        legacy.RestoreActive(new[] { new KeyValuePair<string, float>("s-chop", 6f) }, null);
+        Check.That(float.IsNaN(legacy.Active[0].Baseline), "an explicitly null baseline list is the same as none");
+
+        // A short list covers what it can and leaves the tail unset rather than throwing.
+        var partial = new ChallengeEngine(StatPool(), new Random(47), 120f);
+        partial.RestoreActive(
+            new[]
+            {
+                new KeyValuePair<string, float>("s-chop", 0f),
+                new KeyValuePair<string, float>("s-jump", 0f),
+            },
+            new List<float> { 120f });
+        Check.That(partial.Active[0].Baseline == 120f && float.IsNaN(partial.Active[1].Baseline),
+            "a short baseline list leaves the uncovered tail unset");
+
+        // Restored baselines must not disturb the top-up path.
+        partial.Tick(0.1f);
+        Check.That(partial.Active.Count == 2, "pool of 2 stays at 2 after top-up");
+        Check.That(partial.Active.Select(a => a.Def.Id).Distinct().Count() == 2, "actives stay distinct after a baseline restore");
     }
 
     /// <summary>

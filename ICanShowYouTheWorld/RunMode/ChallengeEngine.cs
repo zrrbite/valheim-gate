@@ -9,8 +9,14 @@ namespace ICanShowYouTheWorld.RunMode
     /// it carries no Param and is not matched against one. Appended rather than inserted: saves
     /// store challenge ids, not kinds, but renumbering an enum the game code switches on is a
     /// trap not worth setting.
+    ///
+    /// StatDelta is param-scoped like CollectItem: Param names ONE of Valheim's lifetime player
+    /// stats (a PlayerStatType member, as a string) and the target is a DELTA measured from the
+    /// value that stat held when the challenge was dealt — see <see cref="ActiveChallenge.Baseline"/>.
+    /// Resolving the name and computing the delta belongs to the caller; the engine only matches
+    /// on the string.
     /// </summary>
-    public enum ChallengeKind { KillPrefab, ReachAltitude, BuildHeight, CollectItem, NoArmorMinutes, CollectFood }
+    public enum ChallengeKind { KillPrefab, ReachAltitude, BuildHeight, CollectItem, NoArmorMinutes, CollectFood, StatDelta }
 
     public class ChallengeDefinition
     {
@@ -34,6 +40,21 @@ namespace ICanShowYouTheWorld.RunMode
     {
         public ChallengeDefinition Def;
         public float Progress;
+
+        /// <summary>
+        /// Deal-time snapshot of the lifetime stat a <see cref="ChallengeKind.StatDelta"/> challenge
+        /// measures — the zero point its target counts up from. NaN means "not taken yet".
+        ///
+        /// The engine only STORES this: it has no idea what a PlayerStatType is, and taking the
+        /// snapshot needs the live game. The caller fills it in the moment a slot is dealt (and
+        /// carries it across a save, via the baselines argument of <see cref="ChallengeEngine.RestoreActive"/>) —
+        /// re-baselining on resume against an already-higher lifetime value would silently un-earn
+        /// whatever progress the player had banked.
+        ///
+        /// Meaningless for every other kind, which measure absolute quantities, and left NaN there.
+        /// </summary>
+        public float Baseline = float.NaN;
+
         public bool Done => Progress >= Def.Target;
     }
 
@@ -107,11 +128,12 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 if (a.Def.Kind != kind) continue;
 
-                // CollectItem is the only param-scoped measure: it tracks one named item, so a
-                // report about a different one must not touch it. Every other kind (altitude,
-                // build height, no-armor minutes, CollectFood) is a single world-wide quantity
-                // and ignores param entirely.
-                if (kind == ChallengeKind.CollectItem && a.Def.Param != param) continue;
+                // CollectItem and StatDelta are the param-scoped measures: each tracks ONE named
+                // thing (an item, a lifetime stat), so a report about a different one must not
+                // touch it. Every other kind (altitude, build height, no-armor minutes,
+                // CollectFood) is a single world-wide quantity and ignores param entirely.
+                if ((kind == ChallengeKind.CollectItem || kind == ChallengeKind.StatDelta) &&
+                    a.Def.Param != param) continue;
 
                 a.Progress = Math.Max(a.Progress, value);
             }
@@ -130,7 +152,22 @@ namespace ICanShowYouTheWorld.RunMode
         /// like lost progress, so it stays in its slot and <see cref="IsAboveTier"/> flags it,
         /// leaving the caller to offer a way out.
         /// </summary>
-        public void RestoreActive(IEnumerable<KeyValuePair<string, float>> idToProgress)
+        public void RestoreActive(IEnumerable<KeyValuePair<string, float>> idToProgress) =>
+            RestoreActive(idToProgress, null);
+
+        /// <summary>
+        /// As <see cref="RestoreActive(IEnumerable{KeyValuePair{string, float}})"/>, additionally
+        /// restoring each slot's <see cref="ActiveChallenge.Baseline"/>.
+        ///
+        /// <paramref name="baselines"/> is indexed against the SAVED sequence, not against the
+        /// slots that survive it: entries dropped here (unknown id, duplicate, past the 3-slot cap)
+        /// still consume their index. Saves store the two as parallel lists written from the same
+        /// active set, so any other alignment would hand a restored challenge somebody else's
+        /// zero point — and a wrong baseline is worse than none, since it silently shifts every
+        /// future progress report. A short or absent list leaves the remainder NaN, which is
+        /// exactly the "caller must snapshot this" state a freshly dealt slot is in.
+        /// </summary>
+        public void RestoreActive(IEnumerable<KeyValuePair<string, float>> idToProgress, IList<float> baselines)
         {
             active.Clear();
             pendingRefills.Clear();
@@ -139,13 +176,20 @@ namespace ICanShowYouTheWorld.RunMode
             var byId = pool.GroupBy(d => d.Id).ToDictionary(g => g.Key, g => g.First());
             var seen = new HashSet<string>();
 
+            int index = -1;
             foreach (var entry in idToProgress)
             {
+                index++;
                 if (active.Count >= 3) break;
                 if (entry.Key == null || !seen.Add(entry.Key)) continue;
                 if (!byId.TryGetValue(entry.Key, out var def)) continue;
 
-                active.Add(new ActiveChallenge { Def = def, Progress = entry.Value });
+                active.Add(new ActiveChallenge
+                {
+                    Def = def,
+                    Progress = entry.Value,
+                    Baseline = baselines != null && index < baselines.Count ? baselines[index] : float.NaN
+                });
             }
         }
 

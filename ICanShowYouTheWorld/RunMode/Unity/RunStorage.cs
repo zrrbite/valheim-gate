@@ -23,6 +23,14 @@ namespace ICanShowYouTheWorld.RunMode
         public List<float> splitTimes;
         public List<string> activeChallengeIds;
         public List<float> activeChallengeProgress;
+
+        /// <summary>
+        /// Deal-time zero point for each active StatDelta challenge, same index pairing as
+        /// <see cref="activeChallengeIds"/>. -1 means "none taken yet" — a stand-in for NaN, which
+        /// JsonUtility writes as a bare <c>NaN</c> token that no other JSON reader accepts. Absent
+        /// in saves written before alpha4; the run then re-baselines on resume.
+        /// </summary>
+        public List<float> activeChallengeBaselines;
         public List<string> heldBoonIds;
         public List<float> heldBoonCooldowns;
 

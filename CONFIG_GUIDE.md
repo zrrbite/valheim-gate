@@ -94,10 +94,22 @@ positioned once at startup.
 "runParTimeMinutes": 240.0         // Par time for the WHOLE run; score scales by par/actual
 "runDeathHeatPenalty": 3.0         // Heat penalty when player dies
 "runRerollHeatCost": 1.0           // Heat cost to reroll challenge
-"runChallengeRefillSeconds": 120.0 // Challenge refill timer (seconds)
+"runChallengeRefillSeconds": 45.0  // Challenge refill timer (seconds); was 120 before alpha4
 "runBoonOfferTimeoutSeconds": 45.0 // Boon offer expiration timer (seconds)
+"runBossHpPerBoon": 0.12           // Boss max HP: multiplier = 1 + boons held × this + heat × runBossHpPerHeat
+"runBossHpPerHeat": 0.03           // Boss max HP contribution per point of heat (see above)
 "runFinalBossKey": "defeated_goblinking" // Key for detecting final boss defeat
 ```
+
+`runChallengeRefillSeconds` dropped from 120 to 45 in alpha4: the pool is now
+mostly small stat-delta quests, and the boon economy is meant to turn over
+fast. An **existing config file keeps its own value** — nothing is migrated, so
+a config written before alpha4 still refills every 120s until that line is
+edited or the file is deleted.
+
+Boss max HP is scaled once, per boss instance, the first time Run Mode sees it
+within 60m. It is applied to that instance's ZDO only — never to shared or
+prefab data — and only while a run is active.
 
 ### Debug & System
 ```json

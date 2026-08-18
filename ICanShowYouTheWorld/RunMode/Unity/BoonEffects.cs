@@ -24,6 +24,13 @@ namespace ICanShowYouTheWorld.RunMode
     /// walk into run and stomp jump; the damage-counter mechanism writes an ABSOLUTE, per-prefab
     /// value into the weapon's shared damage block). Instead they snapshot the player/item state
     /// on Apply and restore that exact snapshot on Unapply — "power is loaned", never permanent.
+    ///
+    /// mule/hearty/enduring are the same bargain in its simplest form: one plain float field on
+    /// Player each (carry weight, base HP, base stamina), snapshotted and restored. They go
+    /// through the shared <see cref="FieldBoost"/> table rather than three copies of fleet's code,
+    /// and unlike fleet they refuse to apply twice to one player — the respawn re-apply path can
+    /// legitimately reach them a second time, and stacking there would also snapshot the boosted
+    /// value as the "original".
     /// </summary>
     public class BoonEffects
     {
@@ -31,6 +38,10 @@ namespace ICanShowYouTheWorld.RunMode
         private const float FleetSpeedIncrements = 2f;
         private const float WindOnSeconds = 10f;
         private const float EmberOnSeconds = 30f;
+
+        private const float MuleCarryWeightBonus = 100f;   // vanilla Player.m_maxCarryWeight is 300
+        private const float HeartyBaseHpBonus = 25f;       // vanilla Player.m_baseHP is 25
+        private const float EnduringBaseStaminaBonus = 25f;
 
         private readonly Func<IReadOnlyList<HeldBoon>> _heldBoons;
         private readonly Func<IEnumerable<string>> _undefeatedBossLocations;
@@ -61,6 +72,48 @@ namespace ICanShowYouTheWorld.RunMode
         }
         private FleetSnapshot _fleetSnapshot;
         private bool _fleetSnapshotTaken;
+
+        /// <summary>
+        /// mule/hearty/enduring: one plain float field on Player each, so they share a single
+        /// snapshot-add-restore mechanism instead of three copies of fleet's code.
+        ///
+        /// All three fields are read live by the game every frame — GetMaxCarryWeight() reads
+        /// m_maxCarryWeight, GetTotalFoodValue() reads m_baseHP/m_baseStamina (both verified
+        /// against assembly_valheim's IL) — so raising the field is the whole effect. They are
+        /// also plain instance fields on Player, NOT shared/prefab state, which is what makes a
+        /// snapshot honest: the loan is per-character and dies with the run.
+        /// </summary>
+        private sealed class FieldBoost
+        {
+            public string Id;
+            public float Amount;
+            public Func<Player, float> Get;
+            public Action<Player, float> Set;
+
+            /// <summary>The player the snapshot was taken FROM. Guards against double-applying to one player, and against restoring into a different one.</summary>
+            public Player Owner;
+            public float Original;
+            public bool Taken;
+        }
+
+        private readonly List<FieldBoost> _fieldBoosts = new List<FieldBoost>
+        {
+            new FieldBoost
+            {
+                Id = "mule", Amount = MuleCarryWeightBonus,
+                Get = p => p.m_maxCarryWeight, Set = (p, v) => p.m_maxCarryWeight = v
+            },
+            new FieldBoost
+            {
+                Id = "hearty", Amount = HeartyBaseHpBonus,
+                Get = p => p.m_baseHP, Set = (p, v) => p.m_baseHP = v
+            },
+            new FieldBoost
+            {
+                Id = "enduring", Amount = EnduringBaseStaminaBonus,
+                Get = p => p.m_baseStamina, Set = (p, v) => p.m_baseStamina = v
+            },
+        };
 
         // sharp: keyed by the SHARED damage block (ItemDrop.ItemData.m_shared), not the ItemData
         // instance. m_shared is per-PREFAB, not per-instance — a fresh ItemData handed out after
@@ -108,6 +161,12 @@ namespace ICanShowYouTheWorld.RunMode
                     break;
 
                 // wind/ember have no effect on gain — only on activation (Keypad4/5).
+
+                default:
+                    // mule/hearty/enduring, which are one Player field each; anything else
+                    // (wind/ember, an id from a newer save) finds no match and does nothing.
+                    ApplyFieldBoost(boonId);
+                    break;
             }
         }
 
@@ -134,6 +193,12 @@ namespace ICanShowYouTheWorld.RunMode
 
                 // pack: buffs fade naturally, nothing to unwind.
                 // way: charges are just data — nothing to unwind.
+
+                default:
+                    // mule/hearty/enduring put their snapshotted Player field back; pack/way and
+                    // any unknown id fall through here and do nothing.
+                    UnapplyFieldBoost(boonId);
+                    break;
             }
         }
 
@@ -234,6 +299,64 @@ namespace ICanShowYouTheWorld.RunMode
             player.m_walkSpeed = _fleetSnapshot.WalkSpeed;
             player.m_jumpForce = _fleetSnapshot.JumpForce;
             player.m_jumpForceForward = _fleetSnapshot.JumpForceForward;
+        }
+
+        // --- mule / hearty / enduring (single-field passives) ---
+
+        /// <summary>
+        /// Snapshots and raises this boon's Player field, if the id names one.
+        ///
+        /// Re-applying against the SAME player is a no-op rather than a second addition: unlike
+        /// fleet, this path is reachable twice for one player, because RunService's respawn
+        /// detector re-applies every held passive on a Player reference change, and a stale
+        /// _trackedPlayer would otherwise stack the bonus and (worse) snapshot the already-boosted
+        /// value as "original". Against a NEW player it re-snapshots and re-applies, which is the
+        /// whole point of the respawn path — death hands back a Player with vanilla fields.
+        /// </summary>
+        private void ApplyFieldBoost(string boonId)
+        {
+            var boost = FindFieldBoost(boonId);
+            if (boost == null) return;
+
+            var player = Player.m_localPlayer;
+            if (player == null) return;
+
+            if (boost.Taken && ReferenceEquals(boost.Owner, player)) return;
+
+            boost.Owner = player;
+            boost.Original = boost.Get(player);
+            boost.Taken = true;
+            boost.Set(player, boost.Original + boost.Amount);
+        }
+
+        /// <summary>
+        /// Puts the snapshotted value back, but only into the player it was taken from — restoring
+        /// one character's number onto another's fields would hand out (or confiscate) a permanent
+        /// bonus. When that player is gone the snapshot is simply dropped: its fields went with it.
+        /// </summary>
+        private void UnapplyFieldBoost(string boonId)
+        {
+            var boost = FindFieldBoost(boonId);
+            if (boost == null || !boost.Taken) return;
+
+            var owner = boost.Owner;
+            boost.Taken = false;
+            boost.Owner = null;
+
+            // Unity's == (not ReferenceEquals) is what's wanted here: a destroyed player must read
+            // as null, since writing fields on it is pointless and a fresh one has vanilla values.
+            if (owner == null) return;
+
+            boost.Set(owner, boost.Original);
+        }
+
+        private FieldBoost FindFieldBoost(string boonId)
+        {
+            foreach (var b in _fieldBoosts)
+            {
+                if (b.Id == boonId) return b;
+            }
+            return null;
         }
 
         // --- sharp ---

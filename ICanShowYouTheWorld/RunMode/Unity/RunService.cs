@@ -72,6 +72,24 @@ namespace ICanShowYouTheWorld.RunMode
         internal Action UnapplyAllBoonEffects = () => { };
 
         private readonly BoonEffects _boonEffects;
+        private readonly BossVigor _bossVigor = new BossVigor();
+
+        /// <summary>
+        /// PlayerStatType parsed from a StatDelta challenge's Param, cached per param string.
+        /// A null value is a REMEMBERED FAILURE: the name doesn't exist in this build's enum, so
+        /// the pool needs fixing, and there is nothing to gain from re-parsing it every second for
+        /// the rest of the run.
+        /// </summary>
+        private readonly Dictionary<string, PlayerStatType?> _statTypes = new Dictionary<string, PlayerStatType?>();
+
+        /// <summary>
+        /// Stand-in for NaN in the saved baseline list. JsonUtility writes float.NaN as a bare
+        /// <c>NaN</c> token, which is not legal JSON and would make the file unreadable to anything
+        /// but Unity — including a human repairing it, which is the whole reason a corrupt run save
+        /// is quarantined rather than deleted. Every stat these challenges measure counts upward
+        /// from zero, so no real baseline is ever negative and the sentinel can't collide.
+        /// </summary>
+        private const float NoBaselineSentinel = -1f;
 
         // --- Run state ---
         private HeatModel _heat = new HeatModel();
@@ -566,8 +584,16 @@ namespace ICanShowYouTheWorld.RunMode
 
             _elapsed += dt;
             _challenges?.Tick(dt);
+
+            // Immediately after the Tick that may have dealt one, not on the next poll: a
+            // stat-delta slot baselined a second late would silently credit the player with
+            // whatever they did in that second (and, on a slot dealt mid-sprint, could hand over
+            // a chunk of "Run 800m" for free).
+            SyncStatDeltaBaselines();
+
             _boons?.Tick(dt);
             _boonEffects.Tick(dt);
+            TickBossVigor(dt);
 
             HandleBoonOfferInput();
             HandleBoonActivationInput();
@@ -671,7 +697,7 @@ namespace ICanShowYouTheWorld.RunMode
             ReapplyPassiveBoonEffects();
         }
 
-        /// <summary>Re-runs Apply for every held passive boon (fleet/sharp/pack) — used after a respawn and NOT after a resume (way's charge is persisted separately; re-running Apply("way") there would grant a free charge).</summary>
+        /// <summary>Re-runs Apply for every held passive boon (fleet/sharp/pack/mule/hearty/enduring) — used after a respawn and NOT after a resume (way's charge is persisted separately; re-running Apply("way") there would grant a free charge). Iterates the held set by its IsPassive flag, so a new passive joins simply by being one.</summary>
         private void ReapplyPassiveBoonEffects()
         {
             if (_boons == null) return;
@@ -762,6 +788,127 @@ namespace ICanShowYouTheWorld.RunMode
             bool noArmor = player.GetBodyArmor() <= 0f;
             _noArmorSeconds = noArmor ? _noArmorSeconds + pollDt : 0f;
             _challenges.ReportMeasure(ChallengeKind.NoArmorMinutes, string.Empty, _noArmorSeconds / 60f);
+
+            PollStatDeltas();
+        }
+
+        // --- StatDelta challenges ---
+
+        /// <summary>
+        /// Reports each active stat-delta challenge's progress: how far the underlying LIFETIME
+        /// stat has moved since the slot was dealt. Slots still waiting on a baseline (the profile
+        /// wasn't reachable when they were dealt) are skipped rather than reported as zero —
+        /// <see cref="SyncStatDeltaBaselines"/> retries them every frame.
+        /// </summary>
+        private void PollStatDeltas()
+        {
+            foreach (var a in _challenges.Active)
+            {
+                if (a.Def.Kind != ChallengeKind.StatDelta || float.IsNaN(a.Baseline)) continue;
+
+                float? current = ReadPlayerStat(a.Def.Param);
+                if (current == null) continue;
+
+                // Max-semantics in ReportMeasure already stops a value from going backwards; the
+                // floor here is for the pathological case of a lifetime stat RESETTING below its
+                // own baseline, which would otherwise report a negative and read as "no progress"
+                // forever without ever re-baselining.
+                _challenges.ReportMeasure(
+                    ChallengeKind.StatDelta, a.Def.Param, Mathf.Max(0f, current.Value - a.Baseline));
+            }
+        }
+
+        /// <summary>
+        /// Gives every stat-delta slot that lacks one its deal-time zero point. Runs each frame
+        /// while playable, so a slot dealt while the player profile was briefly unreachable picks
+        /// its baseline up on the next frame that works rather than being stuck at zero progress.
+        ///
+        /// Only ever fills a NaN: an existing baseline is the run's record of where the player
+        /// started, and re-taking it later (on resume, above all) would move the goalposts up to
+        /// wherever they've already got to and wipe the progress out. That is exactly why the
+        /// baseline is persisted rather than recomputed.
+        /// </summary>
+        private void SyncStatDeltaBaselines()
+        {
+            if (_challenges == null) return;
+
+            foreach (var a in _challenges.Active)
+            {
+                if (a.Def.Kind != ChallengeKind.StatDelta || !float.IsNaN(a.Baseline)) continue;
+
+                float? current = ReadPlayerStat(a.Def.Param);
+                if (current == null) continue;
+
+                a.Baseline = current.Value;
+            }
+        }
+
+        /// <summary>
+        /// Current value of a lifetime player stat named by its PlayerStatType member, or null when
+        /// the name is unknown, the profile isn't reachable, or the stat has no entry yet.
+        ///
+        /// Reads PlayerProfile.m_playerStats.m_stats (a Dictionary&lt;PlayerStatType, float&gt;,
+        /// confirmed against the IL) rather than the indexer, which throws on a missing key. In
+        /// practice PlayerStats' constructor pre-seeds every member with 0, but a build that adds
+        /// an enum member without widening that loop would turn a missing entry into a run-killing
+        /// exception every poll.
+        /// </summary>
+        private float? ReadPlayerStat(string param)
+        {
+            var type = ResolveStatType(param);
+            if (type == null) return null;
+
+            try
+            {
+                var stats = Game.instance?.GetPlayerProfile()?.m_playerStats?.m_stats;
+                if (stats == null) return null;
+
+                return stats.TryGetValue(type.Value, out float value) ? value : 0f;
+            }
+            catch (Exception ex)
+            {
+                LogOnce("read-player-stat", ex);
+                return null;
+            }
+        }
+
+        /// <summary>Parses (once per param string) a PlayerStatType member name; null when this build has no such member.</summary>
+        private PlayerStatType? ResolveStatType(string param)
+        {
+            if (string.IsNullOrEmpty(param)) return null;
+
+            if (_statTypes.TryGetValue(param, out var cached)) return cached;
+
+            PlayerStatType? resolved =
+                Enum.TryParse<PlayerStatType>(param, out var parsed) ? parsed : (PlayerStatType?)null;
+
+            if (resolved == null)
+            {
+                Debug.LogWarning($"[ICanShowYouTheWorld] Unknown PlayerStatType '{param}' — " +
+                                 "that stat-delta challenge can never progress.");
+            }
+
+            _statTypes[param] = resolved;
+            return resolved;
+        }
+
+        // --- Boss vigor ---
+
+        /// <summary>
+        /// Scales nearby bosses to the power banked so far. The multiplier is read fresh on every
+        /// scan but only ever applied to bosses seen for the FIRST time (BossVigor keeps that
+        /// bookkeeping), so a boss's health is fixed by the heat and boon count at the moment it
+        /// came into view and cannot be moved afterwards.
+        /// </summary>
+        private void TickBossVigor(float dt)
+        {
+            var player = Player.m_localPlayer;
+            if (player == null) return;
+
+            int boons = _boons?.Held?.Count ?? 0;
+            float multiplier = 1f + _cfg.RunBossHpPerBoon * boons + _cfg.RunBossHpPerHeat * _heat.Heat;
+
+            _bossVigor.Tick(dt, player.transform.position, multiplier);
         }
 
         /// <summary>
@@ -834,6 +981,7 @@ namespace ICanShowYouTheWorld.RunMode
             _frozen = false;
             ResetOutageTracking();
             _trackedPlayer = null;
+            _bossVigor.Reset();
             HudNotice = null;
         }
 
@@ -1375,11 +1523,19 @@ namespace ICanShowYouTheWorld.RunMode
                 foreach (var key in s.defeatedBossKeys) _accountedBossKeys.Add(key);
             }
 
-            _challenges.RestoreActive(Zip(s.activeChallengeIds, s.activeChallengeProgress));
+            _challenges.RestoreActive(
+                Zip(s.activeChallengeIds, s.activeChallengeProgress), BuildRestoreBaselines(s));
+
+            // Anything the save didn't carry a baseline for (a pre-alpha4 save, or a slot that
+            // never managed to take one) gets its zero point NOW rather than staying NaN forever.
+            // That does re-baseline against a higher lifetime value, but only where there was
+            // nothing better to re-baseline against.
+            SyncStatDeltaBaselines();
+
             _boons.RestoreHeld(Zip(s.heldBoonIds, s.heldBoonCooldowns), BuildRestoreCharges(s));
 
             // RestoreHeld is silent by design, so reapply effects for whatever survived — but
-            // only the snapshot/buff-type passives (fleet/sharp/pack): their live player/item
+            // only the snapshot/buff-type passives (fleet/sharp/pack/mule/hearty/enduring): their live player/item
             // state doesn't persist across a reload. Actives (wind/ember/way) keep their
             // persisted cooldown/charges as-is; re-running Apply("way") here would hand out a
             // free charge on every resume.
@@ -1431,6 +1587,22 @@ namespace ICanShowYouTheWorld.RunMode
             return result;
         }
 
+        /// <summary>
+        /// Saved stat-delta baselines, aligned index-for-index with activeChallengeIds and with the
+        /// <see cref="NoBaselineSentinel"/> mapped back to NaN. Null for a save written before the
+        /// list existed, which ChallengeEngine.RestoreActive reads as "no baselines" — the caller
+        /// then takes fresh ones. A list SHORTER than the ids (only reachable from a hand-edited
+        /// file) is passed through as-is: RestoreActive leaves the uncovered tail NaN.
+        /// </summary>
+        private static List<float> BuildRestoreBaselines(RunSaveState s)
+        {
+            if (s.activeChallengeBaselines == null) return null;
+
+            return s.activeChallengeBaselines
+                .Select(v => v <= NoBaselineSentinel ? float.NaN : v)
+                .ToList();
+        }
+
         private static IEnumerable<KeyValuePair<string, float>> Zip(List<string> ids, List<float> values)
         {
             if (ids == null) yield break;
@@ -1464,6 +1636,9 @@ namespace ICanShowYouTheWorld.RunMode
                 splitTimes = _splitTimes.ToList(),
                 activeChallengeIds = active.Select(a => a.Def.Id).ToList(),
                 activeChallengeProgress = active.Select(a => a.Progress).ToList(),
+                activeChallengeBaselines = active
+                    .Select(a => float.IsNaN(a.Baseline) ? NoBaselineSentinel : a.Baseline)
+                    .ToList(),
                 heldBoonIds = held.Select(h => h.Def.Id).ToList(),
                 heldBoonCooldowns = held.Select(h => h.CooldownRemaining).ToList(),
                 heldBoonCharges = held.Select(h => h.Charges).ToList(),
@@ -1663,6 +1838,23 @@ namespace ICanShowYouTheWorld.RunMode
             new ChallengeDefinition { Id = "c-stone",     Tier = 0, Kind = ChallengeKind.CollectItem, Param = "$item_stone", Target = 100, HeatReward = 1, Display = "Hold 100 Stone" },
             new ChallengeDefinition { Id = "c-food",      Tier = 0, Kind = ChallengeKind.CollectFood, Param = "", Target = 20, HeatReward = 1, Display = "Hold 20 food items" },
             new ChallengeDefinition { Id = "naked-5",     Tier = 0, Kind = ChallengeKind.NoArmorMinutes, Param = "", Target = 5, HeatReward = 3, Display = "Wear no armor for 5 minutes" },
+
+            // Stat-delta quests: small, fast, and measured from the value the stat held when the
+            // slot was dealt (see StatDeltaBaselines). Param is a PlayerStatType member NAME —
+            // every one below was checked against the enum in assembly_valheim's IL, because a
+            // typo here fails silently: Enum.TryParse just declines and the challenge sits at 0.
+            //
+            // Deliberately MineHits (one per successful mining swing) rather than Mines, which the
+            // IL shows is only incremented when a whole MineRock/MineRock5 deposit is finished off.
+            // 25 finished deposits is an expedition, not the tempo quest this pool wants.
+            new ChallengeDefinition { Id = "s-chop",   Tier = 0, Kind = ChallengeKind.StatDelta, Param = "TreeChops",        Target = 15,  HeatReward = 1, Display = "Chop 15 trees" },
+            new ChallengeDefinition { Id = "s-jump",   Tier = 0, Kind = ChallengeKind.StatDelta, Param = "Jumps",            Target = 30,  HeatReward = 1, Display = "Jump 30 times" },
+            new ChallengeDefinition { Id = "s-pickup", Tier = 0, Kind = ChallengeKind.StatDelta, Param = "ItemsPickedUp",    Target = 40,  HeatReward = 1, Display = "Pick up 40 items" },
+            new ChallengeDefinition { Id = "s-run",    Tier = 0, Kind = ChallengeKind.StatDelta, Param = "DistanceRun",      Target = 800, HeatReward = 1, Display = "Run 800m" },
+            new ChallengeDefinition { Id = "s-mine",   Tier = 1, Kind = ChallengeKind.StatDelta, Param = "MineHits",         Target = 75,  HeatReward = 2, Display = "Land 75 mining hits" },
+            new ChallengeDefinition { Id = "s-craft",  Tier = 1, Kind = ChallengeKind.StatDelta, Param = "CraftsOrUpgrades", Target = 5,   HeatReward = 1, Display = "Craft or upgrade 5 times" },
+            new ChallengeDefinition { Id = "s-doors",  Tier = 1, Kind = ChallengeKind.StatDelta, Param = "DoorsOpened",      Target = 15,  HeatReward = 1, Display = "Open 15 doors" },
+            new ChallengeDefinition { Id = "s-sail",   Tier = 2, Kind = ChallengeKind.StatDelta, Param = "DistanceSail",     Target = 600, HeatReward = 2, Display = "Sail 600m" },
         };
 
         internal static List<BoonDefinition> DefaultBoons() => new List<BoonDefinition>
@@ -1670,6 +1862,9 @@ namespace ICanShowYouTheWorld.RunMode
             new BoonDefinition { Id = "fleet", Display = "Fleet-footed", IsPassive = true },
             new BoonDefinition { Id = "sharp", Display = "Sharpened",    IsPassive = true },
             new BoonDefinition { Id = "pack",  Display = "Packleader",   IsPassive = true },
+            new BoonDefinition { Id = "mule",  Display = "Packmule",     IsPassive = true },
+            new BoonDefinition { Id = "hearty", Display = "Hearty",      IsPassive = true },
+            new BoonDefinition { Id = "enduring", Display = "Enduring",  IsPassive = true },
             new BoonDefinition { Id = "wind",  Display = "Second Wind",  IsPassive = false, CooldownSeconds = 120f },
             new BoonDefinition { Id = "ember", Display = "Emberskin",    IsPassive = false, CooldownSeconds = 180f },
             new BoonDefinition { Id = "way",   Display = "Waystone",     IsPassive = false },

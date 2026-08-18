@@ -60,6 +60,8 @@ namespace ICanShowYouTheWorld.Core
         float RunRerollHeatCost { get; set; }
         float RunChallengeRefillSeconds { get; set; }
         float RunBoonOfferTimeoutSeconds { get; set; }
+        float RunBossHpPerBoon { get; set; }
+        float RunBossHpPerHeat { get; set; }
         string RunFinalBossKey { get; set; }
 
         // === Debug & System ===
@@ -131,8 +133,10 @@ namespace ICanShowYouTheWorld.Core
         [SerializeField] private float runParTimeMinutes = 240f;
         [SerializeField] private float runDeathHeatPenalty = 3f;
         [SerializeField] private float runRerollHeatCost = 1f;
-        [SerializeField] private float runChallengeRefillSeconds = 120f;
+        [SerializeField] private float runChallengeRefillSeconds = 45f;
         [SerializeField] private float runBoonOfferTimeoutSeconds = 45f;
+        [SerializeField] private float runBossHpPerBoon = 0.12f;
+        [SerializeField] private float runBossHpPerHeat = 0.03f;
         [SerializeField] private string runFinalBossKey = "defeated_goblinking";
 
         // === Debug & System ===
@@ -185,6 +189,8 @@ namespace ICanShowYouTheWorld.Core
         public float RunRerollHeatCost { get => runRerollHeatCost; set => runRerollHeatCost = value; }
         public float RunChallengeRefillSeconds { get => runChallengeRefillSeconds; set => runChallengeRefillSeconds = value; }
         public float RunBoonOfferTimeoutSeconds { get => runBoonOfferTimeoutSeconds; set => runBoonOfferTimeoutSeconds = value; }
+        public float RunBossHpPerBoon { get => runBossHpPerBoon; set => runBossHpPerBoon = value; }
+        public float RunBossHpPerHeat { get => runBossHpPerHeat; set => runBossHpPerHeat = value; }
         public string RunFinalBossKey { get => runFinalBossKey; set => runFinalBossKey = value; }
 
         public bool EnableDebugMode { get => enableDebugMode; set => enableDebugMode = value; }
