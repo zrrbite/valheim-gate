@@ -171,3 +171,34 @@ menu-time frozen state — which would also explain the non-counting timers
 resumed" toast Martin saw on the new world came from this same surviving
 state at 14:56 or a separate resume, the logs only show the one resume line,
 on the correct world.
+
+---
+
+## 2026-08-18 — TASK: install run.alpha3 and retest the lifecycle
+
+`git pull`, then full `.\Install-Mod.ps1` from dist\windows (expect
+"Verified both injections present"). In-game popup must read
+**v0.221.12-run.alpha3**.
+
+Martin drives the gameplay; your job is log watching + a results append.
+The lifecycle scenarios and their expected log lines:
+
+1. Old business first: as **Draupnir**, load world **hjklgggggggg** → expect
+   `Run Mode run resumed at 12:51` (the parked run, now with kill challenges
+   working) → **Abandon it** from the HUD (double-press) → expect
+   `Run Mode world modifiers restored` and the state file deleted. That
+   clears the stranded world's rates properly.
+2. Fresh run on any local world. Kill a greydwarf → the kill tally must move
+   (hook verified at install).
+3. **Die on purpose** → expect NO `Run suspended` and NO `run resumed` lines
+   during the respawn — the run freezes and continues; passives re-apply.
+4. Logout to menu mid-run → expect `Run suspended (...) — resumes when ...`
+   after ~5s. Menu must show NO run strip.
+5. Switch to another character/world → no run present, lobby clean; the
+   suspended run resumes only for its own character+world.
+6. Append RESULTS: version line, the log lines above verbatim, anything
+   unexpected.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
