@@ -101,7 +101,7 @@ static class ChallengeEngineTests
     {
         new ChallengeDefinition { Id="o-wood",  Opener=true, Kind=ChallengeKind.CollectItem, Param="$item_wood",      Target=5, HeatReward=1, Display="Hold 5 Wood" },
         new ChallengeDefinition { Id="o-stone", Opener=true, Kind=ChallengeKind.CollectItem, Param="$item_stone",     Target=3, HeatReward=1, Display="Hold 3 Stone" },
-        new ChallengeDefinition { Id="o-axe",   Opener=true, Kind=ChallengeKind.CollectItem, Param="$item_axe_stone", Target=1, HeatReward=1, Display="Craft a Stone Axe" },
+        new ChallengeDefinition { Id="o-craft", Opener=true, Kind=ChallengeKind.StatDelta,   Param="CraftsOrUpgrades", Target=1, HeatReward=1, Display="Craft something — an axe!" },
         new ChallengeDefinition { Id="r-a", Kind=ChallengeKind.ReachAltitude, Param="", Target=90,  HeatReward=1, Display="r-a" },
         new ChallengeDefinition { Id="r-b", Kind=ChallengeKind.CollectFood,   Param="", Target=20,  HeatReward=1, Display="r-b" },
         new ChallengeDefinition { Id="r-c", Kind=ChallengeKind.StatDelta,     Param="Jumps", Target=30, HeatReward=1, Display="r-c" },
@@ -118,7 +118,7 @@ static class ChallengeEngineTests
         Check.That(e.Active.Count == 3, "fresh engine fills all three slots");
         Check.That(e.Active[0].Def.Id == "o-wood", "opener 1 is dealt first");
         Check.That(e.Active[1].Def.Id == "o-stone", "opener 2 is dealt second");
-        Check.That(e.Active[2].Def.Id == "o-axe", "opener 3 is dealt third");
+        Check.That(e.Active[2].Def.Id == "o-craft", "opener 3 is dealt third");
 
         // Completing one refills from the ORDINARY pool: openers never come round again.
         e.ReportMeasure(ChallengeKind.CollectItem, "$item_wood", 5f);
@@ -126,7 +126,7 @@ static class ChallengeEngineTests
         Check.That(e.Active.Count == 2, "completed opener vacates its slot");
         e.Tick(200f);
         Check.That(e.Active.Count == 3, "the slot refills after the cooldown");
-        Check.That(e.Active.All(a => !a.Def.Opener || a.Def.Id == "o-stone" || a.Def.Id == "o-axe"),
+        Check.That(e.Active.All(a => !a.Def.Opener || a.Def.Id == "o-stone" || a.Def.Id == "o-craft"),
             "the refill did not redeal a completed opener");
         Check.That(e.Active.Any(a => !a.Def.Opener), "the refill drew an ordinary challenge");
 
@@ -177,13 +177,13 @@ static class ChallengeEngineTests
             new[]
             {
                 new KeyValuePair<string, float>("o-stone", 2f),
-                new KeyValuePair<string, float>("o-axe", 0f),
+                new KeyValuePair<string, float>("o-craft", 0f),
             },
             new List<float> { float.NaN, float.NaN });
         Check.That(roundTrip.Active.Count == 2, "opener actives restore from a save");
         Check.That(roundTrip.Active[0].Def.Id == "o-stone" && roundTrip.Active[0].Progress == 2f,
             "a restored opener keeps its id and progress");
-        Check.That(roundTrip.Active[1].Def.Id == "o-axe", "the second restored opener keeps its slot");
+        Check.That(roundTrip.Active[1].Def.Id == "o-craft", "the second restored opener keeps its slot");
         roundTrip.Tick(0.1f);
         Check.That(roundTrip.Active.Count == 3, "a mid-chain resume tops up to three");
         Check.That(roundTrip.Active.Count(a => a.Def.Opener) == 2,

@@ -1853,15 +1853,22 @@ namespace ICanShowYouTheWorld.RunMode
         {
             // --- Opening chain: the first three slots of a fresh run, dealt in this order. ---
             // A deliberate on-ramp rather than three random quests at minute zero: gather the wood,
-            // gather the stone, then make the thing they build into. The targets are the Stone Axe
-            // recipe (5 Wood + 3 Stone), so clearing the first two leaves the player holding
-            // exactly what the third asks them to spend.
+            // gather the stone, then make the thing they build into. The first two targets are the
+            // Stone Axe recipe (5 Wood + 3 Stone), so clearing them leaves the player holding
+            // exactly what the third is steering them to spend.
+            //
+            // The third counts CRAFTS, not the axe itself. There is no way to verify an item's
+            // $item_ token from here — only 65 of them are hardcoded in assembly_valheim, the rest
+            // live in the asset bundles — and a wrong token fails SILENTLY: CountItems returns 0
+            // forever and the slot is dead. That is not a risk worth taking on the first minutes
+            // of every fresh run, so the mechanic uses a PlayerStatType checked against the enum
+            // and the display text does the steering.
             //
             // Openers never come round again — ChallengeEngine excludes them from every random
             // draw and reroll — so a completed or rerolled-away link is gone for that run.
-            new ChallengeDefinition { Id = "o-wood",  Opener = true, Tier = 0, Kind = ChallengeKind.CollectItem, Param = "$item_wood",       Target = 5, HeatReward = 1, Display = "Hold 5 Wood" },
-            new ChallengeDefinition { Id = "o-stone", Opener = true, Tier = 0, Kind = ChallengeKind.CollectItem, Param = "$item_stone",      Target = 3, HeatReward = 1, Display = "Hold 3 Stone" },
-            new ChallengeDefinition { Id = "o-axe",   Opener = true, Tier = 0, Kind = ChallengeKind.CollectItem, Param = "$item_axe_stone",  Target = 1, HeatReward = 1, Display = "Craft a Stone Axe" },
+            new ChallengeDefinition { Id = "o-wood",  Opener = true, Tier = 0, Kind = ChallengeKind.CollectItem, Param = "$item_wood",  Target = 5, HeatReward = 1, Display = "Hold 5 Wood" },
+            new ChallengeDefinition { Id = "o-stone", Opener = true, Tier = 0, Kind = ChallengeKind.CollectItem, Param = "$item_stone", Target = 3, HeatReward = 1, Display = "Hold 3 Stone" },
+            new ChallengeDefinition { Id = "o-craft", Opener = true, Tier = 0, Kind = ChallengeKind.StatDelta,   Param = "CraftsOrUpgrades", Target = 1, HeatReward = 1, Display = "Craft something — an axe!" },
 
             new ChallengeDefinition { Id = "k-greydwarf", Tier = 1, Kind = ChallengeKind.KillPrefab, Param = "Greydwarf", Target = 10, HeatReward = 2, Display = "Kill 10 Greydwarves" },
             new ChallengeDefinition { Id = "k-skeleton",  Tier = 1, Kind = ChallengeKind.KillPrefab, Param = "Skeleton",  Target = 10, HeatReward = 2, Display = "Kill 10 Skeletons" },
