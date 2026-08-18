@@ -93,6 +93,107 @@ static class ChallengeEngineTests
         CollectFoodTests();
         StatDeltaTests();
         BaselineRoundTripTests();
+        OpenerTests();
+    }
+
+    /// <summary>Three openers in a fixed order, plus enough ordinary defs to fill and refill around them.</summary>
+    static List<ChallengeDefinition> OpenerPool() => new List<ChallengeDefinition>
+    {
+        new ChallengeDefinition { Id="o-wood",  Opener=true, Kind=ChallengeKind.CollectItem, Param="$item_wood",      Target=5, HeatReward=1, Display="Hold 5 Wood" },
+        new ChallengeDefinition { Id="o-stone", Opener=true, Kind=ChallengeKind.CollectItem, Param="$item_stone",     Target=3, HeatReward=1, Display="Hold 3 Stone" },
+        new ChallengeDefinition { Id="o-axe",   Opener=true, Kind=ChallengeKind.CollectItem, Param="$item_axe_stone", Target=1, HeatReward=1, Display="Craft a Stone Axe" },
+        new ChallengeDefinition { Id="r-a", Kind=ChallengeKind.ReachAltitude, Param="", Target=90,  HeatReward=1, Display="r-a" },
+        new ChallengeDefinition { Id="r-b", Kind=ChallengeKind.CollectFood,   Param="", Target=20,  HeatReward=1, Display="r-b" },
+        new ChallengeDefinition { Id="r-c", Kind=ChallengeKind.StatDelta,     Param="Jumps", Target=30, HeatReward=1, Display="r-c" },
+        new ChallengeDefinition { Id="r-d", Kind=ChallengeKind.NoArmorMinutes, Param="", Target=5, HeatReward=1, Display="r-d" },
+    };
+
+    static void OpenerTests()
+    {
+        Check.That(!new ChallengeDefinition().Opener, "Opener defaults to false");
+
+        // A fresh engine deals exactly the three openers, in pool order, ahead of any random draw.
+        var e = new ChallengeEngine(OpenerPool(), new Random(101), 120f);
+        e.Tick(0.1f);
+        Check.That(e.Active.Count == 3, "fresh engine fills all three slots");
+        Check.That(e.Active[0].Def.Id == "o-wood", "opener 1 is dealt first");
+        Check.That(e.Active[1].Def.Id == "o-stone", "opener 2 is dealt second");
+        Check.That(e.Active[2].Def.Id == "o-axe", "opener 3 is dealt third");
+
+        // Completing one refills from the ORDINARY pool: openers never come round again.
+        e.ReportMeasure(ChallengeKind.CollectItem, "$item_wood", 5f);
+        e.Tick(0.1f);
+        Check.That(e.Active.Count == 2, "completed opener vacates its slot");
+        e.Tick(200f);
+        Check.That(e.Active.Count == 3, "the slot refills after the cooldown");
+        Check.That(e.Active.All(a => !a.Def.Opener || a.Def.Id == "o-stone" || a.Def.Id == "o-axe"),
+            "the refill did not redeal a completed opener");
+        Check.That(e.Active.Any(a => !a.Def.Opener), "the refill drew an ordinary challenge");
+
+        // Churn hard: no opener may ever be redealt by a random draw.
+        var churn = new ChallengeEngine(OpenerPool(), new Random(103), 120f);
+        churn.Tick(0.1f);
+        var openersSeen = new HashSet<string>(churn.Active.Select(a => a.Def.Id));
+        bool noRedeal = true;
+        for (int i = 0; i < 40; i++)
+        {
+            foreach (var a in churn.Active.ToList()) a.Progress = a.Def.Target;
+            churn.Tick(200f);
+            // Any opener still present must be one from the original deal that hasn't completed
+            // yet — and after the first cycle they have all completed, so none may appear at all.
+            noRedeal &= churn.Active.All(a => !a.Def.Opener);
+        }
+        Check.That(openersSeen.Count == 3, "the opening deal was all three openers");
+        Check.That(noRedeal, "40 completion cycles never redeal an opener");
+
+        // Rerolling an opener swaps it for an ordinary challenge, and retires that link.
+        var rr = new ChallengeEngine(OpenerPool(), new Random(107), 120f);
+        rr.Tick(0.1f);
+        Check.That(rr.Active[0].Def.Id == "o-wood", "reroll fixture starts on the opening chain");
+        Check.That(rr.Reroll(0), "an opener slot can be rerolled");
+        Check.That(!rr.Active[0].Def.Opener, "rerolling an opener draws a non-opener");
+        Check.That(rr.Active.Select(a => a.Def.Id).Distinct().Count() == 3, "actives stay distinct after an opener reroll");
+
+        // A restored run never replays the opening chain, even when it restores nothing at all.
+        var resumed = new ChallengeEngine(OpenerPool(), new Random(109), 120f);
+        resumed.RestoreActive(new[] { new KeyValuePair<string, float>("r-a", 12f) });
+        resumed.Tick(0.1f);
+        Check.That(resumed.Active.Count == 3, "a resumed engine still tops up to three");
+        Check.That(resumed.Active[0].Def.Id == "r-a" && resumed.Active[0].Progress == 12f,
+            "the restored active keeps its slot and progress");
+        Check.That(resumed.Active.All(a => !a.Def.Opener), "a resumed run's refill is random, not the opening chain");
+
+        var emptyResume = new ChallengeEngine(OpenerPool(), new Random(113), 120f);
+        emptyResume.RestoreActive(null);
+        emptyResume.Tick(0.1f);
+        Check.That(emptyResume.Active.Count == 3, "restoring nothing still fills three slots");
+        Check.That(emptyResume.Active.All(a => !a.Def.Opener),
+            "restoring nothing still retires the opening chain");
+
+        // Openers round-trip through RestoreActive: they resolve by id against the whole pool,
+        // so a save taken mid-chain comes back intact.
+        var roundTrip = new ChallengeEngine(OpenerPool(), new Random(127), 120f);
+        roundTrip.RestoreActive(
+            new[]
+            {
+                new KeyValuePair<string, float>("o-stone", 2f),
+                new KeyValuePair<string, float>("o-axe", 0f),
+            },
+            new List<float> { float.NaN, float.NaN });
+        Check.That(roundTrip.Active.Count == 2, "opener actives restore from a save");
+        Check.That(roundTrip.Active[0].Def.Id == "o-stone" && roundTrip.Active[0].Progress == 2f,
+            "a restored opener keeps its id and progress");
+        Check.That(roundTrip.Active[1].Def.Id == "o-axe", "the second restored opener keeps its slot");
+        roundTrip.Tick(0.1f);
+        Check.That(roundTrip.Active.Count == 3, "a mid-chain resume tops up to three");
+        Check.That(roundTrip.Active.Count(a => a.Def.Opener) == 2,
+            "the top-up beside restored openers is an ordinary draw");
+
+        // A pool with no openers behaves exactly as it did before the feature existed.
+        var plain = new ChallengeEngine(Pool(), new Random(131), 120f);
+        plain.Tick(0.1f);
+        Check.That(plain.Active.Count == 3, "an opener-free pool still fills three slots");
+        Check.That(plain.Active.Select(a => a.Def.Id).Distinct().Count() == 3, "and they are distinct");
     }
 
     static List<ChallengeDefinition> StatPool() => new List<ChallengeDefinition>

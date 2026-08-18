@@ -27,8 +27,21 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>How close to its max a boss's health must be to count as "not yet engaged" — see <see cref="Treat"/>.</summary>
         private const float FullHealthEpsilon = 0.01f;
 
-        /// <summary>Instance ids of bosses already scaled. Cleared with the run, since ids don't survive one.</summary>
-        private readonly HashSet<int> _treated = new HashSet<int>();
+        /// <summary>What was done to one boss, so it can be undone when the run ends.</summary>
+        private struct Treatment
+        {
+            public Character Boss;
+            public float OriginalMaxHealth;
+        }
+
+        /// <summary>
+        /// Bosses already scaled, keyed by instance id (ids don't survive a run, and neither does
+        /// this map). The Character reference is held so the scaling can actually be UNDONE —
+        /// an id alone can't find its way back to the object. Holding it pins only the small C#
+        /// wrapper, not the native object, and the map is bounded by the handful of bosses a run
+        /// can walk past.
+        /// </summary>
+        private readonly Dictionary<int, Treatment> _treated = new Dictionary<int, Treatment>();
 
         /// <summary>Reused scan buffer. Character.GetCharactersInRange APPENDS (verified in IL), so this is cleared first.</summary>
         private readonly List<Character> _scratch = new List<Character>();
@@ -61,9 +74,15 @@ namespace ICanShowYouTheWorld.RunMode
                 foreach (var c in _scratch)
                 {
                     if (c == null || !c.IsBoss()) continue;
-                    if (!_treated.Add(c.GetInstanceID())) continue;
 
-                    Treat(c, multiplier);
+                    int id = c.GetInstanceID();
+                    if (_treated.ContainsKey(id)) continue;
+
+                    // Recorded even when Treat declines to scale (not the owner, dead, a nonsense
+                    // max): "treated" means "decided about", and re-deciding on a later scan is
+                    // exactly the compounding this set exists to prevent. A zero original marks
+                    // the nothing-to-undo case for RestoreAll.
+                    _treated[id] = new Treatment { Boss = c, OriginalMaxHealth = Treat(c, multiplier) };
                 }
             }
             catch (Exception ex)
@@ -79,8 +98,60 @@ namespace ICanShowYouTheWorld.RunMode
             }
         }
 
-        /// <summary>Forgets every treated boss and resets the clock. Called when a run ends.</summary>
-        public void Reset()
+        /// <summary>
+        /// Puts every scaled boss back to the max health it had before Run Mode touched it, then
+        /// forgets them all. Called when a run ends — the loan of power the boons are is worth
+        /// nothing if the world keeps the interest.
+        ///
+        /// A boss that has been UNLOADED (world gone, zone unloaded, or it simply died) cannot be
+        /// restored: its ZDO isn't in memory to write to. That is an accepted residual — it is
+        /// world-local, and bosses are mortal — but it is logged rather than passed over in
+        /// silence, because it is the one case where a run leaves a mark on a world after it ends.
+        ///
+        /// Restoring a DAMAGED boss lets SetMaxHealth clamp its current health down to the
+        /// restored maximum, which is the correct direction: it gives back nothing the player
+        /// hasn't already fought for.
+        /// </summary>
+        public void RestoreAll()
+        {
+            int restored = 0;
+            int stranded = 0;
+
+            foreach (var entry in _treated.Values)
+            {
+                // Nothing was changed for this one (Treat declined), so there is nothing to undo.
+                if (entry.OriginalMaxHealth <= 0f) continue;
+
+                try
+                {
+                    // Unity's == is what's wanted: a destroyed or unloaded Character reads as null.
+                    if (entry.Boss == null || !entry.Boss.IsOwner())
+                    {
+                        stranded++;
+                        continue;
+                    }
+
+                    entry.Boss.SetMaxHealth(entry.OriginalMaxHealth);
+                    restored++;
+                }
+                catch (Exception ex)
+                {
+                    stranded++;
+                    Debug.LogError($"[ICanShowYouTheWorld] Boss vigor restore failed: {ex}");
+                }
+            }
+
+            if (restored > 0 || stranded > 0)
+            {
+                Debug.Log($"[ICanShowYouTheWorld] Boss vigor unwound: {restored} boss(es) restored, " +
+                          $"{stranded} left scaled (unloaded or not ours at run end).");
+            }
+
+            Reset();
+        }
+
+        /// <summary>Forgets every treated boss and resets the clock. Private: the only supported way to end a run's scaling is <see cref="RestoreAll"/>, which unwinds first.</summary>
+        private void Reset()
         {
             _treated.Clear();
             _timer = 0f;
@@ -103,18 +174,22 @@ namespace ICanShowYouTheWorld.RunMode
         /// discarded, or fought over, on somebody else's creature. (Run Mode is local-only, so
         /// this should always pass; it costs nothing to be sure.)
         /// </summary>
-        private static void Treat(Character c, float multiplier)
+        /// <returns>
+        /// The max health this boss had BEFORE scaling, for <see cref="RestoreAll"/> to put back;
+        /// 0 when nothing was changed and there is therefore nothing to undo.
+        /// </returns>
+        private static float Treat(Character c, float multiplier)
         {
-            if (multiplier <= 1f || !c.IsOwner()) return;
+            if (multiplier <= 1f || !c.IsOwner()) return 0f;
 
             float max = c.GetMaxHealth();
-            if (max <= 0f || float.IsNaN(max) || float.IsInfinity(max)) return;
+            if (max <= 0f || float.IsNaN(max) || float.IsInfinity(max)) return 0f;
 
             float health = c.GetHealth();
-            if (health <= 0f) return; // Already dead or dying; leave it alone.
+            if (health <= 0f) return 0f; // Already dead or dying; leave it alone.
 
             float scaled = max * multiplier;
-            if (float.IsNaN(scaled) || float.IsInfinity(scaled)) return;
+            if (float.IsNaN(scaled) || float.IsInfinity(scaled)) return 0f;
 
             bool wasUntouched = health >= max - FullHealthEpsilon;
 
@@ -122,6 +197,7 @@ namespace ICanShowYouTheWorld.RunMode
             if (wasUntouched) c.SetHealth(scaled);
 
             Debug.Log($"[ICanShowYouTheWorld] Boss vigor: {c.name} max HP {max:0} -> {scaled:0} (x{multiplier:0.00}).");
+            return max;
         }
     }
 }

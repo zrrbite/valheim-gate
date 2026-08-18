@@ -34,6 +34,14 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>Used when <see cref="IConfiguration.RunFinalBossKey"/> names something that isn't a boss.</summary>
         private const string DefaultFinalBossKey = "defeated_goblinking";
 
+        /// <summary>
+        /// Boon offered in slot 1 of a fresh run's FIRST offer. Stamina is what an early Valheim
+        /// run is actually short of — everything from running away to chopping the opening chain's
+        /// trees is gated on it — so the opening pick is steered there rather than left to the rng.
+        /// The other two options are random, and the player is free to take one instead.
+        /// </summary>
+        private const string FirstBoonPin = "enduring";
+
         private const float BossPollIntervalSeconds = 1f;
         private const float AutosaveIntervalSeconds = 5f;
         private const int ConsecutiveFailuresBeforeNotice = 5;
@@ -351,7 +359,7 @@ namespace ICanShowYouTheWorld.RunMode
                 _rngSeed = Environment.TickCount;
                 _rng = new Random(_rngSeed);
 
-                BuildEngines(BuildChallengePool());
+                BuildEngines(BuildChallengePool(), freshRun: true);
 
                 // Gate the pool to this world's progression before the first Tick deals anything.
                 // preDefeated is the same snapshot _accountedBossKeys is seeded from, so the
@@ -981,7 +989,12 @@ namespace ICanShowYouTheWorld.RunMode
             _frozen = false;
             ResetOutageTracking();
             _trackedPlayer = null;
-            _bossVigor.Reset();
+
+            // Restores, then clears. Boss health is the one Run Mode effect written straight into
+            // the world's own data, so it has to be given back the way world modifiers are — a
+            // run that ended must leave no permanently tougher boss behind.
+            _bossVigor.RestoreAll();
+
             HudNotice = null;
         }
 
@@ -1058,12 +1071,22 @@ namespace ICanShowYouTheWorld.RunMode
                 Bosses.Count(b => SafeGetGlobalKey(zone, b.defeatKey)));
         }
 
-        private void BuildEngines(List<ChallengeDefinition> pool)
+        /// <summary>
+        /// Builds the challenge and boon engines for a run.
+        ///
+        /// <paramref name="freshRun"/> distinguishes StartRun from a resume. Only a fresh run pins
+        /// the opening boon offer: on a resume the next offer is not the run's first, and steering
+        /// it would hand a mid-run player a designed opener they may well have already had. The
+        /// challenge engine needs no such flag — <see cref="ChallengeEngine.RestoreActive"/> retires
+        /// the opening chain by itself, and a resume always calls it.
+        /// </summary>
+        private void BuildEngines(List<ChallengeDefinition> pool, bool freshRun)
         {
             _challenges = new ChallengeEngine(pool, _rng, _cfg.RunChallengeRefillSeconds);
             _challenges.Completed += OnChallengeCompleted;
 
             _boons = new BoonEngine(DefaultBoons(), _rng, _cfg.RunBoonOfferTimeoutSeconds);
+            if (freshRun) _boons.FirstOfferPin = FirstBoonPin;
             _boons.Gained += OnBoonGained;
             _boons.Lost += OnBoonLost;
         }
@@ -1494,7 +1517,7 @@ namespace ICanShowYouTheWorld.RunMode
             _rngSeed = s.rngSeed;
             _rng = new Random(_rngSeed);
 
-            BuildEngines(BuildChallengePool());
+            BuildEngines(BuildChallengePool(), freshRun: false);
 
             // Read from the live world, not from s.defeatedBossKeys: that saved set is the
             // run's split bookkeeping (and may hold keys outside the boss table), whereas the
@@ -1828,6 +1851,18 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         internal static List<ChallengeDefinition> DefaultPool() => new List<ChallengeDefinition>
         {
+            // --- Opening chain: the first three slots of a fresh run, dealt in this order. ---
+            // A deliberate on-ramp rather than three random quests at minute zero: gather the wood,
+            // gather the stone, then make the thing they build into. The targets are the Stone Axe
+            // recipe (5 Wood + 3 Stone), so clearing the first two leaves the player holding
+            // exactly what the third asks them to spend.
+            //
+            // Openers never come round again — ChallengeEngine excludes them from every random
+            // draw and reroll — so a completed or rerolled-away link is gone for that run.
+            new ChallengeDefinition { Id = "o-wood",  Opener = true, Tier = 0, Kind = ChallengeKind.CollectItem, Param = "$item_wood",       Target = 5, HeatReward = 1, Display = "Hold 5 Wood" },
+            new ChallengeDefinition { Id = "o-stone", Opener = true, Tier = 0, Kind = ChallengeKind.CollectItem, Param = "$item_stone",      Target = 3, HeatReward = 1, Display = "Hold 3 Stone" },
+            new ChallengeDefinition { Id = "o-axe",   Opener = true, Tier = 0, Kind = ChallengeKind.CollectItem, Param = "$item_axe_stone",  Target = 1, HeatReward = 1, Display = "Craft a Stone Axe" },
+
             new ChallengeDefinition { Id = "k-greydwarf", Tier = 1, Kind = ChallengeKind.KillPrefab, Param = "Greydwarf", Target = 10, HeatReward = 2, Display = "Kill 10 Greydwarves" },
             new ChallengeDefinition { Id = "k-skeleton",  Tier = 1, Kind = ChallengeKind.KillPrefab, Param = "Skeleton",  Target = 10, HeatReward = 2, Display = "Kill 10 Skeletons" },
             new ChallengeDefinition { Id = "k-troll",     Tier = 1, Kind = ChallengeKind.KillPrefab, Param = "Troll",     Target = 1,  HeatReward = 3, Display = "Slay a Troll" },

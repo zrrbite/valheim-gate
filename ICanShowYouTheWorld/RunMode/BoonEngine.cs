@@ -34,6 +34,21 @@ namespace ICanShowYouTheWorld.RunMode
         public event Action<BoonDefinition> Gained;
         public event Action<BoonDefinition> Lost;
 
+        /// <summary>
+        /// Boon id to place at index 0 of this engine's FIRST offer, so a run's opening pick is a
+        /// designed one rather than whatever the rng produced. The remaining two options are drawn
+        /// at random as usual, and every offer after the first is untouched. Null (the default)
+        /// leaves the engine fully random, which is what every existing caller and test sees.
+        ///
+        /// A pin that isn't available when the first offer is built — not in the pool, or already
+        /// held as a passive — is simply not honoured; that offer is random and still counts as
+        /// the first. Failing loudly here would mean refusing to offer anything at all.
+        /// </summary>
+        public string FirstOfferPin;
+
+        /// <summary>True once an offer has actually been produced, which is what spends the pin.</summary>
+        private bool firstOfferMade;
+
         public BoonEngine(IList<BoonDefinition> pool, Random rng, float offerTimeoutSeconds)
         {
             this.pool = pool.ToList();
@@ -47,13 +62,28 @@ namespace ICanShowYouTheWorld.RunMode
             var heldPassives = new HashSet<string>(held.Where(h => h.Def.IsPassive).Select(h => h.Def.Id));
             var options = pool.Where(d => !heldPassives.Contains(d.Id)).ToList();
             if (options.Count == 0) return;
-            for (int i = 0; i < 3 && options.Count > 0; i++)
+
+            // The pin takes slot 0 and is removed from the draw pool, so the two random options
+            // beside it stay distinct from it and from each other.
+            if (!firstOfferMade && FirstOfferPin != null)
+            {
+                var pinned = options.FirstOrDefault(d => d.Id == FirstOfferPin);
+                if (pinned != null)
+                {
+                    options.Remove(pinned);
+                    offer.Add(pinned);
+                }
+            }
+
+            while (offer.Count < 3 && options.Count > 0)
             {
                 var pick = options[rng.Next(options.Count)];
                 options.Remove(pick);
                 offer.Add(pick);
             }
+
             offerAge = 0f;
+            firstOfferMade = true;
         }
 
         public bool Pick(int index)

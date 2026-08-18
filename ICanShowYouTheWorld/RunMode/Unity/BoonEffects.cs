@@ -40,7 +40,11 @@ namespace ICanShowYouTheWorld.RunMode
         private const float EmberOnSeconds = 30f;
 
         private const float MuleCarryWeightBonus = 100f;   // vanilla Player.m_maxCarryWeight is 300
-        private const float HeartyBaseHpBonus = 25f;       // vanilla Player.m_baseHP is 25
+
+        // Vanilla Player.m_baseHP is 25, so the originally specified +25 was a flat doubling of
+        // base HP — and it compounds with food and with Enduring. Trimmed to +15 (a 60% lift)
+        // pending a play-test.
+        private const float HeartyBaseHpBonus = 15f;
         private const float EnduringBaseStaminaBonus = 25f;
 
         private readonly Func<IReadOnlyList<HeldBoon>> _heldBoons;

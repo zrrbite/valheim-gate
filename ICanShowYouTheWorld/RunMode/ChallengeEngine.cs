@@ -34,6 +34,15 @@ namespace ICanShowYouTheWorld.RunMode
         /// player who hasn't killed Eikthyr yet. Defaults to 0 (always drawable).
         /// </summary>
         public int Tier;
+
+        /// <summary>
+        /// Part of the fixed opening chain: dealt in pool order, ahead of any random draw, on a
+        /// FRESH engine that has dealt nothing yet. Opener definitions are excluded from every
+        /// random draw and from rerolls, so once one has been completed or rerolled away it is
+        /// gone for the rest of the run — the chain is a scripted first few minutes, not a set of
+        /// challenges that can come round again.
+        /// </summary>
+        public bool Opener;
     }
 
     public class ActiveChallenge
@@ -67,6 +76,17 @@ namespace ICanShowYouTheWorld.RunMode
         private readonly List<ActiveChallenge> active = new List<ActiveChallenge>();
         private readonly List<float> pendingRefills = new List<float>();
 
+        /// <summary>Opener-flagged definitions in pool order, consumed from the front by the first deal.</summary>
+        private readonly Queue<ChallengeDefinition> openers;
+
+        /// <summary>
+        /// Set the moment this engine deals or is handed ANY challenge. The opening chain is only
+        /// offered while this is false, which is the whole of the "fresh run only" rule: a resumed
+        /// run gets its actives from <see cref="RestoreActive"/> (which sets this even when it
+        /// restores nothing), so its shortfall refills randomly instead of replaying the opening.
+        /// </summary>
+        private bool dealtAnything;
+
         public IReadOnlyList<ActiveChallenge> Active => active;
         public event Action<ChallengeDefinition> Completed;
 
@@ -85,6 +105,7 @@ namespace ICanShowYouTheWorld.RunMode
             this.pool = pool.ToList();
             this.rng = rng;
             this.refillCooldown = refillCooldownSeconds;
+            this.openers = new Queue<ChallengeDefinition>(this.pool.Where(d => d.Opener));
         }
 
         public void Tick(float dt)
@@ -110,9 +131,29 @@ namespace ICanShowYouTheWorld.RunMode
                 }
             }
 
-            // (3) Top up to 3 total (active + pending).
-            while (active.Count + pendingRefills.Count < 3 && TryDraw(out var def))
+            // (3) Top up to 3 total (active + pending). On a fresh engine the opening chain
+            // claims the first slots, in pool order, before any random draw gets a look in.
+            // Latched BEFORE the loop, not read from dealtAnything inside it: the flag is set by
+            // the loop's own first add, so testing it per-iteration would deal opener #1 and then
+            // draw the other two slots at random.
+            bool fresh = !dealtAnything;
+
+            while (active.Count + pendingRefills.Count < 3)
+            {
+                // Openers are deliberately NOT filtered by MaxTier. The chain is the scripted
+                // opening of a run and is tier-0 by construction, so a tier test could only ever
+                // silently drop a link out of it — turning a designed progression into a random
+                // deal with no way to tell.
+                ChallengeDefinition def =
+                    fresh && openers.Count > 0 ? openers.Dequeue()
+                    : TryDraw(out var drawn) ? drawn
+                    : null;
+
+                if (def == null) break;
+
                 active.Add(new ActiveChallenge { Def = def });
+                dealtAnything = true;
+            }
         }
 
         public void ReportKill(string prefab)
@@ -171,6 +212,12 @@ namespace ICanShowYouTheWorld.RunMode
         {
             active.Clear();
             pendingRefills.Clear();
+
+            // Unconditional, and set even when nothing is restored: a resumed run must never
+            // replay the opening chain. Restored actives take precedence, and any shortfall is
+            // topped up by an ordinary random draw.
+            dealtAnything = true;
+
             if (idToProgress == null) return;
 
             var byId = pool.GroupBy(d => d.Id).ToDictionary(g => g.Key, g => g.First());
@@ -205,12 +252,18 @@ namespace ICanShowYouTheWorld.RunMode
             return active[slotIndex].Def.Tier > MaxTier;
         }
 
+        /// <summary>
+        /// Swaps a slot for a fresh RANDOM draw. Rerolling an opener therefore leaves the chain:
+        /// <see cref="Drawable"/> excludes openers, so the replacement is an ordinary challenge and
+        /// the discarded link never comes back.
+        /// </summary>
         public bool Reroll(int slotIndex)
         {
             if (slotIndex < 0 || slotIndex >= active.Count) return false;
             var options = Drawable();
             if (options.Count == 0) return false;
             active[slotIndex] = new ActiveChallenge { Def = options[rng.Next(options.Count)] };
+            dealtAnything = true;
             return true;
         }
 
@@ -221,11 +274,19 @@ namespace ICanShowYouTheWorld.RunMode
             return def != null;
         }
 
-        /// <summary>Pool definitions eligible right now: not already active, and within <see cref="MaxTier"/>.</summary>
+        /// <summary>
+        /// Pool definitions eligible for a RANDOM deal right now: not an opener, not already
+        /// active, and within <see cref="MaxTier"/>.
+        ///
+        /// Openers are excluded outright rather than merely deprioritised, and that exclusion is
+        /// what makes "never redealt" true: the opening chain is reachable only through the
+        /// fresh-engine path in <see cref="Tick"/>, so a completed or rerolled-away opener can
+        /// never come back through a refill or a reroll.
+        /// </summary>
         private List<ChallengeDefinition> Drawable()
         {
             var taken = active.Select(a => a.Def.Id).ToHashSet();
-            return pool.Where(d => !taken.Contains(d.Id) && d.Tier <= MaxTier).ToList();
+            return pool.Where(d => !d.Opener && !taken.Contains(d.Id) && d.Tier <= MaxTier).ToList();
         }
     }
 }

@@ -147,5 +147,65 @@ static class BoonEngineTests
             new[] { 9, 3 });
         Check.That(j.Held.Count == 1 && j.Held[0].Def.Id == "way" && j.Held[0].Charges == 3,
             "charges align to pre-filter index, skipping unknown ids correctly");
+
+        FirstOfferPinTests();
+    }
+
+    /// <summary>
+    /// FirstOfferPin steers the opening pick of a run into slot 0 and then gets out of the way.
+    /// </summary>
+    static void FirstOfferPinTests()
+    {
+        var p = new BoonEngine(Pool(), new Random(11), 45f) { FirstOfferPin = "pack" };
+        p.CreateOffer();
+        Check.That(p.CurrentOffer.Count == 3, "a pinned first offer still has three options");
+        Check.That(p.CurrentOffer[0].Id == "pack", "the pinned boon is option 1 of the first offer");
+        Check.That(p.CurrentOffer.Select(d => d.Id).Distinct().Count() == 3, "pinned offer options are distinct");
+
+        // Take something OTHER than the pin, so the pin is still eligible for the next offer —
+        // this is what proves the pin is spent by the first offer, not by being picked.
+        Check.That(p.Pick(1), "picking a non-pinned option succeeds");
+        Check.That(p.Held[0].Def.Id != "pack", "the pinned boon was not the one taken");
+
+        // Later offers are plain random draws, so the pinned id CAN still land in slot 0 by
+        // chance — asserting it never does would be testing the rng, and would fail about a
+        // third of the time. What must be true is that it is no longer FORCED there: across a
+        // long run of offers, at least one has something else in slot 0.
+        int laterOffers = 0;
+        int laterOffersLedByPin = 0;
+        for (int i = 0; i < 25; i++)
+        {
+            p.CreateOffer();
+            if (p.CurrentOffer.Count > 0)
+            {
+                laterOffers++;
+                if (p.CurrentOffer[0].Id == "pack") laterOffersLedByPin++;
+            }
+            // Let the offer expire rather than picking it, so the held set (and with it the
+            // option pool) stops changing and only the pin behaviour is under test.
+            p.Tick(50f);
+        }
+        Check.That(laterOffers == 25, "every later CreateOffer produced an offer");
+        Check.That(laterOffersLedByPin < laterOffers, "later offers do not force the pin into slot 0");
+
+        // No pin at all is the pre-existing behaviour, unchanged.
+        var q = new BoonEngine(Pool(), new Random(11), 45f);
+        q.CreateOffer();
+        Check.That(q.CurrentOffer.Count == 3, "an unpinned first offer still has three options");
+        Check.That(q.CurrentOffer.Select(d => d.Id).Distinct().Count() == 3, "unpinned offer options are distinct");
+
+        // A pin naming something outside the pool is ignored rather than shrinking the offer,
+        // and it does not keep trying on later offers either.
+        var r = new BoonEngine(Pool(), new Random(13), 45f) { FirstOfferPin = "nonsense" };
+        r.CreateOffer();
+        Check.That(r.CurrentOffer.Count == 3, "an unresolvable pin still yields three options");
+        Check.That(r.CurrentOffer.All(d => d.Id != "nonsense"), "an unresolvable pin adds nothing");
+
+        // A pin naming an already-held passive is excluded by the usual held-passive filter.
+        var s = new BoonEngine(Pool(), new Random(17), 45f) { FirstOfferPin = "fleet" };
+        s.RestoreHeld(new[] { new KeyValuePair<string, float>("fleet", 0f) });
+        s.CreateOffer();
+        Check.That(s.CurrentOffer.Count == 3, "a pin on a held passive still yields three options");
+        Check.That(s.CurrentOffer.All(d => d.Id != "fleet"), "a held passive is never offered, pinned or not");
     }
 }
