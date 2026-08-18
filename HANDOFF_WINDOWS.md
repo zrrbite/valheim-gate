@@ -201,7 +201,63 @@ The lifecycle scenarios and their expected log lines:
 
 ### RESULTS (Windows side appends here)
 
-*(pending)*
+Collected 2026-08-18 ~20:25. **Partial: only scenario 2 was played.** Martin
+ran one fresh alpha3 run and quit straight from the game — the session never
+went back to the menu, so scenarios 1, 3, 4 and 5 were not exercised and
+none of the suspend/resume/abandon paths were reached. What alpha3 *did*
+prove is nonetheless significant: **both alpha2 bugs are fixed.**
+
+**Version:** `[ICanShowYouTheWorld] Starting initialization
+(v0.221.12-run.alpha3)`. Install printed "Verified both injections present".
+
+**Full mod log, alpha3 session (Player.log, 17:07–17:12):**
+
+```
+[ICanShowYouTheWorld] Starting initialization (v0.221.12-run.alpha3)
+   ... 7 services registered, "Initialization complete!" ...
+08/18/2026 17:07:13: OnCharacterStart                      <- character Naked
+08/18/2026 17:07:21: Load world: heatheat (heatheat)
+[ICanShowYouTheWorld] Run Mode baseline world modifiers applied (resource=3, skill=3, moveStamina=0.5, staminaRegen=1.5).
+[ICanShowYouTheWorld] Run Mode started (seed=305252140, world=2029997972:heatheat, pre-defeated=0).
+08/18/2026 17:12:57: Game - OnApplicationQuit
+```
+
+That is every `[ICanShowYouTheWorld]` line in the session — no suspend, no
+resume, no abandon, no error lines.
+
+**Bug 1 (timer frozen) — FIXED.** `ICSYTW_run_Naked.json` records
+`elapsedSeconds` **310.73**. Run start 17:07:42 → quit 17:12:57 is 315s
+wall-clock. The timer accumulated in real time.
+
+**Bug 2 (no autosave) — FIXED.** The state file's LastWriteTime is
+**17:12:53**, four seconds *before* `OnApplicationQuit` at 17:12:57. Under
+alpha2 the equivalent file was never rewritten at all.
+
+**Challenge tallies moved** (bearing on the alpha4 task's "first live check"
+of the unverifiable item tokens — these already ticked under alpha3):
+
+```json
+"activeChallengeIds":      [ "c-food", "c-stone", "c-wood" ],
+"activeChallengeProgress": [ 8.0,      5.0,       7.0       ],
+"heldBoonIds": [], "heat": 0.0, "rngSeed": 305252140,
+"worldId": "2029997972:heatheat"
+```
+
+No greydwarf kill challenge was drawn this run, so the kill hook remains
+unverified in live play (the install-time byte scan confirms it is injected).
+
+**Still outstanding — scenario 1 was not done.** `ICSYTW_run_Draupnir.json`
+is untouched (still 17/08 17:40:45), so world **hjklgggggggg** still has the
+run's modifier rates applied and its pre-run originals still live only in
+that file. Preserved, not deleted, per your standing note.
+
+---
+
+**Note for the alpha4 task below:** the alpha3 run on `heatheat` as *Naked*
+is still live in `ICSYTW_run_Naked.json` and will resume when that
+character+world loads under alpha4. I left it in place rather than assume it
+should be discarded — say the word if the alpha4 test wants a clean slate,
+or Martin can use the new [Discard saved run] lobby button.
 
 ---
 
@@ -219,4 +275,22 @@ higher and RESTORED on abandon. Append RESULTS as usual.
 
 ### RESULTS (Windows side appends here)
 
-*(pending)*
+**Install done 2026-08-18 20:27 — ready for Martin to play. Gameplay results
+pending below.**
+
+- `git pull` → `fe26080`. Full `.\Install-Mod.ps1`: Steam buildid 21981559
+  matched, both patches applied, **"Verified both injections present (entry
+  point + death hook)"**.
+- Installed `ICanShowYouTheWorld.dll` (211,968 bytes, 20:27:44) contains the
+  version string **`0.221.12-run.alpha4`** — verified by scanning the DLL, so
+  the in-game popup should match.
+- Config cleared: the local `ICanShowYouTheWorld.json` dated 16/08 predated
+  Run Mode entirely — it contained **no `run*` keys at all**, so
+  `runChallengeRefillSeconds` would have taken the compiled default in any
+  case. Deleted anyway so the file regenerates with the complete alpha4
+  default set; a copy is parked in this session's scratchpad if anything in
+  it turns out to have been non-default.
+- Working tree clean — the `.gitattributes` you added ended the CRLF churn;
+  the pull applied with no conflicts and `git status` is empty.
+
+*(gameplay results pending)*
