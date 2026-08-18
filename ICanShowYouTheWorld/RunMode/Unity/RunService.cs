@@ -38,9 +38,18 @@ namespace ICanShowYouTheWorld.RunMode
         private const float AutosaveIntervalSeconds = 5f;
         private const int ConsecutiveFailuresBeforeNotice = 5;
 
+        /// <summary>
+        /// How long ZNet/ZoneSystem must report no world before an active run is suspended rather
+        /// than merely frozen. Loading screens and zone transitions produce brief nulls that must
+        /// not tear a live run down; a genuine trip to the main menu never comes back inside this
+        /// window.
+        /// </summary>
+        private const float WorldGoneSuspendSeconds = 5f;
+
         private const string FrozenNotice = "Run paused — world not loaded.";
         private const string WrongWorldNotice = "Run paused — this is not the world the run started in.";
         private const string AbandonWrongWorldNotice = "Load the run's world to abandon it.";
+        private const string MultiplayerNotice = "Run Mode v1 supports local/hosted worlds only.";
         private const string CorruptSaveNotice =
             "Run save could not be read — file kept as .corrupt; run cannot be resumed.";
 
@@ -78,6 +87,19 @@ namespace ICanShowYouTheWorld.RunMode
         private bool _frozen;
 
         /// <summary>
+        /// Seconds the world has been unavailable under an ACTIVE run. Zeroed on every healthy
+        /// tick, so it only ever measures one continuous outage — see <see cref="WorldGoneSuspendSeconds"/>.
+        /// </summary>
+        private float _worldGoneSeconds;
+
+        /// <summary>
+        /// Character the current run belongs to, captured when the run starts or resumes. Used for
+        /// the suspend log line: <see cref="CharacterName"/> at suspend time may already be a
+        /// DIFFERENT character (that is precisely the case suspending exists to handle).
+        /// </summary>
+        private string _runCharacter;
+
+        /// <summary>
         /// Player.m_localPlayer as of the last tick. Death recreates the Player component with
         /// fresh fields, silently wiping fleet's speed boost and sharp's item snapshots even
         /// though the boon is still held — a reference change here (while active) is a respawn,
@@ -97,6 +119,15 @@ namespace ICanShowYouTheWorld.RunMode
         private bool _resumeAttempted;
         private RunSaveState _pendingResume;
         private bool _restorePending;
+
+        /// <summary>
+        /// World + character seen on the previous inactive tick. A change in either re-arms the
+        /// one-shot resume: <see cref="_resumeAttempted"/> used to latch for the whole process, so
+        /// once a character switch had consumed it, going back to the run's own character and world
+        /// never looked at the disk again.
+        /// </summary>
+        private string _idleWorld;
+        private string _idleCharacter;
 
         /// <summary>
         /// World the deferred restore belongs to. World modifiers are global keys saved WITH the
@@ -137,6 +168,19 @@ namespace ICanShowYouTheWorld.RunMode
 
         /// <summary>Exposed for the HUD, which must hide reroll controls while frozen (see RunWindow).</summary>
         internal bool IsFrozen => _frozen;
+
+        /// <summary>
+        /// True when a saved run for THIS character has been read from disk but cannot be resumed
+        /// right now — almost always because it belongs to another world. The lobby offers to
+        /// discard it (see <see cref="DiscardPendingRun"/>), which is the only way out when that
+        /// world is gone for good.
+        /// </summary>
+        internal bool HasPendingResume => _pendingResume != null;
+
+        /// <summary>Human-readable world name the parked run belongs to, or null when nothing is parked.</summary>
+        internal string PendingResumeWorldName =>
+            _pendingResume == null ? null : ReadableWorldName(_pendingResume.worldId);
+
         public float ElapsedSeconds => _active ? _elapsed : 0f;
         public float Heat => _active ? _heat.Heat : 0f;
         public ChallengeEngine Challenges => _active ? _challenges : null;
@@ -207,6 +251,15 @@ namespace ICanShowYouTheWorld.RunMode
                     return;
                 }
 
+                // v1 is single-machine only: the run owns the world's global keys outright, and on
+                // a remote server those are the host's to set. Refuse rather than half-work.
+                if (IsRemoteClient())
+                {
+                    Announce(MultiplayerNotice);
+                    HudNotice = MultiplayerNotice;
+                    return;
+                }
+
                 var player = Player.m_localPlayer;
                 if (player == null)
                 {
@@ -249,9 +302,11 @@ namespace ICanShowYouTheWorld.RunMode
                 _loggedFailures.Clear();
                 _consecutiveTickFailures = 0;
                 _frozen = false;
+                _worldGoneSeconds = 0f;
                 HudNotice = null;
 
                 _worldId = WorldIdentifier();
+                _runCharacter = CharacterName();
                 _finalBossKey = finalBossKey;
 
                 _rngSeed = Environment.TickCount;
@@ -412,26 +467,50 @@ namespace ICanShowYouTheWorld.RunMode
                     }
                 }
 
+                RearmResumeOnIdentityChange();
                 TryResume();
                 return;
             }
 
-            // Freeze rather than run against a missing or foreign world: no elapsed time,
-            // no polling, no autosave (which would otherwise overwrite good state with
-            // half-loaded nonsense).
+            // The world can disappear under an active run two ways, and both used to freeze it in
+            // place — which left the run resident in memory for the rest of the process, wearing
+            // the previous character's HUD on somebody else's world. Freezing is now only the
+            // TRANSIENT answer; a sustained outage or a genuinely different world suspends it (see
+            // SuspendRun), so a run never exists outside the world it belongs to.
             if (ZoneSystem.instance == null || Player.m_localPlayer == null)
             {
-                SetFrozen(true, FrozenNotice);
+                bool firstOutageTick = _worldGoneSeconds <= 0f;
+
+                // Floored so a zero dt can't leave the accumulator at zero and re-trigger the
+                // "first tick" save on every frame of the outage.
+                _worldGoneSeconds += Mathf.Max(dt, 0.001f);
+
+                // The previous tick was healthy play on the run's own world, and the player
+                // profile may survive another moment — this is the best (often the only) chance
+                // to flush the seconds played since the last autosave.
+                if (firstOutageTick) SaveState();
+
+                if (_worldGoneSeconds < WorldGoneSuspendSeconds)
+                {
+                    SetFrozen(true, FrozenNotice);
+                    return;
+                }
+
+                SuspendRun("world unloaded");
                 return;
             }
 
             string world = WorldIdentifier();
             if (_worldId != null && world != null && world != _worldId)
             {
-                SetFrozen(true, WrongWorldNotice);
+                // A different world is fully up: no grace period, and deliberately no save —
+                // SaveState keys the file by the CURRENT profile, which after a character switch
+                // is not the run's, and would stamp this run onto the wrong character.
+                SuspendRun($"'{ReadableWorldName(world)}' loaded instead");
                 return;
             }
 
+            _worldGoneSeconds = 0f;
             SetFrozen(false, null);
             DetectRespawnAndReapplyPassives();
 
@@ -700,9 +779,50 @@ namespace ICanShowYouTheWorld.RunMode
             _noArmorChallengeIds.Clear();
             _accountedBossKeys.Clear();
             _worldId = null;
+            _runCharacter = null;
             _frozen = false;
+            _worldGoneSeconds = 0f;
             _trackedPlayer = null;
             HudNotice = null;
+        }
+
+        /// <summary>
+        /// Unloads the run from memory without ending it: boon effects come off and the engines go,
+        /// but the world keeps the run's modifiers and the state file stays on disk, because the run
+        /// is not over. It comes back the moment its own character loads its own world again —
+        /// RunStorage is per-character and <see cref="TryResumePending"/> matches the world, so
+        /// resume is already the exact inverse of this.
+        ///
+        /// This replaces freezing-forever, which was the root of three separate faults from one
+        /// cause — the run outliving its world inside a single game process. A frozen run kept its
+        /// HUD strip and boon state alive at the main menu and on the NEXT character's world, its
+        /// timer never counted, and it could not be abandoned there either (the abandon guard
+        /// correctly refuses to write world A's rates into world B). A suspended run cannot do any
+        /// of that: outside its own world it does not exist.
+        ///
+        /// World modifiers are deliberately NOT restored here. They belong to a run that is still
+        /// live, and restoring would need the run's world loaded anyway — which, by definition of
+        /// this method, it is not. Any outstanding restore debt (_restorePending/_restoreWorldId)
+        /// survives untouched and still flushes if that world comes back.
+        /// </summary>
+        private void SuspendRun(string reason)
+        {
+            string worldId = _worldId;
+            string character = _runCharacter ?? "its character";
+
+            // The player may already be gone; every boon seam is null-safe about that.
+            SafeUnapplyAllBoonEffects();
+            EndRun();
+
+            // Back to an ordinary "saved run sitting on disk" situation — the one-shot resume
+            // must be allowed to fire again, and any parked state belongs to the run just unloaded.
+            _resumeAttempted = false;
+            _pendingResume = null;
+            _idleWorld = null;
+            _idleCharacter = null;
+
+            Debug.Log($"[ICanShowYouTheWorld] Run suspended ({reason}) — resumes when {character} " +
+                      $"loads world {worldId ?? "it started in"}.");
         }
 
         /// <summary>
@@ -965,6 +1085,27 @@ namespace ICanShowYouTheWorld.RunMode
 
         // --- Persistence ---
 
+        /// <summary>
+        /// Re-arms the one-shot resume whenever the loaded world or the active character changes
+        /// while no run is in memory. Without this, <see cref="_resumeAttempted"/> latches for the
+        /// life of the process: one look at the disk on the first world load, and a later
+        /// character switch — or the reload of the run's own world after a suspend — would never
+        /// look again. Any parked state is dropped at the same moment, since it was read for the
+        /// character/world pair that just went away.
+        /// </summary>
+        private void RearmResumeOnIdentityChange()
+        {
+            string world = WorldIdentifier();
+            string character = CharacterName();
+
+            if (world == _idleWorld && character == _idleCharacter) return;
+
+            _idleWorld = world;
+            _idleCharacter = character;
+            _resumeAttempted = false;
+            _pendingResume = null;
+        }
+
         private void TryResume()
         {
             // Loaded but waiting for the right world to come up — recheck without touching disk.
@@ -1030,6 +1171,19 @@ namespace ICanShowYouTheWorld.RunMode
             // Just keep waiting — this is a per-tick retry already, and matches StartRun's guard.
             if (ZoneSystem.instance == null || Player.m_localPlayer == null) return;
 
+            // Same v1 rule as StartRun: a remote client must not drive the host's global keys.
+            // The run stays parked (and the file untouched) — the lobby's discard button is the
+            // way out if the player never intends to go back to a local copy of that world.
+            if (IsRemoteClient())
+            {
+                if (HudNotice != MultiplayerNotice)
+                {
+                    HudNotice = MultiplayerNotice;
+                    Announce(MultiplayerNotice + " Saved run not resumed on this server.");
+                }
+                return;
+            }
+
             if (!string.IsNullOrEmpty(state.worldId) && state.worldId != world)
             {
                 // Another world's run. Leave the file alone — the player may load that world later.
@@ -1075,14 +1229,59 @@ namespace ICanShowYouTheWorld.RunMode
             }
         }
 
+        /// <summary>
+        /// Throws away a saved run that cannot be reached from here — the lobby's escape hatch for
+        /// a run parked on a world the player no longer has (deleted, left on another machine, or
+        /// simply never coming back). Deletes the state file and clears the parked state.
+        ///
+        /// This is a lossy operation by construction: the state file holds the ONLY copy of that
+        /// world's pre-run modifier values, so discarding it leaves the world on Run Mode's inflated
+        /// rates forever unless the world is loaded again in this session (where the outstanding
+        /// restore debt would still flush). The world is named in the log so the cost is on record.
+        /// </summary>
+        internal void DiscardPendingRun()
+        {
+            try
+            {
+                if (_pendingResume == null) return;
+
+                string worldName = ReadableWorldName(_pendingResume.worldId);
+                bool debtSurvives = _restorePending && _restoreWorldId == _pendingResume.worldId;
+
+                string name = CharacterName();
+                if (name != null) RunStorage.Delete(name);
+
+                _pendingResume = null;
+
+                // Nothing left on disk for this character/world pair; don't re-read it every tick.
+                _resumeAttempted = true;
+                if (HudNotice == WrongWorldNotice || HudNotice == MultiplayerNotice) HudNotice = null;
+
+                Debug.LogWarning(
+                    $"[ICanShowYouTheWorld] Saved run for '{name ?? "?"}' discarded — world '{worldName}' " +
+                    (debtSurvives
+                        ? "still has Run Mode's rates applied; they will be restored if that world is loaded again this session."
+                        : "keeps Run Mode's modified rates: its original values are gone with the state file."));
+
+                Announce($"Saved run on '{worldName}' discarded.");
+                Message($"Saved run on '{worldName}' discarded.");
+            }
+            catch (Exception ex)
+            {
+                LogOnce("discard-pending", ex);
+            }
+        }
+
         private void RestoreFrom(RunSaveState s, string world)
         {
             _loggedFailures.Clear();
             _consecutiveTickFailures = 0;
             _frozen = false;
+            _worldGoneSeconds = 0f;
             HudNotice = null;
 
             _worldId = string.IsNullOrEmpty(s.worldId) ? world : s.worldId;
+            _runCharacter = CharacterName();
             _finalBossKey = ResolveFinalBossKey();
 
             _rngSeed = s.rngSeed;
@@ -1141,6 +1340,14 @@ namespace ICanShowYouTheWorld.RunMode
             _restoreWorldId = _worldId;
 
             _active = true;
+
+            // Mirror StartRun and write immediately. Without this the resume path had NO write at
+            // all: _saveTimer starts at zero here, so the first (and, for a short session, only)
+            // chance to persist anything was five seconds of in-world ticking away — and the
+            // old freeze-on-logout path returned before the autosave block, so nothing was
+            // flushed when the world went away either. A resumed session shorter than the
+            // autosave cadence therefore left the file byte-for-byte untouched.
+            SaveState();
         }
 
         /// <summary>
@@ -1252,6 +1459,29 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 LogOnce("world-id", ex);
                 return null;
+            }
+        }
+
+        /// <summary>
+        /// True when this session is a CLIENT attached to someone else's server. ZNet.IsServer()
+        /// returns the static m_isServer flag (checked against assembly_valheim's IL) — true for
+        /// singleplayer and for the host of an open world, false only for a remote client, so the
+        /// negation is the whole test.
+        ///
+        /// Fails open (reads as "local") if ZNet can't be asked: refusing to start a run because a
+        /// lookup threw would be worse than the thing the check is guarding against.
+        /// </summary>
+        private bool IsRemoteClient()
+        {
+            try
+            {
+                var znet = ZNet.instance;
+                return znet != null && !znet.IsServer();
+            }
+            catch (Exception ex)
+            {
+                LogOnce("is-remote-client", ex);
+                return false;
             }
         }
 

@@ -26,13 +26,13 @@ namespace ICanShowYouTheWorld.RunMode
         private const float HudWidth = 340f;
         private const float HudHeight = 420f;
         private const float LobbyWidth = 360f;
-        private const float LobbyHeight = 240f;
+        private const float LobbyHeight = 280f;
         private const float OfferWidth = 420f;
         private const float OfferHeight = 160f;
         private const float StripWidth = 300f;
         private const float StripHeight = 24f;
 
-        /// <summary>Seconds within which a second [Abandon run] press counts as confirmation.</summary>
+        /// <summary>Seconds within which a second [Abandon run] / [Discard saved run] press counts as confirmation.</summary>
         private const float AbandonConfirmSeconds = 2f;
 
         /// <summary>Toggled by the End key (see CheatController's command table).</summary>
@@ -55,6 +55,7 @@ namespace ICanShowYouTheWorld.RunMode
         private float _laidOutForHeight = -1f;
 
         private float _lastAbandonPress = float.NegativeInfinity;
+        private float _lastDiscardPress = float.NegativeInfinity;
         private Vector2 _hudScroll;
 
         // Deferred lifecycle actions. A button that flips IsRunActive mid-pass would change the
@@ -64,6 +65,7 @@ namespace ICanShowYouTheWorld.RunMode
         // changes between passes.
         private bool _pendingStart;
         private bool _pendingAbandon;
+        private bool _pendingDiscard;
 
         // Failure sites already logged, keyed by site + message: a new fault still gets a line,
         // a repeating one doesn't flood OnGUI. Capped so a fault with a varying message
@@ -110,13 +112,15 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         public void ApplyPendingActions()
         {
-            if (!_pendingStart && !_pendingAbandon) return;
+            if (!_pendingStart && !_pendingAbandon && !_pendingDiscard) return;
             if (Event.current == null || Event.current.type != EventType.Layout) return;
 
             bool start = _pendingStart;
             bool abandon = _pendingAbandon;
+            bool discard = _pendingDiscard;
             _pendingStart = false;
             _pendingAbandon = false;
+            _pendingDiscard = false;
 
             try
             {
@@ -125,6 +129,7 @@ namespace ICanShowYouTheWorld.RunMode
 
                 // Abandon wins if both somehow queued: it is the safer of the two to honour.
                 if (abandon) run.AbandonRun();
+                else if (discard) _concrete?.DiscardPendingRun();
                 else if (start) run.StartRun();
             }
             catch (Exception ex)
@@ -161,6 +166,12 @@ namespace ICanShowYouTheWorld.RunMode
 
                 var run = Service;
                 if (run == null) return;
+
+                // Nothing Run Mode draws belongs on the main menu — not the strip, not the HUD,
+                // not the offer, and not the lobby (whose Start/Discard buttons act on a world
+                // that isn't there). Suspending an active run already clears the in-world case;
+                // this also covers the parked-run notice and any menu frame before that lands.
+                if (Player.m_localPlayer == null) return;
 
                 EnsureStyles();
                 Layout(viewWidth, viewHeight);
@@ -475,6 +486,33 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 GUILayout.Space(4f);
                 GUILayout.Label(notice, _noticeStyle);
+            }
+
+            // A run parked for another world blocks Start (StartRun refuses, to protect that
+            // world's only copy of its original rates) and cannot be abandoned from here, since
+            // abandoning writes to the world it belongs to. If that world is never coming back,
+            // this is the only way out — hence the same two-press confirm as Abandon.
+            if (_concrete != null && _concrete.HasPendingResume)
+            {
+                GUILayout.Space(4f);
+                GUILayout.Label($"Unfinished run on world '{_concrete.PendingResumeWorldName}'", _smallStyle);
+
+                bool discardArmed = Time.realtimeSinceStartup - _lastDiscardPress <= AbandonConfirmSeconds;
+                GUI.contentColor = discardArmed ? Color.red : Color.white;
+                if (GUILayout.Button(discardArmed ? "Discard saved run — click again" : "Discard saved run"))
+                {
+                    if (discardArmed)
+                    {
+                        _lastDiscardPress = float.NegativeInfinity;
+                        _pendingDiscard = true; // Applied at the next Layout pass.
+                    }
+                    else
+                    {
+                        _lastDiscardPress = Time.realtimeSinceStartup;
+                    }
+                }
+                GUI.contentColor = Color.white;
+                GUILayout.Label("That world keeps Run Mode's rates.", _smallStyle);
             }
 
             GUILayout.Space(8f);
