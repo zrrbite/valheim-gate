@@ -6,6 +6,13 @@ one residual (freeze-gated rerolls). Branch `feature/run-mode`, nothing
 pushed. Deployed to the Mac (both patcher injections, signature valid).
 **Remaining: the in-game smoke checklist below, then merge.***
 
+## Baseline empowerment (as of alpha7)
+
+Resource ×3, skill ×3, move-stamina ×0.5, stamina-regen ×1.5, and **zero
+stamina cost for melee weapons and tools** (ranged excluded). The last one
+started life as the Pugilist boon in alpha6 and was promoted to baseline
+after play-testing: "not having any stamina is just annoying."
+
 ## Smoke checklist (Martin, on the Mac)
 
 1. Launch Valheim → Credits → mod loads (log shows RunService registered).

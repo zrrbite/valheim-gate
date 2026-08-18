@@ -157,10 +157,6 @@ namespace ICanShowYouTheWorld.RunMode
                     ApplySharp();
                     break;
 
-                case "pugilist":
-                    ApplyPugilist();
-                    break;
-
                 case "pack":
                     WithServiceGodModeBracket(() => Resolve<IPetService>()?.BuffAllPets(false));
                     break;
@@ -193,10 +189,6 @@ namespace ICanShowYouTheWorld.RunMode
 
                 case "sharp":
                     UnapplySharp();
-                    break;
-
-                case "pugilist":
-                    UnapplyPugilist();
                     break;
 
                 case "wind":
@@ -259,6 +251,9 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 ForceAoeRenewalOff();
                 ForceCloakOff();
+                // Pugilist is run baseline rather than a held boon, so the held-boon loop above
+                // never reaches it — unwind it here so weapon stamina costs always come back.
+                SafeInvoke(UnapplyPugilist);
             }
         }
 
@@ -409,21 +404,22 @@ namespace ICanShowYouTheWorld.RunMode
         // --- pugilist ---
 
         /// <summary>
-        /// Melee skills only: bows and crossbows keep their stamina cost, so the boon defines a
-        /// playstyle rather than trivialising every weapon. Unarmed counts — it is the namesake.
+        /// Everything swung by hand — melee weapons AND tools (pickaxes, axes, hammer/hoe, which
+        /// carry SkillType.None). Only ranged is excluded: bows and crossbows keep their stamina
+        /// cost, so ranged play still has a resource to manage.
         /// </summary>
-        private static bool IsMeleeSkill(Skills.SkillType skill)
+        private static bool IsStaminaFreeSkill(Skills.SkillType skill)
         {
-            return skill == Skills.SkillType.Swords
-                || skill == Skills.SkillType.Knives
-                || skill == Skills.SkillType.Clubs
-                || skill == Skills.SkillType.Polearms
-                || skill == Skills.SkillType.Spears
-                || skill == Skills.SkillType.Axes
-                || skill == Skills.SkillType.Unarmed;
+            return skill != Skills.SkillType.Bows
+                && skill != Skills.SkillType.Crossbows;
         }
 
-        private void ApplyPugilist()
+        /// <summary>
+        /// Baseline empowerment, not a boon: applied for the whole run and re-run on the poll
+        /// tick so freshly crafted or newly equipped gear is covered too (already-snapshotted
+        /// shared blocks are skipped, so re-running is free and cannot stack).
+        /// </summary>
+        internal void ApplyPugilist()
         {
             var inventory = Player.m_localPlayer?.GetInventory();
             if (inventory == null) return;
@@ -436,7 +432,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // Keyed by SharedData (per-prefab), like sharp: a fresh ItemData for the same
                 // weapon after a respawn must not re-snapshot an already-zeroed cost.
                 if (shared == null || _pugilistSnapshots.ContainsKey(shared)) continue;
-                if (!IsMeleeSkill(shared.m_skillType)) continue;
+                if (!IsStaminaFreeSkill(shared.m_skillType)) continue;
 
                 _pugilistSnapshots[shared] = new PugilistSnapshot
                 {
@@ -448,7 +444,7 @@ namespace ICanShowYouTheWorld.RunMode
             }
         }
 
-        private void UnapplyPugilist()
+        internal void UnapplyPugilist()
         {
             foreach (var kvp in _pugilistSnapshots)
             {

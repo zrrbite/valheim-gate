@@ -107,6 +107,11 @@ fast. An **existing config file keeps its own value** — nothing is migrated, s
 a config written before alpha4 still refills every 120s until that line is
 edited or the file is deleted.
 
+Baseline empowerment also zeroes the stamina cost of every hand-swung
+weapon and tool (bows and crossbows keep theirs) — the early-game stamina
+tax reads as tedium rather than difficulty. Costs are snapshotted per weapon
+prefab and restored exactly when the run ends.
+
 Boss max HP is scaled once, per boss instance, the first time Run Mode sees it
 within 60m. It is applied to that instance's ZDO only — never to shared or
 prefab data — and only while a run is active.

@@ -381,6 +381,9 @@ namespace ICanShowYouTheWorld.RunMode
                 RevealBosses(player);
 
                 _worldModifiers.ApplyBaseline(_cfg);
+                // Free melee/tool stamina is baseline empowerment: the early game's stamina tax
+                // is tedium, not difficulty. Re-run on the poll tick for newly crafted gear.
+                _boonEffects.ApplyPugilist();
                 _worldModifiers.ApplyHeat(0f, _cfg);
                 _restorePending = true;
                 _restoreWorldId = _worldId;
@@ -624,6 +627,7 @@ namespace ICanShowYouTheWorld.RunMode
 
                 // PollBosses may have finished the run.
                 if (_active) PollMeasures(pollDt);
+                if (_active) _boonEffects.ApplyPugilist();
             }
 
             if (!_active) return;
@@ -1588,6 +1592,7 @@ namespace ICanShowYouTheWorld.RunMode
             _worldModifiers.ImportOriginals(s.modifierKeys, s.modifierValues);
 
             _worldModifiers.ApplyBaseline(_cfg);
+            _boonEffects.ApplyPugilist();   // baseline empowerment, same as StartRun
             _worldModifiers.ApplyHeat(_heat.Heat, _cfg);
             _restorePending = true;
             _restoreWorldId = _worldId;
@@ -1932,7 +1937,6 @@ namespace ICanShowYouTheWorld.RunMode
         {
             new BoonDefinition { Id = "fleet", Display = "Fleet-footed", IsPassive = true },
             new BoonDefinition { Id = "sharp", Display = "Sharpened",    IsPassive = true },
-            new BoonDefinition { Id = "pugilist", Display = "Pugilist",  IsPassive = true },
             new BoonDefinition { Id = "pack",  Display = "Packleader",   IsPassive = true },
             new BoonDefinition { Id = "mule",  Display = "Packmule",     IsPassive = true },
             new BoonDefinition { Id = "hearty", Display = "Hearty",      IsPassive = true },
