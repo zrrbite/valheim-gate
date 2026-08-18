@@ -1932,6 +1932,7 @@ namespace ICanShowYouTheWorld.RunMode
         {
             new BoonDefinition { Id = "fleet", Display = "Fleet-footed", IsPassive = true },
             new BoonDefinition { Id = "sharp", Display = "Sharpened",    IsPassive = true },
+            new BoonDefinition { Id = "pugilist", Display = "Pugilist",  IsPassive = true },
             new BoonDefinition { Id = "pack",  Display = "Packleader",   IsPassive = true },
             new BoonDefinition { Id = "mule",  Display = "Packmule",     IsPassive = true },
             new BoonDefinition { Id = "hearty", Display = "Hearty",      IsPassive = true },

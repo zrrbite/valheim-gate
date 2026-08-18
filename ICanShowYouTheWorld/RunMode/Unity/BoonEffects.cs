@@ -129,6 +129,11 @@ namespace ICanShowYouTheWorld.RunMode
         private readonly Dictionary<ItemDrop.ItemData.SharedData, HitData.DamageTypes> _sharpSnapshots =
             new Dictionary<ItemDrop.ItemData.SharedData, HitData.DamageTypes>();
 
+        private struct PugilistSnapshot { public float Primary; public float Secondary; }
+
+        private readonly Dictionary<ItemDrop.ItemData.SharedData, PugilistSnapshot> _pugilistSnapshots =
+            new Dictionary<ItemDrop.ItemData.SharedData, PugilistSnapshot>();
+
         /// <summary>Set by a failed Activate() with a boon-specific reason; null means "not ready" is generic enough.</summary>
         public string LastActivationMessage { get; private set; }
 
@@ -150,6 +155,10 @@ namespace ICanShowYouTheWorld.RunMode
 
                 case "sharp":
                     ApplySharp();
+                    break;
+
+                case "pugilist":
+                    ApplyPugilist();
                     break;
 
                 case "pack":
@@ -184,6 +193,10 @@ namespace ICanShowYouTheWorld.RunMode
 
                 case "sharp":
                     UnapplySharp();
+                    break;
+
+                case "pugilist":
+                    UnapplyPugilist();
                     break;
 
                 case "wind":
@@ -391,6 +404,60 @@ namespace ICanShowYouTheWorld.RunMode
                 shared.m_damages = kvp.Value;
             }
             _sharpSnapshots.Clear();
+        }
+
+        // --- pugilist ---
+
+        /// <summary>
+        /// Melee skills only: bows and crossbows keep their stamina cost, so the boon defines a
+        /// playstyle rather than trivialising every weapon. Unarmed counts — it is the namesake.
+        /// </summary>
+        private static bool IsMeleeSkill(Skills.SkillType skill)
+        {
+            return skill == Skills.SkillType.Swords
+                || skill == Skills.SkillType.Knives
+                || skill == Skills.SkillType.Clubs
+                || skill == Skills.SkillType.Polearms
+                || skill == Skills.SkillType.Spears
+                || skill == Skills.SkillType.Axes
+                || skill == Skills.SkillType.Unarmed;
+        }
+
+        private void ApplyPugilist()
+        {
+            var inventory = Player.m_localPlayer?.GetInventory();
+            if (inventory == null) return;
+
+            foreach (var item in inventory.GetEquippedItems())
+            {
+                if (item == null || !item.IsWeapon()) continue;
+
+                var shared = item.m_shared;
+                // Keyed by SharedData (per-prefab), like sharp: a fresh ItemData for the same
+                // weapon after a respawn must not re-snapshot an already-zeroed cost.
+                if (shared == null || _pugilistSnapshots.ContainsKey(shared)) continue;
+                if (!IsMeleeSkill(shared.m_skillType)) continue;
+
+                _pugilistSnapshots[shared] = new PugilistSnapshot
+                {
+                    Primary = shared.m_attack.m_attackStamina,
+                    Secondary = shared.m_secondaryAttack.m_attackStamina
+                };
+                shared.m_attack.m_attackStamina = 0f;
+                shared.m_secondaryAttack.m_attackStamina = 0f;
+            }
+        }
+
+        private void UnapplyPugilist()
+        {
+            foreach (var kvp in _pugilistSnapshots)
+            {
+                var shared = kvp.Key;
+                if (shared == null) continue;
+                shared.m_attack.m_attackStamina = kvp.Value.Primary;
+                shared.m_secondaryAttack.m_attackStamina = kvp.Value.Secondary;
+            }
+            _pugilistSnapshots.Clear();
         }
 
         // --- actives ---

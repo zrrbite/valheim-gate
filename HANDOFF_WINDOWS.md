@@ -411,7 +411,8 @@ a stale non-null static meant the next toggle destroyed instead of spawned,
 desyncing ring state from the flag.
 
 TASK: `git pull` → full `.\Install-Mod.ps1` → popup reads
-**v0.221.12-run.alpha5**. Then: activate the ember boon (Keypad5), confirm
+**v0.221.12-run.alpha6** (alpha6 = alpha5's log fix + the new Pugilist boon:
+melee attacks cost zero stamina; bows/crossbows unaffected). Then: activate the ember boon (Keypad5), confirm
 the ring appears and disappears after ~30s, and confirm the log stays small
 (`(Get-Item Player.log).Length` after a few minutes — expect KB, not MB) and
 contains no "Tag: Tree is not defined." Still outstanding from before:
