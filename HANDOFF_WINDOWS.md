@@ -293,4 +293,100 @@ pending below.**
 - Working tree clean — the `.gitattributes` you added ended the CRLF churn;
   the pull applied with no conflicts and `git status` is empty.
 
-*(gameplay results pending)*
+**GAMEPLAY RESULTS — 2026-08-18 20:33–20:42.** Headline: **abandon works and
+restores modifiers**, timer and autosave still good — but the session
+produced a **28 MB Player.log, 99.9% of it one repeated Unity warning**.
+Root cause traced below. Death and logout were again not exercised.
+
+**Version:** `[ICanShowYouTheWorld] Starting initialization
+(v0.221.12-run.alpha4)`. Config regenerated at 20:33:39 with the full alpha4
+key set — `"runChallengeRefillSeconds": 45.0` confirmed present.
+
+**Every mod line in the session, verbatim and in order:**
+
+```
+[ICanShowYouTheWorld] Starting initialization (v0.221.12-run.alpha4)
+   ... 7 services registered, "Initialization complete!" ...
+08/18/2026 20:33:45: OnCharacterStart                    <- Naked
+08/18/2026 20:33:51: Load world: heatheat (heatheat)
+[ICanShowYouTheWorld] Run Mode world modifier originals imported (6 key(s)).
+[ICanShowYouTheWorld] Run Mode baseline world modifiers applied (resource=3, skill=3, moveStamina=0.5, staminaRegen=1.5).
+[ICanShowYouTheWorld] Run Mode run resumed at 05:10.
+[ICanShowYouTheWorld] Run Mode world modifiers restored (6 key(s)).
+[ICanShowYouTheWorld] Run Mode run abandoned.
+[ICanShowYouTheWorld] Run Mode baseline world modifiers applied (resource=3, skill=3, moveStamina=0.5, staminaRegen=1.5).
+[ICanShowYouTheWorld] Run Mode started (seed=317655781, world=2029997972:heatheat, pre-defeated=0).
+08/18/2026 20:42:34: Game - OnApplicationQuit
+```
+
+**Abandon path — WORKS.** The parked alpha3 run resumed at 05:10, then
+abandoned cleanly: `world modifiers restored (6 key(s))` followed by
+`run abandoned`, and a fresh run started immediately after with its own
+baseline re-applied. This is the first live proof of the restore path.
+
+**Timer and autosave — still correct.** New run 20:34:32 → state file
+written 20:42:26, eight seconds before the 20:42:34 quit;
+`elapsedSeconds` 476.24 against ~474s of wall-clock.
+
+**alpha4 state file gained `activeChallengeBaselines`** and the stat-delta
+quests are populating it:
+
+```json
+"activeChallengeIds":       [ "s-run",   "c-wood", "naked-5" ],
+"activeChallengeProgress":  [ 582.774,   3.0,      0.0       ],
+"activeChallengeBaselines": [ 491.049,  -1.0,     -1.0       ],
+"heldBoonIds": [ "ember", "hearty", "fleet" ],
+"heat": 2.0, "rngSeed": 317655781, "worldId": "2029997972:heatheat"
+```
+
+`c-wood` ticked to 3 — the unverifiable item token counts in live play.
+Heat 2.0 with `runDeathHeatPenalty` 3.0 untouched is consistent with two
+challenge completions and no death.
+
+---
+
+### ⚠ NEW BUG: one million log lines from the ember boon's ring
+
+`Player.log` came out **28,376,202 bytes / 1,049,543 lines**, of which
+**1,048,537 are the single line `Tag: Tree is not defined.`** — 99.9% of the
+file, roughly 2,900 lines per second sustained for six minutes (first
+occurrence just after the run start ~20:34:41, last ~20:40:46). The alpha3
+session's log has **zero** occurrences, so this is newly reachable, not
+pre-existing noise.
+
+Chain, traced through the code (not inferred from the log alone):
+
+```
+ember boon → BoonEffects.ActivateEmber()          (BoonEffects.cs:433)
+  → CheatCommands.ToggleCloakOfFlames()           (CheatCommands.cs:1658)
+    → CheatVisualizer.TogglePbaoeRing(5f)         (CheatCommands.cs:1662)
+      → CircleVisualizer on a ring parented to the player
+        → Update() every frame: Physics.RaycastAll per segment, and
+          go.CompareTag("Tree") on every hit      (CircleVisualizer.cs:135)
+```
+
+Valheim's TagManager defines no `Tree` tag, so Unity emits that warning on
+**every CompareTag call** — segments × hits × frames. Beyond the log volume
+this is a per-frame `RaycastAll` over every segment, so there is a real
+frame-cost question too.
+
+Two things worth your attention, both left for the Mac side to judge:
+
+1. `EmberOnSeconds` is 30, but the ring kept drawing for ~365 seconds, so it
+   outlived its window. Either `ForceCloakOff` did not fire, or it fired and
+   the ring survived it. Note `ForceCloakOff` returns early when
+   `_cloakOnByUs` is false, and the destroy path runs only inside the
+   `CheatCommands.CloakActive` branch.
+2. The `CompareTag("Tree")` is legacy `CircleVisualizer` code, unchanged by
+   alpha4 — Run Mode simply gave it its first live activation, since GM
+   commands are gated during a run and the boon is now the only way in.
+
+**Not tested again (no death, no logout).** There is no player death in this
+log — no `YOU DIED`, no respawn after 20:33:51; the `On death False` line at
+20:40:16 is vanilla and unrelated. The session ended by quitting straight
+from the game, so `Run suspended` was never reached. **No `Boss vigor` line
+appeared** — no boss was fought, so HP scaling and its restore-on-abandon
+are still unverified.
+
+`ICSYTW_run_Draupnir.json` remains untouched (17/08), so world
+`hjklgggggggg` still carries its run rates.
