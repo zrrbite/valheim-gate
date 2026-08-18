@@ -238,6 +238,105 @@ static class ChallengeEngineTests
         // Fresh slots carry no baseline: that is the caller's job, and NaN is how it knows.
         Check.That(float.IsNaN(jump.Baseline), "a freshly dealt slot has no baseline");
         Check.That(float.IsNaN(new ActiveChallenge().Baseline), "Baseline defaults to NaN");
+
+        SlotMeasureTests();
+        BaselineLifecycleTests();
+    }
+
+    /// <summary>
+    /// ReportSlotMeasure addresses ONE slot. Param-scoping isn't fine enough for StatDelta: two
+    /// slots can measure the same stat from different baselines, and a param-scoped report would
+    /// hand both whichever delta was computed last.
+    /// </summary>
+    static void SlotMeasureTests()
+    {
+        // Two actives, same kind AND same param, standing in for the same stat measured from
+        // different zero points.
+        var pool = new List<ChallengeDefinition>
+        {
+            new ChallengeDefinition { Id="s-a", Kind=ChallengeKind.StatDelta, Param="TreeChops", Target=10, HeatReward=1, Display="s-a" },
+            new ChallengeDefinition { Id="s-b", Kind=ChallengeKind.StatDelta, Param="TreeChops", Target=10, HeatReward=1, Display="s-b" },
+        };
+
+        var e = new ChallengeEngine(pool, new Random(53), 120f);
+        e.Tick(0.1f);
+        Check.That(e.Active.Count == 2, "both same-param slots are active");
+
+        // Slot 0 was dealt at baseline 100, slot 1 at baseline 140; the stat now reads 150.
+        e.Active[0].Baseline = 100f;
+        e.Active[1].Baseline = 140f;
+
+        e.ReportSlotMeasure(0, 150f - e.Active[0].Baseline); // 50
+        e.ReportSlotMeasure(1, 150f - e.Active[1].Baseline); // 10
+
+        Check.That(e.Active[0].Progress == 50f, "slot 0 gets its own delta");
+        Check.That(e.Active[1].Progress == 10f, "slot 1 is not credited with slot 0's delta");
+
+        // Max-semantics, per slot.
+        e.ReportSlotMeasure(1, 4f);
+        Check.That(e.Active[1].Progress == 10f, "slot progress never regresses");
+        e.ReportSlotMeasure(1, 12f);
+        Check.That(e.Active[1].Progress == 12f, "a higher slot report still lands");
+        Check.That(e.Active[0].Progress == 50f, "reporting to slot 1 never touches slot 0");
+
+        // Bounds-safe.
+        e.ReportSlotMeasure(-1, 999f);
+        e.ReportSlotMeasure(2, 999f);
+        e.ReportSlotMeasure(int.MaxValue, 999f);
+        Check.That(e.Active[0].Progress == 50f && e.Active[1].Progress == 12f,
+            "out-of-range slot reports are ignored");
+
+        // The contrast that motivates the method: a param-scoped report hits BOTH slots.
+        e.ReportMeasure(ChallengeKind.StatDelta, "TreeChops", 60f);
+        Check.That(e.Active[0].Progress == 60f && e.Active[1].Progress == 60f,
+            "a param-scoped report leaks across same-param slots, which is why slot reporting exists");
+    }
+
+    /// <summary>
+    /// A baseline belongs to the SLOT, not the definition: it is taken when the slot is dealt, and
+    /// a slot that is replaced starts again from nothing.
+    /// </summary>
+    static void BaselineLifecycleTests()
+    {
+        var pool = new List<ChallengeDefinition>
+        {
+            new ChallengeDefinition { Id="s-a", Kind=ChallengeKind.StatDelta, Param="TreeChops", Target=10, HeatReward=1, Display="s-a" },
+            new ChallengeDefinition { Id="s-b", Kind=ChallengeKind.StatDelta, Param="Jumps",     Target=10, HeatReward=1, Display="s-b" },
+            new ChallengeDefinition { Id="s-c", Kind=ChallengeKind.StatDelta, Param="Mines",     Target=10, HeatReward=1, Display="s-c" },
+            new ChallengeDefinition { Id="s-d", Kind=ChallengeKind.StatDelta, Param="Jumps",     Target=10, HeatReward=1, Display="s-d" },
+        };
+
+        // Rerolling a slot clears its baseline, so the caller re-takes one at the NEW deal time.
+        // Keeping the old slot's zero point would credit the replacement with everything the
+        // player did while the discarded challenge was up.
+        var e = new ChallengeEngine(pool, new Random(59), 120f);
+        e.Tick(0.1f);
+        e.Active[0].Baseline = 500f;
+        e.Active[0].Progress = 7f;
+
+        Check.That(e.Reroll(0), "the slot rerolls");
+        Check.That(float.IsNaN(e.Active[0].Baseline), "a rerolled slot has no baseline");
+        Check.That(e.Active[0].Progress == 0f, "a rerolled slot starts from zero progress");
+
+        // A slot dealt LATER in a run is likewise unbaselined at the moment it appears, so the
+        // caller baselines it at deal time and not from run start. Without this, a mid-run deal
+        // would inherit a zero point from the beginning of the run and arrive part-complete.
+        var later = new ChallengeEngine(pool, new Random(61), 120f);
+        later.Tick(0.1f);
+        foreach (var a in later.Active) a.Baseline = 10f; // as if baselined at run start
+
+        var openSlot = later.Active[0];
+        openSlot.Progress = openSlot.Def.Target;
+        later.Tick(0.1f);
+        Check.That(later.Active.Count == 2, "the completed slot vacates");
+
+        later.Tick(200f);
+        Check.That(later.Active.Count == 3, "a replacement is dealt after the cooldown");
+
+        Check.That(later.Active.Count(a => float.IsNaN(a.Baseline)) == 1,
+            "exactly the newly dealt slot is unbaselined — a mid-run deal takes no zero point from run start");
+        Check.That(later.Active.Count(a => a.Baseline == 10f) == 2,
+            "the slots that survived keep the baseline they were dealt with");
     }
 
     /// <summary>

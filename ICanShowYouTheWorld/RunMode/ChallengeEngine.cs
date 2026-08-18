@@ -181,6 +181,26 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
+        /// Reports progress to ONE slot, with the same max-semantics as
+        /// <see cref="ReportMeasure"/>. Out-of-range indices are ignored.
+        ///
+        /// Exists because param-scoping isn't fine enough for
+        /// <see cref="ChallengeKind.StatDelta"/>. Two slots can measure the same stat with
+        /// DIFFERENT baselines — the pool holds one definition per stat, but a resumed run can
+        /// restore a half-done "chop trees" alongside a freshly dealt one, and the caller computes
+        /// a separate delta for each. A param-scoped report would hand both slots whichever delta
+        /// was computed last, silently crediting the newer slot with progress the older one earned.
+        /// The caller knows which slot each number belongs to, so it says so.
+        /// </summary>
+        public void ReportSlotMeasure(int slotIndex, float value)
+        {
+            if (slotIndex < 0 || slotIndex >= active.Count) return;
+
+            var a = active[slotIndex];
+            a.Progress = Math.Max(a.Progress, value);
+        }
+
+        /// <summary>
         /// Replaces the active set with saved id/progress pairs, resolved against this engine's
         /// own pool. Unknown ids are ignored (so a pool that excluded, say, kill challenges will
         /// not resurrect them), duplicates are dropped, and no more than 3 slots are filled.

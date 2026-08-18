@@ -391,6 +391,15 @@ namespace ICanShowYouTheWorld.RunMode
                 _resumeAttempted = true;
                 _pendingResume = null;
 
+                // Deal the opening slots BEFORE the first save, rather than waiting for the first
+                // Tick. The save is what a crash or a hard quit in the opening seconds resumes
+                // from, and an empty active list there resumes as an ordinary run — RestoreActive
+                // retires the opening chain whether or not it restored anything, so those three
+                // scripted challenges would be gone for good. Dealing them here puts them in the
+                // very first write. A zero dt only runs the top-up; nothing is timed yet.
+                _challenges.Tick(0f);
+                SyncStatDeltaBaselines();
+
                 SaveState();
 
                 Debug.Log($"[ICanShowYouTheWorld] Run Mode started (seed={_rngSeed}, world={_worldId}, " +
@@ -810,19 +819,25 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         private void PollStatDeltas()
         {
-            foreach (var a in _challenges.Active)
+            var active = _challenges.Active;
+
+            for (int i = 0; i < active.Count; i++)
             {
+                var a = active[i];
                 if (a.Def.Kind != ChallengeKind.StatDelta || float.IsNaN(a.Baseline)) continue;
 
                 float? current = ReadPlayerStat(a.Def.Param);
                 if (current == null) continue;
 
-                // Max-semantics in ReportMeasure already stops a value from going backwards; the
-                // floor here is for the pathological case of a lifetime stat RESETTING below its
-                // own baseline, which would otherwise report a negative and read as "no progress"
-                // forever without ever re-baselining.
-                _challenges.ReportMeasure(
-                    ChallengeKind.StatDelta, a.Def.Param, Mathf.Max(0f, current.Value - a.Baseline));
+                // Reported to THIS slot, not by param: each stat-delta slot has its own baseline,
+                // so the same stat can be worth different progress in different slots (a resumed
+                // half-done one beside a freshly dealt one). A param-scoped report would give both
+                // whichever delta was computed last.
+                //
+                // Max-semantics stops a value going backwards; the floor here is for the
+                // pathological case of a lifetime stat RESETTING below its own baseline, which
+                // would otherwise report a negative and read as "no progress" forever.
+                _challenges.ReportSlotMeasure(i, Mathf.Max(0f, current.Value - a.Baseline));
             }
         }
 
@@ -1882,21 +1897,35 @@ namespace ICanShowYouTheWorld.RunMode
             new ChallengeDefinition { Id = "naked-5",     Tier = 0, Kind = ChallengeKind.NoArmorMinutes, Param = "", Target = 5, HeatReward = 3, Display = "Wear no armor for 5 minutes" },
 
             // Stat-delta quests: small, fast, and measured from the value the stat held when the
-            // slot was dealt (see StatDeltaBaselines). Param is a PlayerStatType member NAME —
+            // slot was dealt (see SyncStatDeltaBaselines). Param is a PlayerStatType member NAME —
             // every one below was checked against the enum in assembly_valheim's IL, because a
             // typo here fails silently: Enum.TryParse just declines and the challenge sits at 0.
             //
-            // Deliberately MineHits (one per successful mining swing) rather than Mines, which the
-            // IL shows is only incremented when a whole MineRock/MineRock5 deposit is finished off.
-            // 25 finished deposits is an expedition, not the tempo quest this pool wants.
-            new ChallengeDefinition { Id = "s-chop",   Tier = 0, Kind = ChallengeKind.StatDelta, Param = "TreeChops",        Target = 15,  HeatReward = 1, Display = "Chop 15 trees" },
+            // The UNITS matter as much as the names, and three of these were wrong before the IL
+            // was read properly. What Player.UpdateStats and the destructibles actually do:
+            //
+            //  - Tree         one per tree FELLED (incremented beside ZNetView.Destroy).
+            //                 TreeChops, which this used to use, is one per axe SWING — "chop 15
+            //                 trees" was really "hit something with an axe 15 times", clearable
+            //                 on a single trunk.
+            //  - MineHits     one per successful mining swing. Deliberately not Mines, which the
+            //                 IL shows only fires when a whole MineRock/MineRock5 deposit is
+            //                 finished off — 25 finished deposits is an expedition, not a tempo
+            //                 quest.
+            //  - DistanceRun  actual metres, and only while on the ground. So a metre target is
+            //                 honest here.
+            //  - DistanceSail a flat +1 per UpdateStats tick while on a ship, regardless of speed
+            //                 or distance. The tick is 0.5s, so this counts half-seconds, not
+            //                 metres: 360 is three minutes at sea, and the old "Sail 600m" was
+            //                 really five minutes mislabelled.
+            new ChallengeDefinition { Id = "s-chop",   Tier = 0, Kind = ChallengeKind.StatDelta, Param = "Tree",             Target = 4,   HeatReward = 1, Display = "Fell 4 trees" },
             new ChallengeDefinition { Id = "s-jump",   Tier = 0, Kind = ChallengeKind.StatDelta, Param = "Jumps",            Target = 30,  HeatReward = 1, Display = "Jump 30 times" },
             new ChallengeDefinition { Id = "s-pickup", Tier = 0, Kind = ChallengeKind.StatDelta, Param = "ItemsPickedUp",    Target = 40,  HeatReward = 1, Display = "Pick up 40 items" },
             new ChallengeDefinition { Id = "s-run",    Tier = 0, Kind = ChallengeKind.StatDelta, Param = "DistanceRun",      Target = 800, HeatReward = 1, Display = "Run 800m" },
             new ChallengeDefinition { Id = "s-mine",   Tier = 1, Kind = ChallengeKind.StatDelta, Param = "MineHits",         Target = 75,  HeatReward = 2, Display = "Land 75 mining hits" },
             new ChallengeDefinition { Id = "s-craft",  Tier = 1, Kind = ChallengeKind.StatDelta, Param = "CraftsOrUpgrades", Target = 5,   HeatReward = 1, Display = "Craft or upgrade 5 times" },
             new ChallengeDefinition { Id = "s-doors",  Tier = 1, Kind = ChallengeKind.StatDelta, Param = "DoorsOpened",      Target = 15,  HeatReward = 1, Display = "Open 15 doors" },
-            new ChallengeDefinition { Id = "s-sail",   Tier = 2, Kind = ChallengeKind.StatDelta, Param = "DistanceSail",     Target = 600, HeatReward = 2, Display = "Sail 600m" },
+            new ChallengeDefinition { Id = "s-sail",   Tier = 2, Kind = ChallengeKind.StatDelta, Param = "DistanceSail",     Target = 360, HeatReward = 2, Display = "Sail for 3 minutes" },
         };
 
         internal static List<BoonDefinition> DefaultBoons() => new List<BoonDefinition>
