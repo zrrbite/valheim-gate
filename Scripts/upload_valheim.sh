@@ -16,6 +16,10 @@ if ! check_file_exists "$PATCHED_ASSEMBLY"; then
     exit 1
 fi
 
+# Both injections must be present — the patcher's exit code alone has already
+# let a hookless assembly through once.
+check_injections "$PATCHED_ASSEMBLY" || exit 1
+
 # Show file info
 ASSEMBLY_SIZE=$(du -h "$PATCHED_ASSEMBLY" | cut -f1)
 print_info "File: assembly_valheim.dll ($ASSEMBLY_SIZE)"

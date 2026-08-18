@@ -369,7 +369,15 @@ namespace ICanShowYouTheWorld.RunMode
                     GUILayout.Label($"{a.Def.Display}  {a.Progress:0}/{a.Def.Target:0}", _smallStyle);
                     GUI.contentColor = Color.white;
                     GUILayout.FlexibleSpace();
-                    if (!frozen && GUILayout.Button("reroll", GUILayout.Width(55f))) run.RerollChallenge(i);
+
+                    // An above-tier leftover (only possible from a save older than the tier
+                    // ladder) is unreachable content, so clearing it costs nothing — and must
+                    // stay clickable at 0 heat, or the slot is dead for the rest of the run.
+                    bool free = challenges.IsAboveTier(i);
+                    string label = free ? "reroll (free)" : "reroll";
+                    float width = free ? 90f : 55f;
+
+                    if (!frozen && GUILayout.Button(label, GUILayout.Width(width))) run.RerollChallenge(i);
                     GUILayout.EndHorizontal();
                 }
 

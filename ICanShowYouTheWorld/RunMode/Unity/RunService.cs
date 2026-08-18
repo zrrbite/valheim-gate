@@ -36,12 +36,10 @@ namespace ICanShowYouTheWorld.RunMode
 
         private const float BossPollIntervalSeconds = 1f;
         private const float AutosaveIntervalSeconds = 5f;
-        private const float KillHookGraceSeconds = 60f;
         private const int ConsecutiveFailuresBeforeNotice = 5;
 
         private const string FrozenNotice = "Run paused — world not loaded.";
         private const string WrongWorldNotice = "Run paused — this is not the world the run started in.";
-        private const string KillHookNotice = "Kill hook never fired — kill challenges will not progress.";
         private const string AbandonWrongWorldNotice = "Load the run's world to abandon it.";
         private const string CorruptSaveNotice =
             "Run save could not be read — file kept as .corrupt; run cannot be resumed.";
@@ -77,8 +75,6 @@ namespace ICanShowYouTheWorld.RunMode
         private float _pollTimer;
         private float _saveTimer;
         private float _noArmorSeconds;
-        private float _graceElapsed;
-        private bool _killHookWarned;
         private bool _frozen;
 
         /// <summary>
@@ -166,11 +162,13 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
-        /// The grace window runs from StartRun (or resume), not from mod init: the injected
-        /// death hook can only prove itself once something dies, so a fresh run assumes it
-        /// works and finds out within the first minute.
+        /// Whether kill challenges can make progress. Answered by reading Character.OnDeath's IL
+        /// (once, cached) rather than by waiting to see whether anything dies: the old grace clock
+        /// declared the hook dead after 60 quiet seconds, so a peaceful opening minute produced a
+        /// false warning on a perfectly working install. HookInstalled is still checked first —
+        /// if the hook has already fired, no probe is needed.
         /// </summary>
-        public bool KillHookAvailable => GameEvents.HookInstalled || _graceElapsed < KillHookGraceSeconds;
+        public bool KillHookAvailable => GameEvents.HookInstalled || GameEvents.ProbeHookInstalled();
 
         public string LobbySummary()
         {
@@ -250,18 +248,21 @@ namespace ICanShowYouTheWorld.RunMode
 
                 _loggedFailures.Clear();
                 _consecutiveTickFailures = 0;
-                _killHookWarned = false;
                 _frozen = false;
                 HudNotice = null;
 
                 _worldId = WorldIdentifier();
                 _finalBossKey = finalBossKey;
-                _graceElapsed = 0f;
 
                 _rngSeed = Environment.TickCount;
                 _rng = new Random(_rngSeed);
 
                 BuildEngines(BuildChallengePool());
+
+                // Gate the pool to this world's progression before the first Tick deals anything.
+                // preDefeated is the same snapshot _accountedBossKeys is seeded from, so the
+                // ceiling and the splits can never disagree about what was already dead.
+                _challenges.MaxTier = MaxTierForDefeatedCount(preDefeated.Count);
 
                 _heat = new HeatModel();
                 _elapsed = 0f;
@@ -341,7 +342,15 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 if (!_active || _frozen || _challenges == null) return;
 
-                if (_heat.Heat < _cfg.RunRerollHeatCost)
+                // An above-tier challenge is a dead slot: content the world hasn't unlocked, so
+                // it can't be completed, and at 0 heat the cost check below would trap the player
+                // with it forever. Clearing it is free, and can't be farmed into cheap rerolls:
+                // every draw and reroll is tier-filtered, so a fresh one is never above tier.
+                // Reaching this at all takes a challenge dealt before the current gating applied —
+                // a save predating the ladder, or a world whose progression was rolled back.
+                bool free = _challenges.IsAboveTier(slot);
+
+                if (!free && _heat.Heat < _cfg.RunRerollHeatCost)
                 {
                     HudNotice = $"Not enough heat to reroll (need {_cfg.RunRerollHeatCost:0.#}).";
                     return;
@@ -351,8 +360,12 @@ namespace ICanShowYouTheWorld.RunMode
                 // or an exhausted pool should not cost heat.
                 if (!_challenges.Reroll(slot)) return;
 
-                _heat.Remove(_cfg.RunRerollHeatCost);
-                _worldModifiers.ApplyHeat(_heat.Heat, _cfg);
+                if (!free)
+                {
+                    _heat.Remove(_cfg.RunRerollHeatCost);
+                    _worldModifiers.ApplyHeat(_heat.Heat, _cfg);
+                }
+
                 SaveState();
             }
             catch (Exception ex)
@@ -423,12 +436,10 @@ namespace ICanShowYouTheWorld.RunMode
             DetectRespawnAndReapplyPassives();
 
             _elapsed += dt;
-            _graceElapsed += dt;
             _challenges?.Tick(dt);
             _boons?.Tick(dt);
             _boonEffects.Tick(dt);
 
-            WarnIfKillHookDead();
             HandleBoonOfferInput();
             HandleBoonActivationInput();
 
@@ -467,21 +478,6 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 HudNotice = null;
             }
-        }
-
-        /// <summary>
-        /// Once the grace window closes without the injected hook ever firing, say so.
-        /// Kill challenges already in the active set are left alone; re-drawing the pool
-        /// mid-run is deliberately deferred.
-        /// </summary>
-        private void WarnIfKillHookDead()
-        {
-            if (_killHookWarned || KillHookAvailable) return;
-            if (_challenges == null || !_challenges.Active.Any(a => a.Def.Kind == ChallengeKind.KillPrefab)) return;
-
-            _killHookWarned = true;
-            HudNotice = KillHookNotice;
-            Debug.LogWarning("[ICanShowYouTheWorld] " + KillHookNotice);
         }
 
         private void HandleBoonOfferInput()
@@ -565,6 +561,7 @@ namespace ICanShowYouTheWorld.RunMode
             if (zone == null) return;
 
             bool finished = false;
+            bool progressed = false;
 
             foreach (var boss in Bosses)
             {
@@ -572,6 +569,7 @@ namespace ICanShowYouTheWorld.RunMode
                 if (!SafeGetGlobalKey(zone, boss.defeatKey)) continue;
 
                 _accountedBossKeys.Add(boss.defeatKey);
+                progressed = true;
                 _splitLabels.Add(boss.display);
                 _splitTimes.Add(_elapsed);
 
@@ -582,6 +580,10 @@ namespace ICanShowYouTheWorld.RunMode
 
                 if (boss.defeatKey == _finalBossKey) finished = true;
             }
+
+            // A boss just fell — the next biome's challenges become drawable from here on.
+            // Existing actives are untouched; only future draws and rerolls see the new ceiling.
+            if (progressed) RefreshMaxTier();
 
             if (finished) FinishRun();
         }
@@ -606,6 +608,11 @@ namespace ICanShowYouTheWorld.RunMode
                 {
                     _challenges.ReportMeasure(ChallengeKind.CollectItem, itemName, inventory.CountItems(itemName));
                 }
+
+                if (_challenges.Active.Any(a => a.Def.Kind == ChallengeKind.CollectFood))
+                {
+                    _challenges.ReportMeasure(ChallengeKind.CollectFood, string.Empty, CountFood(inventory));
+                }
             }
 
             // A newly drawn no-armor challenge must not inherit a timer the player banked
@@ -625,6 +632,29 @@ namespace ICanShowYouTheWorld.RunMode
             bool noArmor = player.GetBodyArmor() <= 0f;
             _noArmorSeconds = noArmor ? _noArmorSeconds + pollDt : 0f;
             _challenges.ReportMeasure(ChallengeKind.NoArmorMinutes, string.Empty, _noArmorSeconds / 60f);
+        }
+
+        /// <summary>
+        /// Total stack count of every food item carried. "Food" is m_shared.m_food > 0 — the
+        /// health an item restores when eaten, which is what separates real food from mead and
+        /// other consumables that heal nothing. Counts stacks, not slots, so 2x10 Cooked Meat is
+        /// 20 and not 2.
+        ///
+        /// Only called when a CollectFood challenge is actually active: this walks the whole
+        /// inventory, and it runs on the poll timer.
+        /// </summary>
+        private static float CountFood(Inventory inventory)
+        {
+            var items = inventory.GetAllItems();
+            if (items == null) return 0f;
+
+            int total = 0;
+            foreach (var item in items)
+            {
+                if (item?.m_shared == null || item.m_shared.m_food <= 0f) continue;
+                total += item.m_stack;
+            }
+            return total;
         }
 
         // --- Lifecycle helpers ---
@@ -671,9 +701,34 @@ namespace ICanShowYouTheWorld.RunMode
             _accountedBossKeys.Clear();
             _worldId = null;
             _frozen = false;
-            _killHookWarned = false;
             _trackedPlayer = null;
             HudNotice = null;
+        }
+
+        /// <summary>
+        /// The challenge tier ceiling for a world with <paramref name="defeated"/> of the five run
+        /// bosses already down: one tier of headroom above what's cleared. A fresh world therefore
+        /// offers Meadows and Black Forest content, and each boss kill opens the next biome.
+        /// </summary>
+        private static int MaxTierForDefeatedCount(int defeated) => defeated + 1;
+
+        /// <summary>
+        /// Re-reads world progression and re-gates the challenge pool. Counts ALL five defeat keys
+        /// that are true, pre-existing kills included: the ladder tracks what the WORLD has opened
+        /// up, not what this run has personally killed.
+        ///
+        /// A missing ZoneSystem leaves the ceiling where it is rather than tightening it — a
+        /// transient null must not suddenly make already-dealt challenges above-tier.
+        /// </summary>
+        private void RefreshMaxTier()
+        {
+            if (_challenges == null) return;
+
+            var zone = ZoneSystem.instance;
+            if (zone == null) return;
+
+            _challenges.MaxTier = MaxTierForDefeatedCount(
+                Bosses.Count(b => SafeGetGlobalKey(zone, b.defeatKey)));
         }
 
         private void BuildEngines(List<ChallengeDefinition> pool)
@@ -687,10 +742,10 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
-        /// The full v1 pool. Because the grace window is reset by StartRun and resume, this is
-        /// optimistic in practice — the filtered branch below only bites if the grace window is
-        /// ever configured away. A run that turns out to have a dead hook gets a HUD notice from
-        /// <see cref="WarnIfKillHookDead"/> instead; the active set is not re-drawn mid-run.
+        /// The full v1 pool, minus kill challenges when the death hook isn't installed. The
+        /// probe behind KillHookAvailable reads the game's IL, so the answer is known for certain
+        /// here at StartRun/resume — this is the ONE place the player is told, and there is no
+        /// mid-run re-check to contradict it.
         /// </summary>
         private List<ChallengeDefinition> BuildChallengePool()
         {
@@ -955,6 +1010,26 @@ namespace ICanShowYouTheWorld.RunMode
             string world = WorldIdentifier();
             if (world == null) return; // World still coming up; try again next tick.
 
+            // ZoneSystem and the player must be up too, not just ZNet. This method re-runs every
+            // tick once _pendingResume is set, so it bypasses the checks in TryResume that only
+            // guard FIRST entry — and WorldIdentifier() is ZNet-driven, so it can go non-null a
+            // tick or more before either of these exists. Both halves of the wait are load-bearing;
+            // resuming early breaks a different thing each way, and neither self-heals:
+            //
+            //  - No ZoneSystem: RefreshMaxTier has no global keys to read, so it no-ops and MaxTier
+            //    stays at int.MaxValue — tier gating silently off for the whole resumed run.
+            //    Nothing corrects it later, because _accountedBossKeys is seeded from the save, so
+            //    already-dead bosses never make PollBosses report progress.
+            //
+            //  - No player: RestoreFrom's ReapplyPassiveBoonEffects finds none (the Apply* methods
+            //    bail on a null Player.m_localPlayer), so held passives are never applied. The
+            //    respawn detector won't rescue them either — _trackedPlayer is set to null here, so
+            //    when the real player appears DetectRespawnAndReapplyPassives reads
+            //    isRespawn = !ReferenceEquals(null, null) = false and reapplies nothing.
+            //
+            // Just keep waiting — this is a per-tick retry already, and matches StartRun's guard.
+            if (ZoneSystem.instance == null || Player.m_localPlayer == null) return;
+
             if (!string.IsNullOrEmpty(state.worldId) && state.worldId != world)
             {
                 // Another world's run. Leave the file alone — the player may load that world later.
@@ -1004,18 +1079,21 @@ namespace ICanShowYouTheWorld.RunMode
         {
             _loggedFailures.Clear();
             _consecutiveTickFailures = 0;
-            _killHookWarned = false;
             _frozen = false;
             HudNotice = null;
 
             _worldId = string.IsNullOrEmpty(s.worldId) ? world : s.worldId;
             _finalBossKey = ResolveFinalBossKey();
-            _graceElapsed = 0f;
 
             _rngSeed = s.rngSeed;
             _rng = new Random(_rngSeed);
 
             BuildEngines(BuildChallengePool());
+
+            // Read from the live world, not from s.defeatedBossKeys: that saved set is the
+            // run's split bookkeeping (and may hold keys outside the boss table), whereas the
+            // ceiling is a property of the world as it stands right now.
+            RefreshMaxTier();
 
             _heat = new HeatModel();
             _heat.Add(s.heat);
@@ -1271,18 +1349,24 @@ namespace ICanShowYouTheWorld.RunMode
 
         // --- v1 content pools (config-driven pools are v2) ---
 
+        /// <summary>
+        /// The v1 challenge pool. Tier is world-progression gating (0 Meadows, 1 Black Forest,
+        /// 2 Swamp, 3 Mountain, 4 Plains) — see <see cref="MaxTierForDefeatedCount"/>. Without it
+        /// "Kill 8 Draugr" could be dealt before Eikthyr is down: unreachable for hours, and with
+        /// the reroll heat cost a 0-heat player couldn't clear it either, so the slot just died.
+        /// </summary>
         internal static List<ChallengeDefinition> DefaultPool() => new List<ChallengeDefinition>
         {
-            new ChallengeDefinition { Id = "k-greydwarf", Kind = ChallengeKind.KillPrefab, Param = "Greydwarf", Target = 10, HeatReward = 2, Display = "Kill 10 Greydwarves" },
-            new ChallengeDefinition { Id = "k-skeleton",  Kind = ChallengeKind.KillPrefab, Param = "Skeleton",  Target = 10, HeatReward = 2, Display = "Kill 10 Skeletons" },
-            new ChallengeDefinition { Id = "k-troll",     Kind = ChallengeKind.KillPrefab, Param = "Troll",     Target = 1,  HeatReward = 3, Display = "Slay a Troll" },
-            new ChallengeDefinition { Id = "k-draugr",    Kind = ChallengeKind.KillPrefab, Param = "Draugr",    Target = 8,  HeatReward = 3, Display = "Kill 8 Draugr" },
-            new ChallengeDefinition { Id = "alt-150",     Kind = ChallengeKind.ReachAltitude, Param = "", Target = 150, HeatReward = 2, Display = "Climb to 150m altitude" },
-            new ChallengeDefinition { Id = "alt-90",      Kind = ChallengeKind.ReachAltitude, Param = "", Target = 90,  HeatReward = 1, Display = "Climb to 90m altitude" },
-            new ChallengeDefinition { Id = "c-wood",      Kind = ChallengeKind.CollectItem, Param = "$item_wood",  Target = 100, HeatReward = 1, Display = "Hold 100 Wood" },
-            new ChallengeDefinition { Id = "c-stone",     Kind = ChallengeKind.CollectItem, Param = "$item_stone", Target = 100, HeatReward = 1, Display = "Hold 100 Stone" },
-            new ChallengeDefinition { Id = "c-mushroom",  Kind = ChallengeKind.CollectItem, Param = "$item_mushroomcommon", Target = 20, HeatReward = 1, Display = "Hold 20 Mushrooms" },
-            new ChallengeDefinition { Id = "naked-5",     Kind = ChallengeKind.NoArmorMinutes, Param = "", Target = 5, HeatReward = 3, Display = "Wear no armor for 5 minutes" },
+            new ChallengeDefinition { Id = "k-greydwarf", Tier = 1, Kind = ChallengeKind.KillPrefab, Param = "Greydwarf", Target = 10, HeatReward = 2, Display = "Kill 10 Greydwarves" },
+            new ChallengeDefinition { Id = "k-skeleton",  Tier = 1, Kind = ChallengeKind.KillPrefab, Param = "Skeleton",  Target = 10, HeatReward = 2, Display = "Kill 10 Skeletons" },
+            new ChallengeDefinition { Id = "k-troll",     Tier = 1, Kind = ChallengeKind.KillPrefab, Param = "Troll",     Target = 1,  HeatReward = 3, Display = "Slay a Troll" },
+            new ChallengeDefinition { Id = "k-draugr",    Tier = 2, Kind = ChallengeKind.KillPrefab, Param = "Draugr",    Target = 8,  HeatReward = 3, Display = "Kill 8 Draugr" },
+            new ChallengeDefinition { Id = "alt-150",     Tier = 3, Kind = ChallengeKind.ReachAltitude, Param = "", Target = 150, HeatReward = 2, Display = "Climb to 150m altitude" },
+            new ChallengeDefinition { Id = "alt-90",      Tier = 1, Kind = ChallengeKind.ReachAltitude, Param = "", Target = 90,  HeatReward = 1, Display = "Climb to 90m altitude" },
+            new ChallengeDefinition { Id = "c-wood",      Tier = 0, Kind = ChallengeKind.CollectItem, Param = "$item_wood",  Target = 100, HeatReward = 1, Display = "Hold 100 Wood" },
+            new ChallengeDefinition { Id = "c-stone",     Tier = 0, Kind = ChallengeKind.CollectItem, Param = "$item_stone", Target = 100, HeatReward = 1, Display = "Hold 100 Stone" },
+            new ChallengeDefinition { Id = "c-food",      Tier = 0, Kind = ChallengeKind.CollectFood, Param = "", Target = 20, HeatReward = 1, Display = "Hold 20 food items" },
+            new ChallengeDefinition { Id = "naked-5",     Tier = 0, Kind = ChallengeKind.NoArmorMinutes, Param = "", Target = 5, HeatReward = 3, Display = "Wear no armor for 5 minutes" },
         };
 
         internal static List<BoonDefinition> DefaultBoons() => new List<BoonDefinition>

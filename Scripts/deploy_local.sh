@@ -81,6 +81,10 @@ if [ "$INSTALLED_VER" != "$PATCHED_VER" ] && [ "$1" != "--force" ]; then
 fi
 print_success "Version check: install $INSTALLED_VER == patched $PATCHED_VER"
 
+# Right version is not the same as right contents — refuse to deploy an
+# assembly whose injections did not land.
+check_injections "$PATCHED_ASSEMBLY" || exit 1
+
 cp "$PATCHED_ASSEMBLY" "$MANAGED/assembly_valheim.dll"
 print_success "Deployed patched assembly_valheim.dll"
 

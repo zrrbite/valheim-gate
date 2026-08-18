@@ -63,3 +63,34 @@ check_dir_exists() {
     fi
     return 0
 }
+
+# Verify a patched assembly actually carries BOTH injections before it ships.
+#
+# The patcher's exit code is not proof: a stale patcher/ folder happily injects
+# the entry point and silently omits the death hook, producing an assembly that
+# loads the mod but never fires kill events — Run Mode's kill challenges are
+# then dead, with only a subtle in-game notice to say so. Both names appear in
+# the assembly's metadata string heap, so a plain string scan settles it.
+#
+# Checked separately, because the two failure modes need different advice:
+#   NotACheater   — the entry point injected into FejdStartup.OnCredits()
+#   CharacterDied — the Run Mode death hook injected into Character.OnDeath()
+check_injections() {
+    local dll="$1"
+
+    if ! strings -a "$dll" | grep -q 'NotACheater'; then
+        print_error "Patched assembly is missing the mod entry point: $dll"
+        print_info "Re-run the patch step — this assembly will not load the mod at all."
+        return 1
+    fi
+
+    if ! strings -a "$dll" | grep -q 'CharacterDied'; then
+        print_error "Patched assembly is missing the Character.OnDeath hook: $dll"
+        print_info "Your patcher build is stale — rebuild the Patcher and re-run the patch step."
+        print_info "Shipping this would leave Run Mode's kill challenges permanently at 0."
+        return 1
+    fi
+
+    print_success "Verified both injections present (entry point + death hook)"
+    return 0
+}
