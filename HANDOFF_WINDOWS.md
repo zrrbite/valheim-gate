@@ -411,12 +411,33 @@ a stale non-null static meant the next toggle destroyed instead of spawned,
 desyncing ring state from the flag.
 
 TASK: `git pull` → full `.\Install-Mod.ps1` → popup reads
-**v0.221.12-run.alpha7** (alpha6 = alpha5's log fix + the new Pugilist boon:
+**v0.221.12-run.alpha8** (alpha6 = alpha5's log fix + the new Pugilist boon:
 melee attacks cost zero stamina; bows/crossbows unaffected). Then: activate the ember boon (Keypad5), confirm
 the ring appears and disappears after ~30s, and confirm the log stays small
 (`(Get-Item Player.log).Length` after a few minutes — expect KB, not MB) and
 contains no "Tag: Tree is not defined." Still outstanding from before:
 death mid-run (no suspend/resume lines) and logout suspend. Append RESULTS.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
+---
+
+## 2026-08-19 — TASK: alpha8 (pace + quests + ability bar)
+
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha8**.
+Changes from Martin's alpha7 play-test: collect/kill targets cut roughly in
+half (Hold 25 Wood, 10 food, Run 400m, Kill 6 Greydwarves...); ~17 new
+quests including **composite multi-objective quests** with per-objective
+text ("First Blood: kill 1 Boar / gather 5 food"); biome kill contracts;
+and an **ability bar** under the timer showing usable actives with their
+key, green when ready.
+
+Watch for: any quest whose counter never moves — several mob prefab names
+(Greyling, Ghost, Surtling, Greydwarf_Elite, Lox, Deathsquito) could NOT be
+verified from the assembly (Unity asset data, not IL literals), so a wrong
+name fails silently as a dead quest. Note which ones tick and which don't.
 
 ### RESULTS (Windows side appends here)
 
