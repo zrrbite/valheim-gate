@@ -117,6 +117,29 @@ namespace ICanShowYouTheWorld.RunMode
                 Id = "enduring", Amount = EnduringBaseStaminaBonus,
                 Get = p => p.m_baseStamina, Set = (p, v) => p.m_baseStamina = v
             },
+            // Alpha13 play-test: the passive pool thinned out fast once held passives stopped
+            // being re-offered. Four more one-field loans; amounts are flat adds against the
+            // vanilla values noted, chosen so a single application is meaningful but not silly.
+            new FieldBoost
+            {
+                Id = "vigorous", Amount = 3f,      // m_staminaRegen vanilla ~6/s -> ~9/s
+                Get = p => p.m_staminaRegen, Set = (p, v) => p.m_staminaRegen = v
+            },
+            new FieldBoost
+            {
+                Id = "catbreath", Amount = -0.5f,  // m_staminaRegenDelay vanilla ~1s -> 0.5s
+                Get = p => p.m_staminaRegenDelay, Set = (p, v) => p.m_staminaRegenDelay = v
+            },
+            new FieldBoost
+            {
+                Id = "marathoner", Amount = -4f,   // m_runStaminaDrain vanilla ~10/s -> ~6/s
+                Get = p => p.m_runStaminaDrain, Set = (p, v) => p.m_runStaminaDrain = v
+            },
+            new FieldBoost
+            {
+                Id = "acrobat", Amount = -5f,      // m_dodgeStaminaUsage vanilla ~10 -> ~5
+                Get = p => p.m_dodgeStaminaUsage, Set = (p, v) => p.m_dodgeStaminaUsage = v
+            },
         };
 
         // sharp: keyed by the SHARED damage block (ItemDrop.ItemData.m_shared), not the ItemData
