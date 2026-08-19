@@ -43,6 +43,38 @@ namespace ICanShowYouTheWorld.RunMode
         /// challenges that can come round again.
         /// </summary>
         public bool Opener;
+
+        /// <summary>
+        /// When set (non-null, non-empty), this definition is a COMPOSITE/multi-objective
+        /// challenge: <see cref="Kind"/>/<see cref="Param"/>/<see cref="Target"/> above are
+        /// unused and <see cref="ActiveChallenge.Done"/> instead requires every sub's own
+        /// progress to reach its own target. Null or empty means "today's single-objective
+        /// behaviour", unchanged.
+        ///
+        /// Restricted to <see cref="ChallengeKind.KillPrefab"/>, <see cref="ChallengeKind.CollectItem"/>
+        /// and <see cref="ChallengeKind.CollectFood"/> — the ABSOLUTE-quantity measures.
+        /// <see cref="ChallengeKind.StatDelta"/> is deliberately excluded: it needs a
+        /// per-objective <see cref="ActiveChallenge.Baseline"/> snapshot taken at deal time, and
+        /// a composite's ActiveChallenge has exactly one Baseline field, not one per sub. Rather
+        /// than half-solve that (which sub owns the shared baseline?), composites simply don't
+        /// use StatDelta. Nothing enforces this at runtime — it is a pool-authoring rule, kept
+        /// simple on purpose.
+        /// </summary>
+        public List<SubObjective> Subs;
+    }
+
+    /// <summary>
+    /// One measurable clause of a composite <see cref="ChallengeDefinition"/> — "kill 1 boar",
+    /// "hold 5 raspberries". See <see cref="ChallengeDefinition.Subs"/> for the kind restriction.
+    /// </summary>
+    public class SubObjective
+    {
+        public ChallengeKind Kind;
+        public string Param;
+        public float Target;
+
+        /// <summary>Short player-facing text for this one clause, e.g. "Kill 1 Boar".</summary>
+        public string Label;
     }
 
     public class ActiveChallenge
@@ -64,7 +96,34 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         public float Baseline = float.NaN;
 
-        public bool Done => Progress >= Def.Target;
+        /// <summary>
+        /// Per-sub progress for a composite challenge (<see cref="ChallengeDefinition.Subs"/>
+        /// non-empty), index-parallel with it. Null for a simple challenge. Allocated (to
+        /// Subs.Count, all zero) whenever a composite slot is dealt, rerolled into, or restored —
+        /// see <see cref="ChallengeEngine"/>'s MakeActive/RestoreActive.
+        /// </summary>
+        public List<float> SubProgress;
+
+        /// <summary>
+        /// A composite challenge is done when EVERY sub's progress has reached its own target;
+        /// a simple one keeps the original single-target behaviour. A missing/short SubProgress
+        /// entry reads as zero rather than throwing, matching the malformed-save tolerance the
+        /// rest of Run Mode's persistence uses.
+        /// </summary>
+        public bool Done
+        {
+            get
+            {
+                if (Def.Subs == null || Def.Subs.Count == 0) return Progress >= Def.Target;
+
+                for (int i = 0; i < Def.Subs.Count; i++)
+                {
+                    float p = SubProgress != null && i < SubProgress.Count ? SubProgress[i] : 0f;
+                    if (p < Def.Subs[i].Target) return false;
+                }
+                return true;
+            }
+        }
     }
 
     /// <summary>Keeps up to 3 distinct challenges active; each refills after its own cooldown.</summary>
@@ -127,7 +186,7 @@ namespace ICanShowYouTheWorld.RunMode
                     pendingRefills.RemoveAt(i);
                     TryDraw(out var drawnDef);
                     if (drawnDef != null)
-                        active.Add(new ActiveChallenge { Def = drawnDef });
+                        active.Add(MakeActive(drawnDef));
                 }
             }
 
@@ -151,7 +210,7 @@ namespace ICanShowYouTheWorld.RunMode
 
                 if (def == null) break;
 
-                active.Add(new ActiveChallenge { Def = def });
+                active.Add(MakeActive(def));
                 dealtAnything = true;
             }
         }
@@ -159,14 +218,24 @@ namespace ICanShowYouTheWorld.RunMode
         public void ReportKill(string prefab)
         {
             foreach (var a in active)
+            {
                 if (a.Def.Kind == ChallengeKind.KillPrefab && a.Def.Param == prefab)
                     a.Progress += 1f;
+
+                CreditKillSub(a, prefab);
+            }
         }
 
         public void ReportMeasure(ChallengeKind kind, string param, float value)
         {
             foreach (var a in active)
             {
+                // Runs unconditionally, ahead of the simple-challenge `continue`s below: a
+                // composite's own top-level Kind/Param are unused filler (see
+                // ChallengeDefinition.Subs), so the simple-path checks must never gate whether a
+                // composite's subs get a look at this report.
+                CreditMeasureSub(a, kind, param, value);
+
                 if (a.Def.Kind != kind) continue;
 
                 // CollectItem and StatDelta are the param-scoped measures: each tracks ONE named
@@ -177,6 +246,49 @@ namespace ICanShowYouTheWorld.RunMode
                     a.Def.Param != param) continue;
 
                 a.Progress = Math.Max(a.Progress, value);
+            }
+        }
+
+        /// <summary>
+        /// Credits a composite's KillPrefab subs matching <paramref name="prefab"/>: +1, capped
+        /// at that sub's own target. A kill is an EVENT, not a measured quantity, so this uses
+        /// increment-and-cap rather than <see cref="CreditMeasureSub"/>'s max-semantics — the same
+        /// distinction <see cref="ReportKill"/> and <see cref="ReportMeasure"/> already draw for
+        /// simple challenges.
+        /// </summary>
+        private static void CreditKillSub(ActiveChallenge a, string prefab)
+        {
+            if (a.Def.Subs == null || a.Def.Subs.Count == 0 || a.SubProgress == null) return;
+
+            for (int i = 0; i < a.Def.Subs.Count; i++)
+            {
+                var sub = a.Def.Subs[i];
+                if (sub.Kind != ChallengeKind.KillPrefab || sub.Param != prefab) continue;
+                if (i >= a.SubProgress.Count) continue;
+
+                a.SubProgress[i] = Math.Min(sub.Target, a.SubProgress[i] + 1f);
+            }
+        }
+
+        /// <summary>
+        /// Credits a composite's CollectItem/CollectFood subs from a measure report, with the
+        /// same max-semantics and CollectItem param-scoping <see cref="ReportMeasure"/> uses for
+        /// simple challenges. KillPrefab subs are not touched here — see
+        /// <see cref="CreditKillSub"/>.
+        /// </summary>
+        private static void CreditMeasureSub(ActiveChallenge a, ChallengeKind kind, string param, float value)
+        {
+            if (a.Def.Subs == null || a.Def.Subs.Count == 0 || a.SubProgress == null) return;
+            if (kind != ChallengeKind.CollectItem && kind != ChallengeKind.CollectFood) return;
+
+            for (int i = 0; i < a.Def.Subs.Count; i++)
+            {
+                var sub = a.Def.Subs[i];
+                if (sub.Kind != kind) continue;
+                if (kind == ChallengeKind.CollectItem && sub.Param != param) continue;
+                if (i >= a.SubProgress.Count) continue;
+
+                a.SubProgress[i] = Math.Max(a.SubProgress[i], Math.Min(sub.Target, value));
             }
         }
 
@@ -214,7 +326,7 @@ namespace ICanShowYouTheWorld.RunMode
         /// leaving the caller to offer a way out.
         /// </summary>
         public void RestoreActive(IEnumerable<KeyValuePair<string, float>> idToProgress) =>
-            RestoreActive(idToProgress, null);
+            RestoreActive(idToProgress, null, null);
 
         /// <summary>
         /// As <see cref="RestoreActive(IEnumerable{KeyValuePair{string, float}})"/>, additionally
@@ -228,7 +340,24 @@ namespace ICanShowYouTheWorld.RunMode
         /// future progress report. A short or absent list leaves the remainder NaN, which is
         /// exactly the "caller must snapshot this" state a freshly dealt slot is in.
         /// </summary>
-        public void RestoreActive(IEnumerable<KeyValuePair<string, float>> idToProgress, IList<float> baselines)
+        public void RestoreActive(IEnumerable<KeyValuePair<string, float>> idToProgress, IList<float> baselines) =>
+            RestoreActive(idToProgress, baselines, null);
+
+        /// <summary>
+        /// As <see cref="RestoreActive(IEnumerable{KeyValuePair{string, float}}, IList{float})"/>,
+        /// additionally restoring each composite slot's <see cref="ActiveChallenge.SubProgress"/>.
+        ///
+        /// <paramref name="subProgress"/> follows the same SAVED-sequence indexing as
+        /// <paramref name="baselines"/> — an entry dropped as unknown/duplicate/over-cap still
+        /// consumes its index. Each element is that slot's per-sub values, in
+        /// <see cref="ChallengeDefinition.Subs"/> order; missing, null, or short entries read as
+        /// zero for the uncovered subs rather than throwing — a hand-edited or pre-composite save
+        /// must never crash a resume, it just restarts those subs at zero.
+        /// </summary>
+        public void RestoreActive(
+            IEnumerable<KeyValuePair<string, float>> idToProgress,
+            IList<float> baselines,
+            IList<List<float>> subProgress)
         {
             active.Clear();
             pendingRefills.Clear();
@@ -255,7 +384,9 @@ namespace ICanShowYouTheWorld.RunMode
                 {
                     Def = def,
                     Progress = entry.Value,
-                    Baseline = baselines != null && index < baselines.Count ? baselines[index] : float.NaN
+                    Baseline = baselines != null && index < baselines.Count ? baselines[index] : float.NaN,
+                    SubProgress = BuildSubProgress(
+                        def, subProgress != null && index < subProgress.Count ? subProgress[index] : null)
                 });
             }
         }
@@ -282,7 +413,7 @@ namespace ICanShowYouTheWorld.RunMode
             if (slotIndex < 0 || slotIndex >= active.Count) return false;
             var options = Drawable();
             if (options.Count == 0) return false;
-            active[slotIndex] = new ActiveChallenge { Def = options[rng.Next(options.Count)] };
+            active[slotIndex] = MakeActive(options[rng.Next(options.Count)]);
             dealtAnything = true;
             return true;
         }
@@ -307,6 +438,34 @@ namespace ICanShowYouTheWorld.RunMode
         {
             var taken = active.Select(a => a.Def.Id).ToHashSet();
             return pool.Where(d => !d.Opener && !taken.Contains(d.Id) && d.Tier <= MaxTier).ToList();
+        }
+
+        /// <summary>
+        /// Fresh ActiveChallenge for a just-dealt/rerolled-into slot: zeroed progress, and — for a
+        /// composite definition — a zeroed SubProgress list allocated to Subs.Count. Every path
+        /// that deals a NEW slot (Tick's opener/random draw, Tick's refill draw, Reroll) goes
+        /// through here so none of them can forget the allocation.
+        /// </summary>
+        private static ActiveChallenge MakeActive(ChallengeDefinition def) => new ActiveChallenge
+        {
+            Def = def,
+            SubProgress = BuildSubProgress(def, null)
+        };
+
+        /// <summary>
+        /// A composite definition's per-sub progress list, seeded from <paramref name="saved"/>
+        /// where possible: each sub reads its saved value if there is one, else zero. Null for a
+        /// non-composite definition. Never throws on a null/short/over-long saved list — it is
+        /// simply padded with zeros or truncated to Subs.Count.
+        /// </summary>
+        private static List<float> BuildSubProgress(ChallengeDefinition def, IList<float> saved)
+        {
+            if (def.Subs == null || def.Subs.Count == 0) return null;
+
+            var result = new List<float>(def.Subs.Count);
+            for (int i = 0; i < def.Subs.Count; i++)
+                result.Add(saved != null && i < saved.Count ? saved[i] : 0f);
+            return result;
         }
     }
 }

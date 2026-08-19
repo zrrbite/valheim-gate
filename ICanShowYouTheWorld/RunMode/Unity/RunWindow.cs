@@ -274,6 +274,8 @@ namespace ICanShowYouTheWorld.RunMode
 
             GUI.Label(rect, $"{FormatTime(run.ElapsedSeconds)}   Heat {run.Heat:0.#}", _stripStyle);
 
+            DrawAbilityBar(run, rect);
+
             string notice = _concrete?.HudNotice;
             if (!string.IsNullOrEmpty(notice))
             {
@@ -374,10 +376,15 @@ namespace ICanShowYouTheWorld.RunMode
                 for (int i = 0; i < challenges.Active.Count; i++)
                 {
                     var a = challenges.Active[i];
+                    bool composite = a.Def.Subs != null && a.Def.Subs.Count > 0;
 
                     GUILayout.BeginHorizontal();
                     GUI.contentColor = a.Done ? Color.green : Color.white;
-                    GUILayout.Label($"{a.Def.Display}  {a.Progress:0}/{a.Def.Target:0}", _smallStyle);
+                    // A composite's own Progress/Target are unused filler (see
+                    // ChallengeDefinition.Subs) — the fraction that matters is per-sub, drawn below.
+                    GUILayout.Label(
+                        composite ? a.Def.Display : $"{a.Def.Display}  {a.Progress:0}/{a.Def.Target:0}",
+                        _smallStyle);
                     GUI.contentColor = Color.white;
                     GUILayout.FlexibleSpace();
 
@@ -390,6 +397,22 @@ namespace ICanShowYouTheWorld.RunMode
 
                     if (!frozen && GUILayout.Button(label, GUILayout.Width(width))) run.RerollChallenge(i);
                     GUILayout.EndHorizontal();
+
+                    if (!composite) continue;
+
+                    for (int s = 0; s < a.Def.Subs.Count; s++)
+                    {
+                        var sub = a.Def.Subs[s];
+                        float p = a.SubProgress != null && s < a.SubProgress.Count ? a.SubProgress[s] : 0f;
+                        bool subDone = p >= sub.Target;
+                        string text = subDone
+                            ? $"  ✓ {sub.Label}"
+                            : $"  · {sub.Label} ({p:0}/{sub.Target:0})";
+
+                        GUI.contentColor = subDone ? Color.green : Color.white;
+                        GUILayout.Label(text, _smallStyle);
+                        GUI.contentColor = Color.white;
+                    }
                 }
 
                 float cost = Config?.RunRerollHeatCost ?? 0f;
@@ -420,6 +443,64 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>Cooldown/charges plus the activation key for the three active boons.</summary>
+        /// <summary>
+        /// The abilities you can PRESS, always on screen under the timer — one compact row per
+        /// active boon with its key and readiness. The HUD's BOONS section still lists everything
+        /// including passives; this exists so the growing list never costs you the overview of
+        /// what is actually usable right now.
+        /// </summary>
+        private void DrawAbilityBar(IRunService run, Rect strip)
+        {
+            var boons = run.Boons;
+            if (boons == null) return;
+
+            var actives = new List<HeldBoon>();
+            foreach (var h in boons.Held)
+            {
+                if (!h.Def.IsPassive) actives.Add(h);
+            }
+            if (actives.Count == 0) return;
+
+            const float slotW = 116f;
+            const float slotH = 20f;
+            float totalW = actives.Count * slotW;
+            float x = strip.x + (strip.width - totalW) * 0.5f;
+            float y = strip.yMax + 2f;
+
+            for (int i = 0; i < actives.Count; i++)
+            {
+                var h = actives[i];
+                bool ready = h.CooldownRemaining <= 0f
+                    && (h.Def.CooldownSeconds > 0f || h.Charges > 0);
+
+                var slot = new Rect(x + i * slotW, y, slotW - 4f, slotH);
+                GUI.backgroundColor = ready
+                    ? new Color(0.1f, 0.35f, 0.1f, 0.85f)   // ready: green
+                    : new Color(0f, 0f, 0f, 0.75f);         // cooling / spent
+                GUI.Box(slot, GUIContent.none);
+                GUI.backgroundColor = Color.white;
+
+                string key = ShortActivationKey(h.Def.Id);
+                string state = h.CooldownRemaining > 0f
+                    ? $"{h.CooldownRemaining:0}s"
+                    : h.Def.CooldownSeconds <= 0f ? $"x{h.Charges}" : "";
+
+                var style = ready ? _stripStyle : _smallStyle;
+                GUI.Label(slot, $"{key} {h.Def.Display} {state}".TrimEnd(), style);
+            }
+        }
+
+        private static string ShortActivationKey(string boonId)
+        {
+            switch (boonId)
+            {
+                case "wind": return "[4]";
+                case "ember": return "[5]";
+                case "way": return "[6]";
+                default: return "";
+            }
+        }
+
         private static string BoonStatus(HeldBoon h)
         {
             if (h.Def.IsPassive) return "passive";

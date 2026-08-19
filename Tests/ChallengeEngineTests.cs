@@ -94,6 +94,126 @@ static class ChallengeEngineTests
         StatDeltaTests();
         BaselineRoundTripTests();
         OpenerTests();
+        CompositeTests();
+    }
+
+    /// <summary>A composite (two subs: a KillPrefab and a CollectItem) plus a plain, non-composite definition.</summary>
+    static List<ChallengeDefinition> CompositePool() => new List<ChallengeDefinition>
+    {
+        new ChallengeDefinition
+        {
+            Id = "cx-a", Kind = ChallengeKind.KillPrefab, Param = "unused", Target = 99, HeatReward = 1, Display = "cx-a",
+            Subs = new List<SubObjective>
+            {
+                new SubObjective { Kind = ChallengeKind.KillPrefab,  Param = "Boar",       Target = 2, Label = "Kill 2 Boar" },
+                new SubObjective { Kind = ChallengeKind.CollectItem, Param = "$item_wood", Target = 5, Label = "Hold 5 Wood" },
+            }
+        },
+    };
+
+    /// <summary>
+    /// Composite (multi-objective) challenges: Done requires every sub, ReportKill/ReportMeasure
+    /// credit only matching subs (capped at each sub's own target), sub progress round-trips
+    /// through RestoreActive, and a plain single-objective challenge is untouched by any of it.
+    /// </summary>
+    static void CompositeTests()
+    {
+        var e = new ChallengeEngine(CompositePool(), new Random(71), 120f);
+        e.RestoreActive(new[] { new KeyValuePair<string, float>("cx-a", 0f) });
+        Check.That(e.Active.Count == 1, "composite restores into its slot");
+
+        var a = e.Active[0];
+        Check.That(a.SubProgress != null && a.SubProgress.Count == 2 && a.SubProgress.All(v => v == 0f),
+            "a restored composite with no saved sub-progress starts every sub at zero");
+        Check.That(!a.Done, "a fresh composite is not done");
+
+        // ReportKill credits only the matching sub, incrementing and capping at ITS target.
+        e.ReportKill("Wolf");
+        Check.That(a.SubProgress[0] == 0f, "a non-matching kill does not touch a composite sub");
+        e.ReportKill("Boar");
+        Check.That(a.SubProgress[0] == 1f, "a matching kill credits its sub");
+        e.ReportKill("Boar");
+        e.ReportKill("Boar"); // one past the sub's target
+        Check.That(a.SubProgress[0] == 2f, "a KillPrefab sub caps at its own target");
+        Check.That(!a.Done, "one sub complete is not the whole composite");
+
+        // CollectItem sub matches by Param, with the usual max-semantics.
+        e.ReportMeasure(ChallengeKind.CollectItem, "$item_stone", 99f);
+        Check.That(a.SubProgress[1] == 0f, "a CollectItem report for a different Param does not touch the sub");
+        e.ReportMeasure(ChallengeKind.CollectItem, "$item_wood", 3f);
+        Check.That(a.SubProgress[1] == 3f, "a matching CollectItem report credits the sub");
+        e.ReportMeasure(ChallengeKind.CollectItem, "$item_wood", 1f);
+        Check.That(a.SubProgress[1] == 3f, "a CollectItem sub's progress never regresses");
+        e.ReportMeasure(ChallengeKind.CollectItem, "$item_wood", 5f);
+        Check.That(a.SubProgress[1] == 5f, "reaching the sub's target completes it");
+
+        Check.That(a.Done, "composite is done once every sub reaches its own target");
+
+        // A plain, non-composite challenge is untouched by any of the composite plumbing above.
+        var simplePool = new List<ChallengeDefinition>
+        {
+            new ChallengeDefinition { Id = "simple", Kind = ChallengeKind.KillPrefab, Param = "Boar", Target = 2, HeatReward = 1, Display = "Kill 2 Boar" },
+        };
+        var s = new ChallengeEngine(simplePool, new Random(73), 120f);
+        s.Tick(0.1f);
+        Check.That(s.Active[0].SubProgress == null, "a simple challenge's SubProgress is null");
+        s.ReportKill("Boar");
+        s.ReportKill("Boar");
+        Check.That(s.Active[0].Progress == 2f && s.Active[0].Done,
+            "a simple challenge's own Progress/Done work exactly as before");
+
+        CompositeRoundTripTests();
+    }
+
+    /// <summary>Sub progress survives RestoreActive's third argument the same way baselines do — SAVED-sequence indexed, malformed input never throws.</summary>
+    static void CompositeRoundTripTests()
+    {
+        var e = new ChallengeEngine(CompositePool(), new Random(79), 120f);
+        e.RestoreActive(
+            new[] { new KeyValuePair<string, float>("cx-a", 0f) },
+            new List<float> { float.NaN },
+            new List<List<float>> { new List<float> { 2f, 4f } });
+
+        Check.That(e.Active.Count == 1, "restore with sub-progress fills the slot");
+        Check.That(e.Active[0].SubProgress[0] == 2f && e.Active[0].SubProgress[1] == 4f,
+            "sub progress restores alongside the slot");
+
+        // Round trip: what a save would write back out is what came in.
+        var savedSubs = new List<List<float>> { e.Active[0].SubProgress.ToList() };
+        var e2 = new ChallengeEngine(CompositePool(), new Random(79), 120f);
+        e2.RestoreActive(
+            new[] { new KeyValuePair<string, float>("cx-a", 0f) }, null, savedSubs);
+        Check.That(e2.Active[0].SubProgress[0] == 2f && e2.Active[0].SubProgress[1] == 4f,
+            "sub progress survives a save/restore round trip");
+
+        // A short saved list pads the uncovered tail with zero rather than throwing.
+        var shortList = new ChallengeEngine(CompositePool(), new Random(83), 120f);
+        shortList.RestoreActive(
+            new[] { new KeyValuePair<string, float>("cx-a", 0f) },
+            null,
+            new List<List<float>> { new List<float> { 7f } });
+        Check.That(shortList.Active[0].SubProgress[0] == 7f && shortList.Active[0].SubProgress[1] == 0f,
+            "a short saved sub-progress list leaves the uncovered tail at zero");
+
+        // No sub-progress list at all (pre-composite save) restarts every sub at zero.
+        var legacy = new ChallengeEngine(CompositePool(), new Random(89), 120f);
+        legacy.RestoreActive(new[] { new KeyValuePair<string, float>("cx-a", 5f) });
+        Check.That(legacy.Active[0].SubProgress.All(v => v == 0f),
+            "restoring with no sub-progress list restarts every composite sub at zero");
+
+        // A dropped entry (unknown id) must not shift the sub-progress index of what follows it.
+        var skewed = new ChallengeEngine(CompositePool(), new Random(97), 120f);
+        skewed.RestoreActive(
+            new[]
+            {
+                new KeyValuePair<string, float>("nonsense", 0f),
+                new KeyValuePair<string, float>("cx-a", 0f),
+            },
+            null,
+            new List<List<float>> { new List<float> { 999f }, new List<float> { 1f, 2f } });
+        Check.That(skewed.Active.Count == 1 && skewed.Active[0].Def.Id == "cx-a", "the unknown id is dropped");
+        Check.That(skewed.Active[0].SubProgress[0] == 1f && skewed.Active[0].SubProgress[1] == 2f,
+            "sub-progress index follows the saved sequence past a dropped entry");
     }
 
     /// <summary>Three openers in a fixed order, plus enough ordinary defs to fill and refill around them.</summary>

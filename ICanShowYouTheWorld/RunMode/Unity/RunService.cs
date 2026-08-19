@@ -776,9 +776,12 @@ namespace ICanShowYouTheWorld.RunMode
             if (inventory != null)
             {
                 // Only the item names actually being asked for — CountItems is a full scan.
+                // Drawn from BOTH a simple challenge's own Kind/Param and a composite's Subs:
+                // a composite's top-level Kind/Param are unused filler (see
+                // ChallengeDefinition.Subs), so a "hold 25 wood" SUB would never be polled if this
+                // only looked at the top level.
                 var wanted = _challenges.Active
-                    .Where(a => a.Def.Kind == ChallengeKind.CollectItem && !string.IsNullOrEmpty(a.Def.Param))
-                    .Select(a => a.Def.Param)
+                    .SelectMany(CollectItemParams)
                     .Distinct();
 
                 foreach (var itemName in wanted)
@@ -786,7 +789,7 @@ namespace ICanShowYouTheWorld.RunMode
                     _challenges.ReportMeasure(ChallengeKind.CollectItem, itemName, inventory.CountItems(itemName));
                 }
 
-                if (_challenges.Active.Any(a => a.Def.Kind == ChallengeKind.CollectFood))
+                if (_challenges.Active.Any(HasCollectFood))
                 {
                     _challenges.ReportMeasure(ChallengeKind.CollectFood, string.Empty, CountFood(inventory));
                 }
@@ -812,6 +815,27 @@ namespace ICanShowYouTheWorld.RunMode
 
             PollStatDeltas();
         }
+
+        /// <summary>
+        /// Item names an active slot wants counted this poll: its own Param if it's a simple
+        /// CollectItem challenge, plus every CollectItem sub's Param if it's a composite. A
+        /// composite's top-level Kind/Param are unused filler (see ChallengeDefinition.Subs).
+        /// </summary>
+        private static IEnumerable<string> CollectItemParams(ActiveChallenge a)
+        {
+            if (a.Def.Kind == ChallengeKind.CollectItem && !string.IsNullOrEmpty(a.Def.Param))
+                yield return a.Def.Param;
+
+            if (a.Def.Subs == null) yield break;
+            foreach (var sub in a.Def.Subs)
+                if (sub.Kind == ChallengeKind.CollectItem && !string.IsNullOrEmpty(sub.Param))
+                    yield return sub.Param;
+        }
+
+        /// <summary>True when this slot needs the CollectFood total polled — its own Kind, or (for a composite) any sub's.</summary>
+        private static bool HasCollectFood(ActiveChallenge a) =>
+            a.Def.Kind == ChallengeKind.CollectFood ||
+            (a.Def.Subs != null && a.Def.Subs.Any(sub => sub.Kind == ChallengeKind.CollectFood));
 
         // --- StatDelta challenges ---
 
@@ -1566,7 +1590,9 @@ namespace ICanShowYouTheWorld.RunMode
             }
 
             _challenges.RestoreActive(
-                Zip(s.activeChallengeIds, s.activeChallengeProgress), BuildRestoreBaselines(s));
+                Zip(s.activeChallengeIds, s.activeChallengeProgress),
+                BuildRestoreBaselines(s),
+                BuildRestoreSubProgress(s));
 
             // Anything the save didn't carry a baseline for (a pre-alpha4 save, or a slot that
             // never managed to take one) gets its zero point NOW rather than staying NaN forever.
@@ -1646,6 +1672,40 @@ namespace ICanShowYouTheWorld.RunMode
                 .ToList();
         }
 
+        /// <summary>
+        /// Saved per-sub progress, aligned index-for-index with activeChallengeIds, one semicolon-
+        /// joined string per slot parsed back into a float list (see
+        /// <see cref="RunSaveState.activeChallengeSubProgress"/>). Null for a save written before
+        /// composites existed, which ChallengeEngine.RestoreActive reads as "restart every
+        /// composite sub at zero". An empty or unparsable piece never throws — it becomes 0f,
+        /// matching every other malformed-save tolerance in this file.
+        /// </summary>
+        private static List<List<float>> BuildRestoreSubProgress(RunSaveState s)
+        {
+            if (s.activeChallengeSubProgress == null) return null;
+
+            var result = new List<List<float>>(s.activeChallengeSubProgress.Count);
+            foreach (var raw in s.activeChallengeSubProgress)
+            {
+                if (string.IsNullOrEmpty(raw))
+                {
+                    result.Add(new List<float>());
+                    continue;
+                }
+
+                var parts = raw.Split(';');
+                var values = new List<float>(parts.Length);
+                foreach (var part in parts)
+                {
+                    values.Add(float.TryParse(part, NumberStyles.Float, CultureInfo.InvariantCulture, out float v)
+                        ? v
+                        : 0f);
+                }
+                result.Add(values);
+            }
+            return result;
+        }
+
         private static IEnumerable<KeyValuePair<string, float>> Zip(List<string> ids, List<float> values)
         {
             if (ids == null) yield break;
@@ -1681,6 +1741,11 @@ namespace ICanShowYouTheWorld.RunMode
                 activeChallengeProgress = active.Select(a => a.Progress).ToList(),
                 activeChallengeBaselines = active
                     .Select(a => float.IsNaN(a.Baseline) ? NoBaselineSentinel : a.Baseline)
+                    .ToList(),
+                activeChallengeSubProgress = active
+                    .Select(a => a.SubProgress == null
+                        ? ""
+                        : string.Join(";", a.SubProgress.Select(v => v.ToString(CultureInfo.InvariantCulture))))
                     .ToList(),
                 heldBoonIds = held.Select(h => h.Def.Id).ToList(),
                 heldBoonCooldowns = held.Select(h => h.CooldownRemaining).ToList(),
@@ -1890,16 +1955,36 @@ namespace ICanShowYouTheWorld.RunMode
             new ChallengeDefinition { Id = "o-stone", Opener = true, Tier = 0, Kind = ChallengeKind.CollectItem, Param = "$item_stone", Target = 3, HeatReward = 1, Display = "Hold 3 Stone" },
             new ChallengeDefinition { Id = "o-craft", Opener = true, Tier = 0, Kind = ChallengeKind.StatDelta,   Param = "CraftsOrUpgrades", Target = 1, HeatReward = 1, Display = "Craft something — an axe!" },
 
-            new ChallengeDefinition { Id = "k-greydwarf", Tier = 1, Kind = ChallengeKind.KillPrefab, Param = "Greydwarf", Target = 10, HeatReward = 2, Display = "Kill 10 Greydwarves" },
-            new ChallengeDefinition { Id = "k-skeleton",  Tier = 1, Kind = ChallengeKind.KillPrefab, Param = "Skeleton",  Target = 10, HeatReward = 2, Display = "Kill 10 Skeletons" },
+            new ChallengeDefinition { Id = "k-greydwarf", Tier = 1, Kind = ChallengeKind.KillPrefab, Param = "Greydwarf", Target = 6, HeatReward = 2, Display = "Kill 6 Greydwarves" },
+            new ChallengeDefinition { Id = "k-skeleton",  Tier = 1, Kind = ChallengeKind.KillPrefab, Param = "Skeleton",  Target = 6, HeatReward = 2, Display = "Kill 6 Skeletons" },
             new ChallengeDefinition { Id = "k-troll",     Tier = 1, Kind = ChallengeKind.KillPrefab, Param = "Troll",     Target = 1,  HeatReward = 3, Display = "Slay a Troll" },
-            new ChallengeDefinition { Id = "k-draugr",    Tier = 2, Kind = ChallengeKind.KillPrefab, Param = "Draugr",    Target = 8,  HeatReward = 3, Display = "Kill 8 Draugr" },
+            new ChallengeDefinition { Id = "k-draugr",    Tier = 2, Kind = ChallengeKind.KillPrefab, Param = "Draugr",    Target = 5,  HeatReward = 3, Display = "Kill 5 Draugr" },
+
+            // More biome kill quests (alpha8, owner feedback: the pool needed more low-target
+            // kill contracts, not just the handful above). Prefab names checked against what
+            // this codebase already uses successfully: "Boar"/"Wolf" are live in SpawnService's
+            // and CheatCommands' own prefab lists, "Fenring" is live in CheatCommands'
+            // FenringIceNova_aoe lookup, and Greydwarf/Skeleton/Troll/Draugr are the existing
+            // entries just above. `strings`/monodis over assembly_valheim.dll cannot confirm the
+            // REST directly — mob and item prefab names are Unity asset data, not compiled C#
+            // literals, so they never show up in the managed assembly's string heap at all (that
+            // was re-confirmed here: even "Greydwarf"/"Draugr"/"Skeleton"/"Troll" above, already
+            // known-good, return zero hits). The rest below are the well-established, stable
+            // Valheim prefab names — cross-checked against each other rather than guessed.
+            new ChallengeDefinition { Id = "k-neck",      Tier = 0, Kind = ChallengeKind.KillPrefab, Param = "Neck",     Target = 4, HeatReward = 1, Display = "Kill 4 Necks" },
+            new ChallengeDefinition { Id = "k-deer",      Tier = 0, Kind = ChallengeKind.KillPrefab, Param = "Deer",     Target = 3, HeatReward = 1, Display = "Hunt 3 Deer" },
+            new ChallengeDefinition { Id = "k-greyling",  Tier = 0, Kind = ChallengeKind.KillPrefab, Param = "Greyling", Target = 3, HeatReward = 1, Display = "Kill 3 Greylings" },
+            new ChallengeDefinition { Id = "k-ghost",     Tier = 1, Kind = ChallengeKind.KillPrefab, Param = "Ghost",    Target = 3, HeatReward = 2, Display = "Kill 3 Ghosts" },
+            new ChallengeDefinition { Id = "k-surtling",  Tier = 2, Kind = ChallengeKind.KillPrefab, Param = "Surtling", Target = 3, HeatReward = 2, Display = "Kill 3 Surtlings" },
+            new ChallengeDefinition { Id = "k-lox",       Tier = 4, Kind = ChallengeKind.KillPrefab, Param = "Lox",         Target = 2, HeatReward = 3, Display = "Kill 2 Lox" },
+            new ChallengeDefinition { Id = "k-deathsquito", Tier = 4, Kind = ChallengeKind.KillPrefab, Param = "Deathsquito", Target = 3, HeatReward = 3, Display = "Kill 3 Deathsquitoes" },
+
             new ChallengeDefinition { Id = "alt-150",     Tier = 3, Kind = ChallengeKind.ReachAltitude, Param = "", Target = 150, HeatReward = 2, Display = "Climb to 150m altitude" },
             new ChallengeDefinition { Id = "alt-90",      Tier = 1, Kind = ChallengeKind.ReachAltitude, Param = "", Target = 90,  HeatReward = 1, Display = "Climb to 90m altitude" },
-            new ChallengeDefinition { Id = "c-wood",      Tier = 0, Kind = ChallengeKind.CollectItem, Param = "$item_wood",  Target = 100, HeatReward = 1, Display = "Hold 100 Wood" },
-            new ChallengeDefinition { Id = "c-stone",     Tier = 0, Kind = ChallengeKind.CollectItem, Param = "$item_stone", Target = 100, HeatReward = 1, Display = "Hold 100 Stone" },
-            new ChallengeDefinition { Id = "c-food",      Tier = 0, Kind = ChallengeKind.CollectFood, Param = "", Target = 20, HeatReward = 1, Display = "Hold 20 food items" },
-            new ChallengeDefinition { Id = "naked-5",     Tier = 0, Kind = ChallengeKind.NoArmorMinutes, Param = "", Target = 5, HeatReward = 3, Display = "Wear no armor for 5 minutes" },
+            new ChallengeDefinition { Id = "c-wood",      Tier = 0, Kind = ChallengeKind.CollectItem, Param = "$item_wood",  Target = 25, HeatReward = 1, Display = "Hold 25 Wood" },
+            new ChallengeDefinition { Id = "c-stone",     Tier = 0, Kind = ChallengeKind.CollectItem, Param = "$item_stone", Target = 25, HeatReward = 1, Display = "Hold 25 Stone" },
+            new ChallengeDefinition { Id = "c-food",      Tier = 0, Kind = ChallengeKind.CollectFood, Param = "", Target = 10, HeatReward = 1, Display = "Hold 10 food items" },
+            new ChallengeDefinition { Id = "naked-5",     Tier = 0, Kind = ChallengeKind.NoArmorMinutes, Param = "", Target = 3, HeatReward = 3, Display = "Wear no armor for 3 minutes" },
 
             // Stat-delta quests: small, fast, and measured from the value the stat held when the
             // slot was dealt (see SyncStatDeltaBaselines). Param is a PlayerStatType member NAME —
@@ -1923,14 +2008,103 @@ namespace ICanShowYouTheWorld.RunMode
             //                 or distance. The tick is 0.5s, so this counts half-seconds, not
             //                 metres: 360 is three minutes at sea, and the old "Sail 600m" was
             //                 really five minutes mislabelled.
-            new ChallengeDefinition { Id = "s-chop",   Tier = 0, Kind = ChallengeKind.StatDelta, Param = "Tree",             Target = 4,   HeatReward = 1, Display = "Fell 4 trees" },
-            new ChallengeDefinition { Id = "s-jump",   Tier = 0, Kind = ChallengeKind.StatDelta, Param = "Jumps",            Target = 30,  HeatReward = 1, Display = "Jump 30 times" },
-            new ChallengeDefinition { Id = "s-pickup", Tier = 0, Kind = ChallengeKind.StatDelta, Param = "ItemsPickedUp",    Target = 40,  HeatReward = 1, Display = "Pick up 40 items" },
-            new ChallengeDefinition { Id = "s-run",    Tier = 0, Kind = ChallengeKind.StatDelta, Param = "DistanceRun",      Target = 800, HeatReward = 1, Display = "Run 800m" },
-            new ChallengeDefinition { Id = "s-mine",   Tier = 1, Kind = ChallengeKind.StatDelta, Param = "MineHits",         Target = 75,  HeatReward = 2, Display = "Land 75 mining hits" },
+            new ChallengeDefinition { Id = "s-chop",   Tier = 0, Kind = ChallengeKind.StatDelta, Param = "Tree",             Target = 3,   HeatReward = 1, Display = "Fell 3 trees" },
+            new ChallengeDefinition { Id = "s-jump",   Tier = 0, Kind = ChallengeKind.StatDelta, Param = "Jumps",            Target = 15,  HeatReward = 1, Display = "Jump 15 times" },
+            new ChallengeDefinition { Id = "s-pickup", Tier = 0, Kind = ChallengeKind.StatDelta, Param = "ItemsPickedUp",    Target = 20,  HeatReward = 1, Display = "Pick up 20 items" },
+            // More, smaller quests: the pool turning over faster is what makes a run feel
+            // like momentum rather than a checklist (owner feedback, alpha7 play-test).
+            new ChallengeDefinition { Id = "s-craft2",  Tier = 0, Kind = ChallengeKind.StatDelta, Param = "CraftsOrUpgrades", Target = 3,  HeatReward = 1, Display = "Craft or upgrade 3 things" },
+            new ChallengeDefinition { Id = "s-chop2",   Tier = 0, Kind = ChallengeKind.StatDelta, Param = "Tree",             Target = 6,  HeatReward = 1, Display = "Fell 6 trees" },
+            new ChallengeDefinition { Id = "s-pickup2", Tier = 0, Kind = ChallengeKind.StatDelta, Param = "ItemsPickedUp",    Target = 40, HeatReward = 1, Display = "Pick up 40 items" },
+            new ChallengeDefinition { Id = "s-jump2",   Tier = 0, Kind = ChallengeKind.StatDelta, Param = "Jumps",            Target = 30, HeatReward = 1, Display = "Jump 30 times" },
+            new ChallengeDefinition { Id = "s-run2",    Tier = 1, Kind = ChallengeKind.StatDelta, Param = "DistanceRun",      Target = 900, HeatReward = 2, Display = "Run 900m" },
+            new ChallengeDefinition { Id = "s-mine2",   Tier = 1, Kind = ChallengeKind.StatDelta, Param = "MineHits",         Target = 70, HeatReward = 2, Display = "Land 70 mining hits" },
+            new ChallengeDefinition { Id = "s-kills",   Tier = 1, Kind = ChallengeKind.StatDelta, Param = "EnemyKills",       Target = 8,  HeatReward = 2, Display = "Kill 8 creatures — anything" },
+            new ChallengeDefinition { Id = "s-kills2",  Tier = 2, Kind = ChallengeKind.StatDelta, Param = "EnemyKills",       Target = 15, HeatReward = 3, Display = "Kill 15 creatures — anything" },
+            new ChallengeDefinition { Id = "s-food",    Tier = 1, Kind = ChallengeKind.StatDelta, Param = "FoodEaten",        Target = 3,  HeatReward = 1, Display = "Eat 3 meals" },
+            new ChallengeDefinition { Id = "s-sleep",   Tier = 0, Kind = ChallengeKind.StatDelta, Param = "Sleep",            Target = 1,  HeatReward = 1, Display = "Sleep through a night" },
+            new ChallengeDefinition { Id = "s-run",    Tier = 0, Kind = ChallengeKind.StatDelta, Param = "DistanceRun",      Target = 400, HeatReward = 1, Display = "Run 400m" },
+            new ChallengeDefinition { Id = "s-mine",   Tier = 1, Kind = ChallengeKind.StatDelta, Param = "MineHits",         Target = 35,  HeatReward = 2, Display = "Land 35 mining hits" },
             new ChallengeDefinition { Id = "s-craft",  Tier = 1, Kind = ChallengeKind.StatDelta, Param = "CraftsOrUpgrades", Target = 5,   HeatReward = 1, Display = "Craft or upgrade 5 times" },
-            new ChallengeDefinition { Id = "s-doors",  Tier = 1, Kind = ChallengeKind.StatDelta, Param = "DoorsOpened",      Target = 15,  HeatReward = 1, Display = "Open 15 doors" },
-            new ChallengeDefinition { Id = "s-sail",   Tier = 2, Kind = ChallengeKind.StatDelta, Param = "DistanceSail",     Target = 360, HeatReward = 2, Display = "Sail for 3 minutes" },
+            new ChallengeDefinition { Id = "s-doors",  Tier = 1, Kind = ChallengeKind.StatDelta, Param = "DoorsOpened",      Target = 8,  HeatReward = 1, Display = "Open 8 doors" },
+            new ChallengeDefinition { Id = "s-sail",   Tier = 2, Kind = ChallengeKind.StatDelta, Param = "DistanceSail",     Target = 180, HeatReward = 2, Display = "Sail for 90 seconds" },
+
+            // --- Composite (multi-objective) quests — alpha8. ---
+            // Each is a small checklist ("kill 1 boar, gather some food, ...") rather than a
+            // single target; see ChallengeDefinition.Subs. Every sub below is KillPrefab,
+            // CollectItem, or CollectFood — StatDelta subs are off-limits (see the doc comment on
+            // Subs: one Baseline per slot, not one per sub).
+            //
+            // $item_raspberries could not be checked (see the comment on k-neck etc. above — item
+            // tokens are asset data, invisible to the compiled assembly) and the existing pool's
+            // own $item_ tokens ($item_wood/$item_stone) are likewise unverifiable that way, so
+            // rather than gamble on a token that fails SILENTLY (dead sub forever), First Blood
+            // uses CollectFood instead, exactly as the brief allows. Grave Robbing's coins sub is
+            // dropped for the same reason, leaving it a single-sub composite. The "Brute" variant
+            // of Greydwarf is "Greydwarf_Elite", not "GreydwarfBrute" — corrected here against
+            // Forest Sweep's brief.
+            new ChallengeDefinition
+            {
+                Id = "cq-first-blood", Tier = 0, Target = 1, HeatReward = 2, Display = "First Blood",
+                Subs = new List<SubObjective>
+                {
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Boar", Target = 1, Label = "Kill 1 Boar" },
+                    new SubObjective { Kind = ChallengeKind.CollectFood, Param = "", Target = 5, Label = "Gather 5 food" },
+                }
+            },
+            new ChallengeDefinition
+            {
+                Id = "cq-camp-life", Tier = 0, Target = 1, HeatReward = 3, Display = "Camp Life",
+                Subs = new List<SubObjective>
+                {
+                    new SubObjective { Kind = ChallengeKind.CollectItem, Param = "$item_wood",  Target = 25, Label = "Hold 25 Wood" },
+                    new SubObjective { Kind = ChallengeKind.CollectItem, Param = "$item_stone", Target = 10, Label = "Hold 10 Stone" },
+                    new SubObjective { Kind = ChallengeKind.KillPrefab,  Param = "Greyling",     Target = 2,  Label = "Kill 2 Greylings" },
+                }
+            },
+            new ChallengeDefinition
+            {
+                Id = "cq-forest-sweep", Tier = 1, Target = 1, HeatReward = 3, Display = "Forest Sweep",
+                Subs = new List<SubObjective>
+                {
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Greydwarf",       Target = 4, Label = "Kill 4 Greydwarves" },
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Greydwarf_Elite",  Target = 1, Label = "Kill 1 Greydwarf Brute" },
+                }
+            },
+            new ChallengeDefinition
+            {
+                Id = "cq-grave-robbing", Tier = 1, Target = 1, HeatReward = 2, Display = "Grave Robbing",
+                Subs = new List<SubObjective>
+                {
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Skeleton", Target = 4, Label = "Kill 4 Skeletons" },
+                }
+            },
+            new ChallengeDefinition
+            {
+                Id = "cq-swamp-errand", Tier = 2, Target = 1, HeatReward = 4, Display = "Swamp Errand",
+                Subs = new List<SubObjective>
+                {
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Draugr", Target = 3, Label = "Kill 3 Draugr" },
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Leech",  Target = 2, Label = "Kill 2 Leeches" },
+                }
+            },
+            new ChallengeDefinition
+            {
+                Id = "cq-mountain-patrol", Tier = 3, Target = 1, HeatReward = 4, Display = "Mountain Patrol",
+                Subs = new List<SubObjective>
+                {
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Wolf",    Target = 3, Label = "Kill 3 Wolves" },
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Fenring", Target = 1, Label = "Kill 1 Fenring" },
+                }
+            },
+            new ChallengeDefinition
+            {
+                Id = "cq-plains-contract", Tier = 4, Target = 1, HeatReward = 3, Display = "Plains Contract",
+                Subs = new List<SubObjective>
+                {
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Goblin", Target = 5, Label = "Kill 5 Goblins" },
+                }
+            },
         };
 
         internal static List<BoonDefinition> DefaultBoons() => new List<BoonDefinition>

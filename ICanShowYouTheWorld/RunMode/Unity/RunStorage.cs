@@ -31,6 +31,17 @@ namespace ICanShowYouTheWorld.RunMode
         /// in saves written before alpha4; the run then re-baselines on resume.
         /// </summary>
         public List<float> activeChallengeBaselines;
+
+        /// <summary>
+        /// Per-sub progress for each active challenge, same index pairing as
+        /// <see cref="activeChallengeIds"/>. JsonUtility can't nest a list of lists, so each
+        /// entry is that slot's <see cref="ChallengeEngine.SubProgress"/> values joined with
+        /// ';' ("1;0;3"); the empty string means "not a composite challenge" (SubProgress null).
+        /// Absent in saves written before alpha8, which restores every composite sub at zero —
+        /// see ChallengeEngine.RestoreActive's malformed-input tolerance.
+        /// </summary>
+        public List<string> activeChallengeSubProgress;
+
         public List<string> heldBoonIds;
         public List<float> heldBoonCooldowns;
 
