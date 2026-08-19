@@ -16,6 +16,8 @@ namespace ICanShowYouTheWorld.RunMode
     ///
     /// Every public entry point is defensive: OnGUI runs several times per frame and a throw
     /// there would take the rest of the mod's UI down with it.
+    ///
+    /// Visuals live in <see cref="RunTheme"/> — this file only decides layout and what to draw.
     /// </summary>
     public class RunWindow
     {
@@ -34,6 +36,12 @@ namespace ICanShowYouTheWorld.RunMode
 
         /// <summary>Seconds within which a second [Abandon run] / [Discard saved run] press counts as confirmation.</summary>
         private const float AbandonConfirmSeconds = 2f;
+
+        // --- Feel-polish timings (see the state block below) ---
+        private const float OfferFadeSeconds = 0.25f;
+        private const float HeatPulseSeconds = 1f;
+        private const float CompletionFlashSeconds = 1f;
+        private const float CompletionFlashPruneSeconds = 2f;
 
         /// <summary>Toggled by the End key (see CheatController's command table).</summary>
         public bool Visible;
@@ -58,6 +66,27 @@ namespace ICanShowYouTheWorld.RunMode
         private float _lastDiscardPress = float.NegativeInfinity;
         private Vector2 _hudScroll;
 
+        // --- Feel-polish state ---
+        // All of it is written ONLY at a Layout event (see the Update* methods below), for the
+        // same reason ApplyPendingActions is: OnGUI fires several events per visual frame, and a
+        // value that changed depending on which one just ran would make two passes of the same
+        // frame disagree — fine for pure color/scale (paint-only), fatal if it ever fed a size or
+        // control count. Reads happen on every event; they're safe because by the time a
+        // Repaint runs, the Layout event for that same frame already settled the value.
+
+        /// <summary>Set when the boon offer transitions from empty to non-empty; drives the fade-in.</summary>
+        private float _offerShownAt = float.NegativeInfinity;
+        private int _lastOfferCount;
+
+        /// <summary>Heat last observed, and when it last went up — drives the heat pulse.</summary>
+        private float _lastSeenHeat = float.NaN;
+        private float _heatPulseStart = float.NegativeInfinity;
+
+        /// <summary>Challenge ids seen completed, and when — drives the brief gold flash on a row.</summary>
+        private readonly HashSet<string> _seenCompletedIds = new HashSet<string>();
+        private readonly Dictionary<string, float> _completionFlashAt = new Dictionary<string, float>();
+        private readonly List<string> _flashPruneBuffer = new List<string>();
+
         // Deferred lifecycle actions. A button that flips IsRunActive mid-pass would change the
         // window set between GUILayout's Layout and Repaint passes, which IMGUI answers with a
         // stream of "Mismatched LayoutGroup" errors. The buttons only raise these flags; they
@@ -73,12 +102,12 @@ namespace ICanShowYouTheWorld.RunMode
         private const int MaxLoggedFailures = 32;
         private readonly HashSet<string> _loggedFailures = new HashSet<string>();
 
-        // Styles are built once and reused; a new GUIStyle per OnGUI call would churn every frame.
+        // Styles are built once and reused; a new GUIStyle per OnGUI call would churn every
+        // frame. Section/body/small/header/panel styles live in RunTheme — these two are local
+        // because they're one-off sizes/purposes (the big timer digits, the notice line).
         private GUIStyle _stripStyle;
         private GUIStyle _noticeStyle;
         private GUIStyle _timerStyle;
-        private GUIStyle _headerStyle;
-        private GUIStyle _smallStyle;
 
         public void ToggleVisible() => Visible = !Visible;
 
@@ -178,25 +207,44 @@ namespace ICanShowYouTheWorld.RunMode
 
                 if (run.IsRunActive)
                 {
+                    UpdateHeatPulse(run.Heat);
+                    UpdateCompletionFlashes(run.Challenges);
+                    UpdateOfferFadeState(run.Boons?.CurrentOffer?.Count ?? 0);
+
                     // The strip is the one piece that survives with the rest of the UI hidden.
                     DrawStrip(run, viewWidth);
 
                     if (Visible || CheatUiVisible)
                     {
-                        _hudRect = GUILayout.Window(HudWindowId, _hudRect, DrawHud, "Run",
+                        _hudRect = GUILayout.Window(HudWindowId, _hudRect, DrawHud, GUIContent.none, RunTheme.Panel,
                             GUILayout.Width(HudWidth), GUILayout.Height(HudHeight));
                     }
 
                     var boons = run.Boons;
                     if (boons != null && boons.CurrentOffer.Count > 0)
                     {
-                        _offerRect = GUILayout.Window(OfferWindowId, _offerRect, DrawOffer, "Boon offer",
-                            GUILayout.Width(OfferWidth), GUILayout.Height(OfferHeight));
+                        // Fade-in: alpha is a pure function of (now - _offerShownAt), a value only
+                        // ever written at a Layout event above — so Layout and Repaint of the same
+                        // frame compute the identical alpha. GUI.color is restored unconditionally,
+                        // Window body included, so a throw inside it can't leave color state leaked
+                        // onto whatever draws next.
+                        float alpha = Mathf.Clamp01((Time.realtimeSinceStartup - _offerShownAt) / OfferFadeSeconds);
+                        GUI.color = new Color(1f, 1f, 1f, alpha);
+                        try
+                        {
+                            _offerRect = GUILayout.Window(OfferWindowId, _offerRect, DrawOffer, GUIContent.none, RunTheme.Panel,
+                                GUILayout.Width(OfferWidth), GUILayout.Height(OfferHeight));
+                        }
+                        finally
+                        {
+                            GUI.color = Color.white;
+                        }
                     }
                 }
                 else if (Visible)
                 {
-                    _lobbyRect = GUILayout.Window(LobbyWindowId, _lobbyRect, DrawLobby, "Run Mode",
+                    UpdateOfferFadeState(0);
+                    _lobbyRect = GUILayout.Window(LobbyWindowId, _lobbyRect, DrawLobby, GUIContent.none, RunTheme.Panel,
                         GUILayout.Width(LobbyWidth), GUILayout.Height(LobbyHeight));
                 }
             }
@@ -230,36 +278,108 @@ namespace ICanShowYouTheWorld.RunMode
         {
             if (_stripStyle != null) return;
 
+            var font = RunTheme.ThemedFont;
+
             _stripStyle = new GUIStyle(GUI.skin.label)
             {
                 alignment = TextAnchor.MiddleCenter,
                 fontStyle = FontStyle.Bold,
                 fontSize = 15,
-                normal = { textColor = Color.white }
+                normal = { textColor = Color.white } // tinted per-draw via GUI.contentColor
             };
             _noticeStyle = new GUIStyle(GUI.skin.label)
             {
                 alignment = TextAnchor.MiddleCenter,
+                fontStyle = FontStyle.Bold,
                 fontSize = 12,
-                normal = { textColor = Color.yellow }
+                normal = { textColor = RunTheme.AccentGold }
             };
             _timerStyle = new GUIStyle(GUI.skin.label)
             {
                 fontStyle = FontStyle.Bold,
                 fontSize = 28,
-                normal = { textColor = Color.white }
+                normal = { textColor = RunTheme.TextParchment }
             };
-            _headerStyle = new GUIStyle(GUI.skin.label)
+
+            if (font != null)
             {
-                fontStyle = FontStyle.Bold,
-                fontSize = 13,
-                normal = { textColor = Color.white }
-            };
-            _smallStyle = new GUIStyle(GUI.skin.label)
+                _stripStyle.font = font;
+                _noticeStyle.font = font;
+                _timerStyle.font = font;
+            }
+        }
+
+        // --- Feel-polish state updates (Layout-gated; see the field block above) ---
+
+        private void UpdateHeatPulse(float heat)
+        {
+            if (Event.current == null || Event.current.type != EventType.Layout) return;
+
+            if (!float.IsNaN(_lastSeenHeat) && heat > _lastSeenHeat + 0.001f)
             {
-                fontSize = 11,
-                normal = { textColor = new Color(0.85f, 0.85f, 0.85f) }
-            };
+                _heatPulseStart = Time.realtimeSinceStartup;
+            }
+            _lastSeenHeat = heat;
+        }
+
+        /// <summary>White-hot right after an increase, settling to the steady heat color over
+        /// <see cref="HeatPulseSeconds"/>. A pure function of wall-clock time and already-committed
+        /// state, so it reads identically on every event type in a frame.</summary>
+        private Color HeatDisplayColor()
+        {
+            float t = Mathf.Clamp01((Time.realtimeSinceStartup - _heatPulseStart) / HeatPulseSeconds);
+            return Color.Lerp(Color.white, RunTheme.HeatRed, t);
+        }
+
+        private void UpdateCompletionFlashes(ChallengeEngine challenges)
+        {
+            if (Event.current == null || Event.current.type != EventType.Layout) return;
+            if (challenges == null) return;
+
+            var active = challenges.Active;
+            for (int i = 0; i < active.Count; i++)
+            {
+                var a = active[i];
+                string id = a.Def?.Id;
+                if (id == null) continue;
+
+                if (a.Done)
+                {
+                    if (_seenCompletedIds.Add(id)) _completionFlashAt[id] = Time.realtimeSinceStartup;
+                }
+                else
+                {
+                    // Not done (e.g. rerolled into a fresh challenge reusing the slot): allow a
+                    // later completion of this id to flash again.
+                    _seenCompletedIds.Remove(id);
+                }
+            }
+
+            if (_completionFlashAt.Count == 0) return;
+
+            // Bounded: a run's challenge ids are a small, finite pool, but this still prunes
+            // anything past its flash window so the dict can't grow across a long run.
+            _flashPruneBuffer.Clear();
+            foreach (var kv in _completionFlashAt)
+            {
+                if (Time.realtimeSinceStartup - kv.Value > CompletionFlashPruneSeconds) _flashPruneBuffer.Add(kv.Key);
+            }
+            for (int i = 0; i < _flashPruneBuffer.Count; i++) _completionFlashAt.Remove(_flashPruneBuffer[i]);
+        }
+
+        private float CompletionFlash01(string id)
+        {
+            if (id == null || !_completionFlashAt.TryGetValue(id, out var at)) return 0f;
+            return 1f - Mathf.Clamp01((Time.realtimeSinceStartup - at) / CompletionFlashSeconds);
+        }
+
+        private void UpdateOfferFadeState(int offerCount)
+        {
+            if (Event.current == null || Event.current.type != EventType.Layout) return;
+
+            if (offerCount > 0 && _lastOfferCount <= 0) _offerShownAt = Time.realtimeSinceStartup;
+            else if (offerCount <= 0) _offerShownAt = float.NegativeInfinity;
+            _lastOfferCount = offerCount;
         }
 
         // --- Strip (always on during a run, F1 or no F1) ---
@@ -268,11 +388,17 @@ namespace ICanShowYouTheWorld.RunMode
         {
             var rect = new Rect((viewWidth - StripWidth) * 0.5f, 6f, StripWidth, StripHeight);
 
-            GUI.backgroundColor = new Color(0f, 0f, 0f, 0.8f);
-            GUI.Box(rect, GUIContent.none);
-            GUI.backgroundColor = Color.white;
+            GUI.DrawTexture(rect, RunTheme.Solid(RunTheme.PanelFill));
+            RunTheme.Frame(rect, RunTheme.PanelBorder);
 
-            GUI.Label(rect, $"{FormatTime(run.ElapsedSeconds)}   Heat {run.Heat:0.#}", _stripStyle);
+            var leftRect = new Rect(rect.x, rect.y, rect.width * 0.5f, rect.height);
+            var rightRect = new Rect(rect.x + rect.width * 0.5f, rect.y, rect.width * 0.5f, rect.height);
+
+            GUI.contentColor = RunTheme.TextParchment;
+            GUI.Label(leftRect, FormatTime(run.ElapsedSeconds), _stripStyle);
+            GUI.contentColor = HeatDisplayColor();
+            GUI.Label(rightRect, $"Heat {run.Heat:0.#}", _stripStyle);
+            GUI.contentColor = Color.white;
 
             DrawAbilityBar(run, rect);
 
@@ -300,15 +426,16 @@ namespace ICanShowYouTheWorld.RunMode
             var run = Service;
             if (run == null) return;
 
-            Backdrop(_hudRect);
-
             // --- Header: stays out of the scroll view, so time/heat/score are always on screen. ---
+            GUILayout.Label("RUN", RunTheme.Header);
             GUILayout.Label(FormatTime(run.ElapsedSeconds), _timerStyle);
 
             GUILayout.BeginHorizontal();
-            GUILayout.Label($"Heat {run.Heat:0.#}", _headerStyle);
+            GUI.contentColor = HeatDisplayColor();
+            GUILayout.Label($"Heat {run.Heat:0.#}", _stripStyle);
+            GUI.contentColor = Color.white;
             GUILayout.FlexibleSpace();
-            GUILayout.Label($"Score {run.CurrentScore:0.##}", _headerStyle);
+            GUILayout.Label($"Score {run.CurrentScore:0.##}", RunTheme.Header);
             GUILayout.EndHorizontal();
 
             GUILayout.Space(6f);
@@ -325,7 +452,7 @@ namespace ICanShowYouTheWorld.RunMode
             // --- Abandon, behind a two-press confirm so a stray click can't end a run. Outside
             //     the scroll view, so it is always reachable however long the body gets. ---
             bool armed = Time.realtimeSinceStartup - _lastAbandonPress <= AbandonConfirmSeconds;
-            GUI.contentColor = armed ? Color.red : Color.white;
+            GUI.contentColor = armed ? RunTheme.HeatRed : Color.white;
             if (GUILayout.Button(armed ? "Abandon run — click again" : "Abandon run"))
             {
                 if (armed)
@@ -345,25 +472,25 @@ namespace ICanShowYouTheWorld.RunMode
         private void DrawHudSections(IRunService run)
         {
             // --- Splits ---
-            GUILayout.Label("SPLITS", _headerStyle);
+            GUILayout.Label("SPLITS", RunTheme.Header);
             var splits = run.Splits;
             if (splits == null || splits.Count == 0)
             {
-                GUILayout.Label("  no bosses down yet", _smallStyle);
+                GUILayout.Label("  no bosses down yet", RunTheme.Small);
             }
             else
             {
-                foreach (var split in splits) GUILayout.Label("  " + split, _smallStyle);
+                foreach (var split in splits) GUILayout.Label("  " + split, RunTheme.Small);
             }
 
             GUILayout.Space(6f);
 
             // --- Challenges ---
-            GUILayout.Label("CHALLENGES", _headerStyle);
+            GUILayout.Label("CHALLENGES", RunTheme.Header);
             var challenges = run.Challenges;
             if (challenges == null || challenges.Active.Count == 0)
             {
-                GUILayout.Label("  none active", _smallStyle);
+                GUILayout.Label("  none active", RunTheme.Small);
             }
             else
             {
@@ -378,14 +505,26 @@ namespace ICanShowYouTheWorld.RunMode
                     var a = challenges.Active[i];
                     bool composite = a.Def.Subs != null && a.Def.Subs.Count > 0;
 
+                    // Brief gold flash on completion, decaying back to the steady done/active color.
+                    float flash = CompletionFlash01(a.Def.Id);
+                    Color rowColor = Color.Lerp(a.Done ? RunTheme.CompleteGreen : RunTheme.TextParchment,
+                        RunTheme.AccentGold, flash);
+
                     GUILayout.BeginHorizontal();
-                    GUI.contentColor = a.Done ? Color.green : Color.white;
+                    GUI.contentColor = rowColor;
+                    GUILayout.Label(a.Def.Display, RunTheme.Small, GUILayout.Width(150f));
+                    GUI.contentColor = Color.white;
+
                     // A composite's own Progress/Target are unused filler (see
                     // ChallengeDefinition.Subs) — the fraction that matters is per-sub, drawn below.
-                    GUILayout.Label(
-                        composite ? a.Def.Display : $"{a.Def.Display}  {a.Progress:0}/{a.Def.Target:0}",
-                        _smallStyle);
-                    GUI.contentColor = Color.white;
+                    if (!composite)
+                    {
+                        var barRect = GUILayoutUtility.GetRect(70f, 12f, GUILayout.Width(70f), GUILayout.Height(12f));
+                        float frac = a.Def.Target > 0f ? a.Progress / a.Def.Target : 0f;
+                        RunTheme.Bar(barRect, frac, a.Done ? RunTheme.CompleteGreen : RunTheme.AccentGold);
+                        GUILayout.Label($"{a.Progress:0}/{a.Def.Target:0}", RunTheme.Small, GUILayout.Width(46f));
+                    }
+
                     GUILayout.FlexibleSpace();
 
                     // An above-tier leftover (only possible from a save older than the tier
@@ -409,33 +548,36 @@ namespace ICanShowYouTheWorld.RunMode
                             ? $"  ✓ {sub.Label}"
                             : $"  · {sub.Label} ({p:0}/{sub.Target:0})";
 
-                        GUI.contentColor = subDone ? Color.green : Color.white;
-                        GUILayout.Label(text, _smallStyle);
+                        GUI.contentColor = subDone ? RunTheme.CompleteGreen : RunTheme.TextMuted;
+                        GUILayout.Label(text, RunTheme.Small);
                         GUI.contentColor = Color.white;
                     }
                 }
 
                 float cost = Config?.RunRerollHeatCost ?? 0f;
-                if (!frozen && cost > 0f) GUILayout.Label($"  reroll costs {cost:0.#} heat", _smallStyle);
+                if (!frozen && cost > 0f) GUILayout.Label($"  reroll costs {cost:0.#} heat", RunTheme.Small);
             }
 
             GUILayout.Space(6f);
 
             // --- Boons ---
-            GUILayout.Label("BOONS", _headerStyle);
+            GUILayout.Label("BOONS", RunTheme.Header);
             var boons = run.Boons;
             if (boons == null || boons.Held.Count == 0)
             {
-                GUILayout.Label("  none held", _smallStyle);
+                GUILayout.Label("  none held", RunTheme.Small);
             }
             else
             {
                 foreach (var h in boons.Held)
                 {
+                    bool ready = !h.Def.IsPassive && h.CooldownRemaining <= 0f &&
+                        (h.Def.CooldownSeconds > 0f || h.Charges > 0);
+
                     GUILayout.BeginHorizontal();
-                    GUILayout.Label("  " + h.Def.Display, _smallStyle);
+                    GUILayout.Label("  " + h.Def.Display, RunTheme.Small);
                     GUILayout.FlexibleSpace();
-                    GUILayout.Label(BoonStatus(h), _smallStyle);
+                    GUILayout.Label(BoonStatus(h), ready ? RunTheme.Ready : RunTheme.Small);
                     GUILayout.EndHorizontal();
                 }
             }
@@ -474,18 +616,30 @@ namespace ICanShowYouTheWorld.RunMode
                     && (h.Def.CooldownSeconds > 0f || h.Charges > 0);
 
                 var slot = new Rect(x + i * slotW, y, slotW - 4f, slotH);
-                GUI.backgroundColor = ready
-                    ? new Color(0.1f, 0.35f, 0.1f, 0.85f)   // ready: green
-                    : new Color(0f, 0f, 0f, 0.75f);         // cooling / spent
-                GUI.Box(slot, GUIContent.none);
-                GUI.backgroundColor = Color.white;
+
+                // Background tinted by readiness: a warm green wash when usable, dark panel fill
+                // while cooling down or spent.
+                Color bg = ready
+                    ? new Color(RunTheme.CompleteGreen.r, RunTheme.CompleteGreen.g, RunTheme.CompleteGreen.b, 0.35f)
+                    : new Color(RunTheme.PanelFill.r, RunTheme.PanelFill.g, RunTheme.PanelFill.b, 0.9f);
+                GUI.DrawTexture(slot, RunTheme.Solid(bg));
+
+                // Cooldown wipe: darkens the slot proportionally to time remaining, in place of
+                // relying on the "12s" text alone.
+                if (!ready && h.Def.CooldownSeconds > 0f)
+                {
+                    float remaining01 = Mathf.Clamp01(h.CooldownRemaining / h.Def.CooldownSeconds);
+                    RunTheme.Radialish(slot, remaining01);
+                }
+
+                RunTheme.Frame(slot, ready ? RunTheme.AccentGold : RunTheme.PanelBorder);
 
                 string key = ShortActivationKey(h.Def.Id);
                 string state = h.CooldownRemaining > 0f
                     ? $"{h.CooldownRemaining:0}s"
                     : h.Def.CooldownSeconds <= 0f ? $"x{h.Charges}" : "";
 
-                var style = ready ? _stripStyle : _smallStyle;
+                var style = ready ? RunTheme.Ready : RunTheme.Small;
                 GUI.Label(slot, $"{key} {h.Def.Display} {state}".TrimEnd(), style);
             }
         }
@@ -540,10 +694,8 @@ namespace ICanShowYouTheWorld.RunMode
             var run = Service;
             if (run == null) return;
 
-            Backdrop(_lobbyRect);
-
-            GUILayout.Label("Run Mode", _headerStyle);
-            GUILayout.Label(run.LobbySummary(), _smallStyle);
+            GUILayout.Label("RUN MODE", RunTheme.Header);
+            GUILayout.Label(run.LobbySummary(), RunTheme.Body);
 
             var cfg = Config;
             if (cfg != null)
@@ -551,12 +703,12 @@ namespace ICanShowYouTheWorld.RunMode
                 GUILayout.Label(
                     $"Resources x{cfg.RunResourceRate:0.##}   Skills x{cfg.RunSkillGainRate:0.##}   " +
                     $"Par {cfg.RunParTimeMinutes:0} min",
-                    _smallStyle);
+                    RunTheme.Small);
             }
 
             if (run.CurrentScore > 0f)
             {
-                GUILayout.Label($"Last run score: {run.CurrentScore:0.##}", _smallStyle);
+                GUILayout.Label($"Last run score: {run.CurrentScore:0.##}", RunTheme.Small);
             }
 
             // Outside a run the strip isn't drawn, so this is the only place a notice can be
@@ -576,10 +728,10 @@ namespace ICanShowYouTheWorld.RunMode
             if (_concrete != null && _concrete.HasPendingResume)
             {
                 GUILayout.Space(4f);
-                GUILayout.Label($"Unfinished run on world '{_concrete.PendingResumeWorldName}'", _smallStyle);
+                GUILayout.Label($"Unfinished run on world '{_concrete.PendingResumeWorldName}'", RunTheme.Small);
 
                 bool discardArmed = Time.realtimeSinceStartup - _lastDiscardPress <= AbandonConfirmSeconds;
-                GUI.contentColor = discardArmed ? Color.red : Color.white;
+                GUI.contentColor = discardArmed ? RunTheme.HeatRed : Color.white;
                 if (GUILayout.Button(discardArmed ? "Discard saved run — click again" : "Discard saved run"))
                 {
                     if (discardArmed)
@@ -593,7 +745,7 @@ namespace ICanShowYouTheWorld.RunMode
                     }
                 }
                 GUI.contentColor = Color.white;
-                GUILayout.Label("That world keeps Run Mode's rates.", _smallStyle);
+                GUILayout.Label("That world keeps Run Mode's rates.", RunTheme.Small);
             }
 
             GUILayout.Space(8f);
@@ -601,7 +753,7 @@ namespace ICanShowYouTheWorld.RunMode
             if (GUILayout.Button("Start Run")) _pendingStart = true;
 
             GUILayout.Space(6f);
-            GUILayout.Label("GM mode is disabled while a run is live.", _smallStyle);
+            GUILayout.Label("GM mode is disabled while a run is live.", RunTheme.Small);
 
             // No kill-hook warning here by design: KillHookAvailable is unconditionally true
             // outside a run (the grace clock only advances while one is in progress, and the
@@ -625,34 +777,32 @@ namespace ICanShowYouTheWorld.RunMode
             var boons = Service?.Boons;
             if (boons == null) return;
 
-            Backdrop(_offerRect);
-
             var offer = boons.CurrentOffer;
+
+            GUILayout.Label("BOON OFFER", RunTheme.Header);
 
             GUILayout.BeginHorizontal();
             for (int i = 0; i < offer.Count; i++)
             {
                 GUILayout.BeginVertical(GUILayout.Width(OfferWidth / 3f - 12f));
-                GUI.contentColor = Color.cyan;
-                GUILayout.Label($"{i + 1}. {offer[i].Display}", _headerStyle);
+
+                GUILayout.BeginHorizontal();
+                GUI.contentColor = RunTheme.AccentGold;
+                GUILayout.Label($"{i + 1}", RunTheme.Header, GUILayout.Width(20f));
                 GUI.contentColor = Color.white;
-                GUILayout.Label(offer[i].IsPassive ? "passive" : "active", _smallStyle);
+                GUILayout.Label(offer[i].Display, RunTheme.Body);
+                GUILayout.EndHorizontal();
+
+                GUILayout.Label(offer[i].IsPassive ? "passive" : "active", RunTheme.Small);
                 GUILayout.EndVertical();
             }
             GUILayout.EndHorizontal();
 
             GUILayout.FlexibleSpace();
-            GUILayout.Label("press Keypad 1/2/3", _smallStyle);
+            GUILayout.Label("press Keypad 1/2/3", RunTheme.Small);
         }
 
         // --- Helpers ---
-
-        private static void Backdrop(Rect windowRect)
-        {
-            GUI.backgroundColor = new Color(0f, 0f, 0f, 0.8f);
-            GUI.Box(new Rect(0f, 0f, windowRect.width, windowRect.height), GUIContent.none);
-            GUI.backgroundColor = Color.white;
-        }
 
         private static string FormatTime(float seconds)
         {
@@ -677,5 +827,8 @@ namespace ICanShowYouTheWorld.RunMode
             Debug.LogError(
                 $"[ICanShowYouTheWorld] Run UI '{site}' failed (further identical occurrences suppressed): {ex}");
         }
+
+        // TODO(sfx): Valheim SFX hooks for offer-appear, heat-tick and challenge-complete are a
+        // follow-up — this pass is visuals-only.
     }
 }
