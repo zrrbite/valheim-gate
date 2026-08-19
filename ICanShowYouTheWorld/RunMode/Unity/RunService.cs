@@ -2513,7 +2513,7 @@ namespace ICanShowYouTheWorld.RunMode
             new ChallengeDefinition
             {
                 Id = "mq-axe", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "CraftsOrUpgrades",
-                Target = 1, Display = "Craft an axe", RewardText = "Bow + 40 arrows",
+                Target = 1, Display = "Craft an axe", RewardText = "Bow, arrows, and a pile of wood",
             },
             new ChallengeDefinition
             {
@@ -2546,7 +2546,9 @@ namespace ICanShowYouTheWorld.RunMode
         private static readonly Dictionary<string, (string prefab, int count)[]> QuestRewards =
             new Dictionary<string, (string, int)[]>
             {
-                ["mq-axe"] = new[] { ("Bow", 1), ("ArrowWood", 40) },
+                // "Lots of wood when he completes the axe, so he can build shelter" — the wood
+                // IS the reward here as much as the bow: skip straight from first craft to a roof.
+                ["mq-axe"] = new[] { ("Bow", 1), ("ArrowWood", 40), ("Wood", 50), ("Stone", 10) },
                 ["mq-deer"] = new[] { ("ArmorLeatherChest", 1), ("ArmorLeatherLegs", 1) },
                 ["mq-grey"] = new[] { ("HelmetLeather", 1), ("CapeDeerHide", 1), ("ArrowFlint", 20) },
                 ["mq-eikthyr"] = new[] { ("PickaxeAntler", 1) },
