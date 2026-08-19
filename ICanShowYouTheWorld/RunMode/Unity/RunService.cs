@@ -1934,7 +1934,20 @@ namespace ICanShowYouTheWorld.RunMode
         /// "Kill 8 Draugr" could be dealt before Eikthyr is down: unreachable for hours, and with
         /// the reroll heat cost a 0-heat player couldn't clear it either, so the slot just died.
         /// </summary>
-        internal static List<ChallengeDefinition> DefaultPool() => new List<ChallengeDefinition>
+        // Foundation-first (owner, 2026-08-19): composite multi-objective quests are built and
+        // tested but PARKED out of the deal pool until the core loop's pacing is right — they
+        // return as the story-quest system. Flip this to re-admit them.
+        internal const bool IncludeCompositeQuests = false;
+
+        internal static List<ChallengeDefinition> DefaultPool()
+        {
+            var pool = BuildFullPool();
+            if (!IncludeCompositeQuests)
+                pool.RemoveAll(d => d.Subs != null && d.Subs.Count > 0);
+            return pool;
+        }
+
+        private static List<ChallengeDefinition> BuildFullPool() => new List<ChallengeDefinition>
         {
             // --- Opening chain: the first three slots of a fresh run, dealt in this order. ---
             // A deliberate on-ramp rather than three random quests at minute zero: gather the wood,
