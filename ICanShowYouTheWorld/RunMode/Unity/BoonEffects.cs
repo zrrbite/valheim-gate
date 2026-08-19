@@ -129,7 +129,16 @@ namespace ICanShowYouTheWorld.RunMode
         private readonly Dictionary<ItemDrop.ItemData.SharedData, HitData.DamageTypes> _sharpSnapshots =
             new Dictionary<ItemDrop.ItemData.SharedData, HitData.DamageTypes>();
 
-        private struct PugilistSnapshot { public float Primary; public float Secondary; }
+        private struct PugilistSnapshot
+        {
+            public float Primary, Secondary;                 // m_attackStamina
+            public float PrimaryDraw, SecondaryDraw;         // m_drawStaminaDrain (bows)
+            public float PrimaryReload, SecondaryReload;     // m_reloadStaminaDrain (crossbows)
+        }
+
+        /// <summary>Ranged keeps SOME cost — "bows should only drain a little" — so archery
+        /// stays a resource decision without being a chore. Melee/tools are fully free.</summary>
+        private const float RangedStaminaFraction = 0.25f;
 
         private readonly Dictionary<ItemDrop.ItemData.SharedData, PugilistSnapshot> _pugilistSnapshots =
             new Dictionary<ItemDrop.ItemData.SharedData, PugilistSnapshot>();
@@ -403,11 +412,8 @@ namespace ICanShowYouTheWorld.RunMode
 
         // --- pugilist ---
 
-        /// <summary>
-        /// Everything swung by hand — melee weapons AND tools (pickaxes, axes, hammer/hoe, which
-        /// carry SkillType.None). Only ranged is excluded: bows and crossbows keep their stamina
-        /// cost, so ranged play still has a resource to manage.
-        /// </summary>
+        /// <summary>Fully free: everything swung by hand — melee weapons AND tools. Ranged is
+        /// handled separately at a reduced (not zero) cost; see RangedStaminaFraction.</summary>
         private static bool IsStaminaFreeSkill(Skills.SkillType skill)
         {
             return skill != Skills.SkillType.Bows
@@ -432,15 +438,25 @@ namespace ICanShowYouTheWorld.RunMode
                 // Keyed by SharedData (per-prefab), like sharp: a fresh ItemData for the same
                 // weapon after a respawn must not re-snapshot an already-zeroed cost.
                 if (shared == null || _pugilistSnapshots.ContainsKey(shared)) continue;
-                if (!IsStaminaFreeSkill(shared.m_skillType)) continue;
 
                 _pugilistSnapshots[shared] = new PugilistSnapshot
                 {
                     Primary = shared.m_attack.m_attackStamina,
-                    Secondary = shared.m_secondaryAttack.m_attackStamina
+                    Secondary = shared.m_secondaryAttack.m_attackStamina,
+                    PrimaryDraw = shared.m_attack.m_drawStaminaDrain,
+                    SecondaryDraw = shared.m_secondaryAttack.m_drawStaminaDrain,
+                    PrimaryReload = shared.m_attack.m_reloadStaminaDrain,
+                    SecondaryReload = shared.m_secondaryAttack.m_reloadStaminaDrain
                 };
-                shared.m_attack.m_attackStamina = 0f;
-                shared.m_secondaryAttack.m_attackStamina = 0f;
+
+                bool ranged = !IsStaminaFreeSkill(shared.m_skillType);
+                float f = ranged ? RangedStaminaFraction : 0f;
+                shared.m_attack.m_attackStamina *= f;
+                shared.m_secondaryAttack.m_attackStamina *= f;
+                shared.m_attack.m_drawStaminaDrain *= f;
+                shared.m_secondaryAttack.m_drawStaminaDrain *= f;
+                shared.m_attack.m_reloadStaminaDrain *= f;
+                shared.m_secondaryAttack.m_reloadStaminaDrain *= f;
             }
         }
 
@@ -452,6 +468,10 @@ namespace ICanShowYouTheWorld.RunMode
                 if (shared == null) continue;
                 shared.m_attack.m_attackStamina = kvp.Value.Primary;
                 shared.m_secondaryAttack.m_attackStamina = kvp.Value.Secondary;
+                shared.m_attack.m_drawStaminaDrain = kvp.Value.PrimaryDraw;
+                shared.m_secondaryAttack.m_drawStaminaDrain = kvp.Value.SecondaryDraw;
+                shared.m_attack.m_reloadStaminaDrain = kvp.Value.PrimaryReload;
+                shared.m_secondaryAttack.m_reloadStaminaDrain = kvp.Value.SecondaryReload;
             }
             _pugilistSnapshots.Clear();
         }
