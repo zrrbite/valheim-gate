@@ -31,6 +31,7 @@ namespace ICanShowYouTheWorld.RunMode
             ZoneSystem.instance.SetGlobalKey(GlobalKeys.SkillGainRate, cfg.RunSkillGainRate);
             ZoneSystem.instance.SetGlobalKey(GlobalKeys.MoveStaminaRate, cfg.RunMoveStaminaRate);
             ZoneSystem.instance.SetGlobalKey(GlobalKeys.StaminaRegenRate, cfg.RunStaminaRegenRate);
+            RefreshRates();
 
             Debug.Log("[ICanShowYouTheWorld] Run Mode baseline world modifiers applied " +
                 $"(resource={cfg.RunResourceRate}, skill={cfg.RunSkillGainRate}, " +
@@ -50,8 +51,10 @@ namespace ICanShowYouTheWorld.RunMode
 
             ZoneSystem.instance.SetGlobalKey(GlobalKeys.EnemyDamage,
                 HeatEffects.EnemyDamageMultiplier(heat, cfg.RunHeatEnemyDamageWeight));
+            // (RefreshRates below keeps the live caches in step with the key writes.)
             ZoneSystem.instance.SetGlobalKey(GlobalKeys.EnemyLevelUpRate,
                 HeatEffects.EnemyLevelUpMultiplier(heat, cfg.RunHeatEnemyLevelUpWeight));
+            RefreshRates();
         }
 
         /// <summary>
@@ -73,6 +76,7 @@ namespace ICanShowYouTheWorld.RunMode
             Debug.Log($"[ICanShowYouTheWorld] Run Mode world modifiers restored ({_originalValues.Count} key(s)).");
 
             _originalValues.Clear();
+            RefreshRates();
             return true;
         }
 
@@ -103,6 +107,24 @@ namespace ICanShowYouTheWorld.RunMode
             }
 
             Debug.Log($"[ICanShowYouTheWorld] Run Mode world modifier originals imported ({n} key(s)).");
+        }
+
+
+        /// <summary>
+        /// Valheim CACHES every world-modifier rate as a static on Game (m_resourceRate,
+        /// m_skillGainRate, m_enemyDamageRate, ...), refreshed only by UpdateWorldRates —
+        /// normally at world load. SetGlobalKey alone therefore changes what's SAVED but not
+        /// what's LIVE: drops, skill gain and heat's enemy scaling all kept reading stale
+        /// caches (field-found: a 3x resource run yielding vanilla 1-wood trees). Call this
+        /// after every batch of key writes.
+        /// </summary>
+        private static void RefreshRates()
+        {
+            try { ZoneSystem.instance?.UpdateWorldRates(); }
+            catch (System.Exception ex)
+            {
+                UnityEngine.Debug.LogWarning($"[ICanShowYouTheWorld] UpdateWorldRates failed: {ex.Message}");
+            }
         }
 
         private void SaveOriginal(GlobalKeys key)

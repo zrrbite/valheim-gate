@@ -116,6 +116,12 @@ namespace ICanShowYouTheWorld.RunMode
         private bool _active;
         private float _elapsed;
         private float _pollTimer;
+
+        /// <summary>Bitmask of Heightmap.Biome values the player has stood in during THIS run.
+        /// Feeds the engine's ExternalFilter so biome-gated quests (ghosts, wolves, fulings…)
+        /// are only dealt once the player has actually been where they live. Meadows is seeded
+        /// at run start.</summary>
+        private int _visitedBiomes;
         private float _saveTimer;
         private float _noArmorSeconds;
         private bool _frozen;
@@ -380,6 +386,8 @@ namespace ICanShowYouTheWorld.RunMode
 
                 RevealBosses(player);
 
+                _visitedBiomes = (int)Heightmap.Biome.Meadows;
+                try { if (Player.m_localPlayer != null) _visitedBiomes |= (int)Player.m_localPlayer.GetCurrentBiome(); } catch { }
                 _worldModifiers.ApplyBaseline(_cfg);
                 // Free melee/tool stamina is baseline empowerment: the early game's stamina tax
                 // is tedium, not difficulty. Re-run on the poll tick for newly crafted gear.
@@ -767,6 +775,12 @@ namespace ICanShowYouTheWorld.RunMode
 
         private void PollMeasures(float pollDt)
         {
+            var biomePlayer = Player.m_localPlayer;
+            if (biomePlayer != null)
+            {
+                try { _visitedBiomes |= (int)biomePlayer.GetCurrentBiome(); } catch { }
+            }
+
             var player = Player.m_localPlayer;
             if (player == null || _challenges == null) return;
 
@@ -1126,6 +1140,7 @@ namespace ICanShowYouTheWorld.RunMode
         private void BuildEngines(List<ChallengeDefinition> pool, bool freshRun)
         {
             _challenges = new ChallengeEngine(pool, _rng, _cfg.RunChallengeRefillSeconds);
+            _challenges.ExternalFilter = d => d.Biomes == 0 || (d.Biomes & _visitedBiomes) != 0;
             _challenges.Completed += OnChallengeCompleted;
 
             _boons = new BoonEngine(DefaultBoons(), _rng, _cfg.RunBoonOfferTimeoutSeconds);
@@ -1558,6 +1573,10 @@ namespace ICanShowYouTheWorld.RunMode
             _finalBossKey = ResolveFinalBossKey();
 
             _rngSeed = s.rngSeed;
+            _visitedBiomes = s.visitedBiomes != 0
+                ? s.visitedBiomes
+                : (int)Heightmap.Biome.Meadows;   // pre-biome-gating save: seed the floor
+            try { if (Player.m_localPlayer != null) _visitedBiomes |= (int)Player.m_localPlayer.GetCurrentBiome(); } catch { }
             _rng = new Random(_rngSeed);
 
             BuildEngines(BuildChallengePool(), freshRun: false);
@@ -1751,6 +1770,7 @@ namespace ICanShowYouTheWorld.RunMode
                 heldBoonCooldowns = held.Select(h => h.CooldownRemaining).ToList(),
                 heldBoonCharges = held.Select(h => h.Charges).ToList(),
                 rngSeed = _rngSeed,
+                visitedBiomes = _visitedBiomes,
                 worldId = _worldId,
                 modifierKeys = _worldModifiers.ExportOriginalKeys(),
                 modifierValues = _worldModifiers.ExportOriginalValues()
@@ -1968,10 +1988,10 @@ namespace ICanShowYouTheWorld.RunMode
             new ChallengeDefinition { Id = "o-stone", Opener = true, Tier = 0, Kind = ChallengeKind.CollectItem, Param = "$item_stone", Target = 3, HeatReward = 1, Display = "Hold 3 Stone" },
             new ChallengeDefinition { Id = "o-craft", Opener = true, Tier = 0, Kind = ChallengeKind.StatDelta,   Param = "CraftsOrUpgrades", Target = 1, HeatReward = 1, Display = "Craft something — an axe!" },
 
-            new ChallengeDefinition { Id = "k-greydwarf", Tier = 1, Kind = ChallengeKind.KillPrefab, Param = "Greydwarf", Target = 6, HeatReward = 2, Display = "Kill 6 Greydwarves" },
-            new ChallengeDefinition { Id = "k-skeleton",  Tier = 1, Kind = ChallengeKind.KillPrefab, Param = "Skeleton",  Target = 6, HeatReward = 2, Display = "Kill 6 Skeletons" },
-            new ChallengeDefinition { Id = "k-troll",     Tier = 1, Kind = ChallengeKind.KillPrefab, Param = "Troll",     Target = 1,  HeatReward = 3, Display = "Slay a Troll" },
-            new ChallengeDefinition { Id = "k-draugr",    Tier = 2, Kind = ChallengeKind.KillPrefab, Param = "Draugr",    Target = 5,  HeatReward = 3, Display = "Kill 5 Draugr" },
+            new ChallengeDefinition { Id = "k-greydwarf", Tier = 1, Kind = ChallengeKind.KillPrefab, Param = "Greydwarf", Target = 6, Biomes = 8, HeatReward = 2, Display = "Kill 6 Greydwarves" },
+            new ChallengeDefinition { Id = "k-skeleton",  Tier = 1, Kind = ChallengeKind.KillPrefab, Param = "Skeleton",  Target = 6, Biomes = 8, HeatReward = 2, Display = "Kill 6 Skeletons" },
+            new ChallengeDefinition { Id = "k-troll",     Tier = 1, Kind = ChallengeKind.KillPrefab, Param = "Troll",     Target = 1,  Biomes = 8, HeatReward = 3, Display = "Slay a Troll" },
+            new ChallengeDefinition { Id = "k-draugr",    Tier = 2, Kind = ChallengeKind.KillPrefab, Param = "Draugr",    Target = 5,  Biomes = 2, HeatReward = 3, Display = "Kill 5 Draugr" },
 
             // More biome kill quests (alpha8, owner feedback: the pool needed more low-target
             // kill contracts, not just the handful above). Prefab names checked against what
@@ -1984,13 +2004,15 @@ namespace ICanShowYouTheWorld.RunMode
             // was re-confirmed here: even "Greydwarf"/"Draugr"/"Skeleton"/"Troll" above, already
             // known-good, return zero hits). The rest below are the well-established, stable
             // Valheim prefab names — cross-checked against each other rather than guessed.
-            new ChallengeDefinition { Id = "k-neck",      Tier = 0, Kind = ChallengeKind.KillPrefab, Param = "Neck",     Target = 4, HeatReward = 1, Display = "Kill 4 Necks" },
-            new ChallengeDefinition { Id = "k-deer",      Tier = 0, Kind = ChallengeKind.KillPrefab, Param = "Deer",     Target = 3, HeatReward = 1, Display = "Hunt 3 Deer" },
-            new ChallengeDefinition { Id = "k-greyling",  Tier = 0, Kind = ChallengeKind.KillPrefab, Param = "Greyling", Target = 3, HeatReward = 1, Display = "Kill 3 Greylings" },
-            new ChallengeDefinition { Id = "k-ghost",     Tier = 1, Kind = ChallengeKind.KillPrefab, Param = "Ghost",    Target = 3, HeatReward = 2, Display = "Kill 3 Ghosts" },
-            new ChallengeDefinition { Id = "k-surtling",  Tier = 2, Kind = ChallengeKind.KillPrefab, Param = "Surtling", Target = 3, HeatReward = 2, Display = "Kill 3 Surtlings" },
-            new ChallengeDefinition { Id = "k-lox",       Tier = 4, Kind = ChallengeKind.KillPrefab, Param = "Lox",         Target = 2, HeatReward = 3, Display = "Kill 2 Lox" },
-            new ChallengeDefinition { Id = "k-deathsquito", Tier = 4, Kind = ChallengeKind.KillPrefab, Param = "Deathsquito", Target = 3, HeatReward = 3, Display = "Kill 3 Deathsquitoes" },
+            new ChallengeDefinition { Id = "k-neck",      Tier = 0, Kind = ChallengeKind.KillPrefab, Param = "Neck",     Target = 4, Biomes = 0, HeatReward = 1, Display = "Kill 4 Necks" },
+            new ChallengeDefinition { Id = "k-deer",      Tier = 0, Kind = ChallengeKind.KillPrefab, Param = "Deer",     Target = 3, Biomes = 0, HeatReward = 1, Display = "Hunt 3 Deer" },
+            new ChallengeDefinition { Id = "k-greyling",  Tier = 0, Kind = ChallengeKind.KillPrefab, Param = "Greyling", Target = 3, Biomes = 0, HeatReward = 1, Display = "Kill 3 Greylings" },
+            new ChallengeDefinition { Id = "k-ghost",     Tier = 2, Kind = ChallengeKind.KillPrefab, Param = "Ghost",    Target = 3, Biomes = 8, HeatReward = 2, Display = "Kill 3 Ghosts" },
+            new ChallengeDefinition { Id = "k-surtling",  Tier = 2, Kind = ChallengeKind.KillPrefab, Param = "Surtling", Target = 3, Biomes = 2, HeatReward = 2, Display = "Kill 3 Surtlings" },
+            new ChallengeDefinition { Id = "k-wolf",   Tier = 3, Kind = ChallengeKind.KillPrefab, Param = "Wolf",   Target = 3, Biomes = 4,  HeatReward = 3, Display = "Kill 3 Wolves" },
+            new ChallengeDefinition { Id = "k-goblin", Tier = 4, Kind = ChallengeKind.KillPrefab, Param = "Goblin", Target = 4, Biomes = 16, HeatReward = 3, Display = "Kill 4 Fulings" },
+            new ChallengeDefinition { Id = "k-lox",       Tier = 4, Kind = ChallengeKind.KillPrefab, Param = "Lox",         Target = 2, Biomes = 16, HeatReward = 3, Display = "Kill 2 Lox" },
+            new ChallengeDefinition { Id = "k-deathsquito", Tier = 4, Kind = ChallengeKind.KillPrefab, Param = "Deathsquito", Target = 3, Biomes = 16, HeatReward = 3, Display = "Kill 3 Deathsquitoes" },
 
             new ChallengeDefinition { Id = "alt-150",     Tier = 3, Kind = ChallengeKind.ReachAltitude, Param = "", Target = 150, HeatReward = 2, Display = "Climb to 150m altitude" },
             new ChallengeDefinition { Id = "alt-90",      Tier = 1, Kind = ChallengeKind.ReachAltitude, Param = "", Target = 90,  HeatReward = 1, Display = "Climb to 90m altitude" },
@@ -2040,7 +2062,7 @@ namespace ICanShowYouTheWorld.RunMode
             new ChallengeDefinition { Id = "s-mine",   Tier = 1, Kind = ChallengeKind.StatDelta, Param = "MineHits",         Target = 35,  HeatReward = 2, Display = "Land 35 mining hits" },
             new ChallengeDefinition { Id = "s-craft",  Tier = 1, Kind = ChallengeKind.StatDelta, Param = "CraftsOrUpgrades", Target = 5,   HeatReward = 1, Display = "Craft or upgrade 5 times" },
             new ChallengeDefinition { Id = "s-doors",  Tier = 1, Kind = ChallengeKind.StatDelta, Param = "DoorsOpened",      Target = 8,  HeatReward = 1, Display = "Open 8 doors" },
-            new ChallengeDefinition { Id = "s-sail",   Tier = 2, Kind = ChallengeKind.StatDelta, Param = "DistanceSail",     Target = 180, HeatReward = 2, Display = "Sail for 90 seconds" },
+            new ChallengeDefinition { Id = "s-sail",   Tier = 2, Kind = ChallengeKind.StatDelta, Param = "DistanceSail",     Target = 180, Biomes = 0, HeatReward = 2, Display = "Sail for 90 seconds" },
 
             // --- Composite (multi-objective) quests — alpha8. ---
             // Each is a small checklist ("kill 1 boar, gather some food, ...") rather than a

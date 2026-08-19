@@ -26,6 +26,10 @@ namespace ICanShowYouTheWorld.RunMode
         public float Target;
         public float HeatReward;
         public string Display;
+        /// <summary>Bitmask of Heightmap.Biome values (as int) where this quest makes sense;
+        /// 0 = anywhere. The engine knows nothing about biomes — the host expresses "player has
+        /// been there" through <see cref="ChallengeEngine.ExternalFilter"/>.</summary>
+        public int Biomes;
 
         /// <summary>
         /// World-progression tier this challenge belongs to: 0 Meadows, 1 Black Forest,
@@ -158,6 +162,10 @@ namespace ICanShowYouTheWorld.RunMode
         /// Deliberately not enforced by <see cref="RestoreActive"/> — see the note there.
         /// </summary>
         public int MaxTier { get; set; } = int.MaxValue;
+
+        /// <summary>Optional host-supplied gate on what may be DEALT (drawn or rerolled into).
+        /// Null = everything eligible. Already-active challenges are unaffected by later changes.</summary>
+        public Func<ChallengeDefinition, bool> ExternalFilter { get; set; }
 
         public ChallengeEngine(IList<ChallengeDefinition> pool, Random rng, float refillCooldownSeconds)
         {
@@ -437,7 +445,8 @@ namespace ICanShowYouTheWorld.RunMode
         private List<ChallengeDefinition> Drawable()
         {
             var taken = active.Select(a => a.Def.Id).ToHashSet();
-            return pool.Where(d => !d.Opener && !taken.Contains(d.Id) && d.Tier <= MaxTier).ToList();
+            return pool.Where(d => !d.Opener && !taken.Contains(d.Id) && d.Tier <= MaxTier
+                              && (ExternalFilter == null || ExternalFilter(d))).ToList();
         }
 
         /// <summary>

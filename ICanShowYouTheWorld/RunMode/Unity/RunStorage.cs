@@ -49,6 +49,10 @@ namespace ICanShowYouTheWorld.RunMode
         public List<int> heldBoonCharges;
         public int rngSeed;
 
+        /// <summary>Bitmask of Heightmap.Biome values visited this run (biome-gated quest dealing).
+        /// 0 on old saves — RunService re-seeds Meadows + current biome on resume.</summary>
+        public int visitedBiomes;
+
         /// <summary>
         /// The world this run belongs to. A saved run must never be resumed against a
         /// different world — its boss keys and world modifiers would be meaningless there.

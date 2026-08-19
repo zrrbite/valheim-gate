@@ -411,7 +411,7 @@ a stale non-null static meant the next toggle destroyed instead of spawned,
 desyncing ring state from the flag.
 
 TASK: `git pull` → full `.\Install-Mod.ps1` → popup reads
-**v0.221.12-run.alpha9** (alpha6 = alpha5's log fix + the new Pugilist boon:
+**v0.221.12-run.alpha10** (alpha6 = alpha5's log fix + the new Pugilist boon:
 melee attacks cost zero stamina; bows/crossbows unaffected). Then: activate the ember boon (Keypad5), confirm
 the ring appears and disappears after ~30s, and confirm the log stays small
 (`(Get-Item Player.log).Length` after a few minutes — expect KB, not MB) and
@@ -426,7 +426,7 @@ death mid-run (no suspend/resume lines) and logout suspend. Append RESULTS.
 
 ## 2026-08-19 — TASK: alpha8 (pace + quests + ability bar)
 
-`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha9**.
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha10**.
 Changes from Martin's alpha7 play-test: collect/kill targets cut roughly in
 half (Hold 25 Wood, 10 food, Run 400m, Kill 6 Greydwarves...); ~17 new
 quests including **composite multi-objective quests** with per-objective
@@ -447,7 +447,7 @@ name fails silently as a dead quest. Note which ones tick and which don't.
 
 ## 2026-08-19 — TASK: alpha9 — themed HUD, foundation-first
 
-`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha9**.
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha10**.
 alpha9 = alpha8's pacing (halved targets, more small quests, ability bar)
 + the RESTYLED HUD (dark panels, serif font, real progress bars, cooldown
 wipes on ability slots, boon-offer fade-in, heat pulse, gold completion
@@ -456,6 +456,27 @@ the engine stays for the future story system). Watch: HUD legibility at
 your resolution (uiScale in the config if needed); prefab-name counters
 (Greyling/Ghost/Surtling/Greydwarf_Elite/Lox/Deathsquito); still
 outstanding: death mid-run + logout suspend log checks. Append RESULTS.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
+---
+
+## 2026-08-19 — TASK: alpha10 — THE RATE FIX (this one matters)
+
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha10**.
+Two field bugs from Martin's alpha8 session fixed:
+1. **World-modifier rates were never live.** Valheim caches every rate as a
+   static on Game, refreshed only by UpdateWorldRates (normally at world
+   load) — so ×3 resources/skills and heat's enemy scaling never actually
+   applied mid-session. Now refreshed after every write. VERIFY: chop a
+   small beech during a run — expect ~3 wood, not 1; abandon → expect ~1.
+2. **Biome-gated quests.** Mob quests only deal after the player has
+   visited the mob's biome this run (ghosts additionally moved to tier 2).
+   VERIFY: fresh run in Meadows → no ghost/draugr/wolf quests in early
+   deals.
+Append RESULTS including the wood-count check numbers.
 
 ### RESULTS (Windows side appends here)
 

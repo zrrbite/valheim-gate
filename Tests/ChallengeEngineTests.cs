@@ -16,6 +16,7 @@ static class ChallengeEngineTests
 
     public static void Run()
     {
+        BiomeFilterTests();
         var e = new ChallengeEngine(Pool(), new Random(42), refillCooldownSeconds: 120f);
         e.Tick(0.1f);
         Check.That(e.Active.Count == 3, "fills to 3 active");
@@ -731,5 +732,27 @@ static class ChallengeEngineTests
         // Raising the cap over it clears the flag without touching the slot.
         restored.MaxTier = 3;
         Check.That(!restored.IsAboveTier(0), "raising MaxTier clears the above-tier flag");
+    }
+
+    static void BiomeFilterTests()
+    {
+        // Two quests: one anywhere (Biomes=0), one gated to biome bit 8.
+        var pool = new List<ChallengeDefinition>
+        {
+            new ChallengeDefinition { Id="bf-any",   Kind=ChallengeKind.ReachAltitude, Param="", Target=10, HeatReward=1, Display="any", Biomes=0 },
+            new ChallengeDefinition { Id="bf-gated", Kind=ChallengeKind.ReachAltitude, Param="", Target=10, HeatReward=1, Display="gated", Biomes=8 },
+        };
+        int visited = 1; // only biome bit 1 seen
+        var e = new ChallengeEngine(pool, new System.Random(5), 1f);
+        e.ExternalFilter = d => d.Biomes == 0 || (d.Biomes & visited) != 0;
+        e.Tick(0.1f);
+        Check.That(e.Active.Count == 1 && e.Active[0].Def.Id == "bf-any", "gated quest not dealt before its biome is visited");
+
+        visited |= 8; // player reaches the gated biome
+        e.Tick(2f);   // past refill cooldown-less initial fill: force draws
+        e.Tick(2f);
+        bool gatedNow = false;
+        foreach (var a in e.Active) if (a.Def.Id == "bf-gated") gatedNow = true;
+        Check.That(gatedNow, "gated quest dealt once its biome is visited");
     }
 }
