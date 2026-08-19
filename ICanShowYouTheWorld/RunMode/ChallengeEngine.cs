@@ -49,6 +49,23 @@ namespace ICanShowYouTheWorld.RunMode
         public bool Opener;
 
         /// <summary>
+        /// Marks this definition as a link in the MAIN QUEST chain (see
+        /// <see cref="ChallengeEngine.SetMainChain"/>) rather than a random task. The engine uses
+        /// it for nothing at all — the chain is identified by the list it was handed, not by this
+        /// flag — but the <see cref="ChallengeEngine.Completed"/> event carries only a definition,
+        /// so this is how the host tells "the questline advanced, hand out its reward" from "a
+        /// random task finished, offer a boon".
+        /// </summary>
+        public bool MainQuest;
+
+        /// <summary>
+        /// Player-facing description of what completing this step GIVES, e.g. "Bow + 40 arrows".
+        /// UI copy only: the engine is pure and hands out nothing, so the actual grant lives
+        /// host-side, keyed by <see cref="Id"/>. Null/empty for anything with no reward to show.
+        /// </summary>
+        public string RewardText;
+
+        /// <summary>
         /// When set (non-null, non-empty), this definition is a COMPOSITE/multi-objective
         /// challenge: <see cref="Kind"/>/<see cref="Param"/>/<see cref="Target"/> above are
         /// unused and <see cref="ActiveChallenge.Done"/> instead requires every sub's own
@@ -150,8 +167,86 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         private bool dealtAnything;
 
+        /// <summary>The ordered main-quest chain, or empty when none was set. See <see cref="SetMainChain"/>.</summary>
+        private List<ChallengeDefinition> mainChain = new List<ChallengeDefinition>();
+
+        /// <summary>Position in <see cref="mainChain"/>; equal to its Count once the chain is exhausted.</summary>
+        private int mainIndex;
+
+        private ActiveChallenge mainQuest;
+
         public IReadOnlyList<ActiveChallenge> Active => active;
         public event Action<ChallengeDefinition> Completed;
+
+        /// <summary>
+        /// The one main-quest step in play right now, in a RESERVED slot of its own — it is not in
+        /// <see cref="Active"/>, does not count against the three random slots, is never drawn or
+        /// rerolled, and is not filtered by <see cref="MaxTier"/> or <see cref="ExternalFilter"/>.
+        /// Null when no chain was set or the chain has been exhausted.
+        /// </summary>
+        public ActiveChallenge CurrentMainQuest => mainQuest;
+
+        /// <summary>
+        /// The slot index that addresses <see cref="CurrentMainQuest"/> in
+        /// <see cref="ReportSlotMeasure"/>. Negative on purpose: the main quest sits outside the
+        /// active list, so it cannot share that list's index space, and every other negative index
+        /// keeps its existing "ignored" behaviour.
+        /// </summary>
+        public const int MainQuestSlot = -1;
+
+        /// <summary>
+        /// How far along the main-quest chain the run is: 0 = the first step, Count = exhausted.
+        /// Persisted by the host so a resumed run picks the questline up where it left off.
+        ///
+        /// The setter re-seats the current step with ZERO progress and fires nothing — assigning
+        /// an index is a restore, not a completion. Use <see cref="RestoreMainQuest"/> to bring
+        /// part-finished progress back with it.
+        /// </summary>
+        public int MainQuestIndex
+        {
+            get => mainIndex;
+            set => RestoreMainQuest(value, 0f);
+        }
+
+        /// <summary>
+        /// Installs the ordered main-quest chain and starts it at step 0. The chain is kept
+        /// entirely apart from the random pool: its definitions are never drawn, never rerolled
+        /// into a slot, and never tier- or filter-gated, so a questline step cannot be lost to the
+        /// rng or to a world whose progression hasn't caught up yet.
+        ///
+        /// A null or empty chain simply means "no questline" — <see cref="CurrentMainQuest"/> stays
+        /// null and nothing else about the engine changes.
+        /// </summary>
+        public void SetMainChain(List<ChallengeDefinition> chain)
+        {
+            mainChain = chain == null ? new List<ChallengeDefinition>() : chain.ToList();
+            mainIndex = 0;
+            mainQuest = mainIndex < mainChain.Count ? MakeActive(mainChain[mainIndex]) : null;
+        }
+
+        /// <summary>
+        /// Puts the chain back at <paramref name="index"/> with <paramref name="progress"/> on that
+        /// step, WITHOUT firing <see cref="Completed"/> for any step it skips past — a resume must
+        /// restore a position, not replay the rewards that got the run there.
+        ///
+        /// Call after <see cref="SetMainChain"/> (which defines what the index means). An index at
+        /// or beyond the chain's length is the exhausted state and leaves
+        /// <see cref="CurrentMainQuest"/> null; a negative one is clamped to the start, matching
+        /// the malformed-save tolerance the rest of the restore path uses.
+        /// </summary>
+        public void RestoreMainQuest(int index, float progress)
+        {
+            mainIndex = Math.Max(0, index);
+
+            if (mainIndex >= mainChain.Count)
+            {
+                mainQuest = null;
+                return;
+            }
+
+            mainQuest = MakeActive(mainChain[mainIndex]);
+            mainQuest.Progress = Math.Max(0f, progress);
+        }
 
         /// <summary>
         /// Highest <see cref="ChallengeDefinition.Tier"/> that may be DRAWN (by
@@ -177,6 +272,17 @@ namespace ICanShowYouTheWorld.RunMode
 
         public void Tick(float dt)
         {
+            // (0) The main quest advances first, so a host handler that reads CurrentMainQuest
+            // during the event already sees the NEXT step rather than the one it just finished
+            // (the finished definition is the event's own argument).
+            if (mainQuest != null && mainQuest.Done)
+            {
+                var finished = mainQuest.Def;
+                mainIndex++;
+                mainQuest = mainIndex < mainChain.Count ? MakeActive(mainChain[mainIndex]) : null;
+                Completed?.Invoke(finished);
+            }
+
             // (1) Fire completions and vacate their slots.
             foreach (var a in active.Where(a => a.Done).ToList())
             {
@@ -225,36 +331,46 @@ namespace ICanShowYouTheWorld.RunMode
 
         public void ReportKill(string prefab)
         {
-            foreach (var a in active)
-            {
-                if (a.Def.Kind == ChallengeKind.KillPrefab && a.Def.Param == prefab)
-                    a.Progress += 1f;
+            foreach (var a in active) CreditKill(a, prefab);
 
-                CreditKillSub(a, prefab);
-            }
+            // The main quest measures through exactly the same reports as a random slot; it just
+            // lives outside the active list.
+            if (mainQuest != null) CreditKill(mainQuest, prefab);
         }
 
         public void ReportMeasure(ChallengeKind kind, string param, float value)
         {
-            foreach (var a in active)
-            {
-                // Runs unconditionally, ahead of the simple-challenge `continue`s below: a
-                // composite's own top-level Kind/Param are unused filler (see
-                // ChallengeDefinition.Subs), so the simple-path checks must never gate whether a
-                // composite's subs get a look at this report.
-                CreditMeasureSub(a, kind, param, value);
+            foreach (var a in active) CreditMeasure(a, kind, param, value);
 
-                if (a.Def.Kind != kind) continue;
+            if (mainQuest != null) CreditMeasure(mainQuest, kind, param, value);
+        }
 
-                // CollectItem and StatDelta are the param-scoped measures: each tracks ONE named
-                // thing (an item, a lifetime stat), so a report about a different one must not
-                // touch it. Every other kind (altitude, build height, no-armor minutes,
-                // CollectFood) is a single world-wide quantity and ignores param entirely.
-                if ((kind == ChallengeKind.CollectItem || kind == ChallengeKind.StatDelta) &&
-                    a.Def.Param != param) continue;
+        private static void CreditKill(ActiveChallenge a, string prefab)
+        {
+            if (a.Def.Kind == ChallengeKind.KillPrefab && a.Def.Param == prefab)
+                a.Progress += 1f;
 
-                a.Progress = Math.Max(a.Progress, value);
-            }
+            CreditKillSub(a, prefab);
+        }
+
+        private static void CreditMeasure(ActiveChallenge a, ChallengeKind kind, string param, float value)
+        {
+            // Runs unconditionally, ahead of the simple-challenge returns below: a composite's own
+            // top-level Kind/Param are unused filler (see ChallengeDefinition.Subs), so the
+            // simple-path checks must never gate whether a composite's subs get a look at this
+            // report.
+            CreditMeasureSub(a, kind, param, value);
+
+            if (a.Def.Kind != kind) return;
+
+            // CollectItem and StatDelta are the param-scoped measures: each tracks ONE named
+            // thing (an item, a lifetime stat), so a report about a different one must not
+            // touch it. Every other kind (altitude, build height, no-armor minutes,
+            // CollectFood) is a single world-wide quantity and ignores param entirely.
+            if ((kind == ChallengeKind.CollectItem || kind == ChallengeKind.StatDelta) &&
+                a.Def.Param != param) return;
+
+            a.Progress = Math.Max(a.Progress, value);
         }
 
         /// <summary>
@@ -314,6 +430,14 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         public void ReportSlotMeasure(int slotIndex, float value)
         {
+            // The main quest has its own baseline for exactly the same reason a random slot does,
+            // so it needs the same slot-addressed report — see MainQuestSlot.
+            if (slotIndex == MainQuestSlot)
+            {
+                if (mainQuest != null) mainQuest.Progress = Math.Max(mainQuest.Progress, value);
+                return;
+            }
+
             if (slotIndex < 0 || slotIndex >= active.Count) return;
 
             var a = active[slotIndex];

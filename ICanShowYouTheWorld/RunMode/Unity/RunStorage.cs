@@ -42,6 +42,30 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         public List<string> activeChallengeSubProgress;
 
+        /// <summary>
+        /// Position in the main-quest chain (see <see cref="ChallengeEngine.SetMainChain"/>),
+        /// stored independently of the actives lists because the questline occupies a reserved
+        /// slot of its own rather than one of the three random ones.
+        ///
+        /// Absent in saves written before the chain existed, where JsonUtility leaves it 0 — which
+        /// is exactly the right answer: such a run resumes with the questline at step 0, fresh.
+        /// </summary>
+        public int mainQuestIndex;
+
+        /// <summary>Progress on the step named by <see cref="mainQuestIndex"/>; 0 on a legacy save.</summary>
+        public float mainQuestProgress;
+
+        /// <summary>
+        /// The player's WoodCutting skill level as it stood before the run LOANED them 100 (see
+        /// RunService's skill boost — "max woodcutting from the start", with no grinding for it).
+        /// Restored when the run finishes or is abandoned, so the loan is never permanent.
+        ///
+        /// -1 means "no snapshot in this save": either a save written before the loan existed, or
+        /// one taken before the snapshot could be read. A resume takes a fresh snapshot in that
+        /// case rather than guessing a level to give back.
+        /// </summary>
+        public float woodcuttingOriginal = -1f;
+
         public List<string> heldBoonIds;
         public List<float> heldBoonCooldowns;
 

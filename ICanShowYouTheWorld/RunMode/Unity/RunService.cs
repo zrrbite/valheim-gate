@@ -392,6 +392,10 @@ namespace ICanShowYouTheWorld.RunMode
                 // Free melee/tool stamina is baseline empowerment: the early game's stamina tax
                 // is tedium, not difficulty. Re-run on the poll tick for newly crafted gear.
                 _boonEffects.ApplyPugilist();
+
+                // Fresh run: take a new snapshot, so clear any stale one first.
+                _woodcuttingOriginal = NoSkillSnapshot;
+                SnapshotAndBoostWoodcutting();
                 _worldModifiers.ApplyHeat(0f, _cfg);
                 _restorePending = true;
                 _restoreWorldId = _worldId;
@@ -402,12 +406,11 @@ namespace ICanShowYouTheWorld.RunMode
                 _resumeAttempted = true;
                 _pendingResume = null;
 
-                // Deal the opening slots BEFORE the first save, rather than waiting for the first
-                // Tick. The save is what a crash or a hard quit in the opening seconds resumes
-                // from, and an empty active list there resumes as an ordinary run — RestoreActive
-                // retires the opening chain whether or not it restored anything, so those three
-                // scripted challenges would be gone for good. Dealing them here puts them in the
-                // very first write. A zero dt only runs the top-up; nothing is timed yet.
+                // Deal the three random slots BEFORE the first save rather than waiting for the
+                // first Tick: the save is what a crash or a hard quit in the opening seconds
+                // resumes from, and an empty active list there would resume with nothing in play
+                // until the refill cooldowns elapsed. A zero dt only runs the top-up; nothing is
+                // timed yet. (The questline's step is already seated — SetMainChain deals it.)
                 _challenges.Tick(0f);
                 SyncStatDeltaBaselines();
 
@@ -446,6 +449,7 @@ namespace ICanShowYouTheWorld.RunMode
                 _restorePending = !_worldModifiers.RestoreAll();
                 _restoreWorldId = _restorePending ? _worldId : null;
                 SafeUnapplyAllBoonEffects();
+                RestoreWoodcutting();   // before EndRun: the snapshot is run state EndRun clears
                 DeleteState();
                 EndRun();
 
@@ -724,6 +728,12 @@ namespace ICanShowYouTheWorld.RunMode
             if (!isRespawn || player == null) return;
 
             ReapplyPassiveBoonEffects();
+
+            // Valheim applies skill LOSS on death (Skills.OnDeath → LowerAllSkills), which this
+            // mode accepts as vanilla rather than suppressing — but the LOAN is not the player's
+            // skill to lose, so it goes straight back on. The snapshot is untouched: the original
+            // is still what gets given back at the end of the run.
+            ApplyLoanedWoodcutting();
         }
 
         /// <summary>Re-runs Apply for every held passive boon (fleet/sharp/pack/mule/hearty/enduring) — used after a respawn and NOT after a resume (way's charge is persisted separately; re-running Apply("way") there would grant a free charge). Iterates the held set by its IsPassive flag, so a new passive joins simply by being one.</summary>
@@ -794,7 +804,9 @@ namespace ICanShowYouTheWorld.RunMode
                 // a composite's top-level Kind/Param are unused filler (see
                 // ChallengeDefinition.Subs), so a "hold 25 wood" SUB would never be polled if this
                 // only looked at the top level.
-                var wanted = _challenges.Active
+                // The questline's reserved slot is included for the same reason: it measures
+                // through the very same reports, so anything it asks for has to be polled too.
+                var wanted = MeasuredChallenges()
                     .SelectMany(CollectItemParams)
                     .Distinct();
 
@@ -803,7 +815,7 @@ namespace ICanShowYouTheWorld.RunMode
                     _challenges.ReportMeasure(ChallengeKind.CollectItem, itemName, inventory.CountItems(itemName));
                 }
 
-                if (_challenges.Active.Any(HasCollectFood))
+                if (MeasuredChallenges().Any(HasCollectFood))
                 {
                     _challenges.ReportMeasure(ChallengeKind.CollectFood, string.Empty, CountFood(inventory));
                 }
@@ -828,6 +840,19 @@ namespace ICanShowYouTheWorld.RunMode
             _challenges.ReportMeasure(ChallengeKind.NoArmorMinutes, string.Empty, _noArmorSeconds / 60f);
 
             PollStatDeltas();
+        }
+
+        /// <summary>
+        /// Everything whose progress is measured by polling: the three random slots plus the
+        /// questline's reserved one. Deliberately NOT used for the no-armor bookkeeping below,
+        /// which is keyed by challenge id and belongs to the random slots alone.
+        /// </summary>
+        private IEnumerable<ActiveChallenge> MeasuredChallenges()
+        {
+            foreach (var a in _challenges.Active) yield return a;
+
+            var quest = _challenges.CurrentMainQuest;
+            if (quest != null) yield return quest;
         }
 
         /// <summary>
@@ -881,6 +906,19 @@ namespace ICanShowYouTheWorld.RunMode
                 // would otherwise report a negative and read as "no progress" forever.
                 _challenges.ReportSlotMeasure(i, Mathf.Max(0f, current.Value - a.Baseline));
             }
+
+            // The questline's own reserved slot, on exactly the same terms — it holds its own
+            // Baseline for the same reason a random slot does.
+            var quest = _challenges.CurrentMainQuest;
+            if (quest != null && quest.Def.Kind == ChallengeKind.StatDelta && !float.IsNaN(quest.Baseline))
+            {
+                float? questCurrent = ReadPlayerStat(quest.Def.Param);
+                if (questCurrent != null)
+                {
+                    _challenges.ReportSlotMeasure(
+                        ChallengeEngine.MainQuestSlot, Mathf.Max(0f, questCurrent.Value - quest.Baseline));
+                }
+            }
         }
 
         /// <summary>
@@ -897,15 +935,19 @@ namespace ICanShowYouTheWorld.RunMode
         {
             if (_challenges == null) return;
 
-            foreach (var a in _challenges.Active)
-            {
-                if (a.Def.Kind != ChallengeKind.StatDelta || !float.IsNaN(a.Baseline)) continue;
+            foreach (var a in _challenges.Active) SyncStatDeltaBaseline(a);
 
-                float? current = ReadPlayerStat(a.Def.Param);
-                if (current == null) continue;
+            SyncStatDeltaBaseline(_challenges.CurrentMainQuest);
+        }
 
-                a.Baseline = current.Value;
-            }
+        private void SyncStatDeltaBaseline(ActiveChallenge a)
+        {
+            if (a == null || a.Def.Kind != ChallengeKind.StatDelta || !float.IsNaN(a.Baseline)) return;
+
+            float? current = ReadPlayerStat(a.Def.Param);
+            if (current == null) return;
+
+            a.Baseline = current.Value;
         }
 
         /// <summary>
@@ -1012,6 +1054,7 @@ namespace ICanShowYouTheWorld.RunMode
             _restorePending = !_worldModifiers.RestoreAll();
             _restoreWorldId = _restorePending ? _worldId : null;
             SafeUnapplyAllBoonEffects();
+            RestoreWoodcutting();   // before EndRun: the snapshot is run state EndRun clears
             DeleteState();
 
             float finalElapsed = _elapsed;
@@ -1046,6 +1089,11 @@ namespace ICanShowYouTheWorld.RunMode
             _frozen = false;
             ResetOutageTracking();
             _trackedPlayer = null;
+
+            // Run state, so it goes with the run. The paths that END a run call RestoreWoodcutting
+            // first; SuspendRun deliberately does not — that run is still live, the character keeps
+            // the loaned level, and the original rides the save file back in on resume.
+            _woodcuttingOriginal = NoSkillSnapshot;
 
             // Restores, then clears. Boss health is the one Run Mode effect written straight into
             // the world's own data, so it has to be given back the way world modifiers are — a
@@ -1142,6 +1190,13 @@ namespace ICanShowYouTheWorld.RunMode
             _challenges = new ChallengeEngine(pool, _rng, _cfg.RunChallengeRefillSeconds);
             _challenges.ExternalFilter = d => d.Biomes == 0 || (d.Biomes & _visitedBiomes) != 0;
             _challenges.Completed += OnChallengeCompleted;
+
+            // The questline is installed for a fresh run and a resume alike; only its POSITION
+            // differs, and a resume sets that with RestoreMainQuest right after this. The chain
+            // is never pool-filtered (see SetMainChain), so the kill-hook trimming applied to
+            // `pool` doesn't reach it — a run without the death hook would have an unfinishable
+            // questline, which BuildChallengePool already warns about for the same reason.
+            _challenges.SetMainChain(MainQuestChain());
 
             _boons = new BoonEngine(DefaultBoons(), _rng, _cfg.RunBoonOfferTimeoutSeconds);
             if (freshRun) _boons.FirstOfferPin = FirstBoonPin;
@@ -1310,6 +1365,20 @@ namespace ICanShowYouTheWorld.RunMode
         {
             try
             {
+                // The questline and the random tasks pay differently, and that separation IS the
+                // design: a task hands you a boon offer, a quest step hands you gear. Offering a
+                // boon here as well would make the questline strictly better than everything else
+                // and drown the player in choices at the same moment they gain four items.
+                if (def.MainQuest)
+                {
+                    _heat.Add(MainQuestHeatReward);
+                    _worldModifiers.ApplyHeat(_heat.Heat, _cfg);
+
+                    GrantQuestReward(def);
+                    SaveState();   // the chain has advanced; don't wait for the autosave
+                    return;
+                }
+
                 _heat.Add(def.HeatReward);
                 _worldModifiers.ApplyHeat(_heat.Heat, _cfg);
                 _boons?.CreateOffer();
@@ -1320,6 +1389,262 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 LogOnce("challenge-complete", ex);
             }
+        }
+
+        // --- Questline rewards ---
+
+        /// <summary>
+        /// Hands over everything <see cref="QuestRewards"/> lists for a finished questline step
+        /// and announces it. A step with no entry (or an empty one) simply pays nothing but heat —
+        /// the table is the single source of truth for what a step gives.
+        /// </summary>
+        private void GrantQuestReward(ChallengeDefinition def)
+        {
+            if (def.Id == null || !QuestRewards.TryGetValue(def.Id, out var items) || items == null) return;
+
+            foreach (var (prefabName, count) in items) GrantItem(prefabName, count);
+
+            Message(string.IsNullOrEmpty(def.RewardText)
+                ? $"Quest complete: {def.Display}"
+                : $"Quest reward: {def.RewardText}");
+        }
+
+        /// <summary>
+        /// Puts <paramref name="count"/> of an item into the player's inventory, falling back to
+        /// dropping it at their feet when that can't be done — a full pack must never silently
+        /// eat a questline reward, which is the only copy the run will ever hand out.
+        ///
+        /// Uses the name-based Inventory.AddItem overload the game's own console "spawn" command
+        /// uses (verified against assembly_valheim's IL:
+        /// <c>ItemDrop.ItemData AddItem(string name, int stack, int quality, int variant,
+        /// long crafterID, string crafterName, bool pickedUp = false)</c>). It returns null both
+        /// for an unknown prefab name and for "no room", hence the fallback on null.
+        ///
+        /// Quality and variant are copied off the prefab's own ItemData rather than hardcoded to
+        /// 1/0, exactly as the console path does — an item whose base quality isn't 1 would
+        /// otherwise be handed over subtly wrong.
+        /// </summary>
+        private void GrantItem(string prefabName, int count)
+        {
+            if (string.IsNullOrEmpty(prefabName) || count <= 0) return;
+
+            try
+            {
+                var prefab = ResolveItemPrefab(prefabName);
+                if (prefab == null)
+                {
+                    Debug.LogError($"[ICanShowYouTheWorld] Quest reward prefab '{prefabName}' not found — " +
+                                   "that reward was not granted.");
+                    return;
+                }
+
+                var itemDrop = prefab.GetComponent<ItemDrop>();
+                int quality = itemDrop != null && itemDrop.m_itemData != null ? itemDrop.m_itemData.m_quality : 1;
+                int variant = itemDrop != null && itemDrop.m_itemData != null ? itemDrop.m_itemData.m_variant : 0;
+
+                var player = Player.m_localPlayer;
+                var inventory = player == null ? null : player.GetInventory();
+
+                if (inventory != null &&
+                    inventory.AddItem(prefabName, count, quality, variant, 0L, string.Empty, true) != null)
+                {
+                    Debug.Log($"[ICanShowYouTheWorld] Quest reward: {count}x {prefabName} added to inventory.");
+                    return;
+                }
+
+                if (DropAtPlayerFeet(prefab, count))
+                {
+                    Debug.Log($"[ICanShowYouTheWorld] Quest reward: {count}x {prefabName} dropped at the " +
+                              "player's feet (inventory full or unavailable).");
+                    return;
+                }
+
+                Debug.LogError($"[ICanShowYouTheWorld] Quest reward {count}x {prefabName} could not be granted " +
+                               "by either route.");
+            }
+            catch (Exception ex)
+            {
+                LogOnce("grant-item", ex);
+            }
+        }
+
+        /// <summary>
+        /// The prefab for an item name. ObjectDB is the item registry Inventory.AddItem itself
+        /// looks in, so it is asked first; ZNetScene is the fallback the rest of this codebase
+        /// already uses for prefab lookups (see SpawnService) and is what the world-drop path
+        /// needs anyway. Unity's overloaded == is used deliberately — a destroyed object must read
+        /// as missing here, not as a live prefab.
+        /// </summary>
+        private static GameObject ResolveItemPrefab(string prefabName)
+        {
+            var odb = ObjectDB.instance;
+            if (odb != null)
+            {
+                var fromOdb = odb.GetItemPrefab(prefabName);
+                if (fromOdb != null) return fromOdb;
+            }
+
+            var scene = ZNetScene.instance;
+            if (scene != null)
+            {
+                var fromScene = scene.GetPrefab(prefabName);
+                if (fromScene != null) return fromScene;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Drops an item stack on the ground beside the player, mirroring the game's own drop
+        /// routine (Instantiate → ItemDrop.SetStack → ItemDrop.OnCreateNew, all confirmed against
+        /// the IL). SetStack clamps to the item's max stack size and saves the ZDO itself, and
+        /// OnCreateNew stamps the world level — skipping either produces an item that looks right
+        /// and desyncs the moment it is picked up.
+        /// </summary>
+        private static bool DropAtPlayerFeet(GameObject prefab, int count)
+        {
+            var player = Player.m_localPlayer;
+            if (player == null || prefab == null) return false;
+
+            var position = player.transform.position + player.transform.forward * 0.6f + Vector3.up * 0.4f;
+            var spawned = UnityEngine.Object.Instantiate(prefab, position, Quaternion.identity);
+            if (spawned == null) return false;
+
+            var drop = spawned.GetComponent<ItemDrop>();
+            if (drop != null)
+            {
+                drop.SetStack(count);
+                ItemDrop.OnCreateNew(drop);
+            }
+            return true;
+        }
+
+        // --- Loaned WoodCutting ---
+
+        /// <summary>
+        /// Sentinel for "no snapshot taken": every real skill level is >= 0, so a negative can't
+        /// collide with one. Shared with <see cref="RunSaveState.woodcuttingOriginal"/>.
+        /// </summary>
+        private const float NoSkillSnapshot = -1f;
+
+        /// <summary>Skills.c_MaxSkillLevel — the game clamps every skill here.</summary>
+        private const float LoanedWoodcuttingLevel = 100f;
+
+        /// <summary>
+        /// The player's WoodCutting level from before the run LOANED them 100, or
+        /// <see cref="NoSkillSnapshot"/> when nothing has been taken. Persisted, because a run that
+        /// crosses a reload must still be able to give the loan back.
+        /// </summary>
+        private float _woodcuttingOriginal = NoSkillSnapshot;
+
+        /// <summary>
+        /// "Max woodcutting from the start" (owner's design): chopping is the one skill an early
+        /// Valheim run is forced to grind, and grinding is exactly what Run Mode is not for. The
+        /// level is LOANED, not given — the pre-run value is snapshotted here and written back when
+        /// the run ends, so a run leaves the character's own progression where it found it.
+        ///
+        /// Only ever snapshots once (a second call boosts without re-snapshotting): re-reading
+        /// after the boost would capture 100 as the "original" and make the loan permanent, which
+        /// is why the respawn and resume paths call <see cref="ApplyLoanedWoodcutting"/> instead.
+        /// </summary>
+        private void SnapshotAndBoostWoodcutting()
+        {
+            try
+            {
+                var skill = WoodcuttingSkill();
+                if (skill == null) return;
+
+                if (_woodcuttingOriginal < 0f) _woodcuttingOriginal = skill.m_level;
+                skill.m_level = LoanedWoodcuttingLevel;
+
+                Debug.Log($"[ICanShowYouTheWorld] WoodCutting loaned at {LoanedWoodcuttingLevel:0} " +
+                          $"(original {_woodcuttingOriginal:0.##}).");
+            }
+            catch (Exception ex)
+            {
+                LogOnce("woodcutting-boost", ex);
+            }
+        }
+
+        /// <summary>
+        /// Re-applies the loan without touching the snapshot. Needed after a respawn (Skills.OnDeath
+        /// multiplies every level down — vanilla behaviour this mode accepts rather than suppresses)
+        /// and after a resume, where the original comes from the save file instead.
+        /// </summary>
+        private void ApplyLoanedWoodcutting()
+        {
+            try
+            {
+                var skill = WoodcuttingSkill();
+                if (skill == null || skill.m_level >= LoanedWoodcuttingLevel) return;
+
+                skill.m_level = LoanedWoodcuttingLevel;
+            }
+            catch (Exception ex)
+            {
+                LogOnce("woodcutting-reapply", ex);
+            }
+        }
+
+        /// <summary>
+        /// Gives the loaned level back. Called from the two paths that END a run for good;
+        /// deliberately NOT from <see cref="SuspendRun"/>, where the run is still live and its save
+        /// still carries the original.
+        /// </summary>
+        private void RestoreWoodcutting()
+        {
+            try
+            {
+                if (_woodcuttingOriginal < 0f) return;
+
+                var skill = WoodcuttingSkill();
+                if (skill != null)
+                {
+                    skill.m_level = _woodcuttingOriginal;
+                    Debug.Log($"[ICanShowYouTheWorld] WoodCutting restored to {_woodcuttingOriginal:0.##}.");
+                }
+
+                _woodcuttingOriginal = NoSkillSnapshot;
+            }
+            catch (Exception ex)
+            {
+                LogOnce("woodcutting-restore", ex);
+            }
+        }
+
+        /// <summary>
+        /// The live WoodCutting <see cref="Skills.Skill"/> object, or null if it can't be reached.
+        ///
+        /// Getting at it is fiddlier than it looks, and every step below is forced by the IL:
+        /// Skills.GetSkill(SkillType) is PRIVATE, and GetSkillList() only returns skills the player
+        /// already has an entry for — a character that has never swung an axe has none. Calling
+        /// the public GetSkillLevel first is what creates that entry (it goes through GetSkill),
+        /// so the list lookup afterwards always finds it.
+        ///
+        /// GetSkillLevel's own return value is deliberately discarded: it applies status-effect
+        /// modifiers and floors the result, so it is the EFFECTIVE level, not the stored one —
+        /// snapshotting it would give back a wrong number at the end of the run.
+        ///
+        /// Writing m_level directly is also deliberate, in preference to the public
+        /// CheatRaiseSkill: that one re-balances every OTHER skill downward when a world has the
+        /// skill cap enabled, which would quietly damage the character's real progression.
+        /// </summary>
+        private static Skills.Skill WoodcuttingSkill()
+        {
+            var player = Player.m_localPlayer;
+            if (player == null) return null;
+
+            var skills = player.GetSkills();
+            if (skills == null) return null;
+
+            skills.GetSkillLevel(Skills.SkillType.WoodCutting);   // forces the entry to exist
+
+            foreach (var skill in skills.GetSkillList())
+            {
+                if (skill != null && skill.m_info != null && skill.m_info.m_skill == Skills.SkillType.WoodCutting)
+                    return skill;
+            }
+            return null;
         }
 
         private void OnBoonGained(BoonDefinition def)
@@ -1613,6 +1938,16 @@ namespace ICanShowYouTheWorld.RunMode
                 BuildRestoreBaselines(s),
                 BuildRestoreSubProgress(s));
 
+            // The questline picks up where it left off. A save written before the chain existed
+            // carries 0/0, which reads as "start of the chain, nothing done" — the right answer:
+            // such a run simply gains the questline from here, at step one.
+            //
+            // No baseline is persisted for a StatDelta step (see SyncStatDeltaBaselines below,
+            // which takes a fresh one): re-baselining can only ever cost the player the fraction
+            // of a single craft, because the restored PROGRESS is kept and the report path takes
+            // the max of the two.
+            _challenges.RestoreMainQuest(s.mainQuestIndex, s.mainQuestProgress);
+
             // Anything the save didn't carry a baseline for (a pre-alpha4 save, or a slot that
             // never managed to take one) gets its zero point NOW rather than staying NaN forever.
             // That does re-baseline against a higher lifetime value, but only where there was
@@ -1638,6 +1973,22 @@ namespace ICanShowYouTheWorld.RunMode
 
             _worldModifiers.ApplyBaseline(_cfg);
             _boonEffects.ApplyPugilist();   // baseline empowerment, same as StartRun
+
+            // A resume must NOT re-snapshot: the character is already carrying the loaned 100, so
+            // reading the level now would record 100 as their "original" and make the loan
+            // permanent. The saved original is authoritative. A save from before the loan existed
+            // (or one taken before a snapshot could be read) carries the -1 sentinel, and only
+            // then is a fresh snapshot the right thing.
+            if (s.woodcuttingOriginal >= 0f)
+            {
+                _woodcuttingOriginal = s.woodcuttingOriginal;
+                ApplyLoanedWoodcutting();
+            }
+            else
+            {
+                _woodcuttingOriginal = NoSkillSnapshot;
+                SnapshotAndBoostWoodcutting();
+            }
             _worldModifiers.ApplyHeat(_heat.Heat, _cfg);
             _restorePending = true;
             _restoreWorldId = _worldId;
@@ -1766,6 +2117,11 @@ namespace ICanShowYouTheWorld.RunMode
                         ? ""
                         : string.Join(";", a.SubProgress.Select(v => v.ToString(CultureInfo.InvariantCulture))))
                     .ToList(),
+                // Independent of the actives lists above: the questline lives in a reserved slot
+                // of its own, so it saves as a position + a progress value, not as a list entry.
+                mainQuestIndex = _challenges?.MainQuestIndex ?? 0,
+                mainQuestProgress = _challenges?.CurrentMainQuest?.Progress ?? 0f,
+                woodcuttingOriginal = _woodcuttingOriginal,
                 heldBoonIds = held.Select(h => h.Def.Id).ToList(),
                 heldBoonCooldowns = held.Select(h => h.CooldownRemaining).ToList(),
                 heldBoonCharges = held.Select(h => h.Charges).ToList(),
@@ -1969,24 +2325,13 @@ namespace ICanShowYouTheWorld.RunMode
 
         private static List<ChallengeDefinition> BuildFullPool() => new List<ChallengeDefinition>
         {
-            // --- Opening chain: the first three slots of a fresh run, dealt in this order. ---
-            // A deliberate on-ramp rather than three random quests at minute zero: gather the wood,
-            // gather the stone, then make the thing they build into. The first two targets are the
-            // Stone Axe recipe (5 Wood + 3 Stone), so clearing them leaves the player holding
-            // exactly what the third is steering them to spend.
+            // The three opener-flagged links that used to live here (o-wood/o-stone/o-craft) are
+            // GONE: the MAIN QUEST CHAIN (see MainQuestChain) is the on-ramp now, and a scripted
+            // opening that also ate all three random slots left no room for anything else in the
+            // first minutes. The engine's Opener mechanism itself is untouched and still tested —
+            // this pool simply no longer uses it.
             //
-            // The third counts CRAFTS, not the axe itself. There is no way to verify an item's
-            // $item_ token from here — only 65 of them are hardcoded in assembly_valheim, the rest
-            // live in the asset bundles — and a wrong token fails SILENTLY: CountItems returns 0
-            // forever and the slot is dead. That is not a risk worth taking on the first minutes
-            // of every fresh run, so the mechanic uses a PlayerStatType checked against the enum
-            // and the display text does the steering.
-            //
-            // Openers never come round again — ChallengeEngine excludes them from every random
-            // draw and reroll — so a completed or rerolled-away link is gone for that run.
-            new ChallengeDefinition { Id = "o-wood",  Opener = true, Tier = 0, Kind = ChallengeKind.CollectItem, Param = "$item_wood",  Target = 5, HeatReward = 1, Display = "Hold 5 Wood" },
-            new ChallengeDefinition { Id = "o-stone", Opener = true, Tier = 0, Kind = ChallengeKind.CollectItem, Param = "$item_stone", Target = 3, HeatReward = 1, Display = "Hold 3 Stone" },
-            new ChallengeDefinition { Id = "o-craft", Opener = true, Tier = 0, Kind = ChallengeKind.StatDelta,   Param = "CraftsOrUpgrades", Target = 1, HeatReward = 1, Display = "Craft something — an axe!" },
+            // c-wood/c-stone below stay exactly as they were: ordinary random tasks.
 
             new ChallengeDefinition { Id = "k-greydwarf", Tier = 1, Kind = ChallengeKind.KillPrefab, Param = "Greydwarf", Target = 6, Biomes = 8, HeatReward = 2, Display = "Kill 6 Greydwarves" },
             new ChallengeDefinition { Id = "k-skeleton",  Tier = 1, Kind = ChallengeKind.KillPrefab, Param = "Skeleton",  Target = 6, Biomes = 8, HeatReward = 2, Display = "Kill 6 Skeletons" },
@@ -2141,6 +2486,78 @@ namespace ICanShowYouTheWorld.RunMode
                 }
             },
         };
+
+        // --- Main questline (v1: the Meadows → Eikthyr arc) ---
+
+        /// <summary>
+        /// The ordered main quest. Unlike the random tasks it is never drawn, never rerolled and
+        /// never tier-gated (see <see cref="ChallengeEngine.SetMainChain"/>), so it is the one
+        /// thread a run can always follow — and it pays in ITEMS rather than heat and boons, which
+        /// is the whole point of the separation: random tasks make you stronger in the abstract,
+        /// the questline hands you the gear that opens the next step.
+        ///
+        /// Targets are deliberately tiny. The design brief is "no grinding": every step should be
+        /// a few minutes of ordinary play, and the reward should skip the tedious part of what
+        /// comes next (a bow instead of stalking deer barehanded, armor instead of a mining trip).
+        ///
+        /// Mechanics chosen for the same silent-failure reasons documented on the pool below:
+        /// step 1 counts CRAFTS via a PlayerStatType (checked against the enum in the IL) rather
+        /// than looking for an axe by its $item_ token, which is asset data this build cannot
+        /// verify and which fails silently when wrong. The kill steps use prefab names, matched by
+        /// the same Character death hook every kill task already uses; "Eikthyr" is the boss's
+        /// prefab (its LOCATION is "Eikthyrnir", which is what the boss table above holds — the two
+        /// are not the same string).
+        /// </summary>
+        internal static List<ChallengeDefinition> MainQuestChain() => new List<ChallengeDefinition>
+        {
+            new ChallengeDefinition
+            {
+                Id = "mq-axe", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "CraftsOrUpgrades",
+                Target = 1, Display = "Craft an axe", RewardText = "Bow + 40 arrows",
+            },
+            new ChallengeDefinition
+            {
+                Id = "mq-deer", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Deer",
+                Target = 3, Display = "Kill 3 Deer", RewardText = "Leather armor",
+            },
+            new ChallengeDefinition
+            {
+                Id = "mq-grey", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Greydwarf",
+                Target = 4, Display = "Kill 4 Greydwarves", RewardText = "Helmet + cape + flint arrows",
+            },
+            new ChallengeDefinition
+            {
+                Id = "mq-eikthyr", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Eikthyr",
+                Target = 1, Display = "Defeat Eikthyr", RewardText = "Antler pickaxe",
+            },
+        };
+
+        /// <summary>
+        /// What each questline step actually hands over, keyed by step id: (item prefab name,
+        /// count). The chain's RewardText is the player-facing spelling of the same thing — they
+        /// are written next to each other on purpose, since a mismatch between the promise and the
+        /// grant is invisible until someone plays it.
+        ///
+        /// Item prefab names are Unity asset data and cannot be confirmed against the compiled
+        /// assembly (see the note on the kill pool below); these are the well-established vanilla
+        /// names, and <see cref="GrantQuestReward"/> logs loudly if one fails to resolve rather
+        /// than failing silently.
+        /// </summary>
+        private static readonly Dictionary<string, (string prefab, int count)[]> QuestRewards =
+            new Dictionary<string, (string, int)[]>
+            {
+                ["mq-axe"] = new[] { ("Bow", 1), ("ArrowWood", 40) },
+                ["mq-deer"] = new[] { ("ArmorLeatherChest", 1), ("ArmorLeatherLegs", 1) },
+                ["mq-grey"] = new[] { ("HelmetLeather", 1), ("CapeDeerHide", 1), ("ArrowFlint", 20) },
+                ["mq-eikthyr"] = new[] { ("PickaxeAntler", 1) },
+            };
+
+        /// <summary>
+        /// Heat granted by a questline step. Flat and hardcoded rather than config-driven: the
+        /// questline's real payment is the items, and the heat is only there so finishing a step
+        /// still nudges the world's difficulty the way finishing a task does.
+        /// </summary>
+        private const float MainQuestHeatReward = 1f;
 
         internal static List<BoonDefinition> DefaultBoons() => new List<BoonDefinition>
         {

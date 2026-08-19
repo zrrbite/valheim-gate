@@ -26,7 +26,9 @@ namespace ICanShowYouTheWorld.RunMode
         private const int OfferWindowId = 12;
 
         private const float HudWidth = 340f;
-        private const float HudHeight = 420f;
+        // Grown by the pinned QUEST section: it sits outside the scroll view, so without the extra
+        // height it would simply eat the same number of pixels from the scrolling body.
+        private const float HudHeight = 480f;
         private const float LobbyWidth = 360f;
         private const float LobbyHeight = 280f;
         private const float OfferWidth = 420f;
@@ -81,6 +83,17 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>Heat last observed, and when it last went up — drives the heat pulse.</summary>
         private float _lastSeenHeat = float.NaN;
         private float _heatPulseStart = float.NegativeInfinity;
+
+        /// <summary>
+        /// Questline step last observed, and when it last changed — drives the same gold flash on
+        /// the QUEST section. Tracked by the step CHANGING rather than by seeing it Done, because
+        /// the engine advances the chain in the same Tick that completes it: a "done" main quest
+        /// is essentially never visible to a Layout pass, whereas the swap always is. Null means
+        /// "nothing seen yet", which must not flash — otherwise every run would open with one.
+        /// </summary>
+        private string _lastMainQuestId;
+        private bool _mainQuestSeen;
+        private float _questFlashAt = float.NegativeInfinity;
 
         /// <summary>Challenge ids seen completed, and when — drives the brief gold flash on a row.</summary>
         private readonly HashSet<string> _seenCompletedIds = new HashSet<string>();
@@ -209,6 +222,7 @@ namespace ICanShowYouTheWorld.RunMode
                 {
                     UpdateHeatPulse(run.Heat);
                     UpdateCompletionFlashes(run.Challenges);
+                    UpdateQuestFlash(run.Challenges);
                     UpdateOfferFadeState(run.Boons?.CurrentOffer?.Count ?? 0);
 
                     // The strip is the one piece that survives with the rest of the UI hidden.
@@ -373,6 +387,17 @@ namespace ICanShowYouTheWorld.RunMode
             return 1f - Mathf.Clamp01((Time.realtimeSinceStartup - at) / CompletionFlashSeconds);
         }
 
+        private void UpdateQuestFlash(ChallengeEngine challenges)
+        {
+            if (Event.current == null || Event.current.type != EventType.Layout) return;
+
+            string id = challenges?.CurrentMainQuest?.Def?.Id;
+            if (_mainQuestSeen && id != _lastMainQuestId) _questFlashAt = Time.realtimeSinceStartup;
+
+            _mainQuestSeen = true;
+            _lastMainQuestId = id;
+        }
+
         private void UpdateOfferFadeState(int offerCount)
         {
             if (Event.current == null || Event.current.type != EventType.Layout) return;
@@ -440,6 +465,13 @@ namespace ICanShowYouTheWorld.RunMode
 
             GUILayout.Space(6f);
 
+            // --- Main questline: pinned above the scroll, like the timer. It is the one thing on
+            //     this HUD that says where the run is GOING, so it must never scroll out of view
+            //     behind a long splits list. ---
+            DrawQuestSection(run);
+
+            GUILayout.Space(6f);
+
             // The window height is fixed, so the body — which grows with splits, challenges and
             // held boons — scrolls. Without this it would overflow and clip the Abandon button
             // out of reach, and with the input gate on, that button is the only way out of a run.
@@ -468,7 +500,55 @@ namespace ICanShowYouTheWorld.RunMode
             GUI.contentColor = Color.white;
         }
 
-        /// <summary>Splits, challenges and held boons — the part of the HUD that scrolls.</summary>
+        /// <summary>
+        /// The main questline: the one step in play, its progress, and what finishing it hands
+        /// over. Random tasks pay in heat and boons; the questline pays in ITEMS, which is why the
+        /// reward line is spelled out here rather than left as a surprise — it is the thing the
+        /// player is meant to be steering towards.
+        ///
+        /// Deliberately narrow: exactly one step is ever shown (the engine only keeps one), and
+        /// nothing here is interactive — a questline step cannot be rerolled.
+        /// </summary>
+        private void DrawQuestSection(IRunService run)
+        {
+            GUILayout.Label("QUEST", RunTheme.Header);
+
+            // Same gold flash a finished task row gets, decaying back to the steady color.
+            float flash = 1f - Mathf.Clamp01((Time.realtimeSinceStartup - _questFlashAt) / CompletionFlashSeconds);
+
+            var quest = run.Challenges?.CurrentMainQuest;
+            if (quest == null)
+            {
+                // Chain exhausted (or none installed, on a run started before the questline
+                // existed) — the Meadows arc is over and the rest of the run is the bosses.
+                GUI.contentColor = Color.Lerp(RunTheme.CompleteGreen, RunTheme.AccentGold, flash);
+                GUILayout.Label("  Act I complete", RunTheme.Body);
+                GUI.contentColor = Color.white;
+                return;
+            }
+
+            GUI.contentColor = Color.Lerp(RunTheme.TextParchment, RunTheme.AccentGold, flash);
+            GUILayout.Label("  " + quest.Def.Display, RunTheme.Body);
+            GUI.contentColor = Color.white;
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Space(8f);
+            var barRect = GUILayoutUtility.GetRect(140f, 12f, GUILayout.Width(140f), GUILayout.Height(12f));
+            float frac = quest.Def.Target > 0f ? quest.Progress / quest.Def.Target : 0f;
+            RunTheme.Bar(barRect, frac, quest.Done ? RunTheme.CompleteGreen : RunTheme.AccentGold);
+            GUILayout.Label($"{quest.Progress:0}/{quest.Def.Target:0}", RunTheme.Small, GUILayout.Width(46f));
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+
+            if (!string.IsNullOrEmpty(quest.Def.RewardText))
+            {
+                GUI.contentColor = RunTheme.AccentGold;
+                GUILayout.Label("  Reward: " + quest.Def.RewardText, RunTheme.Small);
+                GUI.contentColor = Color.white;
+            }
+        }
+
+        /// <summary>Splits, tasks and held boons — the part of the HUD that scrolls.</summary>
         private void DrawHudSections(IRunService run)
         {
             // --- Splits ---
@@ -485,8 +565,8 @@ namespace ICanShowYouTheWorld.RunMode
 
             GUILayout.Space(6f);
 
-            // --- Challenges ---
-            GUILayout.Label("CHALLENGES", RunTheme.Header);
+            // --- Tasks (the three random, rerollable slots — the questline is drawn above) ---
+            GUILayout.Label("TASKS", RunTheme.Header);
             var challenges = run.Challenges;
             if (challenges == null || challenges.Active.Count == 0)
             {

@@ -96,6 +96,130 @@ static class ChallengeEngineTests
         BaselineRoundTripTests();
         OpenerTests();
         CompositeTests();
+        MainQuestTests();
+    }
+
+    /// <summary>The v1-shaped main chain: a stat-delta step, then two kill steps.</summary>
+    static List<ChallengeDefinition> MainChain() => new List<ChallengeDefinition>
+    {
+        new ChallengeDefinition { Id="mq-1", MainQuest=true, Kind=ChallengeKind.StatDelta,  Param="CraftsOrUpgrades", Target=1, Display="Craft an axe",  RewardText="Bow + 40 arrows" },
+        new ChallengeDefinition { Id="mq-2", MainQuest=true, Kind=ChallengeKind.KillPrefab, Param="Deer",             Target=3, Display="Kill 3 Deer",   RewardText="Leather armor" },
+        new ChallengeDefinition { Id="mq-3", MainQuest=true, Kind=ChallengeKind.KillPrefab, Param="Eikthyr",          Target=1, Display="Defeat Eikthyr", RewardText="Antler pickaxe" },
+    };
+
+    /// <summary>
+    /// The main-quest chain: one step at a time in a reserved slot beside the three random ones,
+    /// dealt in order, advanced by completion, immune to the tier ceiling / external filter /
+    /// reroll, and round-tripping through RestoreMainQuest without replaying its rewards.
+    /// </summary>
+    static void MainQuestTests()
+    {
+        Check.That(!new ChallengeDefinition().MainQuest, "MainQuest defaults to false");
+        Check.That(new ChallengeDefinition().RewardText == null, "RewardText defaults to null");
+
+        var e = new ChallengeEngine(Pool(), new Random(211), 120f);
+        Check.That(e.CurrentMainQuest == null, "no chain set: no main quest");
+
+        e.SetMainChain(MainChain());
+        Check.That(e.CurrentMainQuest != null && e.CurrentMainQuest.Def.Id == "mq-1",
+            "the chain deals its first step immediately");
+        Check.That(e.MainQuestIndex == 0, "a fresh chain sits at index 0");
+        Check.That(e.CurrentMainQuest.Def.RewardText == "Bow + 40 arrows", "the step carries its reward copy");
+
+        // The reserved slot is genuinely extra: three random slots still fill beside it.
+        e.Tick(0.1f);
+        Check.That(e.Active.Count == 3, "random slots still fill to 3 alongside the chain");
+        Check.That(e.Active.All(a => !a.Def.MainQuest), "no chain step leaked into the random slots");
+        Check.That(e.CurrentMainQuest.Def.Id == "mq-1", "the chain step survives a tick untouched");
+
+        // Step 1 is a StatDelta, addressed by the reserved slot index (it has its own baseline).
+        var completed = new List<string>();
+        e.Completed += d => completed.Add(d.Id);
+        e.ReportSlotMeasure(ChallengeEngine.MainQuestSlot, 1f);
+        Check.That(e.CurrentMainQuest.Progress == 1f, "ReportSlotMeasure credits the reserved slot");
+        e.Tick(0.1f);
+        Check.That(completed.Count == 1 && completed[0] == "mq-1", "completing a step fires Completed with its def");
+        Check.That(e.MainQuestIndex == 1 && e.CurrentMainQuest.Def.Id == "mq-2", "completion advances to the next step");
+        Check.That(e.Active.Count == 3, "a chain completion does not vacate a random slot");
+
+        // Step 2 is a KillPrefab and takes progress from the ordinary kill report.
+        e.ReportKill("Boar");
+        Check.That(e.CurrentMainQuest.Progress == 0f, "a non-matching kill leaves the chain step alone");
+        e.ReportKill("Deer");
+        e.ReportKill("Deer");
+        Check.That(e.CurrentMainQuest.Progress == 2f, "ReportKill credits a KillPrefab chain step");
+        e.Tick(0.1f);
+        Check.That(e.CurrentMainQuest.Def.Id == "mq-2", "a part-done step does not advance");
+        e.ReportKill("Deer");
+        e.Tick(0.1f);
+        Check.That(e.CurrentMainQuest.Def.Id == "mq-3", "the third kill advances the chain");
+
+        // Exhaustion.
+        e.ReportKill("Eikthyr");
+        e.Tick(0.1f);
+        Check.That(e.CurrentMainQuest == null, "an exhausted chain has no current step");
+        Check.That(e.MainQuestIndex == 3, "the index ends past the last step");
+        Check.That(completed.SequenceEqual(new[] { "mq-1", "mq-2", "mq-3" }), "every step fired once, in order");
+        e.Tick(200f);
+        Check.That(e.CurrentMainQuest == null && completed.Count == 3, "an exhausted chain stays quiet");
+
+        // Gating and rerolls cannot touch the chain.
+        var gated = new ChallengeEngine(Pool(), new Random(223), 120f);
+        gated.MaxTier = 0;
+        gated.ExternalFilter = _ => false;   // nothing at all is drawable
+        var highTier = MainChain();
+        foreach (var d in highTier) d.Tier = 4;
+        gated.SetMainChain(highTier);
+        gated.Tick(0.1f);
+        Check.That(gated.Active.Count == 0, "the filter really does block every random draw");
+        Check.That(gated.CurrentMainQuest != null && gated.CurrentMainQuest.Def.Id == "mq-1",
+            "the chain ignores MaxTier and ExternalFilter");
+
+        var rr = new ChallengeEngine(Pool(), new Random(227), 120f);
+        rr.SetMainChain(MainChain());
+        rr.Tick(0.1f);
+        Check.That(rr.Reroll(0), "a random slot still rerolls with a chain installed");
+        Check.That(rr.CurrentMainQuest.Def.Id == "mq-1", "rerolling a random slot leaves the chain step in place");
+        Check.That(rr.Active.All(a => !a.Def.MainQuest), "a reroll can never draw a chain step");
+        rr.Reroll(ChallengeEngine.MainQuestSlot);
+        Check.That(rr.CurrentMainQuest.Def.Id == "mq-1", "the reserved slot index is not rerollable");
+
+        // RestoreMainQuest round-trips a position + part-progress and replays no rewards.
+        var resumed = new ChallengeEngine(Pool(), new Random(229), 120f);
+        var resumedCompletions = new List<string>();
+        resumed.Completed += d => resumedCompletions.Add(d.Id);
+        resumed.SetMainChain(MainChain());
+        resumed.RestoreMainQuest(1, 2f);
+        Check.That(resumed.MainQuestIndex == 1 && resumed.CurrentMainQuest.Def.Id == "mq-2",
+            "RestoreMainQuest seats the saved step");
+        Check.That(resumed.CurrentMainQuest.Progress == 2f, "RestoreMainQuest keeps the saved progress");
+        resumed.Tick(0.1f);
+        Check.That(resumedCompletions.Count == 0, "restoring past earlier steps fires no completions");
+        resumed.ReportKill("Deer");
+        resumed.Tick(0.1f);
+        Check.That(resumedCompletions.SequenceEqual(new[] { "mq-2" }), "the restored step still completes normally");
+
+        // Out-of-range and negative indices are the exhausted/start states, not a throw.
+        var edge = new ChallengeEngine(Pool(), new Random(233), 120f);
+        edge.SetMainChain(MainChain());
+        edge.RestoreMainQuest(99, 0f);
+        Check.That(edge.CurrentMainQuest == null, "an index past the chain restores as exhausted");
+        edge.RestoreMainQuest(-4, 0f);
+        Check.That(edge.MainQuestIndex == 0 && edge.CurrentMainQuest.Def.Id == "mq-1",
+            "a negative index clamps to the first step");
+        edge.MainQuestIndex = 2;
+        Check.That(edge.CurrentMainQuest.Def.Id == "mq-3" && edge.CurrentMainQuest.Progress == 0f,
+            "the MainQuestIndex setter re-seats the step with zero progress");
+
+        // A null/empty chain is simply "no questline".
+        var none = new ChallengeEngine(Pool(), new Random(239), 120f);
+        none.SetMainChain(null);
+        none.Tick(0.1f);
+        Check.That(none.CurrentMainQuest == null && none.Active.Count == 3,
+            "a null chain leaves an otherwise ordinary engine");
+        none.ReportKill("Deer");
+        none.ReportSlotMeasure(ChallengeEngine.MainQuestSlot, 5f);
+        Check.That(none.CurrentMainQuest == null, "reporting into an absent chain is a no-op");
     }
 
     /// <summary>A composite (two subs: a KillPrefab and a CollectItem) plus a plain, non-composite definition.</summary>
