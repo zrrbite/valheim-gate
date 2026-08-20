@@ -41,8 +41,26 @@ namespace ICanShowYouTheWorld.RunMode
 
         // --- Tracker (the "Hunter's Eye" boon's panel) ---
         private const int TrackerWindowId = 13;
-        private const float TrackerWidth = 300f;
+        private const float TrackerWidth = 340f;
         private const float TrackerHeight = 250f;
+
+        /// <summary>
+        /// Species colors, so a row keeps its identity when the list re-sorts. Distance ordering
+        /// means rows swap places constantly as things move, and a wall of same-colored text is
+        /// unreadable when that happens — the color is what the eye actually tracks.
+        /// Deliberately few and far apart in hue rather than one shade per creature.
+        /// </summary>
+        private static readonly Color[] TrackerPalette =
+        {
+            ParseTrackerColor("E8DFC8"), // parchment
+            ParseTrackerColor("D98C5F"), // ember
+            ParseTrackerColor("7FB2E5"), // ice
+            ParseTrackerColor("A9CE6B"), // moss
+            ParseTrackerColor("C98BC9"), // heather
+            ParseTrackerColor("E5CE6B"), // amber
+            ParseTrackerColor("6FC9B6"), // verdigris
+            ParseTrackerColor("D96F86"), // rose
+        };
 
         /// <summary>How far the Hunter's Eye reaches. The GM tracking window uses 100m; a run's
         /// version is deliberately shorter, so it answers "what is about to reach me" rather than
@@ -254,7 +272,15 @@ namespace ICanShowYouTheWorld.RunMode
                     // The strip is the one piece that survives with the rest of the UI hidden.
                     DrawStrip(run, viewWidth);
 
-                    if (Visible || CheatUiVisible)
+                    // The inventory/crafting window owns the middle and right of the screen while
+                    // it is open, and the HUD sat on top of it. Standing aside is better than
+                    // moving: there is nowhere on screen that is free of BOTH the crafting panel
+                    // and the game's own readouts, and the player opening a crafting bench is not
+                    // reading run splits at that moment anyway. The timer strip stays — it is a
+                    // thin line along the top edge that nothing else uses.
+                    bool gameUiOpen = GameMenusOpen();
+
+                    if ((Visible || CheatUiVisible) && !gameUiOpen)
                     {
                         _hudRect = GUILayout.Window(HudWindowId, _hudRect, DrawHud, GUIContent.none, RunTheme.Panel,
                             GUILayout.Width(HudWidth), GUILayout.Height(_hudRect.height));
@@ -321,7 +347,12 @@ namespace ICanShowYouTheWorld.RunMode
             // screen there is no reason to scroll any of it.
             float hudHeight = Mathf.Clamp(viewHeight - 90f, 360f, 720f);
             _hudRect = new Rect(viewWidth - HudWidth - 10f, 40f, HudWidth, hudHeight);
-            _trackerRect = new Rect(10f, 40f, TrackerWidth, TrackerHeight);
+            // Down the left edge rather than at the top: Valheim's own health/stamina/food readout
+            // lives in the top-left corner, and a panel sitting on top of it costs the player the
+            // one thing they check most.
+            float trackerTop = Mathf.Clamp(viewHeight * 0.30f, 240f,
+                Mathf.Max(240f, viewHeight - TrackerHeight - 10f));
+            _trackerRect = new Rect(10f, trackerTop, TrackerWidth, TrackerHeight);
             _lobbyRect = new Rect((viewWidth - LobbyWidth) * 0.5f, (viewHeight - LobbyHeight) * 0.5f,
                 LobbyWidth, LobbyHeight);
             _offerRect = new Rect((viewWidth - OfferWidth) * 0.5f, (viewHeight - OfferHeight) * 0.5f,
@@ -947,13 +978,22 @@ namespace ICanShowYouTheWorld.RunMode
                 var c = _trackerBuffer[i];
                 float dist = Utils.DistanceXZ(c.transform.position, origin);
                 float hp01 = Mathf.Clamp01(c.GetHealthPercentage());
+                Color species = SpeciesColor(c);
 
                 GUILayout.BeginHorizontal();
-                GUILayout.Label(c.GetHoverName(), RunTheme.Small, GUILayout.Width(140f));
-                GUILayout.Label($"{dist:0}m", RunTheme.Small, GUILayout.Width(42f));
 
-                var barRect = GUILayoutUtility.GetRect(60f, 12f, GUILayout.Width(60f), GUILayout.Height(12f));
-                RunTheme.Bar(barRect, hp01, hp01 >= 0.5f ? RunTheme.CompleteGreen : RunTheme.HeatRed);
+                GUI.contentColor = species;
+                GUILayout.Label(c.GetHoverName(), RunTheme.Small, GUILayout.Width(150f));
+                GUILayout.Label($"{dist:0}m", RunTheme.Small, GUILayout.Width(38f));
+                GUI.contentColor = Color.white;
+
+                // The bar reads as CLOSING DISTANCE: full at the edge of the eye's reach, draining
+                // to nothing as the thing arrives. An emptying bar is a countdown, which is the
+                // right way round for something walking towards you.
+                var barRect = GUILayoutUtility.GetRect(64f, 12f, GUILayout.Width(64f), GUILayout.Height(12f));
+                RunTheme.Bar(barRect, Mathf.Clamp01(dist / TrackerRange), species);
+
+                GUILayout.Label($"{hp01 * 100f:0}%", RunTheme.Small, GUILayout.Width(38f));
                 GUILayout.EndHorizontal();
             }
 
@@ -961,6 +1001,52 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 GUILayout.Label($"  ...and {_trackerBuffer.Count - rows} more", RunTheme.Small);
             }
+        }
+
+        /// <summary>
+        /// True while one of the game's own full-screen panels is up — the inventory/crafting
+        /// window or the map. Verified against the IL: InventoryGui.IsVisible and Minimap.IsOpen
+        /// are both public statics. Any failure reads as "closed", so a game update that moves
+        /// these costs a covered crafting window, never a hidden HUD the player cannot get back.
+        /// </summary>
+        private static bool GameMenusOpen()
+        {
+            try
+            {
+                return InventoryGui.IsVisible() || Minimap.IsOpen();
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// A stable color per SPECIES, keyed on Character.m_name — the shared localization token
+        /// ("$enemy_greydwarf"), which every instance of a creature carries and which does not
+        /// change with level or with the "(Clone)" suffix on the object name. Same species, same
+        /// color, every frame and every run.
+        /// </summary>
+        private static Color SpeciesColor(Character c)
+        {
+            string key = c.m_name;
+            if (string.IsNullOrEmpty(key)) return RunTheme.TextParchment;
+
+            // Deliberately not string.GetHashCode: .NET does not guarantee it is stable across
+            // runtimes or runs, and a color that changed between sessions would defeat the point.
+            int hash = 17;
+            for (int i = 0; i < key.Length; i++) hash = unchecked(hash * 31 + key[i]);
+
+            return TrackerPalette[Mathf.Abs(hash) % TrackerPalette.Length];
+        }
+
+        private static Color ParseTrackerColor(string hex)
+        {
+            return new Color(
+                Convert.ToInt32(hex.Substring(0, 2), 16) / 255f,
+                Convert.ToInt32(hex.Substring(2, 2), 16) / 255f,
+                Convert.ToInt32(hex.Substring(4, 2), 16) / 255f,
+                1f);
         }
 
         // --- Boon offer (display only; picks are handled in RunService.Tick) ---
