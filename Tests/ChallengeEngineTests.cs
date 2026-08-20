@@ -17,6 +17,7 @@ static class ChallengeEngineTests
     public static void Run()
     {
         BiomeFilterTests();
+        RepeatableTests();
         var e = new ChallengeEngine(Pool(), new Random(42), refillCooldownSeconds: 120f);
         e.Tick(0.1f);
         Check.That(e.Active.Count == 3, "fills to 3 active");
@@ -189,10 +190,50 @@ static class ChallengeEngineTests
         var resumedCompletions = new List<string>();
         resumed.Completed += d => resumedCompletions.Add(d.Id);
         resumed.SetMainChain(MainChain());
-        resumed.RestoreMainQuest(1, 2f);
+        resumed.RestoreMainQuest(1, 2f, "mq-2");
         Check.That(resumed.MainQuestIndex == 1 && resumed.CurrentMainQuest.Def.Id == "mq-2",
             "RestoreMainQuest seats the saved step");
         Check.That(resumed.CurrentMainQuest.Progress == 2f, "RestoreMainQuest keeps the saved progress");
+
+        // The id wins over the index, so a chain that GREW or was REORDERED between builds still
+        // resumes the player on the step they were actually working on.
+        var moved = new ChallengeEngine(Pool(), new Random(241), 120f);
+        moved.SetMainChain(new List<ChallengeDefinition>
+        {
+            MainChain()[0],
+            new ChallengeDefinition { Id="mq-new", MainQuest=true, Kind=ChallengeKind.StatDelta, Param="Builds", Target=1, Display="inserted step" },
+            MainChain()[1],
+            MainChain()[2],
+        });
+        moved.RestoreMainQuest(1, 2f, "mq-2");
+        Check.That(moved.MainQuestIndex == 2 && moved.CurrentMainQuest.Def.Id == "mq-2",
+            "a saved id follows its step to a new position in a reordered chain");
+        Check.That(moved.CurrentMainQuest.Progress == 2f, "progress follows the step, not the index");
+
+        // A save with no id predates the field, so its index means nothing here: seat the step but
+        // drop the progress, rather than credit an objective the player never worked on. (A saved
+        // progress of 2 against an inserted target-1 step would otherwise complete instantly.)
+        var legacy = new ChallengeEngine(Pool(), new Random(251), 120f);
+        var legacyCompletions = new List<string>();
+        legacy.Completed += d => legacyCompletions.Add(d.Id);
+        legacy.SetMainChain(new List<ChallengeDefinition>
+        {
+            MainChain()[0],
+            new ChallengeDefinition { Id="mq-new", MainQuest=true, Kind=ChallengeKind.StatDelta, Param="Builds", Target=1, Display="inserted step" },
+            MainChain()[1],
+            MainChain()[2],
+        });
+        legacy.RestoreMainQuest(1, 2f, null);
+        Check.That(legacy.CurrentMainQuest.Progress == 0f, "a save with no step id restores at zero progress");
+        legacy.Tick(0.1f);
+        Check.That(legacyCompletions.Count == 0, "a legacy restore cannot fire an unearned completion");
+
+        // An id that no longer exists at all falls back the same way.
+        var gone = new ChallengeEngine(Pool(), new Random(257), 120f);
+        gone.SetMainChain(MainChain());
+        gone.RestoreMainQuest(1, 2f, "mq-deleted");
+        Check.That(gone.CurrentMainQuest.Def.Id == "mq-2" && gone.CurrentMainQuest.Progress == 0f,
+            "a step id that no longer exists falls back to the index with zero progress");
         resumed.Tick(0.1f);
         Check.That(resumedCompletions.Count == 0, "restoring past earlier steps fires no completions");
         resumed.ReportKill("Deer");
@@ -878,5 +919,45 @@ static class ChallengeEngineTests
         bool gatedNow = false;
         foreach (var a in e.Active) if (a.Def.Id == "bf-gated") gatedNow = true;
         Check.That(gatedNow, "gated quest dealt once its biome is visited");
+    }
+
+    /// <summary>
+    /// The standing task: seated by Opener, never vacated, pays out every time it is filled.
+    /// </summary>
+    static void RepeatableTests()
+    {
+        var pool = new List<ChallengeDefinition>
+        {
+            new ChallengeDefinition { Id="standing", Opener=true, Repeatable=true, Kind=ChallengeKind.StatDelta, Param="RavenTalk", Target=5, HeatReward=1, Display="Heed Hugin 5 times" },
+            new ChallengeDefinition { Id="filler1", Kind=ChallengeKind.ReachAltitude, Param="", Target=10, HeatReward=1, Display="filler1" },
+            new ChallengeDefinition { Id="filler2", Kind=ChallengeKind.BuildHeight, Param="", Target=10, HeatReward=1, Display="filler2" },
+        };
+        var e = new ChallengeEngine(pool, new System.Random(7), refillCooldownSeconds: 120f);
+        int paid = 0;
+        e.Completed += d => { if (d.Id == "standing") paid++; };
+
+        e.Tick(0.1f);
+        int slot = e.Active.ToList().FindIndex(a => a.Def.Id == "standing");
+        Check.That(slot >= 0, "repeatable opener is seated on a fresh engine");
+
+        e.ReportSlotMeasure(slot, 5f);
+        e.Tick(0.1f);
+        var standing = e.Active.FirstOrDefault(a => a.Def.Id == "standing");
+        Check.That(paid == 1, "repeatable pays out when filled");
+        Check.That(standing != null, "repeatable keeps its slot after paying out");
+        Check.That(standing.Progress == 0f, "repeatable restarts at zero");
+        Check.That(float.IsNaN(standing.Baseline),
+            "repeatable re-arms its stat baseline, so the next round measures from here");
+
+        // Second fill in the same slot: proves it is a faucet, not a one-off.
+        slot = e.Active.ToList().FindIndex(a => a.Def.Id == "standing");
+        e.ReportSlotMeasure(slot, 5f);
+        e.Tick(0.1f);
+        Check.That(paid == 2, "repeatable pays out again on the next fill");
+
+        // It must never be drawn a second time, and never rerolled away.
+        Check.That(e.Active.Count(a => a.Def.Id == "standing") == 1, "only ever one copy of the standing task");
+        Check.That(!e.Reroll(e.Active.ToList().FindIndex(a => a.Def.Id == "standing")),
+            "the standing task refuses to be rerolled away");
     }
 }

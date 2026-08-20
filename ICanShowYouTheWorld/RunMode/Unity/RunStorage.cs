@@ -56,6 +56,15 @@ namespace ICanShowYouTheWorld.RunMode
         public float mainQuestProgress;
 
         /// <summary>
+        /// Id of the questline step in progress. Authoritative over <see cref="mainQuestIndex"/>,
+        /// which only means anything against the exact chain that wrote it — and the chain is
+        /// content that changes between builds. Null/empty on a save from before this field, where
+        /// the restore falls back to the index and drops the progress rather than risk crediting a
+        /// step the player never worked on.
+        /// </summary>
+        public string mainQuestId;
+
+        /// <summary>
         /// The player's WoodCutting skill level as it stood before the run LOANED them 100 (see
         /// RunService's skill boost — "max woodcutting from the start", with no grinding for it).
         /// Restored when the run finishes or is abandoned, so the loan is never permanent.
@@ -63,8 +72,24 @@ namespace ICanShowYouTheWorld.RunMode
         /// -1 means "no snapshot in this save": either a save written before the loan existed, or
         /// one taken before the snapshot could be read. A resume takes a fresh snapshot in that
         /// case rather than guessing a level to give back.
+        ///
+        /// LEGACY: superseded by <see cref="skillLoanTypes"/>, which carries the questline's skill
+        /// grants as well. Still READ, so a run saved before that change resumes with its
+        /// WoodCutting loan intact; no longer written.
         /// </summary>
         public float woodcuttingOriginal = -1f;
+
+        /// <summary>
+        /// Skills this run has loaned, as three index-paired lists: the skill (a
+        /// <c>Skills.SkillType</c> cast to int), what it was worth before the run touched it, and
+        /// what the run raised it to. Empty on a save from before the questline paid in skill.
+        ///
+        /// Stored as int rather than the enum because JsonUtility serialises enums by ordinal
+        /// anyway, and a raw int makes the file readable — and repairable — by hand.
+        /// </summary>
+        public List<int> skillLoanTypes;
+        public List<float> skillLoanOriginals;
+        public List<float> skillLoanLevels;
 
         public List<string> heldBoonIds;
         public List<float> heldBoonCooldowns;
@@ -239,6 +264,43 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 Debug.LogError(
                     $"[ICanShowYouTheWorld] Failed to quarantine run state for '{characterName}': {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// The skill loans in a save, keyed by type, with the legacy single-WoodCutting field
+        /// folded in. A save written before <see cref="RunSaveState.skillLoanTypes"/> existed
+        /// carries only <see cref="RunSaveState.woodcuttingOriginal"/>, and resuming it must still
+        /// give that level back — so it is migrated here rather than dropped, using the loan level
+        /// the build that wrote it always used (100, the game's skill cap).
+        ///
+        /// Entries whose lists are short or whose type is not a real SkillType are skipped: a
+        /// hand-edited or truncated file should cost the player one loan, not the whole run.
+        /// </summary>
+        public static IEnumerable<KeyValuePair<Skills.SkillType, (float original, float level)>>
+            ImportSkillLoans(RunSaveState s)
+        {
+            if (s == null) yield break;
+
+            var types = s.skillLoanTypes;
+            if (types != null && types.Count > 0)
+            {
+                for (int i = 0; i < types.Count; i++)
+                {
+                    if (s.skillLoanOriginals == null || i >= s.skillLoanOriginals.Count) continue;
+                    if (s.skillLoanLevels == null || i >= s.skillLoanLevels.Count) continue;
+                    if (!Enum.IsDefined(typeof(Skills.SkillType), types[i])) continue;
+
+                    yield return new KeyValuePair<Skills.SkillType, (float, float)>(
+                        (Skills.SkillType)types[i], (s.skillLoanOriginals[i], s.skillLoanLevels[i]));
+                }
+                yield break;
+            }
+
+            if (s.woodcuttingOriginal >= 0f)
+            {
+                yield return new KeyValuePair<Skills.SkillType, (float, float)>(
+                    Skills.SkillType.WoodCutting, (s.woodcuttingOriginal, 100f));
             }
         }
 

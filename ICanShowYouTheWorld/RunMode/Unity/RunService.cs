@@ -206,7 +206,7 @@ namespace ICanShowYouTheWorld.RunMode
 
             // _boons doesn't exist yet at construction time — captured by reference, resolved
             // lazily whenever BoonEffects actually needs the held set.
-            _boonEffects = new BoonEffects(() => _boons?.Held, UndefeatedBossLocations, DefeatedBossCount);
+            _boonEffects = new BoonEffects(() => _boons?.Held, UndefeatedBossLocations, DefeatedBossCount, LoanSkill);
             ApplyBoonEffect = _boonEffects.Apply;
             UnapplyBoonEffect = _boonEffects.Unapply;
             UnapplyAllBoonEffects = _boonEffects.UnapplyAll;
@@ -393,9 +393,11 @@ namespace ICanShowYouTheWorld.RunMode
                 // is tedium, not difficulty. Re-run on the poll tick for newly crafted gear.
                 _boonEffects.ApplyPugilist();
 
-                // Fresh run: take a new snapshot, so clear any stale one first.
-                _woodcuttingOriginal = NoSkillSnapshot;
-                SnapshotAndBoostWoodcutting();
+                // Fresh run: take new snapshots, so clear any stale ones first. Nothing is
+                // loaned here — skill is the questline's to pay out (owner, alpha17: WoodCutting
+                // starts at the axe step's 25 and grows from there, rather than opening at the
+                // cap), so this run starts with the character's own levels.
+                _skillLoans.Clear();
                 _worldModifiers.ApplyHeat(0f, _cfg);
                 _restorePending = true;
                 _restoreWorldId = _worldId;
@@ -449,7 +451,7 @@ namespace ICanShowYouTheWorld.RunMode
                 _restorePending = !_worldModifiers.RestoreAll();
                 _restoreWorldId = _restorePending ? _worldId : null;
                 SafeUnapplyAllBoonEffects();
-                RestoreWoodcutting();   // before EndRun: the snapshot is run state EndRun clears
+                RestoreLoanedSkills();  // before EndRun: the snapshots are run state EndRun clears
                 DeleteState();
                 EndRun();
 
@@ -734,7 +736,7 @@ namespace ICanShowYouTheWorld.RunMode
             // mode accepts as vanilla rather than suppressing — but the LOAN is not the player's
             // skill to lose, so it goes straight back on. The snapshot is untouched: the original
             // is still what gets given back at the end of the run.
-            ApplyLoanedWoodcutting();
+            ReapplyLoanedSkills();
         }
 
         /// <summary>Re-runs Apply for every held passive boon (fleet/sharp/pack/mule/hearty/enduring) — used after a respawn and NOT after a resume (way's charge is persisted separately; re-running Apply("way") there would grant a free charge). Iterates the held set by its IsPassive flag, so a new passive joins simply by being one.</summary>
@@ -773,6 +775,7 @@ namespace ICanShowYouTheWorld.RunMode
                 catch (Exception ex) { LogOnce("record-boss", ex); }
 
                 Message($"{boss.display} down — {FormatTime(_elapsed)}");
+                GrantHomesteadMaterials();
 
                 if (boss.defeatKey == _finalBossKey) finished = true;
             }
@@ -1055,7 +1058,7 @@ namespace ICanShowYouTheWorld.RunMode
             _restorePending = !_worldModifiers.RestoreAll();
             _restoreWorldId = _restorePending ? _worldId : null;
             SafeUnapplyAllBoonEffects();
-            RestoreWoodcutting();   // before EndRun: the snapshot is run state EndRun clears
+            RestoreLoanedSkills();  // before EndRun: the snapshots are run state EndRun clears
             DeleteState();
 
             float finalElapsed = _elapsed;
@@ -1091,10 +1094,10 @@ namespace ICanShowYouTheWorld.RunMode
             ResetOutageTracking();
             _trackedPlayer = null;
 
-            // Run state, so it goes with the run. The paths that END a run call RestoreWoodcutting
+            // Run state, so it goes with the run. The paths that END a run call RestoreLoanedSkills
             // first; SuspendRun deliberately does not — that run is still live, the character keeps
-            // the loaned level, and the original rides the save file back in on resume.
-            _woodcuttingOriginal = NoSkillSnapshot;
+            // the loaned levels, and the originals ride the save file back in on resume.
+            _skillLoans.Clear();
 
             // Restores, then clears. Boss health is the one Run Mode effect written straight into
             // the world's own data, so it has to be given back the way world modifiers are — a
@@ -1401,6 +1404,8 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         private void GrantQuestReward(ChallengeDefinition def)
         {
+            GrantQuestSkills(def);
+
             if (def.Id == null || !QuestRewards.TryGetValue(def.Id, out var items) || items == null) return;
 
             foreach (var (prefabName, count) in items) GrantItem(prefabName, count);
@@ -1408,6 +1413,53 @@ namespace ICanShowYouTheWorld.RunMode
             Message(string.IsNullOrEmpty(def.RewardText)
                 ? $"Quest complete: {def.Display}"
                 : $"Quest reward: {def.RewardText}");
+        }
+
+        /// <summary>
+        /// Skill a questline step pays out, alongside its items. Handing someone a bow while their
+        /// Bows skill sits at 1 hands them a bow that misses — the gear is only a reward if the
+        /// character can use it, so the axe step lifts the three skills its own rewards depend on.
+        ///
+        /// These are LOANS like every other skill this mode grants (see <see cref="LoanSkill"/>):
+        /// raised for the run, snapshotted first, given back at the end. WoodCutting is in the list
+        /// for completeness even though the run already loans it at the cap — LoanSkill only ever
+        /// raises, so the lower grant is a no-op rather than a demotion.
+        /// </summary>
+        private static readonly Dictionary<string, (Skills.SkillType skill, float level)[]> QuestSkillRewards =
+            new Dictionary<string, (Skills.SkillType, float)[]>
+            {
+                ["mq-axe"] = new[]
+                {
+                    (Skills.SkillType.WoodCutting, QuestSkillGrantLevel),
+                    (Skills.SkillType.Axes, QuestSkillGrantLevel),
+                    (Skills.SkillType.Bows, QuestSkillGrantLevel),
+                },
+            };
+
+        /// <summary>Owner's number: enough that the gear works, far from the 100 the cap allows.</summary>
+        private const float QuestSkillGrantLevel = 25f;
+
+        /// <summary>
+        /// Materials for a homestead, handed over every time a boss falls (owner, alpha17: "award
+        /// the player a house after each boss kill, 50 wood and some stone").
+        ///
+        /// A boss kill is the natural moment to move on, and a run that has to stop and gather a
+        /// building's worth of timber first is a run spending its clock on the least interesting
+        /// thing Valheim offers. This is the same bargain the questline makes: skip the fetching,
+        /// keep the fight.
+        /// </summary>
+        private void GrantHomesteadMaterials()
+        {
+            GrantItem("Wood", 50);
+            GrantItem("Stone", 20);
+            Message("Spoils: timber and stone for a hall.");
+        }
+
+        private void GrantQuestSkills(ChallengeDefinition def)
+        {
+            if (def.Id == null || !QuestSkillRewards.TryGetValue(def.Id, out var skills) || skills == null) return;
+
+            foreach (var (skill, level) in skills) LoanSkill(skill, level);
         }
 
         /// <summary>
@@ -1520,101 +1572,141 @@ namespace ICanShowYouTheWorld.RunMode
             return true;
         }
 
-        // --- Loaned WoodCutting ---
+        // --- Loaned skills ---
+
+        /// <summary>A skill this run has raised: what it was worth before, and what it was raised to.</summary>
+        private struct SkillLoan
+        {
+            public float Original;
+            public float Level;
+        }
 
         /// <summary>
-        /// Sentinel for "no snapshot taken": every real skill level is >= 0, so a negative can't
-        /// collide with one. Shared with <see cref="RunSaveState.woodcuttingOriginal"/>.
-        /// </summary>
-        private const float NoSkillSnapshot = -1f;
-
-        /// <summary>Skills.c_MaxSkillLevel — the game clamps every skill here.</summary>
-        private const float LoanedWoodcuttingLevel = 100f;
-
-        /// <summary>
-        /// The player's WoodCutting level from before the run LOANED them 100, or
-        /// <see cref="NoSkillSnapshot"/> when nothing has been taken. Persisted, because a run that
-        /// crosses a reload must still be able to give the loan back.
-        /// </summary>
-        private float _woodcuttingOriginal = NoSkillSnapshot;
-
-        /// <summary>
-        /// "Max woodcutting from the start" (owner's design): chopping is the one skill an early
-        /// Valheim run is forced to grind, and grinding is exactly what Run Mode is not for. The
-        /// level is LOANED, not given — the pre-run value is snapshotted here and written back when
-        /// the run ends, so a run leaves the character's own progression where it found it.
+        /// Every skill this run has loaned the player, by type. Persisted, because a run that
+        /// crosses a reload must still be able to give each loan back.
         ///
-        /// Only ever snapshots once (a second call boosts without re-snapshotting): re-reading
-        /// after the boost would capture 100 as the "original" and make the loan permanent, which
-        /// is why the respawn and resume paths call <see cref="ApplyLoanedWoodcutting"/> instead.
+        /// A table rather than the single WoodCutting field it grew out of: the questline now pays
+        /// in skill as well as in gear (the axe step lifts Axes and Bows out of the level-1 range
+        /// where a bow is useless), and every one of those grants has to be given back at run end
+        /// on the same terms.
         /// </summary>
-        private void SnapshotAndBoostWoodcutting()
+        private readonly Dictionary<Skills.SkillType, SkillLoan> _skillLoans =
+            new Dictionary<Skills.SkillType, SkillLoan>();
+
+        /// <summary>
+        /// Raises a skill for the duration of the run and remembers what it was worth first.
+        ///
+        /// "Max woodcutting from the start" (owner's design) is the original case: chopping is the
+        /// one skill an early Valheim run is forced to grind, and grinding is exactly what Run Mode
+        /// is not for. The level is LOANED, not given — the pre-run value is snapshotted here and
+        /// written back when the run ends, so a run leaves the character's own progression where it
+        /// found it.
+        ///
+        /// The snapshot is taken at most once per skill, and only ever raises: a second call at a
+        /// LOWER level (the questline granting 25 in a skill already loaned 100) leaves both the
+        /// snapshot and the level alone. Re-reading the level after a boost would capture the
+        /// loaned value as the "original" and make the loan permanent, which is why the respawn and
+        /// resume paths call <see cref="ReapplyLoanedSkills"/> instead.
+        /// </summary>
+        private void LoanSkill(Skills.SkillType type, float level)
         {
             try
             {
-                var skill = WoodcuttingSkill();
+                var skill = SkillObject(type);
                 if (skill == null) return;
 
-                if (_woodcuttingOriginal < 0f) _woodcuttingOriginal = skill.m_level;
-                skill.m_level = LoanedWoodcuttingLevel;
-
-                Debug.Log($"[ICanShowYouTheWorld] WoodCutting loaned at {LoanedWoodcuttingLevel:0} " +
-                          $"(original {_woodcuttingOriginal:0.##}).");
-            }
-            catch (Exception ex)
-            {
-                LogOnce("woodcutting-boost", ex);
-            }
-        }
-
-        /// <summary>
-        /// Re-applies the loan without touching the snapshot. Needed after a respawn (Skills.OnDeath
-        /// multiplies every level down — vanilla behaviour this mode accepts rather than suppresses)
-        /// and after a resume, where the original comes from the save file instead.
-        /// </summary>
-        private void ApplyLoanedWoodcutting()
-        {
-            try
-            {
-                var skill = WoodcuttingSkill();
-                if (skill == null || skill.m_level >= LoanedWoodcuttingLevel) return;
-
-                skill.m_level = LoanedWoodcuttingLevel;
-            }
-            catch (Exception ex)
-            {
-                LogOnce("woodcutting-reapply", ex);
-            }
-        }
-
-        /// <summary>
-        /// Gives the loaned level back. Called from the two paths that END a run for good;
-        /// deliberately NOT from <see cref="SuspendRun"/>, where the run is still live and its save
-        /// still carries the original.
-        /// </summary>
-        private void RestoreWoodcutting()
-        {
-            try
-            {
-                if (_woodcuttingOriginal < 0f) return;
-
-                var skill = WoodcuttingSkill();
-                if (skill != null)
+                if (!_skillLoans.TryGetValue(type, out var loan))
                 {
-                    skill.m_level = _woodcuttingOriginal;
-                    Debug.Log($"[ICanShowYouTheWorld] WoodCutting restored to {_woodcuttingOriginal:0.##}.");
+                    // Nothing to lend someone who is already better than the grant — and recording
+                    // a loan here would be actively harmful, since run end writes the snapshot back
+                    // and would confiscate whatever they went on to earn.
+                    if (skill.m_level >= level) return;
+
+                    loan = new SkillLoan { Original = skill.m_level, Level = 0f };
                 }
 
-                _woodcuttingOriginal = NoSkillSnapshot;
+                if (level <= loan.Level) return;   // already loaned at least this much
+
+                loan.Level = level;
+                _skillLoans[type] = loan;
+                if (skill.m_level < level) skill.m_level = level;
+
+                Debug.Log($"[ICanShowYouTheWorld] {type} loaned at {level:0} " +
+                          $"(original {loan.Original:0.##}).");
             }
             catch (Exception ex)
             {
-                LogOnce("woodcutting-restore", ex);
+                LogOnce("skill-loan", ex);
             }
         }
 
         /// <summary>
-        /// The live WoodCutting <see cref="Skills.Skill"/> object, or null if it can't be reached.
+        /// Re-applies every loan without touching its snapshot. Needed after a respawn
+        /// (Skills.OnDeath multiplies every level down — vanilla behaviour this mode accepts rather
+        /// than suppresses) and after a resume, where the originals come from the save file instead.
+        /// </summary>
+        private void ReapplyLoanedSkills()
+        {
+            try
+            {
+                foreach (var entry in _skillLoans)
+                {
+                    var skill = SkillObject(entry.Key);
+                    if (skill != null && skill.m_level < entry.Value.Level)
+                        skill.m_level = entry.Value.Level;
+                }
+            }
+            catch (Exception ex)
+            {
+                LogOnce("skill-reapply", ex);
+            }
+        }
+
+        /// <summary>
+        /// Takes back what the run LENT, and nothing more. Called from the paths that END a run for
+        /// good; deliberately NOT from <see cref="SuspendRun"/>, where the run is still live and its
+        /// save still carries the originals.
+        ///
+        /// Subtracting the loan rather than assigning the snapshot back is the whole point. A skill
+        /// loaned BELOW the cap can still be trained during the run — Axes and Bows are granted at
+        /// 25 and a run gains skill at 3x — and writing the pre-run level back would confiscate
+        /// every level the player actually earned, leaving them worse off than if Run Mode had never
+        /// touched the skill. (WoodCutting never showed this: it was loaned at the game's cap of
+        /// 100, so there was no room above the loan to earn anything.) Taking the loan's own delta
+        /// off the CURRENT level gives back exactly the head start, keeps the climb, and can never
+        /// drop the player below where they started.
+        /// </summary>
+        private void RestoreLoanedSkills()
+        {
+            try
+            {
+                foreach (var entry in _skillLoans)
+                {
+                    var skill = SkillObject(entry.Key);
+                    if (skill == null) continue;
+
+                    float lent = entry.Value.Level - entry.Value.Original;
+                    float restored = Math.Max(entry.Value.Original, skill.m_level - lent);
+
+                    skill.m_level = restored;
+                    Debug.Log($"[ICanShowYouTheWorld] {entry.Key} restored to {restored:0.##} " +
+                              $"(was {entry.Value.Original:0.##} before the run, lent {lent:0.##}).");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogOnce("skill-restore", ex);
+            }
+            finally
+            {
+                // Cleared even if the writes threw: a retained loan would be re-applied by the next
+                // run's respawn path and hand out a level this run never snapshotted.
+                _skillLoans.Clear();
+            }
+        }
+
+        /// <summary>
+        /// The live <see cref="Skills.Skill"/> object for a skill type, or null if it can't be reached.
         ///
         /// Getting at it is fiddlier than it looks, and every step below is forced by the IL:
         /// Skills.GetSkill(SkillType) is PRIVATE, and GetSkillList() only returns skills the player
@@ -1630,7 +1722,7 @@ namespace ICanShowYouTheWorld.RunMode
         /// CheatRaiseSkill: that one re-balances every OTHER skill downward when a world has the
         /// skill cap enabled, which would quietly damage the character's real progression.
         /// </summary>
-        private static Skills.Skill WoodcuttingSkill()
+        private static Skills.Skill SkillObject(Skills.SkillType type)
         {
             var player = Player.m_localPlayer;
             if (player == null) return null;
@@ -1638,11 +1730,11 @@ namespace ICanShowYouTheWorld.RunMode
             var skills = player.GetSkills();
             if (skills == null) return null;
 
-            skills.GetSkillLevel(Skills.SkillType.WoodCutting);   // forces the entry to exist
+            skills.GetSkillLevel(type);   // forces the entry to exist
 
             foreach (var skill in skills.GetSkillList())
             {
-                if (skill != null && skill.m_info != null && skill.m_info.m_skill == Skills.SkillType.WoodCutting)
+                if (skill != null && skill.m_info != null && skill.m_info.m_skill == type)
                     return skill;
             }
             return null;
@@ -1839,6 +1931,13 @@ namespace ICanShowYouTheWorld.RunMode
                 // succeeded before whatever threw) — unwind them rather than leaving a cheat
                 // toggle or a snapshot boost stuck on with no active run to own it.
                 SafeUnapplyAllBoonEffects();
+
+                // Same reasoning, and more urgent: RestoreFrom re-applies the saved skill loans to
+                // the real character before the lines that can throw. The state file — the only
+                // other record of what those skills were worth — has just been deleted, and EndRun
+                // merely drops the table, so skipping this would make the loan permanent with
+                // nothing left to undo it from.
+                RestoreLoanedSkills();
                 EndRun();
             }
         }
@@ -1947,7 +2046,7 @@ namespace ICanShowYouTheWorld.RunMode
             // which takes a fresh one): re-baselining can only ever cost the player the fraction
             // of a single craft, because the restored PROGRESS is kept and the report path takes
             // the max of the two.
-            _challenges.RestoreMainQuest(s.mainQuestIndex, s.mainQuestProgress);
+            _challenges.RestoreMainQuest(s.mainQuestIndex, s.mainQuestProgress, s.mainQuestId);
 
             // Anything the save didn't carry a baseline for (a pre-alpha4 save, or a slot that
             // never managed to take one) gets its zero point NOW rather than staying NaN forever.
@@ -1975,21 +2074,18 @@ namespace ICanShowYouTheWorld.RunMode
             _worldModifiers.ApplyBaseline(_cfg);
             _boonEffects.ApplyPugilist();   // baseline empowerment, same as StartRun
 
-            // A resume must NOT re-snapshot: the character is already carrying the loaned 100, so
-            // reading the level now would record 100 as their "original" and make the loan
-            // permanent. The saved original is authoritative. A save from before the loan existed
-            // (or one taken before a snapshot could be read) carries the -1 sentinel, and only
-            // then is a fresh snapshot the right thing.
-            if (s.woodcuttingOriginal >= 0f)
-            {
-                _woodcuttingOriginal = s.woodcuttingOriginal;
-                ApplyLoanedWoodcutting();
-            }
-            else
-            {
-                _woodcuttingOriginal = NoSkillSnapshot;
-                SnapshotAndBoostWoodcutting();
-            }
+            // A resume must NOT re-snapshot: the character is already carrying the loans, so
+            // reading a level now would record the loaned value as their "original" and make the
+            // loan permanent. The saved originals are authoritative. A save from before the loans
+            // existed (or one taken before a snapshot could be read) carries none, and only then is
+            // a fresh snapshot the right thing.
+            _skillLoans.Clear();
+            foreach (var loan in RunStorage.ImportSkillLoans(s))
+                _skillLoans[loan.Key] = new SkillLoan { Original = loan.Value.original, Level = loan.Value.level };
+
+            // Nothing to re-apply on a save that carries no loans — including a save from
+            // before loans existed. A fresh snapshot here would invent a grant the run never made.
+            ReapplyLoanedSkills();
             _worldModifiers.ApplyHeat(_heat.Heat, _cfg);
             _restorePending = true;
             _restoreWorldId = _worldId;
@@ -2122,7 +2218,10 @@ namespace ICanShowYouTheWorld.RunMode
                 // of its own, so it saves as a position + a progress value, not as a list entry.
                 mainQuestIndex = _challenges?.MainQuestIndex ?? 0,
                 mainQuestProgress = _challenges?.CurrentMainQuest?.Progress ?? 0f,
-                woodcuttingOriginal = _woodcuttingOriginal,
+                mainQuestId = _challenges?.CurrentMainQuest?.Def?.Id,
+                skillLoanTypes = _skillLoans.Keys.Select(k => (int)k).ToList(),
+                skillLoanOriginals = _skillLoans.Values.Select(v => v.Original).ToList(),
+                skillLoanLevels = _skillLoans.Values.Select(v => v.Level).ToList(),
                 heldBoonIds = held.Select(h => h.Def.Id).ToList(),
                 heldBoonCooldowns = held.Select(h => h.CooldownRemaining).ToList(),
                 heldBoonCharges = held.Select(h => h.Charges).ToList(),
@@ -2338,6 +2437,18 @@ namespace ICanShowYouTheWorld.RunMode
 
         private static List<ChallengeDefinition> BuildFullPool() => new List<ChallengeDefinition>
         {
+            // The standing task: seated in a slot on the first tick (Opener) and never vacated
+            // (Repeatable), so the run always has one thing on offer no matter how the random
+            // deals go. Hugin turns up on his own schedule, which makes this a task that rewards
+            // paying attention rather than one more thing to farm — and every fifth talk pays a
+            // boon, the same as any other completion. RavenTalk is a real PlayerStatType, checked
+            // against the enum in the IL.
+            new ChallengeDefinition
+            {
+                Id = "raven-talk", Tier = 0, Opener = true, Repeatable = true,
+                Kind = ChallengeKind.StatDelta, Param = "RavenTalk", Target = 5, HeatReward = 1,
+                Display = "Heed Hugin 5 times",
+            },
             // The three opener-flagged links that used to live here (o-wood/o-stone/o-craft) are
             // GONE: the MAIN QUEST CHAIN (see MainQuestChain) is the on-ramp now, and a scripted
             // opening that also ate all three random slots left no room for anything else in the
@@ -2526,17 +2637,27 @@ namespace ICanShowYouTheWorld.RunMode
             new ChallengeDefinition
             {
                 Id = "mq-axe", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "CraftsOrUpgrades",
-                Target = 1, Display = "Craft an axe", RewardText = "Bow, arrows, and a pile of wood",
+                Target = 1, Display = "Craft an axe", RewardText = "Bow, arrows, wood — and the skill to use them",
             },
             new ChallengeDefinition
             {
-                Id = "mq-deer", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Deer",
-                Target = 3, Display = "Kill 3 Deer", RewardText = "Leather armor",
+                Id = "mq-hammer", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "CraftsOrUpgrades",
+                Target = 1, Display = "Craft a hammer", RewardText = "Timber and stone for a roof",
+            },
+            new ChallengeDefinition
+            {
+                Id = "mq-bench", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "Builds",
+                Target = 1, Display = "Build a workbench", RewardText = "Leather armor",
             },
             new ChallengeDefinition
             {
                 Id = "mq-grey", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Greydwarf",
                 Target = 4, Display = "Kill 4 Greydwarves", RewardText = "Helmet + cape + flint arrows",
+            },
+            new ChallengeDefinition
+            {
+                Id = "mq-deer", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Deer",
+                Target = 3, Display = "Hunt 3 Deer", RewardText = "Deer trophies — Eikthyr's summons",
             },
             new ChallengeDefinition
             {
@@ -2562,8 +2683,15 @@ namespace ICanShowYouTheWorld.RunMode
                 // "Lots of wood when he completes the axe, so he can build shelter" — the wood
                 // IS the reward here as much as the bow: skip straight from first craft to a roof.
                 ["mq-axe"] = new[] { ("Bow", 1), ("ArrowWood", 40), ("Wood", 50), ("Stone", 10) },
-                ["mq-deer"] = new[] { ("ArmorLeatherChest", 1), ("ArmorLeatherLegs", 1) },
+                // The hammer step pays for what it unlocks: a workbench costs 10 wood, and a
+                // shelter around it costs a great deal more.
+                ["mq-hammer"] = new[] { ("Wood", 100), ("Stone", 30) },
+                ["mq-bench"] = new[] { ("ArmorLeatherChest", 1), ("ArmorLeatherLegs", 1) },
                 ["mq-grey"] = new[] { ("HelmetLeather", 1), ("CapeDeerHide", 1), ("ArrowFlint", 20) },
+                // Eikthyr's altar wants two deer trophies, and a trophy is a drop the player can
+                // hunt for an hour without seeing. Handing them over is the point of this step:
+                // the run gates on the FIGHT, never on drop luck.
+                ["mq-deer"] = new[] { ("TrophyDeer", 2), ("DeerHide", 5) },
                 ["mq-eikthyr"] = new[] { ("PickaxeAntler", 1) },
             };
 
@@ -2586,6 +2714,9 @@ namespace ICanShowYouTheWorld.RunMode
             new BoonDefinition { Id = "catbreath",  Display = "Cat's Breath", IsPassive = true, Description = "Stamina recovery kicks in much sooner." },
             new BoonDefinition { Id = "marathoner", Display = "Marathoner",   IsPassive = true, Description = "Running drains 40% less stamina." },
             new BoonDefinition { Id = "acrobat",    Display = "Acrobat",      IsPassive = true, Description = "Dodge rolls cost half stamina." },
+            new BoonDefinition { Id = "woodsman", Display = "Woodsman", IsPassive = true, Description = "Woodcutting skill to 60. Trees fall fast." },
+            new BoonDefinition { Id = "hunter",   Display = "Hunter",   IsPassive = true, Description = "Bow skill to 50. Straighter, harder shots." },
+            new BoonDefinition { Id = "warrior",  Display = "Warrior",  IsPassive = true, Description = "Axe, sword and club skill to 50." },
             new BoonDefinition { Id = "wind",  Display = "Second Wind",  IsPassive = false, CooldownSeconds = 120f, Description = "Heals you and nearby allies for 10s." },
             new BoonDefinition { Id = "ember", Display = "Emberskin",    IsPassive = false, CooldownSeconds = 180f, Description = "Cloak of flames burns nearby foes for 30s." },
             new BoonDefinition { Id = "way",   Display = "Waystone",     IsPassive = false, Description = "Teleport to the next boss altar. One charge." },

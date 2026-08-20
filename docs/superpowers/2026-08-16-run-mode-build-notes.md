@@ -6,12 +6,27 @@ one residual (freeze-gated rerolls). Branch `feature/run-mode`, nothing
 pushed. Deployed to the Mac (both patcher injections, signature valid).
 **Remaining: the in-game smoke checklist below, then merge.***
 
-## Baseline empowerment (as of alpha7)
+## Baseline empowerment (as of alpha17)
 
-Resource ×3, skill ×3, move-stamina ×0.5, stamina-regen ×1.5, and **zero
-stamina cost for melee weapons and tools** (ranged excluded). The last one
-started life as the Pugilist boon in alpha6 and was promoted to baseline
-after play-testing: "not having any stamina is just annoying."
+Resource ×3, skill ×3, move-stamina ×0.5, stamina-regen ×2.5, **all stamina
+costs ×0.75**, **zero stamina cost for melee weapons and tools** (ranged pays
+25%). WoodCutting no longer opens at the cap: as of alpha17 it is the axe
+step's reward at 25, and grows from there.
+
+Two of those came from play-testing rather than design. Zero-cost melee
+started life as the Pugilist boon in alpha6 and was promoted to baseline:
+"not having any stamina is just annoying." The `StaminaRate` modifier and the
+regen bump followed the same complaint in alpha16 ("we run out of sta WAY too
+fast") — `StaminaRate` is the global lever, since `Player.UseStamina` scales
+*every* cost by it, which is how it reaches blocking, dodging and jumping that
+the other two modifiers miss. All of it is config-driven (`RunStaminaRate`,
+`RunStaminaRegenRate`, …), so tuning it needs no rebuild.
+
+Skills the run raises are LOANED: snapshotted before the change and written
+back at run end, so a run leaves the character's own progression where it
+found it. That now includes the questline's skill rewards, not just
+WoodCutting — and a loan is never recorded when the player already exceeds the
+grant, or giving it back would confiscate what they earned.
 
 ## Smoke checklist (Martin, on the Mac)
 

@@ -59,6 +59,19 @@ namespace ICanShowYouTheWorld.RunMode
         public bool MainQuest;
 
         /// <summary>
+        /// A standing task: instead of vacating its slot on completion, it pays out and starts
+        /// over at zero in the same slot, for as long as the run lasts. The engine's reliable
+        /// faucet — every other task either finishes for good or waits on a refill timer and a
+        /// random draw, so a player who has run the pool dry (or whose biome filter is narrow)
+        /// can be left with nothing to work toward.
+        ///
+        /// Pair it with <see cref="Opener"/> to make it permanent: openers are seated on a fresh
+        /// engine and excluded from every random draw, so exactly one copy exists and no refill
+        /// can ever deal a second.
+        /// </summary>
+        public bool Repeatable;
+
+        /// <summary>
         /// Player-facing description of what completing this step GIVES, e.g. "Bow + 40 arrows".
         /// UI copy only: the engine is pure and hands out nothing, so the actual grant lives
         /// host-side, keyed by <see cref="Id"/>. Null/empty for anything with no reward to show.
@@ -234,9 +247,28 @@ namespace ICanShowYouTheWorld.RunMode
         /// <see cref="CurrentMainQuest"/> null; a negative one is clamped to the start, matching
         /// the malformed-save tolerance the rest of the restore path uses.
         /// </summary>
-        public void RestoreMainQuest(int index, float progress)
+        public void RestoreMainQuest(int index, float progress) => RestoreMainQuest(index, progress, null);
+
+        /// <summary>
+        /// Restores the questline position, preferring the saved step's ID over its index.
+        ///
+        /// The index alone is only meaningful against the exact chain that wrote it, and the chain
+        /// is content that changes between builds. Reordering it — as alpha17 did, inserting two
+        /// steps and moving the deer hunt — silently reattributes an old save's position to a
+        /// different step, and since a step is complete the moment Progress >= Target, a position
+        /// carried over from a longer objective fires an instant, unearned completion (rewards and
+        /// all) on the first tick.
+        ///
+        /// So: find the saved ID and resume exactly where the player was. Failing that (a save from
+        /// before IDs were written, or a step that no longer exists), keep the index but DROP the
+        /// progress — the player repeats a step at worst, rather than being handed one.
+        /// </summary>
+        public void RestoreMainQuest(int index, float progress, string id)
         {
-            mainIndex = Math.Max(0, index);
+            int byId = id == null ? -1 : mainChain.FindIndex(d => d.Id == id);
+            bool trusted = byId >= 0;
+
+            mainIndex = Math.Max(0, trusted ? byId : index);
 
             if (mainIndex >= mainChain.Count)
             {
@@ -245,7 +277,7 @@ namespace ICanShowYouTheWorld.RunMode
             }
 
             mainQuest = MakeActive(mainChain[mainIndex]);
-            mainQuest.Progress = Math.Max(0f, progress);
+            mainQuest.Progress = trusted ? Math.Max(0f, progress) : 0f;
         }
 
         /// <summary>
@@ -283,9 +315,25 @@ namespace ICanShowYouTheWorld.RunMode
                 Completed?.Invoke(finished);
             }
 
-            // (1) Fire completions and vacate their slots.
+            // (1) Fire completions and vacate their slots — except a Repeatable, which keeps its
+            // slot and starts over. Its progress is reset BEFORE the event fires, so a handler
+            // that reads Active during the callback sees the fresh objective rather than a
+            // finished one it would report as complete a second time.
             foreach (var a in active.Where(a => a.Done).ToList())
             {
+                if (a.Def.Repeatable)
+                {
+                    a.Progress = 0f;
+                    // NaN re-arms the host's StatDelta baseline sync, so the next round measures
+                    // from where this one ended instead of instantly completing again.
+                    a.Baseline = float.NaN;
+                    if (a.SubProgress != null)
+                        for (int i = 0; i < a.SubProgress.Count; i++) a.SubProgress[i] = 0f;
+
+                    Completed?.Invoke(a.Def);
+                    continue;
+                }
+
                 active.Remove(a);
                 pendingRefills.Add(refillCooldown);
                 Completed?.Invoke(a.Def);
@@ -539,10 +587,15 @@ namespace ICanShowYouTheWorld.RunMode
         /// Swaps a slot for a fresh RANDOM draw. Rerolling an opener therefore leaves the chain:
         /// <see cref="Drawable"/> excludes openers, so the replacement is an ordinary challenge and
         /// the discarded link never comes back.
+        ///
+        /// A <see cref="ChallengeDefinition.Repeatable"/> slot refuses outright. It is the run's
+        /// standing task, and since openers can never be redrawn, spending heat to reroll it would
+        /// destroy it permanently — a purchase no player would knowingly make.
         /// </summary>
         public bool Reroll(int slotIndex)
         {
             if (slotIndex < 0 || slotIndex >= active.Count) return false;
+            if (active[slotIndex].Def.Repeatable) return false;
             var options = Drawable();
             if (options.Count == 0) return false;
             active[slotIndex] = MakeActive(options[rng.Next(options.Count)]);

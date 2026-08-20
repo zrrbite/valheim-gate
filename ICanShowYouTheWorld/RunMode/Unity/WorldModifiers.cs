@@ -12,7 +12,40 @@ namespace ICanShowYouTheWorld.RunMode
     /// </summary>
     public class WorldModifiers
     {
+        /// <summary>
+        /// Sentinel original meaning "this world had no value for the key before the run", which is
+        /// restored by removing the key rather than by writing a number. Rates are never negative,
+        /// so it cannot collide with a real one — and unlike NaN it survives a round trip through
+        /// JsonUtility, which writes NaN as a bare token no JSON parser will read back.
+        /// </summary>
+        private const float KeyWasAbsent = -1f;
+
+        /// <summary>
+        /// The lowest stored percentage that could have come from the game itself. Valheim's own
+        /// world-modifier presets sit between 50 and 300; anything below this is damage from a
+        /// pre-alpha17 build of this mod. See <see cref="Sanitize"/>.
+        /// </summary>
+        private const float MinSaneRatePercent = 5f;
+
         private readonly Dictionary<GlobalKeys, float> _originalValues = new Dictionary<GlobalKeys, float>();
+
+        /// <summary>
+        /// Writes a rate key as the PERCENTAGE the game expects, not as a bare multiplier.
+        ///
+        /// This is the single most important line in the file. Game.UpdateWorldRates reads each of
+        /// these keys through a helper that does <c>rate = parsed / 100</c> (verified in the IL:
+        /// <c>Game.&lt;UpdateWorldRates&gt;g__trySetScalarKey</c>, whose "defaultValue 1, multiplier
+        /// 100" arguments mean an absent key is 1.0x and a stored 100 is also 1.0x). Writing a bare
+        /// 3 for "triple resources" therefore asked for 0.03x, and every empowerment this mode
+        /// grants was silently inverted into a crippling penalty: 3x resources became 3% (Mathf.Ceil
+        /// floored every drop to one — the field-reported "I chop a tree and get 1 wood"), 1.5x
+        /// stamina regen became 1.5% (stamina that never came back), and heat's enemy scaling made
+        /// enemies WEAKER as the run got hotter.
+        /// </summary>
+        private static void SetRate(GlobalKeys key, float multiplier)
+        {
+            ZoneSystem.instance.SetGlobalKey(key, multiplier * 100f);
+        }
 
         /// <summary>
         /// Applies the run's baseline resource/skill/stamina rates. Saves each key's
@@ -26,16 +59,19 @@ namespace ICanShowYouTheWorld.RunMode
             SaveOriginal(GlobalKeys.SkillGainRate);
             SaveOriginal(GlobalKeys.MoveStaminaRate);
             SaveOriginal(GlobalKeys.StaminaRegenRate);
+            SaveOriginal(GlobalKeys.StaminaRate);
 
-            ZoneSystem.instance.SetGlobalKey(GlobalKeys.ResourceRate, cfg.RunResourceRate);
-            ZoneSystem.instance.SetGlobalKey(GlobalKeys.SkillGainRate, cfg.RunSkillGainRate);
-            ZoneSystem.instance.SetGlobalKey(GlobalKeys.MoveStaminaRate, cfg.RunMoveStaminaRate);
-            ZoneSystem.instance.SetGlobalKey(GlobalKeys.StaminaRegenRate, cfg.RunStaminaRegenRate);
+            SetRate(GlobalKeys.ResourceRate, cfg.RunResourceRate);
+            SetRate(GlobalKeys.SkillGainRate, cfg.RunSkillGainRate);
+            SetRate(GlobalKeys.MoveStaminaRate, cfg.RunMoveStaminaRate);
+            SetRate(GlobalKeys.StaminaRegenRate, cfg.RunStaminaRegenRate);
+            SetRate(GlobalKeys.StaminaRate, cfg.RunStaminaRate);
             RefreshRates();
 
             Debug.Log("[ICanShowYouTheWorld] Run Mode baseline world modifiers applied " +
                 $"(resource={cfg.RunResourceRate}, skill={cfg.RunSkillGainRate}, " +
-                $"moveStamina={cfg.RunMoveStaminaRate}, staminaRegen={cfg.RunStaminaRegenRate}).");
+                $"moveStamina={cfg.RunMoveStaminaRate}, staminaRegen={cfg.RunStaminaRegenRate}, " +
+                $"stamina={cfg.RunStaminaRate}).");
         }
 
         /// <summary>
@@ -49,17 +85,17 @@ namespace ICanShowYouTheWorld.RunMode
             SaveOriginal(GlobalKeys.EnemyDamage);
             SaveOriginal(GlobalKeys.EnemyLevelUpRate);
 
-            ZoneSystem.instance.SetGlobalKey(GlobalKeys.EnemyDamage,
+            SetRate(GlobalKeys.EnemyDamage,
                 HeatEffects.EnemyDamageMultiplier(heat, cfg.RunHeatEnemyDamageWeight));
             // (RefreshRates below keeps the live caches in step with the key writes.)
-            ZoneSystem.instance.SetGlobalKey(GlobalKeys.EnemyLevelUpRate,
+            SetRate(GlobalKeys.EnemyLevelUpRate,
                 HeatEffects.EnemyLevelUpMultiplier(heat, cfg.RunHeatEnemyLevelUpWeight));
             RefreshRates();
         }
 
         /// <summary>
-        /// Restores every world-modifier key touched by this instance back to its
-        /// pre-run value (1f, the vanilla default, for any key that had none set).
+        /// Restores every world-modifier key touched by this instance back to its pre-run value —
+        /// and REMOVES any key the world did not have before, rather than inventing a value for it.
         /// Returns false if the world is not loaded, in which case the saved originals are
         /// deliberately kept so the caller can retry once ZoneSystem comes back.
         /// </summary>
@@ -70,7 +106,8 @@ namespace ICanShowYouTheWorld.RunMode
 
             foreach (var kv in _originalValues)
             {
-                ZoneSystem.instance.SetGlobalKey(kv.Key, kv.Value);
+                if (kv.Value < 0f) ZoneSystem.instance.RemoveGlobalKey(kv.Key);
+                else ZoneSystem.instance.SetGlobalKey(kv.Key, kv.Value);
             }
 
             Debug.Log($"[ICanShowYouTheWorld] Run Mode world modifiers restored ({_originalValues.Count} key(s)).");
@@ -103,7 +140,10 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 var key = (GlobalKeys)keys[i];
                 if (_originalValues.ContainsKey(key)) continue;
-                _originalValues[key] = values[i];
+                // Sanitised on the way in as well: a save written by a pre-alpha17 build carries
+                // that build's bad originals, and importing them unchecked would restore the
+                // damage this run is meant to undo.
+                _originalValues[key] = values[i] < 0f ? KeyWasAbsent : Sanitize(key, values[i]);
             }
 
             Debug.Log($"[ICanShowYouTheWorld] Run Mode world modifier originals imported ({n} key(s)).");
@@ -131,8 +171,31 @@ namespace ICanShowYouTheWorld.RunMode
         {
             if (_originalValues.ContainsKey(key)) return;
 
-            float value = ZoneSystem.instance.GetGlobalKey(key, out float v) ? v : 1f;
-            _originalValues[key] = value;
+            _originalValues[key] = ZoneSystem.instance.GetGlobalKey(key, out float v)
+                ? Sanitize(key, v)
+                : KeyWasAbsent;
+        }
+
+        /// <summary>
+        /// A stored rate that no world setting could have produced is treated as damage from an
+        /// earlier build of this mod, not as the world's own value — so it is restored by REMOVING
+        /// the key rather than by writing the nonsense back.
+        ///
+        /// Builds before alpha17 wrote raw multipliers into keys the game reads as percentages,
+        /// and restored an untouched key as "1" — which is 1%, not 1x. A world that has finished a
+        /// run under one of those builds is therefore sitting on resourcerate=1: one wood per tree,
+        /// forever, in and out of Run Mode. Nothing in Valheim's own options can set a rate that
+        /// low (its presets are 50-300), so anything under <see cref="MinSaneRatePercent"/> is
+        /// unambiguously ours to clean up.
+        /// </summary>
+        private static float Sanitize(GlobalKeys key, float rawPercent)
+        {
+            if (rawPercent >= MinSaneRatePercent) return rawPercent;
+
+            Debug.LogWarning($"[ICanShowYouTheWorld] World modifier '{key}' was {rawPercent:0.##}% — " +
+                             "far below anything the game can set, so it is being treated as damage " +
+                             "from an earlier build and will be cleared when this run ends.");
+            return KeyWasAbsent;
         }
     }
 }

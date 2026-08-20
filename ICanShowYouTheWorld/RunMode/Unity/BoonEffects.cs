@@ -65,6 +65,14 @@ namespace ICanShowYouTheWorld.RunMode
         private readonly Func<int> _defeatedBossCount;
 
         /// <summary>
+        /// Raises a skill for the rest of the run — RunService.LoanSkill, which snapshots the
+        /// pre-run level, only ever raises, and hands it back when the run ends. Skill boons go
+        /// through the host rather than writing levels here because the snapshot has to live with
+        /// the run's other loans, be persisted with them, and be given back on the same paths.
+        /// </summary>
+        private readonly Action<Skills.SkillType, float> _loanSkill;
+
+        /// <summary>
         /// Companions summoned this run, oldest first, identified by ZDOID rather than by
         /// GameObject: a companion whose zone unloads has no live object but still has a ZDO,
         /// and only the ZDOID survives that round trip.
@@ -192,11 +200,12 @@ namespace ICanShowYouTheWorld.RunMode
         public string LastActivationMessage { get; private set; }
 
         public BoonEffects(Func<IReadOnlyList<HeldBoon>> heldBoons, Func<IEnumerable<string>> undefeatedBossLocations,
-            Func<int> defeatedBossCount = null)
+            Func<int> defeatedBossCount = null, Action<Skills.SkillType, float> loanSkill = null)
         {
             _heldBoons = heldBoons ?? (() => Array.Empty<HeldBoon>());
             _undefeatedBossLocations = undefeatedBossLocations ?? (() => Enumerable.Empty<string>());
             _defeatedBossCount = defeatedBossCount ?? (() => 0);
+            _loanSkill = loanSkill ?? ((_, __) => { });
         }
 
         // --- Public surface (RunService's boon seams) ---
@@ -211,6 +220,12 @@ namespace ICanShowYouTheWorld.RunMode
 
                 case "sharp":
                     ApplySharp();
+                    break;
+
+                case "woodsman":
+                case "hunter":
+                case "warrior":
+                    ApplySkillBoon(boonId);
                     break;
 
                 case "way":
@@ -640,6 +655,38 @@ namespace ICanShowYouTheWorld.RunMode
             teleport.TeleportTo(bestPos.Value + Vector3.up * 2f);
             held.Charges--;
             return true;
+        }
+
+        // --- Skill boons ---
+
+        /// <summary>
+        /// What each skill boon lifts, and to what. Levels are absolute floors rather than
+        /// additions, because that is what the loan mechanism can honestly give back: it
+        /// snapshots once and raises, so "set to 50" survives a respawn (which knocks skills down)
+        /// without ever compounding.
+        ///
+        /// Picking one twice is possible — only PASSIVES are excluded from re-offer, and these
+        /// are passives, so in practice each is offered at most once per run. The tiers exist so
+        /// that a second grant on the same skill from another source still moves it.
+        /// </summary>
+        private static readonly Dictionary<string, (Skills.SkillType skill, float level)[]> SkillBoons =
+            new Dictionary<string, (Skills.SkillType, float)[]>
+            {
+                ["woodsman"] = new[] { (Skills.SkillType.WoodCutting, 60f) },
+                ["hunter"]   = new[] { (Skills.SkillType.Bows, 50f) },
+                ["warrior"]  = new[]
+                {
+                    (Skills.SkillType.Axes, 50f),
+                    (Skills.SkillType.Swords, 50f),
+                    (Skills.SkillType.Clubs, 50f),
+                },
+            };
+
+        private void ApplySkillBoon(string boonId)
+        {
+            if (!SkillBoons.TryGetValue(boonId, out var grants)) return;
+
+            foreach (var (skill, level) in grants) _loanSkill(skill, level);
         }
 
         // --- Packbrother (summoned companions) ---

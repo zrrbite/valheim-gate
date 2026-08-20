@@ -411,7 +411,7 @@ a stale non-null static meant the next toggle destroyed instead of spawned,
 desyncing ring state from the flag.
 
 TASK: `git pull` → full `.\Install-Mod.ps1` → popup reads
-**v0.221.12-run.alpha16** (alpha6 = alpha5's log fix + the new Pugilist boon:
+**v0.221.12-run.alpha17** (alpha6 = alpha5's log fix + the new Pugilist boon:
 melee attacks cost zero stamina; bows/crossbows unaffected). Then: activate the ember boon (Keypad5), confirm
 the ring appears and disappears after ~30s, and confirm the log stays small
 (`(Get-Item Player.log).Length` after a few minutes — expect KB, not MB) and
@@ -426,7 +426,7 @@ death mid-run (no suspend/resume lines) and logout suspend. Append RESULTS.
 
 ## 2026-08-19 — TASK: alpha8 (pace + quests + ability bar)
 
-`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha16**.
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha17**.
 Changes from Martin's alpha7 play-test: collect/kill targets cut roughly in
 half (Hold 25 Wood, 10 food, Run 400m, Kill 6 Greydwarves...); ~17 new
 quests including **composite multi-objective quests** with per-objective
@@ -447,7 +447,7 @@ name fails silently as a dead quest. Note which ones tick and which don't.
 
 ## 2026-08-19 — TASK: alpha9 — themed HUD, foundation-first
 
-`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha16**.
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha17**.
 alpha9 = alpha8's pacing (halved targets, more small quests, ability bar)
 + the RESTYLED HUD (dark panels, serif font, real progress bars, cooldown
 wipes on ability slots, boon-offer fade-in, heat pulse, gold completion
@@ -465,7 +465,7 @@ outstanding: death mid-run + logout suspend log checks. Append RESULTS.
 
 ## 2026-08-19 — TASK: alpha10 — THE RATE FIX (this one matters)
 
-`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha16**.
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha17**.
 Two field bugs from Martin's alpha8 session fixed:
 1. **World-modifier rates were never live.** Valheim caches every rate as a
    static on Game, refreshed only by UpdateWorldRates (normally at world
@@ -486,7 +486,7 @@ Append RESULTS including the wood-count check numbers.
 
 ## 2026-08-19 — TASK: alpha11 — Act I main questline
 
-`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha16**.
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha17**.
 New: the QUEST section (gold, pinned above TASKS): Craft an axe → bow+40
 arrows; Kill 3 Deer → leather armor; Kill 4 Greydwarves → helmet/cape/flint
 arrows; Defeat Eikthyr → antler pickaxe. Item rewards go to inventory
@@ -505,7 +505,7 @@ count ~3x mid-run, biome gating, death/logout log silence. Append RESULTS.
 
 ## 2026-08-20 — TASK: alpha15 — boon descriptions in the offer
 
-`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha16**.
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha17**.
 Martin's note: "it's not apparent what the skills do" — the offer showed
 only a name and passive/active. Each of the 13 boons now carries a
 one-line `Description` rendered under its name in the offer panel, and the
@@ -525,7 +525,7 @@ flag any description that doesn't match what the boon actually does in play
 
 ## 2026-08-20 — TASK: alpha16 — Packbrother replaces Packleader
 
-`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha16**.
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha17**.
 
 Martin's call: Packleader (buff your tames) is dead in a run — you never
 reach a tame before the clock matters. It is GONE, replaced by
@@ -553,6 +553,58 @@ Watch for, in priority order:
 Also in this build: an existing run saved under alpha15 or earlier that is
 still HOLDING Packleader will silently lose that boon slot on resume (the
 engine drops boon ids it no longer knows). Expected, not a bug to report.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
+---
+
+## 2026-08-20 — TASK: alpha17 — THE PERCENTAGE FIX (this one matters most)
+
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha17**.
+
+**Root cause found for "I chop a tree and get 1 wood" and "we run out of
+stamina way too fast".** Valheim reads its world-modifier rate keys as
+PERCENTAGES — `Game.UpdateWorldRates` does `rate = stored / 100` (verified in
+the IL). This mod wrote bare multipliers, so every empowerment was silently
+inverted into a crippling penalty:
+
+| we asked for | the game actually applied |
+|---|---|
+| resources x3 | x0.03 (Ceil floored every drop to 1) |
+| stamina regen x1.5 | x0.015 (stamina never came back) |
+| skill gain x3 | x0.03 |
+| heat's enemy damage | x0.01-0.02 — heat made enemies WEAKER |
+
+Worse, restoring an untouched key wrote back "1" — i.e. 1%. **Any world that
+has finished or abandoned a run under a previous build is sitting on
+resourcerate=1 permanently, in and out of Run Mode.** alpha17 detects a stored
+rate below 5% as damage from an earlier build and clears the key at run end,
+so starting and ending one run on an affected world repairs it.
+
+**Expect the difficulty to change sharply.** Heat now genuinely scales enemy
+damage for the first time, and movement stamina now genuinely costs (it was
+effectively free at 0.005x). Baseline is resources x3, skill x3, move stamina
+x0.5, stamina regen x2.5, all stamina costs x0.75.
+
+Also in this build: questline reordered (axe → hammer → workbench →
+greydwarves → deer → Eikthyr; the deer step pays Eikthyr's 2 summoning
+trophies); the axe step grants WoodCutting/Axes/Bows at 25 and WoodCutting no
+longer starts at 100; three skill boons (Woodsman/Hunter/Warrior); a standing
+repeatable task ("Heed Hugin 5 times") that pays a boon every time it fills;
+50 wood + 20 stone granted on every boss kill.
+
+Watch for, in priority order:
+1. **Wood per tree.** Fell a beech: expect roughly 3x vanilla, NOT 1.
+2. **Whether an old world repairs itself.** On a world you have run before,
+   start a run and abandon it, then check wood drops OUTSIDE Run Mode. The log
+   will say "was N% — treated as damage from an earlier build".
+3. **Is heat now too punishing?** Report the heat level where it stops being
+   fun — that number is a config change, not a rebuild.
+4. Stamina: still too tight, or now too generous?
+5. Skill levels after a run ENDS: Axes/Bows/WoodCutting must not be lower than
+   before the run started. The run gives back only what it lent.
 
 ### RESULTS (Windows side appends here)
 

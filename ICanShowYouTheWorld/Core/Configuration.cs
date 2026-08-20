@@ -52,6 +52,7 @@ namespace ICanShowYouTheWorld.Core
         float RunSkillGainRate { get; set; }
         float RunMoveStaminaRate { get; set; }
         float RunStaminaRegenRate { get; set; }
+        float RunStaminaRate { get; set; }
         float RunHeatEnemyDamageWeight { get; set; }
         float RunHeatEnemyLevelUpWeight { get; set; }
         float RunHeatScoreWeight { get; set; }
@@ -126,7 +127,13 @@ namespace ICanShowYouTheWorld.Core
         [SerializeField] private float runResourceRate = 3f;
         [SerializeField] private float runSkillGainRate = 3f;
         [SerializeField] private float runMoveStaminaRate = 0.5f;
-        [SerializeField] private float runStaminaRegenRate = 1.5f;
+        [SerializeField] private float runStaminaRegenRate = 2.5f;
+
+        // Multiplies EVERY stamina cost the player pays (Player.UseStamina scales its argument by
+        // this before spending), so it reaches the drains the other two don't: blocking, dodging,
+        // jumping, bows. Movement is scaled by this AND runMoveStaminaRate, which is intended —
+        // exploring on foot is where a run spends most of its stamina.
+        [SerializeField] private float runStaminaRate = 0.75f;
         [SerializeField] private float runHeatEnemyDamageWeight = 0.05f;
         [SerializeField] private float runHeatEnemyLevelUpWeight = 0.05f;
         [SerializeField] private float runHeatScoreWeight = 0.1f;
@@ -181,6 +188,7 @@ namespace ICanShowYouTheWorld.Core
         public float RunSkillGainRate { get => runSkillGainRate; set => runSkillGainRate = value; }
         public float RunMoveStaminaRate { get => runMoveStaminaRate; set => runMoveStaminaRate = value; }
         public float RunStaminaRegenRate { get => runStaminaRegenRate; set => runStaminaRegenRate = value; }
+        public float RunStaminaRate { get => runStaminaRate; set => runStaminaRate = value; }
         public float RunHeatEnemyDamageWeight { get => runHeatEnemyDamageWeight; set => runHeatEnemyDamageWeight = value; }
         public float RunHeatEnemyLevelUpWeight { get => runHeatEnemyLevelUpWeight; set => runHeatEnemyLevelUpWeight = value; }
         public float RunHeatScoreWeight { get => runHeatScoreWeight; set => runHeatScoreWeight = value; }
