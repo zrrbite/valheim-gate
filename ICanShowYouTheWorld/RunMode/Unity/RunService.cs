@@ -2677,8 +2677,12 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
-                Id = "mq-grey", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Greydwarf",
-                Target = 4, Display = "Kill 4 Greydwarves", RewardText = "Helmet + cape + more arrows",
+                // Greyling, not Greydwarf: the greydwarf proper lives in the Black Forest, and
+                // every step before Eikthyr should be doable without leaving the Meadows. Greylings
+                // are the weaker meadows cousin, hence the higher count. The ID is deliberately
+                // unchanged so a run already part-way through this step keeps its progress.
+                Id = "mq-grey", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Greyling",
+                Target = 6, Display = "Kill 6 Greylings", RewardText = "Helmet + cape + more arrows",
             },
             new ChallengeDefinition
             {
