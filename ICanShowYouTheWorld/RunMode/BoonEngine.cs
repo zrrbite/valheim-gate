@@ -8,6 +8,7 @@ namespace ICanShowYouTheWorld.RunMode
     {
         public string Id;
         public string Display;
+        public string Description;
         public bool IsPassive;
         public float CooldownSeconds; // 0 = no cooldown (passive or charge-based)
     }

@@ -31,8 +31,8 @@ namespace ICanShowYouTheWorld.RunMode
         private const float HudHeight = 480f;
         private const float LobbyWidth = 360f;
         private const float LobbyHeight = 280f;
-        private const float OfferWidth = 420f;
-        private const float OfferHeight = 160f;
+        private const float OfferWidth = 460f;
+        private const float OfferHeight = 200f;
         private const float StripWidth = 300f;
         private const float StripHeight = 24f;
 
@@ -874,6 +874,8 @@ namespace ICanShowYouTheWorld.RunMode
                 GUILayout.EndHorizontal();
 
                 GUILayout.Label(offer[i].IsPassive ? "passive" : "active", RunTheme.Small);
+                if (!string.IsNullOrEmpty(offer[i].Description))
+                    GUILayout.Label(offer[i].Description, RunTheme.Body);
                 GUILayout.EndVertical();
             }
             GUILayout.EndHorizontal();

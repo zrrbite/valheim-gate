@@ -2563,19 +2563,19 @@ namespace ICanShowYouTheWorld.RunMode
 
         internal static List<BoonDefinition> DefaultBoons() => new List<BoonDefinition>
         {
-            new BoonDefinition { Id = "fleet", Display = "Fleet-footed", IsPassive = true },
-            new BoonDefinition { Id = "sharp", Display = "Sharpened",    IsPassive = true },
-            new BoonDefinition { Id = "pack",  Display = "Packleader",   IsPassive = true },
-            new BoonDefinition { Id = "mule",  Display = "Packmule",     IsPassive = true },
-            new BoonDefinition { Id = "hearty", Display = "Hearty",      IsPassive = true },
-            new BoonDefinition { Id = "enduring", Display = "Enduring",  IsPassive = true },
-            new BoonDefinition { Id = "vigorous",   Display = "Vigorous",     IsPassive = true },
-            new BoonDefinition { Id = "catbreath",  Display = "Cat's Breath", IsPassive = true },
-            new BoonDefinition { Id = "marathoner", Display = "Marathoner",   IsPassive = true },
-            new BoonDefinition { Id = "acrobat",    Display = "Acrobat",      IsPassive = true },
-            new BoonDefinition { Id = "wind",  Display = "Second Wind",  IsPassive = false, CooldownSeconds = 120f },
-            new BoonDefinition { Id = "ember", Display = "Emberskin",    IsPassive = false, CooldownSeconds = 180f },
-            new BoonDefinition { Id = "way",   Display = "Waystone",     IsPassive = false },
+            new BoonDefinition { Id = "fleet", Display = "Fleet-footed", IsPassive = true,  Description = "Move and run faster." },
+            new BoonDefinition { Id = "sharp", Display = "Sharpened",    IsPassive = true,  Description = "Your weapons deal 20% more damage." },
+            new BoonDefinition { Id = "pack",  Display = "Packleader",   IsPassive = true,  Description = "Empowers all your tamed creatures." },
+            new BoonDefinition { Id = "mule",  Display = "Packmule",     IsPassive = true,  Description = "Carry 100 more weight." },
+            new BoonDefinition { Id = "hearty", Display = "Hearty",      IsPassive = true,  Description = "+15 max health." },
+            new BoonDefinition { Id = "enduring", Display = "Enduring",  IsPassive = true,  Description = "+25 max stamina." },
+            new BoonDefinition { Id = "vigorous",   Display = "Vigorous",     IsPassive = true, Description = "Stamina regenerates 50% faster." },
+            new BoonDefinition { Id = "catbreath",  Display = "Cat's Breath", IsPassive = true, Description = "Stamina recovery kicks in much sooner." },
+            new BoonDefinition { Id = "marathoner", Display = "Marathoner",   IsPassive = true, Description = "Running drains 40% less stamina." },
+            new BoonDefinition { Id = "acrobat",    Display = "Acrobat",      IsPassive = true, Description = "Dodge rolls cost half stamina." },
+            new BoonDefinition { Id = "wind",  Display = "Second Wind",  IsPassive = false, CooldownSeconds = 120f, Description = "Heals you and nearby allies for 10s." },
+            new BoonDefinition { Id = "ember", Display = "Emberskin",    IsPassive = false, CooldownSeconds = 180f, Description = "Cloak of flames burns nearby foes for 30s." },
+            new BoonDefinition { Id = "way",   Display = "Waystone",     IsPassive = false, Description = "Teleport to the next boss altar. One charge." },
         };
     }
 }

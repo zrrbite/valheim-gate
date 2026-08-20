@@ -411,7 +411,7 @@ a stale non-null static meant the next toggle destroyed instead of spawned,
 desyncing ring state from the flag.
 
 TASK: `git pull` → full `.\Install-Mod.ps1` → popup reads
-**v0.221.12-run.alpha14** (alpha6 = alpha5's log fix + the new Pugilist boon:
+**v0.221.12-run.alpha15** (alpha6 = alpha5's log fix + the new Pugilist boon:
 melee attacks cost zero stamina; bows/crossbows unaffected). Then: activate the ember boon (Keypad5), confirm
 the ring appears and disappears after ~30s, and confirm the log stays small
 (`(Get-Item Player.log).Length` after a few minutes — expect KB, not MB) and
@@ -426,7 +426,7 @@ death mid-run (no suspend/resume lines) and logout suspend. Append RESULTS.
 
 ## 2026-08-19 — TASK: alpha8 (pace + quests + ability bar)
 
-`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha14**.
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha15**.
 Changes from Martin's alpha7 play-test: collect/kill targets cut roughly in
 half (Hold 25 Wood, 10 food, Run 400m, Kill 6 Greydwarves...); ~17 new
 quests including **composite multi-objective quests** with per-objective
@@ -447,7 +447,7 @@ name fails silently as a dead quest. Note which ones tick and which don't.
 
 ## 2026-08-19 — TASK: alpha9 — themed HUD, foundation-first
 
-`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha14**.
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha15**.
 alpha9 = alpha8's pacing (halved targets, more small quests, ability bar)
 + the RESTYLED HUD (dark panels, serif font, real progress bars, cooldown
 wipes on ability slots, boon-offer fade-in, heat pulse, gold completion
@@ -465,7 +465,7 @@ outstanding: death mid-run + logout suspend log checks. Append RESULTS.
 
 ## 2026-08-19 — TASK: alpha10 — THE RATE FIX (this one matters)
 
-`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha14**.
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha15**.
 Two field bugs from Martin's alpha8 session fixed:
 1. **World-modifier rates were never live.** Valheim caches every rate as a
    static on Game, refreshed only by UpdateWorldRates (normally at world
@@ -486,7 +486,7 @@ Append RESULTS including the wood-count check numbers.
 
 ## 2026-08-19 — TASK: alpha11 — Act I main questline
 
-`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha14**.
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha15**.
 New: the QUEST section (gold, pinned above TASKS): Craft an axe → bow+40
 arrows; Kill 3 Deer → leather armor; Kill 4 Greydwarves → helmet/cape/flint
 arrows; Defeat Eikthyr → antler pickaxe. Item rewards go to inventory
@@ -496,6 +496,26 @@ Watch: every quest step's counter (mob prefab names unverifiable — a wrong
 one stalls the chain silently); reward grants (a wrong ITEM name logs an
 error and grants nothing — report any). Plus the standing checks: wood
 count ~3x mid-run, biome gating, death/logout log silence. Append RESULTS.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
+---
+
+## 2026-08-20 — TASK: alpha15 — boon descriptions in the offer
+
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha15**.
+Martin's note: "it's not apparent what the skills do" — the offer showed
+only a name and passive/active. Each of the 13 boons now carries a
+one-line `Description` rendered under its name in the offer panel, and the
+panel grew (460x200) to fit three columns of wrapped text.
+
+Watch for: any of the three columns clipping its text at the panel's
+bottom edge, or the panel overflowing at a non-default UI scale — screenshot
+if so and note your scale. The wording is a claim about behaviour, so also
+flag any description that doesn't match what the boon actually does in play
+(e.g. Waystone says "next boss altar, one charge"). Append RESULTS.
 
 ### RESULTS (Windows side appends here)
 
