@@ -411,7 +411,7 @@ a stale non-null static meant the next toggle destroyed instead of spawned,
 desyncing ring state from the flag.
 
 TASK: `git pull` → full `.\Install-Mod.ps1` → popup reads
-**v0.221.12-run.alpha17** (alpha6 = alpha5's log fix + the new Pugilist boon:
+**v0.221.12-run.alpha18** (alpha6 = alpha5's log fix + the new Pugilist boon:
 melee attacks cost zero stamina; bows/crossbows unaffected). Then: activate the ember boon (Keypad5), confirm
 the ring appears and disappears after ~30s, and confirm the log stays small
 (`(Get-Item Player.log).Length` after a few minutes — expect KB, not MB) and
@@ -426,7 +426,7 @@ death mid-run (no suspend/resume lines) and logout suspend. Append RESULTS.
 
 ## 2026-08-19 — TASK: alpha8 (pace + quests + ability bar)
 
-`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha17**.
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha18**.
 Changes from Martin's alpha7 play-test: collect/kill targets cut roughly in
 half (Hold 25 Wood, 10 food, Run 400m, Kill 6 Greydwarves...); ~17 new
 quests including **composite multi-objective quests** with per-objective
@@ -447,7 +447,7 @@ name fails silently as a dead quest. Note which ones tick and which don't.
 
 ## 2026-08-19 — TASK: alpha9 — themed HUD, foundation-first
 
-`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha17**.
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha18**.
 alpha9 = alpha8's pacing (halved targets, more small quests, ability bar)
 + the RESTYLED HUD (dark panels, serif font, real progress bars, cooldown
 wipes on ability slots, boon-offer fade-in, heat pulse, gold completion
@@ -465,7 +465,7 @@ outstanding: death mid-run + logout suspend log checks. Append RESULTS.
 
 ## 2026-08-19 — TASK: alpha10 — THE RATE FIX (this one matters)
 
-`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha17**.
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha18**.
 Two field bugs from Martin's alpha8 session fixed:
 1. **World-modifier rates were never live.** Valheim caches every rate as a
    static on Game, refreshed only by UpdateWorldRates (normally at world
@@ -486,7 +486,7 @@ Append RESULTS including the wood-count check numbers.
 
 ## 2026-08-19 — TASK: alpha11 — Act I main questline
 
-`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha17**.
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha18**.
 New: the QUEST section (gold, pinned above TASKS): Craft an axe → bow+40
 arrows; Kill 3 Deer → leather armor; Kill 4 Greydwarves → helmet/cape/flint
 arrows; Defeat Eikthyr → antler pickaxe. Item rewards go to inventory
@@ -505,7 +505,7 @@ count ~3x mid-run, biome gating, death/logout log silence. Append RESULTS.
 
 ## 2026-08-20 — TASK: alpha15 — boon descriptions in the offer
 
-`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha17**.
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha18**.
 Martin's note: "it's not apparent what the skills do" — the offer showed
 only a name and passive/active. Each of the 13 boons now carries a
 one-line `Description` rendered under its name in the offer panel, and the
@@ -525,7 +525,7 @@ flag any description that doesn't match what the boon actually does in play
 
 ## 2026-08-20 — TASK: alpha16 — Packbrother replaces Packleader
 
-`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha17**.
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha18**.
 
 Martin's call: Packleader (buff your tames) is dead in a run — you never
 reach a tame before the clock matters. It is GONE, replaced by
@@ -562,7 +562,7 @@ engine drops boon ids it no longer knows). Expected, not a bug to report.
 
 ## 2026-08-20 — TASK: alpha17 — THE PERCENTAGE FIX (this one matters most)
 
-`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha17**.
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha18**.
 
 **Root cause found for "I chop a tree and get 1 wood" and "we run out of
 stamina way too fast".** Valheim reads its world-modifier rate keys as
@@ -605,6 +605,40 @@ Watch for, in priority order:
 4. Stamina: still too tight, or now too generous?
 5. Skill levels after a run ENDS: Axes/Bows/WoodCutting must not be lower than
    before the run started. The run gives back only what it lent.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
+---
+
+## 2026-08-20 — TASK: alpha18 — Meadows questline steps, no duplicate boon offers
+
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha18**.
+
+Both from Martin's alpha17 play-test ("the pacing feels better"):
+
+1. **Two more starter-zone steps before the greydwarves**, and armor now
+   arrives a piece at a time instead of all at once:
+   workbench → leather tunic; **Hunt 5 Boar** → leather leggings + 50 wood
+   arrows; **Kill 4 Necks** → wooden shield + 20 flint arrows; greydwarves →
+   helmet + cape + 30 flint arrows. Act I is now: axe → hammer → workbench →
+   boar → necks → greydwarves → deer (Eikthyr's trophies) → Eikthyr.
+2. **A boon you already hold is never offered again.** Held passives were
+   already excluded; the four ACTIVES were not, which is what made offers
+   repeat. Waystone's charges came from re-picking it, so it now gains a
+   charge on every boss kill instead.
+
+Watch for:
+- `ShieldWood` is the one item name in this build that has never been granted
+  before — if the shield doesn't arrive after the Necks step, check the log for
+  a grant error and report the line.
+- Boar and Neck counters ticking (both prefab names are already used elsewhere
+  in the pool, so they should be safe).
+- Offers: three DISTINCT boons you don't already hold, every time.
+- With the pool at 16 and duplicates excluded, a long run can run the pool dry.
+  If an offer ever shows fewer than three options, say so — that is the signal
+  the pool needs more boons rather than a bug.
 
 ### RESULTS (Windows side appends here)
 

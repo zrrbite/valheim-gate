@@ -84,6 +84,19 @@ static class BoonEngineTests
         e.CreateOffer();
         Check.That(!e.CurrentOffer.Any(d => d.Id == "fleet"), "restored passive is not re-offered");
 
+        // Actives are excluded on the same terms as passives: an offer must never list something
+        // the player is already carrying.
+        var noDupes = new BoonEngine(Pool(), new Random(97), 60f);
+        noDupes.RestoreHeld(new[]
+        {
+            new KeyValuePair<string, float>("way", 0f),
+            new KeyValuePair<string, float>("wind", 0f),
+        });
+        noDupes.CreateOffer();
+        Check.That(noDupes.CurrentOffer.All(d => d.Id != "way" && d.Id != "wind"),
+            "a held ACTIVE is not re-offered either");
+        Check.That(noDupes.CurrentOffer.Count == 3, "excluding held actives still fills the offer");
+
         // Unknown and duplicate ids ignored.
         var f = new BoonEngine(Pool(), new Random(11), 45f);
         f.RestoreHeld(new[]

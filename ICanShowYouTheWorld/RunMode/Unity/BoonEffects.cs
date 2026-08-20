@@ -229,9 +229,10 @@ namespace ICanShowYouTheWorld.RunMode
                     break;
 
                 case "way":
-                    // Actives aren't excluded from re-offer once held (only passives are), so a
-                    // second "way" pick is a SECOND held entry — target the newest one and grant
-                    // it its own charge rather than refilling whichever entry matched first.
+                    // One charge on the pick; the run's boss kills grant the rest (see
+                    // RunService.RechargeWaystone). Targets the NEWEST held entry rather than the
+                    // first match, which costs nothing and keeps this correct if a duplicate ever
+                    // reaches the held list again.
                     var held = FindNewestHeld("way");
                     if (held != null) held.Charges++;
                     break;
@@ -269,10 +270,10 @@ namespace ICanShowYouTheWorld.RunMode
 
                 case "brother":
                     // Losing the boon takes its summons with it — a death that costs you
-                    // Packbrother must not leave the pack fighting on. Actives can be offered
-                    // again while held, so only dismiss the pack once the LAST Packbrother is
-                    // gone; BoonEngine removes the entry before raising Lost, so anything still
-                    // in the held list is a different one.
+                    // Packbrother must not leave the pack fighting on. The held-list check is
+                    // belt and braces: an offer no longer lists a boon the player already holds,
+                    // so a second Packbrother should not arise, and BoonEngine removes the entry
+                    // before raising Lost — anything still held here would be a genuine duplicate.
                     var stillHeld = _heldBoons();
                     if (stillHeld == null || !stillHeld.Any(h => h.Def.Id == "brother")) DespawnAllCompanions();
                     break;

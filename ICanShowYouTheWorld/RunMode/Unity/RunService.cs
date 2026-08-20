@@ -776,6 +776,7 @@ namespace ICanShowYouTheWorld.RunMode
 
                 Message($"{boss.display} down — {FormatTime(_elapsed)}");
                 GrantHomesteadMaterials();
+                RechargeWaystone();
 
                 if (boss.defeatKey == _finalBossKey) finished = true;
             }
@@ -1453,6 +1454,21 @@ namespace ICanShowYouTheWorld.RunMode
             GrantItem("Wood", 50);
             GrantItem("Stone", 20);
             Message("Spoils: timber and stone for a hall.");
+        }
+
+        /// <summary>
+        /// Refills Waystone when a boss falls — its only source of charges now that a held boon is
+        /// never offered twice. It is the one active whose use is counted rather than cooled down,
+        /// and a boss kill is exactly when its next destination changes, since the stone always
+        /// points at the nearest altar still standing.
+        /// </summary>
+        private void RechargeWaystone()
+        {
+            var held = _boons?.Held?.FirstOrDefault(h => h.Def.Id == "way");
+            if (held == null) return;
+
+            held.Charges++;
+            Message("The way opens again.");
         }
 
         private void GrantQuestSkills(ChallengeDefinition def)
@@ -2647,12 +2663,22 @@ namespace ICanShowYouTheWorld.RunMode
             new ChallengeDefinition
             {
                 Id = "mq-bench", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "Builds",
-                Target = 1, Display = "Build a workbench", RewardText = "Leather armor",
+                Target = 1, Display = "Build a workbench", RewardText = "A leather tunic",
+            },
+            new ChallengeDefinition
+            {
+                Id = "mq-boar", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Boar",
+                Target = 5, Display = "Hunt 5 Boar", RewardText = "Leather leggings + a quiver of arrows",
+            },
+            new ChallengeDefinition
+            {
+                Id = "mq-neck", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Neck",
+                Target = 4, Display = "Kill 4 Necks", RewardText = "A shield, and flint arrows",
             },
             new ChallengeDefinition
             {
                 Id = "mq-grey", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Greydwarf",
-                Target = 4, Display = "Kill 4 Greydwarves", RewardText = "Helmet + cape + flint arrows",
+                Target = 4, Display = "Kill 4 Greydwarves", RewardText = "Helmet + cape + more arrows",
             },
             new ChallengeDefinition
             {
@@ -2686,8 +2712,15 @@ namespace ICanShowYouTheWorld.RunMode
                 // The hammer step pays for what it unlocks: a workbench costs 10 wood, and a
                 // shelter around it costs a great deal more.
                 ["mq-hammer"] = new[] { ("Wood", 100), ("Stone", 30) },
-                ["mq-bench"] = new[] { ("ArmorLeatherChest", 1), ("ArmorLeatherLegs", 1) },
-                ["mq-grey"] = new[] { ("HelmetLeather", 1), ("CapeDeerHide", 1), ("ArrowFlint", 20) },
+                // Armor arrives a piece at a time across the Meadows steps rather than as one
+                // handout, so each fight in the starter zone pays for itself (owner, alpha18:
+                // "a few more steps in the starter zone, like kill boars, with armor and arrow
+                // rewards"). Arrows come with every one of them — a bow the player cannot feed
+                // is not a reward.
+                ["mq-bench"] = new[] { ("ArmorLeatherChest", 1) },
+                ["mq-boar"] = new[] { ("ArmorLeatherLegs", 1), ("ArrowWood", 50) },
+                ["mq-neck"] = new[] { ("ShieldWood", 1), ("ArrowFlint", 20) },
+                ["mq-grey"] = new[] { ("HelmetLeather", 1), ("CapeDeerHide", 1), ("ArrowFlint", 30) },
                 // Eikthyr's altar wants two deer trophies, and a trophy is a drop the player can
                 // hunt for an hour without seeing. Handing them over is the point of this step:
                 // the run gates on the FIGHT, never on drop luck.

@@ -60,8 +60,13 @@ namespace ICanShowYouTheWorld.RunMode
         public void CreateOffer()
         {
             if (offer.Count > 0) return;
-            var heldPassives = new HashSet<string>(held.Where(h => h.Def.IsPassive).Select(h => h.Def.Id));
-            var options = pool.Where(d => !heldPassives.Contains(d.Id)).ToList();
+            // Nothing already held is ever offered again — passive or active (owner, alpha18:
+            // "we shouldn't offer boons we already have, I was offered many I already had").
+            // Actives used to be exempt so that a second Waystone pick could buy another charge,
+            // but with four of them in the pool that exemption turned most offers into a list of
+            // things the player already owned. Waystone earns its charges from boss kills instead.
+            var heldIds = new HashSet<string>(held.Select(h => h.Def.Id));
+            var options = pool.Where(d => !heldIds.Contains(d.Id)).ToList();
             if (options.Count == 0) return;
 
             // The pin takes slot 0 and is removed from the draw pool, so the two random options
