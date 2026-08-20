@@ -228,6 +228,13 @@ namespace ICanShowYouTheWorld.RunMode
                     ApplySkillBoon(boonId);
                     break;
 
+                case "tracker":
+                    // Nothing to apply. Hunter's Eye is a panel RunWindow draws while the boon is
+                    // held (see HoldsTracker) — pure observation, so there is no state to set here
+                    // and nothing to unwind when it is lost. Listed anyway so a reader looking for
+                    // its effect finds this note instead of concluding it was forgotten.
+                    break;
+
                 case "way":
                     // One charge on the pick; the run's boss kills grant the rest (see
                     // RunService.RechargeWaystone). Targets the NEWEST held entry rather than the

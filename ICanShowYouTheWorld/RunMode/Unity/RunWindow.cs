@@ -25,10 +25,32 @@ namespace ICanShowYouTheWorld.RunMode
         private const int LobbyWindowId = 11;
         private const int OfferWindowId = 12;
 
-        private const float HudWidth = 340f;
-        // Grown by the pinned QUEST section: it sits outside the scroll view, so without the extra
-        // height it would simply eat the same number of pixels from the scrolling body.
-        private const float HudHeight = 480f;
+        private const float HudWidth = 420f;
+
+        /// <summary>
+        /// Width available to a row INSIDE the HUD's scroll view: the window less its padding and
+        /// the vertical scrollbar. Rows are sized against this rather than eyeballed, because a
+        /// horizontal group whose fixed widths overflow does not just clip — GUILayout squeezes
+        /// the flexible parts to nothing, and a word-wrapping label squeezed to nothing renders
+        /// as EMPTY. That is what made held boons show their "passive" tag with no name beside it.
+        /// </summary>
+        private const float HudContentWidth = HudWidth - 46f;
+
+        /// <summary>Width of the status column on a held-boon row ("passive", "12s  [4]", "x1").</summary>
+        private const float BoonStatusWidth = 104f;
+
+        // --- Tracker (the "Hunter's Eye" boon's panel) ---
+        private const int TrackerWindowId = 13;
+        private const float TrackerWidth = 300f;
+        private const float TrackerHeight = 250f;
+
+        /// <summary>How far the Hunter's Eye reaches. The GM tracking window uses 100m; a run's
+        /// version is deliberately shorter, so it answers "what is about to reach me" rather than
+        /// mapping the whole valley.</summary>
+        private const float TrackerRange = 70f;
+
+        /// <summary>Most creatures listed. Past this the panel stops being readable at a glance.</summary>
+        private const int TrackerMaxRows = 10;
         private const float LobbyWidth = 360f;
         private const float LobbyHeight = 280f;
         private const float OfferWidth = 460f;
@@ -61,6 +83,10 @@ namespace ICanShowYouTheWorld.RunMode
         private Rect _hudRect;
         private Rect _lobbyRect;
         private Rect _offerRect;
+        private Rect _trackerRect;
+
+        /// <summary>Reused across frames — a fresh list every OnGUI would churn the heap.</summary>
+        private readonly List<Character> _trackerBuffer = new List<Character>();
         private float _laidOutForWidth = -1f;
         private float _laidOutForHeight = -1f;
 
@@ -231,7 +257,16 @@ namespace ICanShowYouTheWorld.RunMode
                     if (Visible || CheatUiVisible)
                     {
                         _hudRect = GUILayout.Window(HudWindowId, _hudRect, DrawHud, GUIContent.none, RunTheme.Panel,
-                            GUILayout.Width(HudWidth), GUILayout.Height(HudHeight));
+                            GUILayout.Width(HudWidth), GUILayout.Height(_hudRect.height));
+
+                        // Opposite side of the screen from the HUD: it is a glance-at panel, and
+                        // the right edge is already carrying everything else.
+                        if (HoldsTracker(run))
+                        {
+                            _trackerRect = GUILayout.Window(TrackerWindowId, _trackerRect, DrawTracker,
+                                GUIContent.none, RunTheme.Panel,
+                                GUILayout.Width(TrackerWidth), GUILayout.Height(TrackerHeight));
+                        }
                     }
 
                     var boons = run.Boons;
@@ -281,7 +316,12 @@ namespace ICanShowYouTheWorld.RunMode
             _laidOutForWidth = viewWidth;
             _laidOutForHeight = viewHeight;
 
-            _hudRect = new Rect(viewWidth - HudWidth - 10f, 40f, HudWidth, HudHeight);
+            // Scales with the window instead of sitting at a fixed 480: the HUD carries a
+            // questline step, three tasks, every held boon and a split per boss, and on a tall
+            // screen there is no reason to scroll any of it.
+            float hudHeight = Mathf.Clamp(viewHeight - 90f, 360f, 720f);
+            _hudRect = new Rect(viewWidth - HudWidth - 10f, 40f, HudWidth, hudHeight);
+            _trackerRect = new Rect(10f, 40f, TrackerWidth, TrackerHeight);
             _lobbyRect = new Rect((viewWidth - LobbyWidth) * 0.5f, (viewHeight - LobbyHeight) * 0.5f,
                 LobbyWidth, LobbyHeight);
             _offerRect = new Rect((viewWidth - OfferWidth) * 0.5f, (viewHeight - OfferHeight) * 0.5f,
@@ -475,7 +515,11 @@ namespace ICanShowYouTheWorld.RunMode
             // The window height is fixed, so the body — which grows with splits, challenges and
             // held boons — scrolls. Without this it would overflow and clip the Abandon button
             // out of reach, and with the input gate on, that button is the only way out of a run.
-            _hudScroll = GUILayout.BeginScrollView(_hudScroll, GUILayout.ExpandHeight(true));
+            // Explicitly no horizontal scrollbar: every row below is sized to HudContentWidth, so
+            // sideways scrolling could only ever mean a row has outgrown the window — and a HUD
+            // the player has to drag sideways to read is worse than one that wraps.
+            _hudScroll = GUILayout.BeginScrollView(_hudScroll, false, false,
+                GUIStyle.none, GUI.skin.verticalScrollbar, GUIStyle.none, GUILayout.ExpandHeight(true));
             // finally, not a plain call: a throw inside the body must still close the group,
             // or every window drawn after this one inherits a broken layout stack.
             try { DrawHudSections(run); }
@@ -592,7 +636,7 @@ namespace ICanShowYouTheWorld.RunMode
 
                     GUILayout.BeginHorizontal();
                     GUI.contentColor = rowColor;
-                    GUILayout.Label(a.Def.Display, RunTheme.Small, GUILayout.Width(150f));
+                    GUILayout.Label(a.Def.Display, RunTheme.Small, GUILayout.Width(168f));
                     GUI.contentColor = Color.white;
 
                     // A composite's own Progress/Target are unused filler (see
@@ -611,8 +655,8 @@ namespace ICanShowYouTheWorld.RunMode
                     // ladder) is unreachable content, so clearing it costs nothing — and must
                     // stay clickable at 0 heat, or the slot is dead for the rest of the run.
                     bool free = challenges.IsAboveTier(i);
-                    string label = free ? "reroll (free)" : "reroll";
-                    float width = free ? 90f : 55f;
+                    string label = free ? "free reroll" : "reroll";
+                    float width = free ? 80f : 58f;
 
                     if (!frozen && GUILayout.Button(label, GUILayout.Width(width))) run.RerollChallenge(i);
                     GUILayout.EndHorizontal();
@@ -655,9 +699,10 @@ namespace ICanShowYouTheWorld.RunMode
                         (h.Def.CooldownSeconds > 0f || h.Charges > 0);
 
                     GUILayout.BeginHorizontal();
-                    GUILayout.Label("  " + h.Def.Display, RunTheme.Small);
-                    GUILayout.FlexibleSpace();
-                    GUILayout.Label(BoonStatus(h), ready ? RunTheme.Ready : RunTheme.Small);
+                    GUILayout.Label("  " + h.Def.Display, RunTheme.Small,
+                        GUILayout.Width(HudContentWidth - BoonStatusWidth));
+                    GUILayout.Label(BoonStatus(h), ready ? RunTheme.Ready : RunTheme.Small,
+                        GUILayout.Width(BoonStatusWidth));
                     GUILayout.EndHorizontal();
                 }
             }
@@ -842,6 +887,80 @@ namespace ICanShowYouTheWorld.RunMode
             // injected hook cannot prove itself until something dies), so a lobby line would
             // either never appear or cry wolf. The real surface is RunService's in-run notice,
             // raised on the strip once the 60s grace window closes with the hook still silent.
+        }
+
+        // --- Tracker panel (the "Hunter's Eye" boon) ---
+
+        private static bool HoldsTracker(IRunService run)
+        {
+            var held = run?.Boons?.Held;
+            if (held == null) return false;
+
+            for (int i = 0; i < held.Count; i++)
+                if (held[i].Def.Id == "tracker") return true;
+
+            return false;
+        }
+
+        private void DrawTracker(int id)
+        {
+            try { DrawTrackerBody(); }
+            catch (Exception ex) { LogOnce("tracker", ex); }
+
+            GUI.DragWindow();
+        }
+
+        /// <summary>
+        /// Nearby hostiles by distance, with health — the same reading the GM mode's Tracking
+        /// window gives, earned as a boon instead of switched on at will.
+        ///
+        /// Pure observation: it reads live state and writes nothing, which is what makes it a
+        /// legitimate loaned power — losing the boon takes the panel with it and leaves no trace
+        /// to unwind. Tamed creatures and players are skipped; a summoned wolf is not a threat
+        /// worth a row.
+        /// </summary>
+        private void DrawTrackerBody()
+        {
+            GUILayout.Label("HUNTER'S EYE", RunTheme.Header);
+
+            var player = Player.m_localPlayer;
+            if (player == null) return;
+
+            _trackerBuffer.Clear();
+            Character.GetCharactersInRange(player.transform.position, TrackerRange, _trackerBuffer);
+
+            Vector3 origin = player.transform.position;
+            _trackerBuffer.RemoveAll(c => c == null || c.IsPlayer() || c.IsTamed());
+            _trackerBuffer.Sort((a, b) =>
+                Utils.DistanceXZ(a.transform.position, origin)
+                    .CompareTo(Utils.DistanceXZ(b.transform.position, origin)));
+
+            if (_trackerBuffer.Count == 0)
+            {
+                GUILayout.Label("  nothing stirring", RunTheme.Small);
+                return;
+            }
+
+            int rows = Mathf.Min(_trackerBuffer.Count, TrackerMaxRows);
+            for (int i = 0; i < rows; i++)
+            {
+                var c = _trackerBuffer[i];
+                float dist = Utils.DistanceXZ(c.transform.position, origin);
+                float hp01 = Mathf.Clamp01(c.GetHealthPercentage());
+
+                GUILayout.BeginHorizontal();
+                GUILayout.Label(c.GetHoverName(), RunTheme.Small, GUILayout.Width(140f));
+                GUILayout.Label($"{dist:0}m", RunTheme.Small, GUILayout.Width(42f));
+
+                var barRect = GUILayoutUtility.GetRect(60f, 12f, GUILayout.Width(60f), GUILayout.Height(12f));
+                RunTheme.Bar(barRect, hp01, hp01 >= 0.5f ? RunTheme.CompleteGreen : RunTheme.HeatRed);
+                GUILayout.EndHorizontal();
+            }
+
+            if (_trackerBuffer.Count > rows)
+            {
+                GUILayout.Label($"  ...and {_trackerBuffer.Count - rows} more", RunTheme.Small);
+            }
         }
 
         // --- Boon offer (display only; picks are handled in RunService.Tick) ---
