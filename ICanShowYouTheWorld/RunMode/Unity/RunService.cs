@@ -2672,8 +2672,8 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
-                Id = "mq-neck", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Neck",
-                Target = 4, Display = "Kill 4 Necks", RewardText = "A shield, and flint arrows",
+                Id = "mq-shelter", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "Builds",
+                Target = 15, Display = "Raise a roof (15 pieces)", RewardText = "Timber and stone to finish it",
             },
             new ChallengeDefinition
             {
@@ -2684,16 +2684,18 @@ namespace ICanShowYouTheWorld.RunMode
                 Id = "mq-grey", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Greyling",
                 Target = 6, Display = "Kill 6 Greylings", RewardText = "Helmet + cape + more arrows",
             },
-            // Shelter, then rest, then the boss. Both steps ride stats the game keeps itself:
-            // Builds counts every piece placed (Player.PlacePiece) and Sleep counts every night
-            // slept through (Player.SetSleeping) — so neither can silently fail the way a check
-            // against a named piece or item would. Sleeping is the honest test of a shelter: it
-            // needs a roof, a fire, a bed and no monsters at the door, and it puts the player at
-            // the boss in daylight.
+            // Build it, live in it, sleep in it. All three ride stats Valheim keeps itself, so
+            // none of them can silently stall the chain the way a check against a named building
+            // piece would: Builds counts every piece placed (Player.PlacePiece), TimeInBase
+            // accrues half a second at a time and ONLY while Player.IsSafeInHome — which needs
+            // real comfort, a roof and a fire, not just walls — and Sleep counts every night
+            // slept through (Player.SetSleeping). Sleeping is the honest test of a home: it wants
+            // a bed and nothing hostile at the door, and it puts the player at the boss in
+            // daylight.
             new ChallengeDefinition
             {
-                Id = "mq-shelter", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "Builds",
-                Target = 15, Display = "Raise a roof (15 pieces)", RewardText = "Timber and stone to finish it",
+                Id = "mq-home", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "TimeInBase",
+                Target = 120, Display = "Settle in (2 min at home)", RewardText = "A shield by the door, and arrows",
             },
             new ChallengeDefinition
             {
@@ -2739,7 +2741,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // is not a reward.
                 ["mq-bench"] = new[] { ("ArmorLeatherChest", 1) },
                 ["mq-boar"] = new[] { ("ArmorLeatherLegs", 1), ("ArrowWood", 50) },
-                ["mq-neck"] = new[] { ("ShieldWood", 1), ("ArrowFlint", 20) },
+                ["mq-home"] = new[] { ("ShieldWood", 1), ("ArrowFlint", 20) },
                 ["mq-grey"] = new[] { ("HelmetLeather", 1), ("CapeDeerHide", 1), ("ArrowFlint", 30) },
                 ["mq-shelter"] = new[] { ("Wood", 100), ("Stone", 50) },
                 ["mq-rest"] = new[] { ("CookedMeat", 10), ("ArrowFlint", 20) },
