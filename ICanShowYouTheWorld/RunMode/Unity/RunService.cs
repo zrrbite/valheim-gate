@@ -206,7 +206,7 @@ namespace ICanShowYouTheWorld.RunMode
 
             // _boons doesn't exist yet at construction time — captured by reference, resolved
             // lazily whenever BoonEffects actually needs the held set.
-            _boonEffects = new BoonEffects(() => _boons?.Held, UndefeatedBossLocations);
+            _boonEffects = new BoonEffects(() => _boons?.Held, UndefeatedBossLocations, DefeatedBossCount);
             ApplyBoonEffect = _boonEffects.Apply;
             UnapplyBoonEffect = _boonEffects.Unapply;
             UnapplyAllBoonEffects = _boonEffects.UnapplyAll;
@@ -679,7 +679,7 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
-        /// Keypad4/5/6 activate held wind/ember/way while a run is active. Gated on there being
+        /// Keypad4/5/6/7 activate held wind/ember/way/brother while a run is active. Gated on there being
         /// no boon offer pending, matching the brief; the offer keys (1/2/3) don't overlap with
         /// these anyway, so this is a UX choice, not a conflict-avoidance one.
         /// </summary>
@@ -690,6 +690,7 @@ namespace ICanShowYouTheWorld.RunMode
             if (Input.GetKeyDown(KeyCode.Keypad4)) TryActivateHeldBoon("wind");
             else if (Input.GetKeyDown(KeyCode.Keypad5)) TryActivateHeldBoon("ember");
             else if (Input.GetKeyDown(KeyCode.Keypad6)) TryActivateHeldBoon("way");
+            else if (Input.GetKeyDown(KeyCode.Keypad7)) TryActivateHeldBoon("brother");
         }
 
         private void TryActivateHeldBoon(string boonId)
@@ -2256,6 +2257,18 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>Location prefab names for bosses not yet defeated on the current world — feeds the "way" boon's altar search.</summary>
+        /// <summary>
+        /// Bosses felled in this WORLD (the global keys), not just during this run — the same
+        /// basis as the challenge tier ceiling, so a companion's strength tracks where the player
+        /// actually is in the game. A missing ZoneSystem reads as zero, the safe direction.
+        /// </summary>
+        private int DefeatedBossCount()
+        {
+            var zone = ZoneSystem.instance;
+            if (zone == null) return 0;
+            return Bosses.Count(b => SafeGetGlobalKey(zone, b.defeatKey));
+        }
+
         private IEnumerable<string> UndefeatedBossLocations()
         {
             var zone = ZoneSystem.instance;
@@ -2565,7 +2578,7 @@ namespace ICanShowYouTheWorld.RunMode
         {
             new BoonDefinition { Id = "fleet", Display = "Fleet-footed", IsPassive = true,  Description = "Move and run faster." },
             new BoonDefinition { Id = "sharp", Display = "Sharpened",    IsPassive = true,  Description = "Your weapons deal 20% more damage." },
-            new BoonDefinition { Id = "pack",  Display = "Packleader",   IsPassive = true,  Description = "Empowers all your tamed creatures." },
+            new BoonDefinition { Id = "brother", Display = "Packbrother", IsPassive = false, CooldownSeconds = 240f, Description = "Summon a wolf to fight for you. Two at a time." },
             new BoonDefinition { Id = "mule",  Display = "Packmule",     IsPassive = true,  Description = "Carry 100 more weight." },
             new BoonDefinition { Id = "hearty", Display = "Hearty",      IsPassive = true,  Description = "+15 max health." },
             new BoonDefinition { Id = "enduring", Display = "Enduring",  IsPassive = true,  Description = "+25 max stamina." },

@@ -731,6 +731,7 @@ namespace ICanShowYouTheWorld.RunMode
                 case "wind": return "[4]";
                 case "ember": return "[5]";
                 case "way": return "[6]";
+                case "brother": return "[7]";
                 default: return "";
             }
         }
@@ -747,7 +748,7 @@ namespace ICanShowYouTheWorld.RunMode
             return key == null ? state : $"{state}  [{key}]";
         }
 
-        /// <summary>Mirrors RunService.HandleBoonActivationInput — Keypad4/5/6.</summary>
+        /// <summary>Mirrors RunService.HandleBoonActivationInput — Keypad4/5/6/7.</summary>
         private static string ActivationKey(string boonId)
         {
             switch (boonId)
@@ -755,6 +756,7 @@ namespace ICanShowYouTheWorld.RunMode
                 case "wind": return "Keypad 4";
                 case "ember": return "Keypad 5";
                 case "way": return "Keypad 6";
+                case "brother": return "Keypad 7";
                 default: return null;
             }
         }

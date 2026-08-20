@@ -17,8 +17,13 @@ namespace ICanShowYouTheWorld.RunMode
     /// statics (driven every frame by <c>CheatCommands.PeriodicManager</c>) and the newer
     /// per-interface services (whose own periodic driver, <c>BuffService.HandlePeriodic</c>,
     /// has zero call sites). wind/ember ride the LEGACY toggles because that's the one actually
-    /// ticking; pack goes through the modern <see cref="IPetService"/> since it's a one-shot
-    /// action, not a periodic effect, so which world it lives in doesn't matter.
+    /// ticking; brother touches neither, spawning against the game's own APIs.
+    ///
+    /// The pet-buff boon this replaced went through <c>IPetService.BuffAllPets</c>, which is a
+    /// poor fit for a loaned boon on three counts: it fires once at pick time (a creature tamed
+    /// later is never buffed), it recomputes its "baseline" from already-buffed weapons so
+    /// repeat calls compound, and it writes absolute damage into <c>m_shared</c> — the per-prefab
+    /// block — exactly the permanence fleet/sharp were rewritten to avoid.
     ///
     /// fleet/sharp never touch either cheat's shared/global counters (SpeedUp/SpeedDown collapse
     /// walk into run and stomp jump; the damage-counter mechanism writes an ABSOLUTE, per-prefab
@@ -47,8 +52,25 @@ namespace ICanShowYouTheWorld.RunMode
         private const float HeartyBaseHpBonus = 15f;
         private const float EnduringBaseStaminaBonus = 25f;
 
+        // Packbrother. Two at a time keeps it a bodyguard rather than an army that trivialises
+        // the heat curve, and the level tracks boss progress so a companion summoned in the
+        // Plains isn't the same meadows wolf that dies to one Fuling.
+        private const string CompanionPrefab = "Wolf";
+        private const int MaxCompanions = 2;
+        private static readonly string[] CompanionNames =
+            { "Freki", "Geri", "Hati", "Skoll", "Vigi", "Garm" };
+
         private readonly Func<IReadOnlyList<HeldBoon>> _heldBoons;
         private readonly Func<IEnumerable<string>> _undefeatedBossLocations;
+        private readonly Func<int> _defeatedBossCount;
+
+        /// <summary>
+        /// Companions summoned this run, oldest first, identified by ZDOID rather than by
+        /// GameObject: a companion whose zone unloads has no live object but still has a ZDO,
+        /// and only the ZDOID survives that round trip.
+        /// </summary>
+        private readonly List<ZDOID> _companions = new List<ZDOID>();
+        private int _companionNameIndex;
 
         private struct PendingOff
         {
@@ -169,10 +191,12 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>Set by a failed Activate() with a boon-specific reason; null means "not ready" is generic enough.</summary>
         public string LastActivationMessage { get; private set; }
 
-        public BoonEffects(Func<IReadOnlyList<HeldBoon>> heldBoons, Func<IEnumerable<string>> undefeatedBossLocations)
+        public BoonEffects(Func<IReadOnlyList<HeldBoon>> heldBoons, Func<IEnumerable<string>> undefeatedBossLocations,
+            Func<int> defeatedBossCount = null)
         {
             _heldBoons = heldBoons ?? (() => Array.Empty<HeldBoon>());
             _undefeatedBossLocations = undefeatedBossLocations ?? (() => Enumerable.Empty<string>());
+            _defeatedBossCount = defeatedBossCount ?? (() => 0);
         }
 
         // --- Public surface (RunService's boon seams) ---
@@ -187,10 +211,6 @@ namespace ICanShowYouTheWorld.RunMode
 
                 case "sharp":
                     ApplySharp();
-                    break;
-
-                case "pack":
-                    WithServiceGodModeBracket(() => Resolve<IPetService>()?.BuffAllPets(false));
                     break;
 
                 case "way":
@@ -232,11 +252,20 @@ namespace ICanShowYouTheWorld.RunMode
                     ForceCloakOff();
                     break;
 
-                // pack: buffs fade naturally, nothing to unwind.
+                case "brother":
+                    // Losing the boon takes its summons with it — a death that costs you
+                    // Packbrother must not leave the pack fighting on. Actives can be offered
+                    // again while held, so only dismiss the pack once the LAST Packbrother is
+                    // gone; BoonEngine removes the entry before raising Lost, so anything still
+                    // in the held list is a different one.
+                    var stillHeld = _heldBoons();
+                    if (stillHeld == null || !stillHeld.Any(h => h.Def.Id == "brother")) DespawnAllCompanions();
+                    break;
+
                 // way: charges are just data — nothing to unwind.
 
                 default:
-                    // mule/hearty/enduring put their snapshotted Player field back; pack/way and
+                    // mule/hearty/enduring put their snapshotted Player field back; way and
                     // any unknown id fall through here and do nothing.
                     UnapplyFieldBoost(boonId);
                     break;
@@ -251,6 +280,7 @@ namespace ICanShowYouTheWorld.RunMode
                 case "wind": return ActivateWind();
                 case "ember": return ActivateEmber();
                 case "way": return ActivateWay();
+                case "brother": return ActivateBrother();
                 default: return false;
             }
         }
@@ -286,6 +316,9 @@ namespace ICanShowYouTheWorld.RunMode
                 // Pugilist is run baseline rather than a held boon, so the held-boon loop above
                 // never reaches it — unwind it here so weapon stamina costs always come back.
                 SafeInvoke(UnapplyPugilist);
+                // Belt and braces for the summons: the loop above already unwinds "brother" when
+                // it is held, but a run can end with companions alive and the boon already lost.
+                SafeInvoke(DespawnAllCompanions);
             }
         }
 
@@ -607,6 +640,117 @@ namespace ICanShowYouTheWorld.RunMode
             teleport.TeleportTo(bestPos.Value + Vector3.up * 2f);
             held.Charges--;
             return true;
+        }
+
+        // --- Packbrother (summoned companions) ---
+
+        /// <summary>
+        /// Summons a tamed wolf that follows the player. Like every other boon the power is
+        /// loaned, and here that guarantee is made by the SAVE rather than by cleanup code: the
+        /// companion's ZDO is marked non-persistent, so it is never written into the world file
+        /// no matter how the run (or the process) ends. Cleanup on top of that is what keeps it
+        /// from outliving the run within a single session.
+        /// </summary>
+        private bool ActivateBrother()
+        {
+            var player = Player.m_localPlayer;
+            var scene = ZNetScene.instance;
+            if (player == null || scene == null) return false;
+
+            var prefab = scene.GetPrefab(CompanionPrefab);
+            if (prefab == null)
+            {
+                LastActivationMessage = $"Missing prefab: {CompanionPrefab}";
+                return false;
+            }
+
+            // Oldest out first, so the summon always succeeds rather than refusing at the cap.
+            PruneDeadCompanions();
+            while (_companions.Count >= MaxCompanions) DespawnCompanion(_companions[0]);
+
+            Vector3 pos = player.transform.position + player.transform.forward * 2f;
+            var inst = UnityEngine.Object.Instantiate(prefab, pos, Quaternion.identity);
+            if (inst == null) return false;
+
+            var ch = inst.GetComponent<Character>();
+            var view = inst.GetComponent<ZNetView>();
+            var zdo = (view != null && view.IsValid()) ? view.GetZDO() : null;
+            if (ch == null || zdo == null)
+            {
+                // Never leave a half-built companion in the world: without a ZDO it is untrackable
+                // and could not be cleaned up at run end.
+                UnityEngine.Object.Destroy(inst);
+                return false;
+            }
+
+            zdo.Persistent = false;
+
+            ch.SetTamed(true);
+            ch.SetLevel(CompanionLevel());
+            ch.m_name = CompanionNames[_companionNameIndex++ % CompanionNames.Length];
+
+            var ai = inst.GetComponent<MonsterAI>();
+            if (ai != null) ai.SetFollowTarget(player.gameObject);
+
+            _companions.Add(zdo.m_uid);
+            LastActivationMessage = $"{ch.m_name} answers the call.";
+            return true;
+        }
+
+        /// <summary>
+        /// One star per boss felled, capped at two — a meadows wolf is a real bodyguard at the
+        /// start and still worth summoning in the Plains, without ever eclipsing the player.
+        /// </summary>
+        private int CompanionLevel() => Mathf.Clamp(1 + _defeatedBossCount(), 1, 3);
+
+        private void DespawnAllCompanions()
+        {
+            foreach (var id in _companions.ToList()) DespawnCompanion(id);
+            _companions.Clear();
+        }
+
+        /// <summary>
+        /// Removes one companion and forgets it. Destroying the loaded object is not enough on its
+        /// own: a companion whose zone has unloaded has no object but keeps its ZDO, and would be
+        /// re-instantiated on the player's return, so the ZDO goes too.
+        ///
+        /// Both paths must claim ownership first. <c>ZDOMan.DestroyZDO</c> returns immediately
+        /// unless the calling peer owns the ZDO, so on a hosted world an unloaded companion whose
+        /// ownership had migrated to another player would otherwise be dropped from tracking while
+        /// still fighting — dismissed on paper only. Claiming is the same local write
+        /// <c>ZNetView.ClaimOwnership</c> performs, spelled out here because there is no view.
+        /// </summary>
+        private void DespawnCompanion(ZDOID id)
+        {
+            _companions.Remove(id);
+
+            var scene = ZNetScene.instance;
+            var go = scene == null ? null : scene.FindInstance(id);
+            var view = go == null ? null : go.GetComponent<ZNetView>();
+
+            if (view != null && view.IsValid())
+            {
+                if (!view.IsOwner()) view.ClaimOwnership();
+                view.Destroy();
+                return;
+            }
+
+            var man = ZDOMan.instance;
+            var zdo = man?.GetZDO(id);
+            if (zdo == null) return;
+
+            if (!zdo.IsOwner()) zdo.SetOwner(ZDOMan.GetSessionID());
+            man.DestroyZDO(zdo);
+        }
+
+        /// <summary>Drops companions that died on their own, so kills free up a summon slot.</summary>
+        private void PruneDeadCompanions()
+        {
+            var man = ZDOMan.instance;
+            if (man == null) return;
+
+            for (int i = _companions.Count - 1; i >= 0; i--)
+                if (man.GetZDO(_companions[i]) == null) _companions.RemoveAt(i);
         }
 
         // --- toggle-safety helpers ---

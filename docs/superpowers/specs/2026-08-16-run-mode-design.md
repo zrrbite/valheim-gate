@@ -103,7 +103,14 @@ No combat power in the baseline — combat advantage comes only from boons.
 | Waystone | 1 charge: teleport to any altar | TeleportService |
 | Sharpened | +10% damage, passive | damage modifier |
 | Emberskin | 30 s Cloak of Flames, 3-min cooldown | CombatService |
-| Packleader | pets +50% HP, passive | PetService |
+| Packbrother | summons a tamed wolf, 4-min cooldown | ZNetScene spawn |
+
+> As shipped the pool is larger than this table and the magnitudes differ
+> (Sharpened is ×1.2, Fleet is two speed increments, and seven more passives
+> exist). `RunService.DefaultBoons()` is the authority; this table records the
+> v1 intent. Packleader — pets +50% HP — was cut in alpha16: a run reaches no
+> tames before the clock matters, it fired once at pick time so later tames
+> were never buffed, and its damage path wrote permanent per-prefab values.
 
 - Offer = 3 distinct boons drawn from the pool minus already-held passives.
   Actives bind to a small set of run-mode keys shown in the HUD.

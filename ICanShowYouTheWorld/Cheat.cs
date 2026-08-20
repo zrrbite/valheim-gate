@@ -375,7 +375,7 @@ namespace ICanShowYouTheWorld
             }
 
             // GM-mode commands are dead while a run is live — this both enforces the mode's
-            // fairness and resolves the Keypad1-6 collision with boon offer/activate keys in
+            // fairness and resolves the Keypad1-7 collision with boon offer/activate keys in
             // RunService.Tick. Resolved lazily/cached: the service container may not be ready
             // yet at Awake time, and this runs on every keypress.
             InputManager gatedInputManager = inputManager;
