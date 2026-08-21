@@ -2489,7 +2489,6 @@ namespace ICanShowYouTheWorld.RunMode
             // was re-confirmed here: even "Greydwarf"/"Draugr"/"Skeleton"/"Troll" above, already
             // known-good, return zero hits). The rest below are the well-established, stable
             // Valheim prefab names — cross-checked against each other rather than guessed.
-            new ChallengeDefinition { Id = "k-neck",      Tier = 0, Kind = ChallengeKind.KillPrefab, Param = "Neck",     Target = 4, Biomes = 0, HeatReward = 1, Display = "Kill 4 Necks" },
             new ChallengeDefinition { Id = "k-deer",      Tier = 0, Kind = ChallengeKind.KillPrefab, Param = "Deer",     Target = 3, Biomes = 0, HeatReward = 1, Display = "Hunt 3 Deer" },
             new ChallengeDefinition { Id = "k-greyling",  Tier = 0, Kind = ChallengeKind.KillPrefab, Param = "Greyling", Target = 3, Biomes = 0, HeatReward = 1, Display = "Kill 3 Greylings" },
             new ChallengeDefinition { Id = "k-ghost",     Tier = 2, Kind = ChallengeKind.KillPrefab, Param = "Ghost",    Target = 3, Biomes = 8, HeatReward = 2, Display = "Kill 3 Ghosts" },
@@ -2538,13 +2537,16 @@ namespace ICanShowYouTheWorld.RunMode
             new ChallengeDefinition { Id = "s-pickup2", Tier = 0, Kind = ChallengeKind.StatDelta, Param = "ItemsPickedUp",    Target = 40, HeatReward = 1, Display = "Pick up 40 items" },
             new ChallengeDefinition { Id = "s-jump2",   Tier = 0, Kind = ChallengeKind.StatDelta, Param = "Jumps",            Target = 30, HeatReward = 1, Display = "Jump 30 times" },
             new ChallengeDefinition { Id = "s-run2",    Tier = 1, Kind = ChallengeKind.StatDelta, Param = "DistanceRun",      Target = 900, HeatReward = 2, Display = "Run 900m" },
-            new ChallengeDefinition { Id = "s-mine2",   Tier = 1, Kind = ChallengeKind.StatDelta, Param = "MineHits",         Target = 70, HeatReward = 2, Display = "Land 70 mining hits" },
+            // Tier 2, not 1: MaxTier is defeatedBosses + 1, so a Tier-1 task is drawable from the
+            // first minute of a run. Mining needs a pickaxe and the first pickaxe is Eikthyr's
+            // antler, so anything below Tier 2 asks for a tool the player cannot have yet.
+            new ChallengeDefinition { Id = "s-mine2",   Tier = 2, Kind = ChallengeKind.StatDelta, Param = "MineHits",         Target = 70, HeatReward = 2, Display = "Land 70 mining hits" },
             new ChallengeDefinition { Id = "s-kills",   Tier = 1, Kind = ChallengeKind.StatDelta, Param = "EnemyKills",       Target = 8,  HeatReward = 2, Display = "Kill 8 creatures — anything" },
             new ChallengeDefinition { Id = "s-kills2",  Tier = 2, Kind = ChallengeKind.StatDelta, Param = "EnemyKills",       Target = 15, HeatReward = 3, Display = "Kill 15 creatures — anything" },
             new ChallengeDefinition { Id = "s-food",    Tier = 1, Kind = ChallengeKind.StatDelta, Param = "FoodEaten",        Target = 3,  HeatReward = 1, Display = "Eat 3 meals" },
             new ChallengeDefinition { Id = "s-sleep",   Tier = 0, Kind = ChallengeKind.StatDelta, Param = "Sleep",            Target = 1,  HeatReward = 1, Display = "Sleep through a night" },
             new ChallengeDefinition { Id = "s-run",    Tier = 0, Kind = ChallengeKind.StatDelta, Param = "DistanceRun",      Target = 400, HeatReward = 1, Display = "Run 400m" },
-            new ChallengeDefinition { Id = "s-mine",   Tier = 1, Kind = ChallengeKind.StatDelta, Param = "MineHits",         Target = 35,  HeatReward = 2, Display = "Land 35 mining hits" },
+            new ChallengeDefinition { Id = "s-mine",   Tier = 2, Kind = ChallengeKind.StatDelta, Param = "MineHits",         Target = 35,  HeatReward = 2, Display = "Land 35 mining hits" },
             new ChallengeDefinition { Id = "s-craft",  Tier = 1, Kind = ChallengeKind.StatDelta, Param = "CraftsOrUpgrades", Target = 5,   HeatReward = 1, Display = "Craft or upgrade 5 times" },
             new ChallengeDefinition { Id = "s-doors",  Tier = 1, Kind = ChallengeKind.StatDelta, Param = "DoorsOpened",      Target = 8,  HeatReward = 1, Display = "Open 8 doors" },
             new ChallengeDefinition { Id = "s-sail",   Tier = 2, Kind = ChallengeKind.StatDelta, Param = "DistanceSail",     Target = 180, Biomes = 0, HeatReward = 2, Display = "Sail for 90 seconds" },
@@ -2774,7 +2776,6 @@ namespace ICanShowYouTheWorld.RunMode
             new BoonDefinition { Id = "woodsman", Display = "Woodsman", IsPassive = true, Description = "Woodcutting skill to 60. Trees fall fast." },
             new BoonDefinition { Id = "hunter",   Display = "Hunter",   IsPassive = true, Description = "Bow skill to 50. Straighter, harder shots." },
             new BoonDefinition { Id = "warrior",  Display = "Warrior",  IsPassive = true, Description = "Axe, sword and club skill to 50." },
-            new BoonDefinition { Id = "tracker",  Display = "Hunter's Eye", IsPassive = true, Description = "A panel of every creature near you: name, distance, health." },
             new BoonDefinition { Id = "wind",  Display = "Second Wind",  IsPassive = false, CooldownSeconds = 120f, Description = "Heals you and nearby allies for 10s." },
             new BoonDefinition { Id = "ember", Display = "Emberskin",    IsPassive = false, CooldownSeconds = 180f, Description = "Cloak of flames burns nearby foes for 30s." },
             new BoonDefinition { Id = "way",   Display = "Waystone",     IsPassive = false, Description = "Teleport to the next boss altar. One charge." },

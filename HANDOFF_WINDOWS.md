@@ -411,7 +411,7 @@ a stale non-null static meant the next toggle destroyed instead of spawned,
 desyncing ring state from the flag.
 
 TASK: `git pull` → full `.\Install-Mod.ps1` → popup reads
-**v0.221.12-run.alpha23** (alpha6 = alpha5's log fix + the new Pugilist boon:
+**v0.221.12-run.alpha24** (alpha6 = alpha5's log fix + the new Pugilist boon:
 melee attacks cost zero stamina; bows/crossbows unaffected). Then: activate the ember boon (Keypad5), confirm
 the ring appears and disappears after ~30s, and confirm the log stays small
 (`(Get-Item Player.log).Length` after a few minutes — expect KB, not MB) and
@@ -426,7 +426,7 @@ death mid-run (no suspend/resume lines) and logout suspend. Append RESULTS.
 
 ## 2026-08-19 — TASK: alpha8 (pace + quests + ability bar)
 
-`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha23**.
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha24**.
 Changes from Martin's alpha7 play-test: collect/kill targets cut roughly in
 half (Hold 25 Wood, 10 food, Run 400m, Kill 6 Greydwarves...); ~17 new
 quests including **composite multi-objective quests** with per-objective
@@ -447,7 +447,7 @@ name fails silently as a dead quest. Note which ones tick and which don't.
 
 ## 2026-08-19 — TASK: alpha9 — themed HUD, foundation-first
 
-`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha23**.
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha24**.
 alpha9 = alpha8's pacing (halved targets, more small quests, ability bar)
 + the RESTYLED HUD (dark panels, serif font, real progress bars, cooldown
 wipes on ability slots, boon-offer fade-in, heat pulse, gold completion
@@ -465,7 +465,7 @@ outstanding: death mid-run + logout suspend log checks. Append RESULTS.
 
 ## 2026-08-19 — TASK: alpha10 — THE RATE FIX (this one matters)
 
-`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha23**.
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha24**.
 Two field bugs from Martin's alpha8 session fixed:
 1. **World-modifier rates were never live.** Valheim caches every rate as a
    static on Game, refreshed only by UpdateWorldRates (normally at world
@@ -486,7 +486,7 @@ Append RESULTS including the wood-count check numbers.
 
 ## 2026-08-19 — TASK: alpha11 — Act I main questline
 
-`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha23**.
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha24**.
 New: the QUEST section (gold, pinned above TASKS): Craft an axe → bow+40
 arrows; Kill 3 Deer → leather armor; Kill 4 Greydwarves → helmet/cape/flint
 arrows; Defeat Eikthyr → antler pickaxe. Item rewards go to inventory
@@ -505,7 +505,7 @@ count ~3x mid-run, biome gating, death/logout log silence. Append RESULTS.
 
 ## 2026-08-20 — TASK: alpha15 — boon descriptions in the offer
 
-`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha23**.
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha24**.
 Martin's note: "it's not apparent what the skills do" — the offer showed
 only a name and passive/active. Each of the 13 boons now carries a
 one-line `Description` rendered under its name in the offer panel, and the
@@ -525,7 +525,7 @@ flag any description that doesn't match what the boon actually does in play
 
 ## 2026-08-20 — TASK: alpha16 — Packbrother replaces Packleader
 
-`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha23**.
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha24**.
 
 Martin's call: Packleader (buff your tames) is dead in a run — you never
 reach a tame before the clock matters. It is GONE, replaced by
@@ -562,7 +562,7 @@ engine drops boon ids it no longer knows). Expected, not a bug to report.
 
 ## 2026-08-20 — TASK: alpha17 — THE PERCENTAGE FIX (this one matters most)
 
-`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha23**.
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha24**.
 
 **Root cause found for "I chop a tree and get 1 wood" and "we run out of
 stamina way too fast".** Valheim reads its world-modifier rate keys as
@@ -614,7 +614,7 @@ Watch for, in priority order:
 
 ## 2026-08-20 — TASK: alpha18 — Meadows questline steps, no duplicate boon offers
 
-`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha23**.
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha24**.
 
 Both from Martin's alpha17 play-test ("the pacing feels better"):
 
@@ -648,7 +648,7 @@ Watch for:
 
 ## 2026-08-20 — TASK: alpha19 — the greydwarf step was in the wrong biome
 
-`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha23**.
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha24**.
 
 Martin: greydwarves live in the Black Forest, so that questline step sent the
 player out of the starter zone before the Meadows boss. It is now **Kill 6
@@ -668,7 +668,7 @@ remain in the RANDOM pool, correctly gated to the Black Forest.
 
 ## 2026-08-20 — TASK: alpha20 — shelter and rest before Eikthyr
 
-`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha23**.
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha24**.
 
 Two steps added between the greylings and the deer hunt:
 
@@ -697,7 +697,7 @@ the right size for "a shelter" or feels like busywork.
 
 ## 2026-08-20 — TASK: alpha21 — HUD geometry + Hunter's Eye boon
 
-`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha23**.
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha24**.
 
 Martin reported the run HUD was cramped and scrolled BOTH ways, and that some
 held boons showed their "passive" tag with **no name beside it**. Same root
@@ -729,7 +729,7 @@ Watch for:
 
 ## 2026-08-20 — TASK: alpha22 — the Necks step is now about building
 
-`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha23**.
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha24**.
 
 "Kill 4 Necks" is gone. Rather than drop a building step into its slot and
 leave two of them back to back, the act was reordered so building, living and
@@ -759,7 +759,7 @@ say so if it turns into standing around.
 
 ## 2026-08-20 — TASK: alpha23 — tracker polish, and the HUD stands aside
 
-`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha23**.
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha24**.
 
 All four from Martin's alpha21/22 play-test:
 
@@ -781,6 +781,37 @@ Watch for: the HUD coming BACK when you close the crafting window (if it ever
 stays hidden, that is the important bug here, and `End` still toggles it);
 species colours holding steady as things move; and whether the tracker's new
 position clashes with anything at your resolution.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
+---
+
+## 2026-08-20 — TASK: alpha24 — five fixes from the alpha23 play-test
+
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha24**.
+
+1. **The HUD slides left instead of hiding** when the crafting window or map
+   opens, so both stay readable AND the HUD's buttons stay clickable (hiding
+   put reroll/abandon out of reach). The shift is a config number,
+   `runHudMenuOffset`, default 470 — edit the JSON, restart, no rebuild, since
+   the right value depends on resolution and UI scale.
+2. **Mining tasks are Tier 2 now**, i.e. after the first boss. They were Tier 1,
+   and MaxTier is `defeatedBosses + 1`, so Tier 1 is drawable from minute one —
+   asking for mining before the antler pickaxe exists.
+3. **Necks are gone from the random pool too.** The questline step went in
+   alpha22; this was the other place they were still being asked for.
+4. **Hunter's Eye is baseline, not a boon.** Always on, out of the offer pool,
+   and listed in the HUD's BOONS section as "always on" alongside Pugilist.
+5. **The tracker moved to the BOTTOM-LEFT**, off the hotbar and the top-left
+   readouts. It is a draggable window and keeps a dragged position until the
+   game window changes size — so if the corner is still wrong, drag it and tell
+   me where you put it.
+
+Watch for: the HUD landing somewhere sensible with the crafting window open at
+your resolution (report the overlap and I will change the one number), and the
+tracker not clashing with the hotbar.
 
 ### RESULTS (Windows side appends here)
 

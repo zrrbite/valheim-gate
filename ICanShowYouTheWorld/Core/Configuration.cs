@@ -53,6 +53,7 @@ namespace ICanShowYouTheWorld.Core
         float RunMoveStaminaRate { get; set; }
         float RunStaminaRegenRate { get; set; }
         float RunStaminaRate { get; set; }
+        float RunHudMenuOffset { get; set; }
         float RunHeatEnemyDamageWeight { get; set; }
         float RunHeatEnemyLevelUpWeight { get; set; }
         float RunHeatScoreWeight { get; set; }
@@ -134,6 +135,11 @@ namespace ICanShowYouTheWorld.Core
         // jumping, bows. Movement is scaled by this AND runMoveStaminaRate, which is intended —
         // exploring on foot is where a run spends most of its stamina.
         [SerializeField] private float runStaminaRate = 0.75f;
+
+        // How far LEFT the run HUD slides while the crafting window or map is open, so both stay
+        // readable and the HUD's buttons stay clickable. The right value depends on resolution and
+        // UI scale, which is why it is a config knob rather than a constant.
+        [SerializeField] private float runHudMenuOffset = 470f;
         [SerializeField] private float runHeatEnemyDamageWeight = 0.05f;
         [SerializeField] private float runHeatEnemyLevelUpWeight = 0.05f;
         [SerializeField] private float runHeatScoreWeight = 0.1f;
@@ -189,6 +195,7 @@ namespace ICanShowYouTheWorld.Core
         public float RunMoveStaminaRate { get => runMoveStaminaRate; set => runMoveStaminaRate = value; }
         public float RunStaminaRegenRate { get => runStaminaRegenRate; set => runStaminaRegenRate = value; }
         public float RunStaminaRate { get => runStaminaRate; set => runStaminaRate = value; }
+        public float RunHudMenuOffset { get => runHudMenuOffset; set => runHudMenuOffset = value; }
         public float RunHeatEnemyDamageWeight { get => runHeatEnemyDamageWeight; set => runHeatEnemyDamageWeight = value; }
         public float RunHeatEnemyLevelUpWeight { get => runHeatEnemyLevelUpWeight; set => runHeatEnemyLevelUpWeight = value; }
         public float RunHeatScoreWeight { get => runHeatScoreWeight; set => runHeatScoreWeight = value; }

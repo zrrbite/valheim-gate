@@ -39,6 +39,17 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>Width of the status column on a held-boon row ("passive", "12s  [4]", "x1").</summary>
         private const float BoonStatusWidth = 104f;
 
+        /// <summary>
+        /// Powers every run has from the first second, shown in the HUD's BOONS list above the
+        /// earned ones. They are not in the offer pool — offering something the player already
+        /// has is exactly the complaint that emptied the pool of duplicates in alpha18.
+        /// </summary>
+        private static readonly string[] BaselineBoons =
+        {
+            "Hunter's Eye",
+            "Pugilist (free melee & tools)",
+        };
+
         // --- Tracker (the "Hunter's Eye" boon's panel) ---
         private const int TrackerWindowId = 13;
         private const float TrackerWidth = 340f;
@@ -272,27 +283,31 @@ namespace ICanShowYouTheWorld.RunMode
                     // The strip is the one piece that survives with the rest of the UI hidden.
                     DrawStrip(run, viewWidth);
 
-                    // The inventory/crafting window owns the middle and right of the screen while
-                    // it is open, and the HUD sat on top of it. Standing aside is better than
-                    // moving: there is nowhere on screen that is free of BOTH the crafting panel
-                    // and the game's own readouts, and the player opening a crafting bench is not
-                    // reading run splits at that moment anyway. The timer strip stays — it is a
-                    // thin line along the top edge that nothing else uses.
-                    bool gameUiOpen = GameMenusOpen();
-
-                    if ((Visible || CheatUiVisible) && !gameUiOpen)
+                    if (Visible || CheatUiVisible)
                     {
-                        _hudRect = GUILayout.Window(HudWindowId, _hudRect, DrawHud, GUIContent.none, RunTheme.Panel,
+                        // While the crafting window or map is open, the HUD slides LEFT of it
+                        // rather than hiding. Hiding kept the crafting panel readable but put the
+                        // HUD out of the mouse's reach, and its reroll and abandon buttons are the
+                        // parts a player most wants while standing at a bench. The shift is one
+                        // config number (RunHudMenuOffset) because the right answer depends on the
+                        // resolution and UI scale the game is running at.
+                        float offset = GameMenusOpen() ? (_config?.RunHudMenuOffset ?? 470f) : 0f;
+                        var hudRect = _hudRect;
+                        hudRect.x = Mathf.Max(10f, _hudRect.x - offset);
+
+                        hudRect = GUILayout.Window(HudWindowId, hudRect, DrawHud, GUIContent.none, RunTheme.Panel,
                             GUILayout.Width(HudWidth), GUILayout.Height(_hudRect.height));
 
+                        // Only the un-offset position is remembered, so dragging the window while
+                        // a menu is open doesn't permanently shunt the HUD across the screen.
+                        if (offset <= 0f) _hudRect = hudRect;
+
                         // Opposite side of the screen from the HUD: it is a glance-at panel, and
-                        // the right edge is already carrying everything else.
-                        if (HoldsTracker(run))
-                        {
-                            _trackerRect = GUILayout.Window(TrackerWindowId, _trackerRect, DrawTracker,
-                                GUIContent.none, RunTheme.Panel,
-                                GUILayout.Width(TrackerWidth), GUILayout.Height(TrackerHeight));
-                        }
+                        // the right edge is already carrying everything else. Baseline, not a boon
+                        // (owner, alpha24: "tracking should ALWAYS be enabled").
+                        _trackerRect = GUILayout.Window(TrackerWindowId, _trackerRect, DrawTracker,
+                            GUIContent.none, RunTheme.Panel,
+                            GUILayout.Width(TrackerWidth), GUILayout.Height(TrackerHeight));
                     }
 
                     var boons = run.Boons;
@@ -347,12 +362,12 @@ namespace ICanShowYouTheWorld.RunMode
             // screen there is no reason to scroll any of it.
             float hudHeight = Mathf.Clamp(viewHeight - 90f, 360f, 720f);
             _hudRect = new Rect(viewWidth - HudWidth - 10f, 40f, HudWidth, hudHeight);
-            // Down the left edge rather than at the top: Valheim's own health/stamina/food readout
-            // lives in the top-left corner, and a panel sitting on top of it costs the player the
-            // one thing they check most.
-            float trackerTop = Mathf.Clamp(viewHeight * 0.30f, 240f,
-                Mathf.Max(240f, viewHeight - TrackerHeight - 10f));
-            _trackerRect = new Rect(10f, trackerTop, TrackerWidth, TrackerHeight);
+            // Bottom-left, anchored to the bottom edge (owner, alpha24). The top-left belongs to
+            // Valheim's own health/stamina/food readout and the hotbar; down here it is out of the
+            // way of both. The window is draggable and its dragged position is kept until the game
+            // window changes size, so this is a starting point rather than a decree.
+            _trackerRect = new Rect(10f, Mathf.Max(10f, viewHeight - TrackerHeight - 10f),
+                TrackerWidth, TrackerHeight);
             _lobbyRect = new Rect((viewWidth - LobbyWidth) * 0.5f, (viewHeight - LobbyHeight) * 0.5f,
                 LobbyWidth, LobbyHeight);
             _offerRect = new Rect((viewWidth - OfferWidth) * 0.5f, (viewHeight - OfferHeight) * 0.5f,
@@ -717,10 +732,22 @@ namespace ICanShowYouTheWorld.RunMode
 
             // --- Boons ---
             GUILayout.Label("BOONS", RunTheme.Header);
+
+            // Baseline powers every run starts with, listed here so the HUD answers "what am I
+            // carrying" completely rather than only listing what was picked from an offer.
+            foreach (var granted in BaselineBoons)
+            {
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("  " + granted, RunTheme.Small,
+                    GUILayout.Width(HudContentWidth - BoonStatusWidth));
+                GUILayout.Label("always on", RunTheme.Small, GUILayout.Width(BoonStatusWidth));
+                GUILayout.EndHorizontal();
+            }
+
             var boons = run.Boons;
             if (boons == null || boons.Held.Count == 0)
             {
-                GUILayout.Label("  none held", RunTheme.Small);
+                GUILayout.Label("  nothing earned yet", RunTheme.Small);
             }
             else
             {
@@ -921,17 +948,6 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         // --- Tracker panel (the "Hunter's Eye" boon) ---
-
-        private static bool HoldsTracker(IRunService run)
-        {
-            var held = run?.Boons?.Held;
-            if (held == null) return false;
-
-            for (int i = 0; i < held.Count; i++)
-                if (held[i].Def.Id == "tracker") return true;
-
-            return false;
-        }
 
         private void DrawTracker(int id)
         {

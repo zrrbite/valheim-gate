@@ -73,9 +73,9 @@ The mod DLL itself is pure IL and identical on every platform, so the one in
 | `patcher\ICanShowYouTheWorld.dll` | The mod — also the symbol source the patcher reads |
 
 Built from the **`feature/run-mode`** branch (Run Mode preview), against Valheim
-0.221.12 / Unity 6000.0.61. Tagged `0.221.12-run.alpha23`; the version
+0.221.12 / Unity 6000.0.61. Tagged `0.221.12-run.alpha24`; the version
 constant now matches the build, so the in-game popup reads
-**v0.221.12-run.alpha23**.
+**v0.221.12-run.alpha24**.
 The script warns if this machine's Steam buildid differs from the tested one
 (`21981559`); it will still patch correctly, but the mod DLL was compiled
 against that version's API, so a large version gap wants a rebuild on the Mac.
