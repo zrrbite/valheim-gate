@@ -283,15 +283,17 @@ namespace ICanShowYouTheWorld.RunMode
                     // The strip is the one piece that survives with the rest of the UI hidden.
                     DrawStrip(run, viewWidth);
 
-                    if (Visible || CheatUiVisible)
+                    // The map gets the whole screen to itself: nothing on the HUD is worth
+                    // reading over it, and unlike the crafting window there is no interaction the
+                    // player wants from Run Mode while looking at it (owner, alpha25).
+                    if ((Visible || CheatUiVisible) && !MapOpen())
                     {
-                        // While the crafting window or map is open, the HUD slides LEFT of it
-                        // rather than hiding. Hiding kept the crafting panel readable but put the
+                        // The crafting window is different: hiding kept it readable but put the
                         // HUD out of the mouse's reach, and its reroll and abandon buttons are the
-                        // parts a player most wants while standing at a bench. The shift is one
-                        // config number (RunHudMenuOffset) because the right answer depends on the
-                        // resolution and UI scale the game is running at.
-                        float offset = GameMenusOpen() ? (_config?.RunHudMenuOffset ?? 470f) : 0f;
+                        // parts a player most wants while standing at a bench. So the HUD slides
+                        // LEFT of it instead. The shift is one config number (RunHudMenuOffset)
+                        // because the right answer depends on resolution and UI scale.
+                        float offset = InventoryOpen() ? (_config?.RunHudMenuOffset ?? 470f) : 0f;
                         var hudRect = _hudRect;
                         hudRect.x = Mathf.Max(10f, _hudRect.x - offset);
 
@@ -1020,21 +1022,22 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
-        /// True while one of the game's own full-screen panels is up — the inventory/crafting
-        /// window or the map. Verified against the IL: InventoryGui.IsVisible and Minimap.IsOpen
-        /// are both public statics. Any failure reads as "closed", so a game update that moves
-        /// these costs a covered crafting window, never a hidden HUD the player cannot get back.
+        /// True while the inventory/crafting window is up. Verified against the IL:
+        /// InventoryGui.IsVisible is a public static. Any failure reads as "closed", so a game
+        /// update that moves it costs an overlapping crafting window, never a HUD the player
+        /// cannot get back.
         /// </summary>
-        private static bool GameMenusOpen()
+        private static bool InventoryOpen()
         {
-            try
-            {
-                return InventoryGui.IsVisible() || Minimap.IsOpen();
-            }
-            catch
-            {
-                return false;
-            }
+            try { return InventoryGui.IsVisible(); }
+            catch { return false; }
+        }
+
+        /// <summary>True while the full-screen map is up (Minimap.IsOpen, a public static).</summary>
+        private static bool MapOpen()
+        {
+            try { return Minimap.IsOpen(); }
+            catch { return false; }
         }
 
         /// <summary>

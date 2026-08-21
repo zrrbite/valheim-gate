@@ -775,7 +775,7 @@ namespace ICanShowYouTheWorld.RunMode
                 catch (Exception ex) { LogOnce("record-boss", ex); }
 
                 Message($"{boss.display} down — {FormatTime(_elapsed)}");
-                GrantHomesteadMaterials();
+                GrantBossSpoils();
                 RechargeWaystone();
 
                 if (boss.defeatKey == _finalBossKey) finished = true;
@@ -1441,19 +1441,38 @@ namespace ICanShowYouTheWorld.RunMode
         private const float QuestSkillGrantLevel = 25f;
 
         /// <summary>
-        /// Materials for a homestead, handed over every time a boss falls (owner, alpha17: "award
-        /// the player a house after each boss kill, 50 wood and some stone").
+        /// Food for the tier just cleared, handed over every time a boss falls.
         ///
-        /// A boss kill is the natural moment to move on, and a run that has to stop and gather a
-        /// building's worth of timber first is a run spending its clock on the least interesting
-        /// thing Valheim offers. This is the same bargain the questline makes: skip the fetching,
-        /// keep the fight.
+        /// This began as timber and stone (owner, alpha17: "award the player a house after each
+        /// boss kill") and became food in alpha25, once the resource rate actually worked: at a
+        /// genuine 3x, wood is no longer the thing a run is short of. Food is — the next biome's
+        /// health and stamina pools come out of a cookpot, and stopping to farm and cook them is
+        /// the same fetch-quest tax the questline exists to skip.
+        ///
+        /// Indexed by bosses felled, so the meal matches where the run is going next rather than
+        /// where it has been. Names are Unity asset data and cannot be checked against the
+        /// assembly; a wrong one logs loudly in GrantItem and grants nothing.
         /// </summary>
-        private void GrantHomesteadMaterials()
+        private static readonly (string prefab, int count)[][] BossSpoils =
         {
-            GrantItem("Wood", 50);
-            GrantItem("Stone", 20);
-            Message("Spoils: timber and stone for a hall.");
+            // Index 0 is unused — a kill always means at least one boss down.
+            new[] { ("CookedMeat", 10) },
+            new[] { ("CookedMeat", 10), ("Honey", 10) },              // after Eikthyr -> Black Forest
+            new[] { ("Sausages", 10), ("CarrotSoup", 5) },            // after the Elder -> Swamp
+            new[] { ("TurnipStew", 5), ("SerpentStew", 3) },          // after Bonemass -> Mountain
+            new[] { ("WolfMeatSkewer", 10), ("OnionSoup", 5) },       // after Moder -> Plains
+            new[] { ("LoxMeatPie", 5), ("BloodPudding", 10) },        // after Yagluth
+        };
+
+        private void GrantBossSpoils()
+        {
+            int defeated = DefeatedBossCount();
+            if (defeated <= 0) return;
+
+            var spoils = BossSpoils[Mathf.Min(defeated, BossSpoils.Length - 1)];
+            foreach (var (prefab, count) in spoils) GrantItem(prefab, count);
+
+            Message("Spoils: provisions for the road ahead.");
         }
 
         /// <summary>
@@ -2675,7 +2694,7 @@ namespace ICanShowYouTheWorld.RunMode
             new ChallengeDefinition
             {
                 Id = "mq-shelter", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "Builds",
-                Target = 15, Display = "Raise a roof (15 pieces)", RewardText = "Timber and stone to finish it",
+                Target = 6, Display = "Raise a roof (6 pieces)", RewardText = "Timber and stone to finish it",
             },
             new ChallengeDefinition
             {
@@ -2732,10 +2751,12 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 // "Lots of wood when he completes the axe, so he can build shelter" — the wood
                 // IS the reward here as much as the bow: skip straight from first craft to a roof.
-                ["mq-axe"] = new[] { ("Bow", 1), ("ArrowWood", 40), ("Wood", 50), ("Stone", 10) },
+                ["mq-axe"] = new[] { ("Bow", 1), ("ArrowWood", 40), ("Wood", 25), ("Stone", 10) },
                 // The hammer step pays for what it unlocks: a workbench costs 10 wood, and a
-                // shelter around it costs a great deal more.
-                ["mq-hammer"] = new[] { ("Wood", 100), ("Stone", 30) },
+                // shelter around it a good deal more. Trimmed in alpha25 — these numbers were set
+                // while the x3 resource rate was silently inert (see WorldModifiers.SetRate), so
+                // they were compensating for a bug rather than balancing a reward.
+                ["mq-hammer"] = new[] { ("Wood", 40), ("Stone", 15) },
                 // Armor arrives a piece at a time across the Meadows steps rather than as one
                 // handout, so each fight in the starter zone pays for itself (owner, alpha18:
                 // "a few more steps in the starter zone, like kill boars, with armor and arrow
@@ -2745,7 +2766,7 @@ namespace ICanShowYouTheWorld.RunMode
                 ["mq-boar"] = new[] { ("ArmorLeatherLegs", 1), ("ArrowWood", 50) },
                 ["mq-home"] = new[] { ("ShieldWood", 1), ("ArrowFlint", 20) },
                 ["mq-grey"] = new[] { ("HelmetLeather", 1), ("CapeDeerHide", 1), ("ArrowFlint", 30) },
-                ["mq-shelter"] = new[] { ("Wood", 100), ("Stone", 50) },
+                ["mq-shelter"] = new[] { ("Wood", 40), ("Stone", 20) },
                 ["mq-rest"] = new[] { ("CookedMeat", 10), ("ArrowFlint", 20) },
                 // Eikthyr's altar wants two deer trophies, and a trophy is a drop the player can
                 // hunt for an hour without seeing. Handing them over is the point of this step:
