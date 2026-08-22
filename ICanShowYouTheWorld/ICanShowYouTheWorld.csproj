@@ -314,6 +314,7 @@
     <Compile Include="RunMode\HeatModel.cs" />
     <Compile Include="RunMode\ChallengeEngine.cs" />
     <Compile Include="RunMode\BoonEngine.cs" />
+    <Compile Include="RunMode\NameManifest.cs" />
     <Compile Include="RunMode\Unity\BoonEffects.cs" />
     <Compile Include="RunMode\Unity\BossVigor.cs" />
     <Compile Include="RunMode\Unity\GameEvents.cs" />

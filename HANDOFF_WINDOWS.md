@@ -899,3 +899,45 @@ built for a fresh start.
 ### RESULTS (Windows side appends here)
 
 *(pending)*
+
+---
+
+## 2026-08-22 — TASK: alpha27 — tracker colours, cooking, Windfall, name validator
+
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha27**.
+
+**1. Check the log FIRST, before playing.** This build validates every creature,
+item and reward name against the game's own registries at run start. Start a run,
+then search the log for `[ICanShowYouTheWorld] Unknown`. Anything it prints is a
+real bug I can fix in one line — **please paste those lines back verbatim**. It
+should finally settle `ShieldWood`, `CookedMeat`, `Flint`, `Resin`, `RawMeat`,
+`$item_cookedmeat` and all nine boss foods without you having to reach them.
+Silence means every name in the pool resolves.
+
+**2. Tracker colours.** Boar and deer both read white because the hash put them
+on the same slot — and greyling, neck, greydwarf, troll and crow were ALL sharing
+one colour. Palette is 10 now and no two species on screen can share. Expected
+oddity: a species can change colour when another walks into range and takes the
+slot it wanted. Tell me if that reads as worse than the collision did.
+
+**3. Act I is 14 steps** — a cooking station after the fire (step 7), paying 8
+raw meat to cook on it.
+
+**4. Windfall** — new boon, **Keypad 8**, one charge, never refills. Doubles
+every stack you carry. Two things to judge:
+   - Does it fire at all, and does overflow drop at your feet rather than vanish?
+   - **Is it too strong?** It doubles food too, and food is your health and
+     stamina bar. Filling your pack with cooked meals and then pressing it is the
+     obvious exploit. You picked everything-stackable over materials-only knowing
+     that — this is the run where you find out. One word changes it.
+
+**5. New multi-objective quests**: Hearth and Home, Provisions, Fill the Larder,
+Meadow Cull, Night Watch. Provisions and Fill the Larder only appear once you own
+a cooking station.
+
+**6. Act I heat floor is 14 now** (was 10 two builds ago). Enemies hit ~1.70x by
+Eikthyr before any random task.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*

@@ -111,8 +111,9 @@ namespace ICanShowYouTheWorld.RunMode
         /// progress to reach its own target. Null or empty means "today's single-objective
         /// behaviour", unchanged.
         ///
-        /// Restricted to <see cref="ChallengeKind.KillPrefab"/>, <see cref="ChallengeKind.CollectItem"/>
-        /// and <see cref="ChallengeKind.CollectFood"/> — the ABSOLUTE-quantity measures.
+        /// Restricted to <see cref="ChallengeKind.KillPrefab"/>, <see cref="ChallengeKind.CollectItem"/>,
+        /// <see cref="ChallengeKind.CollectFood"/> and <see cref="ChallengeKind.BuildPiece"/> — the
+        /// ABSOLUTE-quantity measures.
         /// <see cref="ChallengeKind.StatDelta"/> is deliberately excluded: it needs a
         /// per-objective <see cref="ActiveChallenge.Baseline"/> snapshot taken at deal time, and
         /// a composite's ActiveChallenge has exactly one Baseline field, not one per sub. Rather
@@ -471,21 +472,27 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
-        /// Credits a composite's CollectItem/CollectFood subs from a measure report, with the
-        /// same max-semantics and CollectItem param-scoping <see cref="ReportMeasure"/> uses for
-        /// simple challenges. KillPrefab subs are not touched here — see
-        /// <see cref="CreditKillSub"/>.
+        /// Credits a composite's CollectItem/CollectFood/BuildPiece subs from a measure report, with
+        /// the same max-semantics and param-scoping <see cref="ReportMeasure"/> uses for simple
+        /// challenges. KillPrefab subs are not touched here — see <see cref="CreditKillSub"/>.
+        ///
+        /// BuildPiece qualifies on the rule composites actually require (see
+        /// <see cref="ChallengeDefinition.Subs"/>): it is an absolute quantity needing no per-sub
+        /// <see cref="ActiveChallenge.Baseline"/>. StatDelta stays excluded for exactly the reason
+        /// it always was — one Baseline per slot, not one per sub.
         /// </summary>
         private static void CreditMeasureSub(ActiveChallenge a, ChallengeKind kind, string param, float value)
         {
             if (a.Def.Subs == null || a.Def.Subs.Count == 0 || a.SubProgress == null) return;
-            if (kind != ChallengeKind.CollectItem && kind != ChallengeKind.CollectFood) return;
+            if (kind != ChallengeKind.CollectItem && kind != ChallengeKind.CollectFood &&
+                kind != ChallengeKind.BuildPiece) return;
 
             for (int i = 0; i < a.Def.Subs.Count; i++)
             {
                 var sub = a.Def.Subs[i];
                 if (sub.Kind != kind) continue;
-                if (kind == ChallengeKind.CollectItem && sub.Param != param) continue;
+                if ((kind == ChallengeKind.CollectItem || kind == ChallengeKind.BuildPiece) &&
+                    sub.Param != param) continue;
                 if (i >= a.SubProgress.Count) continue;
 
                 a.SubProgress[i] = Math.Max(a.SubProgress[i], Math.Min(sub.Target, value));

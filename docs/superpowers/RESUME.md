@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-22, at `0.221.12-run.alpha26`. This is the "pick it back up
+Written 2026-08-22, at `0.221.12-run.alpha27`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -19,13 +19,13 @@ Everything below is what that file tells it.
 
 ## Where things stand
 
-- Branch **`feature/run-mode`**, 78 commits ahead of `main`. **Not merged**,
+- Branch **`feature/run-mode`**, 79 commits ahead of `main`. **Not merged**,
   deliberately — the mode is still being tuned in play.
-- Latest tag **`0.221.12-run.alpha26`**, pushed. The Mac has it deployed.
+- Latest tag **`0.221.12-run.alpha27`**, pushed. The Mac has it deployed.
 - Game version 0.221.12, Unity 6000.0.61. Windows is the play machine, the Mac
   is the test/build machine, the Deck travels (and is **stale** — it still has
   an older patched assembly and needs a re-patch before use).
-- Engine tests: `Tests/run_tests.sh`, 263 assertions, all passing.
+- Engine tests: `Tests/run_tests.sh`, 276 assertions, all passing.
 
 ## The loop
 
@@ -55,31 +55,38 @@ must read the tag you just pushed. **The version popup is the whole point of
 tagging every alpha** — it is the only way to be certain which build is being
 played.
 
-## What the mode is, as of alpha26
+## What the mode is, as of alpha27
 
-**Act I**, 13 steps, all of it doable without leaving the Meadows: craft an axe
+**Act I**, 14 steps, all of it doable without leaving the Meadows: craft an axe
 → craft a hammer → build a workbench → hunt 5 boar → raise a roof (6 pieces) →
-**build a fire** → kill 6 greylings → settle in (2 min at home) → **build a
-bed** → sleep through the night → **build a chest** → hunt 3 deer (pays
-Eikthyr's summoning trophies) → defeat Eikthyr.
+**build a fire** → **build a cooking station** → kill 6 greylings → settle in
+(2 min at home) → **build a bed** → sleep through the night → **build a chest**
+→ hunt 3 deer (pays Eikthyr's summoning trophies) → defeat Eikthyr.
 
-The three homestead steps (alpha26) each sit immediately before the step that
+The homestead steps (alpha26-27) each sit immediately before the step that
 already, silently, depended on them: `TimeInBase` only accrues while
 `IsSafeInHome`, which needs a roof AND a fire, and `Sleep` needs a bed. They
 measure with `ChallengeKind.BuildPiece`, which asks whether the player has built
-a piece carrying a COMPILED component (`Fireplace`, `Bed`, `Container`, `Door`)
-rather than naming a prefab — see
-[the design](specs/2026-08-22-homestead-steps-design.md). Act I's questline heat
-went from 10 to 13 with them.
+a piece carrying a COMPILED component (`Fireplace`, `Bed`, `Container`, `Door`,
+`CookingStation`) rather than naming a prefab — see the
+[alpha26](specs/2026-08-22-homestead-steps-design.md) and
+[alpha27](specs/2026-08-22-alpha27-design.md) designs. Act I's questline heat
+went from 10 to 14 across the two.
 
 **Baseline empowerment**, every run, no picking: resources ×3, skill gain ×3,
 move stamina ×0.5, stamina regen ×2.5, all stamina costs ×0.75, free melee and
 tools (ranged pays 25%), and the Hunter's Eye tracker panel.
 
-**16 boons**, never offering one already held: ten passives (Fleet-footed,
+**17 boons**, never offering one already held: ten passives (Fleet-footed,
 Sharpened, Packmule, Hearty, Enduring, Vigorous, Cat's Breath, Marathoner,
-Acrobat, plus the three skill boons Woodsman/Hunter/Warrior), and four actives
-on Keypad 4-7 (Second Wind, Emberskin, Waystone, Packbrother).
+Acrobat, plus the three skill boons Woodsman/Hunter/Warrior), and five actives
+on Keypad 4-8 (Second Wind, Emberskin, Waystone, Packbrother, Windfall).
+
+> **Windfall is deliberately strong, owner's call (alpha27):** one charge, never
+> refills, doubles every stack whose `m_maxStackSize > 1`. That includes FOOD,
+> and food is the health and stamina bar — filling a pack with cooked meals and
+> then pressing it is the obvious exploit, chosen knowingly over a materials-only
+> version. If play says it is too much, it is one word in `ActivateWindfall`.
 
 **Boss kills** pay food for the tier just cleared and refill Waystone.
 
@@ -108,23 +115,24 @@ None of these are blocked on code — they are blocked on someone playing.
    `runHeatEnemyLevelUpWeight` are config, so it is a number, not a rebuild.
 3. **`runHudMenuOffset`** (default 470) — how far the HUD slides left when the
    crafting window opens. Resolution- and UI-scale-dependent.
-4. **Unverified asset names.** Item and prefab names are Unity data, invisible
-   from the assembly. A wrong ITEM name logs loudly in `GrantItem` and grants
-   nothing; a wrong CREATURE name fails **silently** and stalls a quest. Still
-   unconfirmed in play: `ShieldWood`, `CookedMeat`, `Flint` and `Resin` (both
-   new in alpha26's homestead rewards), and every boss-spoils food past
-   Eikthyr's tier (`Honey`, `Sausages`, `CarrotSoup`, `TurnipStew`,
-   `SerpentStew`, `WolfMeatSkewer`, `OnionSoup`, `LoxMeatPie`, `BloodPudding`).
-
-   The alpha26 build steps are deliberately NOT exposed to this: they match on
-   compiled component types, which do not compile when wrong.
+4. **Read the log for `[ICanShowYouTheWorld] Unknown`** after any run start.
+   alpha27 validates every creature, item and reward name against ZNetScene and
+   ObjectDB and logs the failures — so this entry is no longer "play until
+   something feels stuck", it is "read one line". It should settle `ShieldWood`,
+   `CookedMeat`, `Flint`, `Resin`, `RawMeat`, `$item_cookedmeat` and all nine
+   boss foods in one launch. Anything it names is a one-line fix.
 5. **Lifecycle scenarios**, never proven in play: death mid-run must NOT log
    suspend/resume; logging out must suspend; switching world or character must
    not carry a run across.
-6. **alpha26's build detection**, never seen running: do the fire/bed/chest
-   steps tick within a second of placing the piece, and does "Open 8 doors" now
-   stay out of the pool until a door exists? `runBuildScanRadius` (default 20)
-   is the knob if detection needs the player to stand implausibly close.
+6. **Build detection**, never seen running: do the fire/cooking/bed/chest steps
+   tick within a second of placing the piece, and does "Open 8 doors" stay out
+   of the pool until a door exists? `runBuildScanRadius` (default 20) is the
+   knob if detection needs the player to stand implausibly close.
+7. **Is Windfall too strong?** See the note above — it doubles food. This is the
+   first build where anyone can answer.
+8. **Tracker colours**, reworked in alpha27: a species can now change colour when
+   another walks into range and claims the slot it preferred. Better than boar
+   and deer both reading white, but worth a verdict.
 
 ## Landmines
 
@@ -141,9 +149,13 @@ The five that have each cost a build:
 - **Anything a run grants must be given back**, and given back *correctly* —
   skills return what was LENT (subtract the loan), not the pre-run level, or the
   run confiscates what the player earned.
-- **Asset names cannot be verified from here.** Prefer a `PlayerStatType` the
-  game already counts over a named item or piece; a stat cannot silently stall
-  a quest chain.
+- **Asset names cannot be verified at BUILD time** — but since alpha27 they are
+  verified at RUN time. `ValidateAssetNames` resolves every creature, item and
+  reward name against ZNetScene and ObjectDB at run start and logs the failures,
+  so a wrong name is now loud on first launch instead of a quest that silently
+  never completes. The preference order is unchanged and still right — a
+  `PlayerStatType` or a compiled component beats a name — but a name is no
+  longer a gamble you only settle in play.
 
 ## Verify claims against the IL, not memory
 

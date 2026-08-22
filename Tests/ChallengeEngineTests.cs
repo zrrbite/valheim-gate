@@ -183,6 +183,56 @@ static class ChallengeEngineTests
         g2.ExternalFilter = d => string.IsNullOrEmpty(d.RequiresBuilt) || built.Contains(d.RequiresBuilt);
         g2.Tick(0.1f);
         Check.That(g2.Active.Any(a => a.Def.Id == "s-doors"), "the door task is drawable once a door exists");
+
+        BuildPieceCompositeTests();
+    }
+
+    /// <summary>
+    /// BuildPiece as a composite SUB — "build a cooking station and a chest, and hold 20 wood" in
+    /// one slot. It qualifies on the rule composites actually require (see ChallengeDefinition.Subs):
+    /// an absolute-quantity measure with no per-sub Baseline. StatDelta remains excluded.
+    /// </summary>
+    static void BuildPieceCompositeTests()
+    {
+        var def = new ChallengeDefinition
+        {
+            Id = "cq-homestead", Target = 1, HeatReward = 3, Display = "Homestead",
+            Subs = new List<SubObjective>
+            {
+                new SubObjective { Kind = ChallengeKind.BuildPiece, Param = "Cooking", Target = 1, Label = "Build a cooking station" },
+                new SubObjective { Kind = ChallengeKind.BuildPiece, Param = "Chest",   Target = 1, Label = "Build a chest" },
+                new SubObjective { Kind = ChallengeKind.CollectFood, Param = "",       Target = 5, Label = "Hold 5 food" },
+            }
+        };
+
+        var e = new ChallengeEngine(new List<ChallengeDefinition> { def }, new Random(21), 120f);
+        e.Tick(0.1f);
+        var a = e.Active[0];
+        Check.That(a.SubProgress != null && a.SubProgress.Count == 3, "a BuildPiece composite allocates its sub progress");
+
+        // Param-scoping across subs: a cooking station must not credit the chest sub.
+        e.ReportMeasure(ChallengeKind.BuildPiece, "Cooking", 1f);
+        Check.That(a.SubProgress[0] == 1f, "the cooking sub is credited");
+        Check.That(a.SubProgress[1] == 0f, "a cooking report leaves the chest sub alone");
+        Check.That(!a.Done, "a composite with two subs outstanding is not done");
+
+        e.ReportMeasure(ChallengeKind.BuildPiece, "Chest", 1f);
+        e.ReportMeasure(ChallengeKind.CollectFood, "", 5f);
+        Check.That(a.Done, "every sub met finishes the composite");
+
+        // Latching, as for a simple BuildPiece challenge: the host stops seeing the piece and
+        // reports 0, which must not walk a finished sub backwards.
+        var e2 = new ChallengeEngine(new List<ChallengeDefinition> { def }, new Random(22), 120f);
+        e2.Tick(0.1f);
+        e2.ReportMeasure(ChallengeKind.BuildPiece, "Cooking", 1f);
+        e2.ReportMeasure(ChallengeKind.BuildPiece, "Cooking", 0f);
+        Check.That(e2.Active[0].SubProgress[0] == 1f, "a sub does not un-earn when the report drops to zero");
+
+        // A kill report must not touch BuildPiece subs, and vice versa.
+        var e3 = new ChallengeEngine(new List<ChallengeDefinition> { def }, new Random(23), 120f);
+        e3.Tick(0.1f);
+        e3.ReportKill("Cooking");
+        Check.That(e3.Active[0].SubProgress[0] == 0f, "a kill report never credits a BuildPiece sub");
     }
 
     /// <summary>The v1-shaped main chain: a stat-delta step, then two kill steps.</summary>

@@ -199,13 +199,23 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>Set by a failed Activate() with a boon-specific reason; null means "not ready" is generic enough.</summary>
         public string LastActivationMessage { get; private set; }
 
+        /// <summary>
+        /// Hands the player an item stack — RunService.GrantItem, which resolves the prefab, adds
+        /// what fits, drops the rest at their feet, and logs either way. Windfall goes through the
+        /// host for the same reason the skill boons do: the awkward parts (a full inventory, a
+        /// prefab that won't resolve) are already solved there and solved once.
+        /// </summary>
+        private readonly Action<string, int> _grantItem;
+
         public BoonEffects(Func<IReadOnlyList<HeldBoon>> heldBoons, Func<IEnumerable<string>> undefeatedBossLocations,
-            Func<int> defeatedBossCount = null, Action<Skills.SkillType, float> loanSkill = null)
+            Func<int> defeatedBossCount = null, Action<Skills.SkillType, float> loanSkill = null,
+            Action<string, int> grantItem = null)
         {
             _heldBoons = heldBoons ?? (() => Array.Empty<HeldBoon>());
             _undefeatedBossLocations = undefeatedBossLocations ?? (() => Enumerable.Empty<string>());
             _defeatedBossCount = defeatedBossCount ?? (() => 0);
             _loanSkill = loanSkill ?? ((_, __) => { });
+            _grantItem = grantItem ?? ((_, __) => { });
         }
 
         // --- Public surface (RunService's boon seams) ---
@@ -242,6 +252,13 @@ namespace ICanShowYouTheWorld.RunMode
                     // reaches the held list again.
                     var held = FindNewestHeld("way");
                     if (held != null) held.Charges++;
+                    break;
+
+                case "windfall":
+                    // One charge, and unlike Waystone nothing ever refills it. The boon is a single
+                    // windfall you choose the moment for, not a tap.
+                    var windfall = FindNewestHeld("windfall");
+                    if (windfall != null) windfall.Charges++;
                     break;
 
                 // wind/ember have no effect on gain — only on activation (Keypad4/5).
@@ -304,6 +321,7 @@ namespace ICanShowYouTheWorld.RunMode
                 case "ember": return ActivateEmber();
                 case "way": return ActivateWay();
                 case "brother": return ActivateBrother();
+                case "windfall": return ActivateWindfall();
                 default: return false;
             }
         }
@@ -662,6 +680,59 @@ namespace ICanShowYouTheWorld.RunMode
 
             teleport.TeleportTo(bestPos.Value + Vector3.up * 2f);
             held.Charges--;
+            return true;
+        }
+
+        /// <summary>
+        /// Doubles every stack the player is carrying, once per run.
+        ///
+        /// "Stackable" is the filter, and it is doing real work: m_maxStackSize is a compiled field,
+        /// so this needs no asset names at all, and every weapon, tool and piece of armour in the
+        /// game has a max stack of 1 and is therefore skipped automatically. What remains is
+        /// materials, arrows, food and trophies — which is what "resources" means in play.
+        ///
+        /// The SNAPSHOT is the load-bearing part. GetAllItems fills a caller-owned list, and
+        /// iterating the live inventory instead would keep meeting the stacks it had just added and
+        /// double them again, forever. Taking the list first and adding afterwards is what makes
+        /// this terminate.
+        ///
+        /// Amounts are read before ANY grant, for the same reason: a stack that merges with one this
+        /// method already created would otherwise be re-measured at its new, larger size.
+        ///
+        /// Overflow is not lost — _grantItem drops what will not fit at the player's feet.
+        /// </summary>
+        private bool ActivateWindfall()
+        {
+            var held = FindHeldWithCharge("windfall");
+            if (held == null)
+            {
+                LastActivationMessage = "Windfall is spent.";
+                return false;
+            }
+
+            var player = Player.m_localPlayer;
+            var inventory = player == null ? null : player.GetInventory();
+            if (inventory == null) return false;
+
+            // Resolved to (prefab name, count) pairs BEFORE anything is granted — see the note
+            // above. ToList() here is the snapshot: whether GetAllItems hands back the inventory's
+            // own list or a copy, this projection is independent of both.
+            var toGrant = inventory.GetAllItems()
+                .Where(i => i != null && i.m_shared != null && i.m_shared.m_maxStackSize > 1 && i.m_stack > 0)
+                .Select(i => new { Name = i.m_dropPrefab == null ? null : i.m_dropPrefab.name, Count = i.m_stack })
+                .Where(x => !string.IsNullOrEmpty(x.Name))
+                .ToList();
+
+            if (toGrant.Count == 0)
+            {
+                LastActivationMessage = "Nothing stackable to double.";
+                return false;
+            }
+
+            foreach (var entry in toGrant) _grantItem(entry.Name, entry.Count);
+
+            held.Charges--;
+            LastActivationMessage = $"Windfall: {toGrant.Count} stacks doubled.";
             return true;
         }
 

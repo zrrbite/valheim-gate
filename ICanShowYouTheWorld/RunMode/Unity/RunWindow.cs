@@ -59,7 +59,10 @@ namespace ICanShowYouTheWorld.RunMode
         /// Species colors, so a row keeps its identity when the list re-sorts. Distance ordering
         /// means rows swap places constantly as things move, and a wall of same-colored text is
         /// unreadable when that happens — the color is what the eye actually tracks.
-        /// Deliberately few and far apart in hue rather than one shade per creature.
+        ///
+        /// Exactly <see cref="TrackerMaxRows"/> entries, and that is load-bearing: it is what lets
+        /// <see cref="AssignTrackerColors"/> promise that no two species on screen ever share a
+        /// color. Add a row without adding a color and the promise quietly becomes a hope.
         /// </summary>
         private static readonly Color[] TrackerPalette =
         {
@@ -71,7 +74,18 @@ namespace ICanShowYouTheWorld.RunMode
             ParseTrackerColor("E5CE6B"), // amber
             ParseTrackerColor("6FC9B6"), // verdigris
             ParseTrackerColor("D96F86"), // rose
+            ParseTrackerColor("8FA9D9"), // slate
+            ParseTrackerColor("C9A86F"), // bronze
         };
+
+        /// <summary>This frame's species → color assignment; see <see cref="AssignTrackerColors"/>.</summary>
+        private readonly Dictionary<string, Color> _trackerColors = new Dictionary<string, Color>();
+
+        /// <summary>Distinct species keys on screen this frame, reused to avoid a per-frame allocation.</summary>
+        private readonly List<string> _trackerKeys = new List<string>();
+
+        /// <summary>Palette slots already claimed this frame.</summary>
+        private readonly HashSet<int> _trackerSlotsTaken = new HashSet<int>();
 
         /// <summary>How far the Hunter's Eye reaches. The GM tracking window uses 100m; a run's
         /// version is deliberately shorter, so it answers "what is about to reach me" rather than
@@ -837,6 +851,7 @@ namespace ICanShowYouTheWorld.RunMode
                 case "ember": return "[5]";
                 case "way": return "[6]";
                 case "brother": return "[7]";
+                case "windfall": return "[8]";
                 default: return "";
             }
         }
@@ -853,7 +868,7 @@ namespace ICanShowYouTheWorld.RunMode
             return key == null ? state : $"{state}  [{key}]";
         }
 
-        /// <summary>Mirrors RunService.HandleBoonActivationInput — Keypad4/5/6/7.</summary>
+        /// <summary>Mirrors RunService.HandleBoonActivationInput — Keypad4/5/6/7/8.</summary>
         private static string ActivationKey(string boonId)
         {
             switch (boonId)
@@ -862,6 +877,7 @@ namespace ICanShowYouTheWorld.RunMode
                 case "ember": return "Keypad 5";
                 case "way": return "Keypad 6";
                 case "brother": return "Keypad 7";
+                case "windfall": return "Keypad 8";
                 default: return null;
             }
         }
@@ -991,6 +1007,8 @@ namespace ICanShowYouTheWorld.RunMode
             }
 
             int rows = Mathf.Min(_trackerBuffer.Count, TrackerMaxRows);
+            AssignTrackerColors(rows);
+
             for (int i = 0; i < rows; i++)
             {
                 var c = _trackerBuffer[i];
@@ -1041,22 +1059,83 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
-        /// A stable color per SPECIES, keyed on Character.m_name — the shared localization token
-        /// ("$enemy_greydwarf"), which every instance of a creature carries and which does not
-        /// change with level or with the "(Clone)" suffix on the object name. Same species, same
-        /// color, every frame and every run.
+        /// Assigns each species on screen a color no other visible species is using, for the rows
+        /// about to be drawn.
+        ///
+        /// The hash alone was not enough. It gives a species a stable preferred slot, but nothing
+        /// stopped two species preferring the same one, and this particular hash clusters hard at
+        /// `% 8`: boar and deer both landed on parchment, and greyling, neck, greydwarf, troll and
+        /// crow ALL landed on rose. Five species sharing a color is exactly the wall of same-colored
+        /// text the palette exists to prevent.
+        ///
+        /// So the hash still picks a PREFERENCE, and a species alone on screen always gets it — but
+        /// when a slot is already claimed, the next free one is taken instead. With as many colors
+        /// as <see cref="TrackerMaxRows"/>, a free slot always exists.
+        ///
+        /// Assignment runs over the species keys in ORDINAL order, never in the buffer's distance
+        /// order. Distance order changes as things move, so two contending species would swap colors
+        /// every time they passed each other — the flicker would be worse than the collision.
+        /// Sorting by key means the same set of species always produces the same assignment.
+        ///
+        /// The trade-off, stated plainly: a species CAN change color when a different species walks
+        /// into range and takes the slot it preferred. Stable while it is the only claimant, which
+        /// is the common case.
         /// </summary>
-        private static Color SpeciesColor(Character c)
+        private void AssignTrackerColors(int rows)
         {
-            string key = c.m_name;
-            if (string.IsNullOrEmpty(key)) return RunTheme.TextParchment;
+            _trackerColors.Clear();
+            _trackerKeys.Clear();
+            _trackerSlotsTaken.Clear();
 
-            // Deliberately not string.GetHashCode: .NET does not guarantee it is stable across
-            // runtimes or runs, and a color that changed between sessions would defeat the point.
+            for (int i = 0; i < rows; i++)
+            {
+                var c = _trackerBuffer[i];
+                string key = c == null ? null : c.m_name;
+                if (!string.IsNullOrEmpty(key) && !_trackerKeys.Contains(key)) _trackerKeys.Add(key);
+            }
+
+            _trackerKeys.Sort(StringComparer.Ordinal);
+
+            foreach (var key in _trackerKeys)
+            {
+                int preferred = PreferredSlot(key);
+                int slot = preferred;
+
+                for (int probe = 0; probe < TrackerPalette.Length; probe++)
+                {
+                    slot = (preferred + probe) % TrackerPalette.Length;
+                    if (!_trackerSlotsTaken.Contains(slot)) break;
+                }
+
+                _trackerSlotsTaken.Add(slot);
+                _trackerColors[key] = TrackerPalette[slot];
+            }
+        }
+
+        /// <summary>
+        /// A species' preferred palette slot, keyed on Character.m_name — the shared localization
+        /// token ("$enemy_greydwarf"), which every instance carries and which does not change with
+        /// level or with the "(Clone)" suffix on the object name.
+        ///
+        /// Deliberately not string.GetHashCode: .NET does not guarantee it is stable across runtimes
+        /// or runs, and a color that changed between sessions would defeat the point.
+        /// </summary>
+        private static int PreferredSlot(string key)
+        {
             int hash = 17;
             for (int i = 0; i < key.Length; i++) hash = unchecked(hash * 31 + key[i]);
 
-            return TrackerPalette[Mathf.Abs(hash) % TrackerPalette.Length];
+            return Mathf.Abs(hash) % TrackerPalette.Length;
+        }
+
+        /// <summary>This frame's color for a species, from <see cref="AssignTrackerColors"/>.</summary>
+        private Color SpeciesColor(Character c)
+        {
+            string key = c == null ? null : c.m_name;
+
+            return !string.IsNullOrEmpty(key) && _trackerColors.TryGetValue(key, out var color)
+                ? color
+                : RunTheme.TextParchment;
         }
 
         private static Color ParseTrackerColor(string hex)

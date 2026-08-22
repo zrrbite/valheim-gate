@@ -227,7 +227,8 @@ namespace ICanShowYouTheWorld.RunMode
 
             // _boons doesn't exist yet at construction time — captured by reference, resolved
             // lazily whenever BoonEffects actually needs the held set.
-            _boonEffects = new BoonEffects(() => _boons?.Held, UndefeatedBossLocations, DefeatedBossCount, LoanSkill);
+            _boonEffects = new BoonEffects(
+                () => _boons?.Held, UndefeatedBossLocations, DefeatedBossCount, LoanSkill, GrantItem);
             ApplyBoonEffect = _boonEffects.Apply;
             UnapplyBoonEffect = _boonEffects.Unapply;
             UnapplyAllBoonEffects = _boonEffects.UnapplyAll;
@@ -713,9 +714,9 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
-        /// Keypad4/5/6/7 activate held wind/ember/way/brother while a run is active. Gated on there being
-        /// no boon offer pending, matching the brief; the offer keys (1/2/3) don't overlap with
-        /// these anyway, so this is a UX choice, not a conflict-avoidance one.
+        /// Keypad4/5/6/7/8 activate held wind/ember/way/brother/windfall while a run is active.
+        /// Gated on there being no boon offer pending, matching the brief; the offer keys (1/2/3)
+        /// don't overlap with these anyway, so this is a UX choice, not a conflict-avoidance one.
         /// </summary>
         private void HandleBoonActivationInput()
         {
@@ -725,6 +726,7 @@ namespace ICanShowYouTheWorld.RunMode
             else if (Input.GetKeyDown(KeyCode.Keypad5)) TryActivateHeldBoon("ember");
             else if (Input.GetKeyDown(KeyCode.Keypad6)) TryActivateHeldBoon("way");
             else if (Input.GetKeyDown(KeyCode.Keypad7)) TryActivateHeldBoon("brother");
+            else if (Input.GetKeyDown(KeyCode.Keypad8)) TryActivateHeldBoon("windfall");
         }
 
         private void TryActivateHeldBoon(string boonId)
@@ -901,6 +903,10 @@ namespace ICanShowYouTheWorld.RunMode
                 ["Bed"] = p => p.GetComponentInChildren<Bed>(true) != null,
                 ["Chest"] = p => p.GetComponentInChildren<Container>(true) != null,
                 ["Door"] = p => p.GetComponentInChildren<Door>(true) != null,
+                // The rack you put over a fire to cook on. CookingStation covers the plain one and
+                // the iron cooking station both, which is the intent — the quest is "you can cook
+                // now", not "you built one specific piece".
+                ["Cooking"] = p => p.GetComponentInChildren<CookingStation>(true) != null,
             };
 
         /// <summary>
@@ -1337,6 +1343,109 @@ namespace ICanShowYouTheWorld.RunMode
             if (freshRun) _boons.FirstOfferPin = FirstBoonPin;
             _boons.Gained += OnBoonGained;
             _boons.Lost += OnBoonLost;
+
+            ValidateAssetNames(pool.Concat(MainQuestChain()));
+        }
+
+        /// <summary>
+        /// Checks every asset name the run's definitions depend on against the game's own
+        /// registries, and logs the ones that do not resolve.
+        ///
+        /// This is the answer to the mode's most expensive class of bug. Asset names are Unity data,
+        /// invisible to the compiled assembly, and a wrong one does not throw: a bad CREATURE name
+        /// means a kill quest whose counter never moves, a bad ITEM name a collect sub that is dead
+        /// for the run, and a bad RequiresBuilt category a task that is never dealt at all. Every one
+        /// of them looks exactly like ordinary bad luck. Until now the only detector was playing
+        /// until something felt stuck, which cost several builds.
+        ///
+        /// Runs once per run start and reports at most one line per bucket. It is diagnostics only —
+        /// nothing is disabled on a miss, because a definition that fails here fails the same way it
+        /// always did, and taking the run away from the player over it would be a worse outcome than
+        /// one dud task. <see cref="NameManifest"/> does the pure half and is unit-tested; this half
+        /// needs the live game.
+        /// </summary>
+        private void ValidateAssetNames(IEnumerable<ChallengeDefinition> definitions)
+        {
+            try
+            {
+                var manifest = NameManifest.Collect(definitions);
+                var scene = ZNetScene.instance;
+                var odb = ObjectDB.instance;
+
+                // Creatures live in ZNetScene, not ObjectDB. The Character test is what makes this
+                // meaningful: ZNetScene holds every networked prefab, so a name that resolves to a
+                // rock would otherwise pass a bare existence check and still never register a kill.
+                if (scene != null)
+                {
+                    var missing = manifest.CreaturePrefabs
+                        .Where(n => { var p = scene.GetPrefab(n); return p == null || p.GetComponent<Character>() == null; })
+                        .ToList();
+
+                    if (missing.Count > 0)
+                        Debug.LogError("[ICanShowYouTheWorld] Unknown CREATURE names — their kill quests can " +
+                                       $"never progress: {string.Join(", ", missing.ToArray())}");
+                }
+
+                // CollectItem matches Inventory.CountItems, which compares against m_shared.m_name —
+                // the "$item_" token, not the prefab name. Both are accepted here so a definition
+                // written either way validates; only a name that is neither is a real typo.
+                if (odb != null && odb.m_items != null)
+                {
+                    var known = new HashSet<string>();
+                    foreach (var go in odb.m_items)
+                    {
+                        if (go == null) continue;
+                        known.Add(go.name);
+
+                        var drop = go.GetComponent<ItemDrop>();
+                        if (drop != null && drop.m_itemData != null && drop.m_itemData.m_shared != null)
+                            known.Add(drop.m_itemData.m_shared.m_name);
+                    }
+
+                    var missing = manifest.ItemNames.Where(n => !known.Contains(n)).ToList();
+                    if (missing.Count > 0)
+                        Debug.LogError("[ICanShowYouTheWorld] Unknown ITEM names — their collect quests can " +
+                                       $"never progress: {string.Join(", ", missing.ToArray())}");
+                }
+
+                // Not a Valheim name at all — a typo in OUR vocabulary, checked against the same
+                // table the scanner uses. Quiet failure otherwise: the task is simply never dealt.
+                var badCategories = manifest.PieceCategories
+                    .Where(c => !PieceCategories.ContainsKey(c))
+                    .ToList();
+
+                if (badCategories.Count > 0)
+                    Debug.LogError("[ICanShowYouTheWorld] Unknown BUILD categories — these quests can never " +
+                                   $"be dealt or completed: {string.Join(", ", badCategories.ToArray())}");
+
+                // Reward prefabs already log at grant time, but that only fires when someone
+                // actually reaches the step — which for the later boss spoils is hours in, if ever.
+                // Checking them up front turns "find out when you beat Moder" into "find out now".
+                if (scene != null || odb != null)
+                {
+                    var rewards = QuestRewards.Values
+                        .Concat(BossSpoils)
+                        .SelectMany(entries => entries)
+                        .Select(entry => entry.prefab)
+                        .Where(name => !string.IsNullOrEmpty(name))
+                        .Distinct()
+                        .Where(name => ResolveItemPrefab(name) == null)
+                        .ToList();
+
+                    if (rewards.Count > 0)
+                        Debug.LogError("[ICanShowYouTheWorld] Unknown REWARD prefabs — those rewards will not " +
+                                       $"be granted: {string.Join(", ", rewards.ToArray())}");
+                }
+
+                if (scene == null || odb == null)
+                    Debug.LogWarning("[ICanShowYouTheWorld] Asset-name validation ran before the game's " +
+                                     "registries were ready; some names were not checked this run.");
+            }
+            catch (Exception e)
+            {
+                // Diagnostics must never be the thing that breaks a run.
+                Debug.LogWarning($"[ICanShowYouTheWorld] Asset-name validation failed: {e.Message}");
+            }
         }
 
         /// <summary>
@@ -2789,6 +2898,74 @@ namespace ICanShowYouTheWorld.RunMode
                     new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Goblin", Target = 5, Label = "Kill 5 Goblins" },
                 }
             },
+
+            // --- alpha27: more simultaneous quests, and cooking. ---
+            //
+            // Every name below is now checked at run start by ValidateAssetNames, which is what
+            // makes the cooked-food tokens usable at all: before it, a wrong $item_ token was a
+            // sub that stayed dead all run with nothing to tell you why. If one of these is wrong
+            // it says so in the log on the first run, and it is a one-line fix.
+            //
+            // The build subs are new too — BuildPiece became a legal composite sub in alpha27
+            // (absolute quantity, no per-sub baseline, which is the rule composites actually need).
+            new ChallengeDefinition
+            {
+                Id = "cq-hearth", Tier = 0, Target = 1, HeatReward = 3, Display = "Hearth and Home",
+                Subs = new List<SubObjective>
+                {
+                    new SubObjective { Kind = ChallengeKind.BuildPiece, Param = "Cooking", Target = 1, Label = "Build a cooking station" },
+                    new SubObjective { Kind = ChallengeKind.BuildPiece, Param = "Chest",   Target = 1, Label = "Build a chest" },
+                    new SubObjective { Kind = ChallengeKind.CollectFood, Param = "",       Target = 8, Label = "Hold 8 food" },
+                }
+            },
+            new ChallengeDefinition
+            {
+                // The name-free cooking quest: no asset names at all, so it works whatever the
+                // tokens turn out to be. Gated on owning a rack, so it is never dealt to someone
+                // who cannot start it. Its weakness is honest — CollectFood counts raspberries, so
+                // a determined forager can finish it without cooking. That is the price of not
+                // naming anything, and cq-larder below is the version that does name things.
+                Id = "cq-provisions", Tier = 0, Target = 1, HeatReward = 2, Display = "Provisions",
+                RequiresBuilt = "Cooking",
+                Subs = new List<SubObjective>
+                {
+                    new SubObjective { Kind = ChallengeKind.CollectFood, Param = "", Target = 12, Label = "Hold 12 food" },
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Boar", Target = 3, Label = "Kill 3 Boar" },
+                }
+            },
+            new ChallengeDefinition
+            {
+                // The named one: actually requires COOKED meat, which CollectFood cannot express.
+                Id = "cq-larder", Tier = 0, Target = 1, HeatReward = 3, Display = "Fill the Larder",
+                RequiresBuilt = "Cooking",
+                Subs = new List<SubObjective>
+                {
+                    new SubObjective { Kind = ChallengeKind.CollectItem, Param = "$item_cookedmeat", Target = 5, Label = "Cook 5 meat" },
+                    new SubObjective { Kind = ChallengeKind.CollectItem, Param = "$item_wood",       Target = 20, Label = "Hold 20 wood" },
+                }
+            },
+            new ChallengeDefinition
+            {
+                // Simultaneous kills across two species — the shape cq-forest-sweep already had,
+                // which the pool simply did not have enough of.
+                Id = "cq-meadow-cull", Tier = 0, Target = 1, HeatReward = 3, Display = "Meadow Cull",
+                Subs = new List<SubObjective>
+                {
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Boar",     Target = 3, Label = "Kill 3 Boar" },
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Deer",     Target = 2, Label = "Kill 2 Deer" },
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Greyling", Target = 4, Label = "Kill 4 Greylings" },
+                }
+            },
+            new ChallengeDefinition
+            {
+                Id = "cq-night-watch", Tier = 1, Target = 1, HeatReward = 4, Display = "Night Watch",
+                Subs = new List<SubObjective>
+                {
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Greyling",  Target = 5, Label = "Kill 5 Greylings" },
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Greydwarf", Target = 3, Label = "Kill 3 Greydwarves" },
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Neck",      Target = 3, Label = "Kill 3 Necks" },
+                }
+            },
         };
 
         // --- Main questline (v1: the Meadows → Eikthyr arc) ---
@@ -2853,6 +3030,14 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 Id = "mq-fire", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Fire",
                 Target = 1, Display = "Build a fire", RewardText = "Hide for a bed, flint for arrowheads",
+            },
+            new ChallengeDefinition
+            {
+                // Straight after the fire, because that is what it goes on. Nothing in the chain
+                // taught cooking before this, which left the single biggest lever on health and
+                // stamina as something the player had to know about from outside the run.
+                Id = "mq-cook", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Cooking",
+                Target = 1, Display = "Build a cooking station", RewardText = "Meat to cook on it",
             },
             new ChallengeDefinition
             {
@@ -2943,6 +3128,9 @@ namespace ICanShowYouTheWorld.RunMode
                 // over a hide until the deer hunt at #12 — without this the player is sent off to
                 // farm deer for a step that is meant to take two minutes.
                 ["mq-fire"] = new[] { ("DeerHide", 6), ("Flint", 10) },
+                // Raw meat, so the station has something on it the moment it is built rather than
+                // sending the player back out to hunt before they can use what they just made.
+                ["mq-cook"] = new[] { ("RawMeat", 8) },
                 ["mq-bed"] = new[] { ("Wood", 30), ("Resin", 10) },
                 ["mq-chest"] = new[] { ("ArrowFlint", 30) },
                 ["mq-rest"] = new[] { ("CookedMeat", 10), ("ArrowFlint", 20) },
@@ -2978,6 +3166,7 @@ namespace ICanShowYouTheWorld.RunMode
             new BoonDefinition { Id = "wind",  Display = "Second Wind",  IsPassive = false, CooldownSeconds = 120f, Description = "Heals you and nearby allies for 10s." },
             new BoonDefinition { Id = "ember", Display = "Emberskin",    IsPassive = false, CooldownSeconds = 180f, Description = "Cloak of flames burns nearby foes for 30s." },
             new BoonDefinition { Id = "way",   Display = "Waystone",     IsPassive = false, Description = "Teleport to the next boss altar. One charge." },
+            new BoonDefinition { Id = "windfall", Display = "Windfall",  IsPassive = false, Description = "Double every stack you carry. One charge, never refills." },
         };
     }
 }
