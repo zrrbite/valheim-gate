@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-22, at `0.221.12-run.alpha29`. This is the "pick it back up
+Written 2026-08-22, at `0.221.12-run.alpha30`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -19,13 +19,13 @@ Everything below is what that file tells it.
 
 ## Where things stand
 
-- Branch **`feature/run-mode`**, 81 commits ahead of `main`. **Not merged**,
+- Branch **`feature/run-mode`**, 82 commits ahead of `main`. **Not merged**,
   deliberately — the mode is still being tuned in play.
-- Latest tag **`0.221.12-run.alpha29`**, pushed. The Mac has it deployed.
+- Latest tag **`0.221.12-run.alpha30`**, pushed. The Mac has it deployed.
 - Game version 0.221.12, Unity 6000.0.61. Windows is the play machine, the Mac
   is the test/build machine, the Deck travels (and is **stale** — it still has
   an older patched assembly and needs a re-patch before use).
-- Engine tests: `Tests/run_tests.sh`, 305 assertions, all passing.
+- Engine tests: `Tests/run_tests.sh`, 332 assertions, all passing.
 
 ## The loop
 
@@ -55,10 +55,10 @@ must read the tag you just pushed. **The version popup is the whole point of
 tagging every alpha** — it is the only way to be certain which build is being
 played.
 
-## What the mode is, as of alpha29
+## What the mode is, as of alpha30
 
 **Five acts**, one per boss, each a questline chain ending on its own boss kill.
-All five are now written: I The Meadows (14 steps) → Eikthyr, II The Black Forest
+All five are now written: I The Meadows (15 steps) → Eikthyr, II The Black Forest
 (9) → The Elder, III The Swamp (7) → Bonemass, IV The Mountains (7) → Moder,
 V The Plains (7) → Yagluth. Every act opens on an arrival step and carries mob
 beats plus (except the Mountains) a building beat.
@@ -84,14 +84,31 @@ Two rules the content follows, both learned the hard way:
   therefore have **no** build step — no distinctively mountain-built piece has a
   compiled class, and filler would be worse than an extra fight.
 
-Questline heat across the saga is **44** (14+9+7+7+7) — roughly ×3.2 enemy damage
+Questline heat across the saga is **45** (15+9+7+7+7) — roughly ×3.2 enemy damage
 by the Plains before any random task, and far steeper than anything played.
 
-**Act I**, 14 steps, all of it doable without leaving the Meadows: craft an axe
+**Act I**, 15 steps, all of it doable without leaving the Meadows: craft an axe
 → craft a hammer → build a workbench → hunt 5 boar → raise a roof (6 pieces) →
 **build a fire** → **build a cooking station** → kill 6 greylings → settle in
 (2 min at home) → **build a bed** → sleep through the night → **build a chest**
-→ hunt 3 deer (pays Eikthyr's summoning trophies) → defeat Eikthyr.
+→ hunt 3 deer (pays Eikthyr's summoning trophies) → **hunt Eikthyr's Herald** →
+defeat Eikthyr.
+
+**Eikthyr's Herd (alpha30)** runs for Act I only: about half the deer you meet
+get a star, a deer's death may draw greylings and may crack with lightning, and
+the Herald is a named two-star deer spawned for its own step. The constraint that
+shaped all of it: **deer cannot be made to attack** — `AnimalAI` has no attack,
+so the hunt got harder to CATCH rather than dangerous, and the danger comes from
+what the noise attracts. The Herald is matched by ZDOID rather than by species,
+since it is an ordinary Deer wearing a name and any deer would otherwise finish
+its step; its synthetic kill name is the one entry in `SyntheticCreatureNames`,
+exempt from the validator. See [the design](specs/2026-08-22-deer-and-stash-design.md).
+
+**The stash (alpha30)** is run state, not a chest — reachable wherever the run
+window opens, so it follows you between bases and acts. "Deposit materials" moves
+every unequipped `ItemType.Material`; food, arrows and gear deliberately stay on
+you. Quality and variant are part of an entry's identity (a level-3 axe is not a
+level-1 axe); durability is not stored, so a withdrawn tool returns at full.
 
 The homestead steps (alpha26-27) each sit immediately before the step that
 already, silently, depended on them: `TimeInBase` only accrues while
@@ -172,19 +189,14 @@ None of these are blocked on code — they are blocked on someone playing.
 11. **Is the saga's heat curve survivable?** 44 questline heat by the Plains,
     ×3.2 enemy damage, on a model that has never been tuned. Config, not code.
 
-## Decided, not yet built (next up)
-
-Both approved in the alpha28 session; detail in
-[the acts design](specs/2026-08-22-acts-design.md).
-
-- **Deer focus in Act I** — all four: starred deer ("Eikthyr's Herd"), a named
-  2-star Herald as a late step, contested kills drawing greylings to a carcass,
-  and lightning on the kill. The constraint that shaped them: **deer cannot be
-  made to attack**, since they run `AnimalAI` which has no attack at all.
-- **Universal storage** as a run-window stash panel — deposit/withdraw anywhere,
-  persisted with the run, storing prefab + count + quality + variant. Rejected:
-  making every built chest share one inventory, which needs a third patcher
-  injection and a re-patch of every machine.
+12. **The stash**, never used in play: does "Deposit materials" take the right
+    things (materials only — food and arrows stay on you, on purpose), and do its
+    contents survive a suspend/resume?
+13. **Eikthyr's Herd**, never seen: do starred deer make the hunt better or just
+    slower? Do contested kills fire too often (`runDeerGreylingChance`)? Does the
+    Herald appear, announce itself, and — critically — is it impossible to finish
+    its step by killing an ordinary deer? Is there lightning, or does the log say
+    no effect prefab resolved?
 
 ## Landmines
 

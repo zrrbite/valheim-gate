@@ -55,6 +55,11 @@ namespace ICanShowYouTheWorld.Core
         float RunStaminaRate { get; set; }
         float RunHudMenuOffset { get; set; }
         float RunBuildScanRadius { get; set; }
+        float RunDeerStarChance { get; set; }
+        int RunDeerStarLevel { get; set; }
+        float RunDeerGreylingChance { get; set; }
+        int RunDeerGreylingMax { get; set; }
+        bool RunDeerLightning { get; set; }
         float RunHeatEnemyDamageWeight { get; set; }
         float RunHeatEnemyLevelUpWeight { get; set; }
         float RunHeatScoreWeight { get; set; }
@@ -147,6 +152,17 @@ namespace ICanShowYouTheWorld.Core
         // enough to take in a starter house from anywhere inside it, small enough that the scan
         // stays cheap; the scan stops altogether once all four have been found.
         [SerializeField] private float runBuildScanRadius = 20f;
+
+        // --- Eikthyr's Herd: the deer of Act I ---
+        //
+        // Eikthyr is the stag god, so his act's deer are his. None of this makes deer AGGRESSIVE —
+        // they run AnimalAI, which has no attack at all — it makes them harder to catch and makes
+        // killing one mean something.
+        [SerializeField] private float runDeerStarChance = 0.5f;    // of unstarred deer met in Act I
+        [SerializeField] private int runDeerStarLevel = 2;          // 2 = one star, 3 = two stars
+        [SerializeField] private float runDeerGreylingChance = 0.35f; // a kill draws the forest's attention
+        [SerializeField] private int runDeerGreylingMax = 2;
+        [SerializeField] private bool runDeerLightning = true;
         [SerializeField] private float runHeatEnemyDamageWeight = 0.05f;
         [SerializeField] private float runHeatEnemyLevelUpWeight = 0.05f;
         [SerializeField] private float runHeatScoreWeight = 0.1f;
@@ -204,6 +220,11 @@ namespace ICanShowYouTheWorld.Core
         public float RunStaminaRate { get => runStaminaRate; set => runStaminaRate = value; }
         public float RunHudMenuOffset { get => runHudMenuOffset; set => runHudMenuOffset = value; }
         public float RunBuildScanRadius { get => runBuildScanRadius; set => runBuildScanRadius = value; }
+        public float RunDeerStarChance { get => runDeerStarChance; set => runDeerStarChance = value; }
+        public int RunDeerStarLevel { get => runDeerStarLevel; set => runDeerStarLevel = value; }
+        public float RunDeerGreylingChance { get => runDeerGreylingChance; set => runDeerGreylingChance = value; }
+        public int RunDeerGreylingMax { get => runDeerGreylingMax; set => runDeerGreylingMax = value; }
+        public bool RunDeerLightning { get => runDeerLightning; set => runDeerLightning = value; }
         public float RunHeatEnemyDamageWeight { get => runHeatEnemyDamageWeight; set => runHeatEnemyDamageWeight = value; }
         public float RunHeatEnemyLevelUpWeight { get => runHeatEnemyLevelUpWeight; set => runHeatEnemyLevelUpWeight = value; }
         public float RunHeatScoreWeight { get => runHeatScoreWeight; set => runHeatScoreWeight = value; }

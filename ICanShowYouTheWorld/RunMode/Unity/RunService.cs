@@ -137,6 +137,27 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         private readonly HashSet<string> _builtSeen = new HashSet<string>();
 
+        /// <summary>
+        /// The run's stash — things put aside that follow the player between bases and acts. See
+        /// <see cref="RunStash"/> for why it is run state rather than a chest in the world.
+        /// </summary>
+        private readonly RunStash _stash = new RunStash();
+
+        /// <summary>Act I's deer: stars, the Herald, and what a kill draws. See <see cref="DeerHerd"/>.</summary>
+        private DeerHerd _deer;
+
+        /// <summary>
+        /// Creature names the questline reports that are NOT Valheim prefabs, and which the name
+        /// validator must therefore not look up.
+        ///
+        /// Only the Herald so far. It is an ordinary Deer wearing a name, so its step cannot match
+        /// on "Deer" — any deer would finish it — and the host reports a synthetic name instead when
+        /// that specific creature dies. Looking it up in ZNetScene would correctly report that no
+        /// such creature exists, which would be a false alarm every launch.
+        /// </summary>
+        private static readonly HashSet<string> SyntheticCreatureNames =
+            new HashSet<string> { DeerHerd.HeraldKillName };
+
         /// <summary>The saga's acts, built once per service. Pure content — see <see cref="Acts"/>.</summary>
         private readonly List<ActDefinition> _acts = Acts();
 
@@ -399,6 +420,7 @@ namespace ICanShowYouTheWorld.RunMode
 
                 _rngSeed = Environment.TickCount;
                 _rng = new Random(_rngSeed);
+                _deer = new DeerHerd(_cfg, _rng);
 
                 BuildEngines(BuildChallengePool(), freshRun: true);
 
@@ -434,6 +456,8 @@ namespace ICanShowYouTheWorld.RunMode
                 // half a fix. Anyone running at an established base has skipped far more than three
                 // steps' worth of progression already; the mode is built for a fresh start.
                 _builtSeen.Clear();
+                _stash.Clear();
+                _deer.Reset();
                 _worldModifiers.ApplyBaseline(_cfg);
                 // Free melee/tool stamina is baseline empowerment: the early game's stamina tax
                 // is tedium, not difficulty. Re-run on the poll tick for newly crafted gear.
@@ -902,7 +926,45 @@ namespace ICanShowYouTheWorld.RunMode
             PollStatDeltas();
             PollBuiltPieces();
             PollReachedBiomes();
+            PollDeerHerd();
         }
+
+        /// <summary>True while the run is in Act I — the only act the herd applies to.</summary>
+        private bool ActIsMeadows => _actIndex == 0;
+
+        /// <summary>
+        /// Stars nearby deer, and keeps the Herald standing while its step is the one in play.
+        ///
+        /// Act I only. Eikthyr's deer are his; starring every deer for the rest of the saga would
+        /// turn a piece of Act I character into a permanent tax on hunting.
+        /// </summary>
+        private void PollDeerHerd()
+        {
+            if (_deer == null || !ActIsMeadows) return;
+
+            var player = Player.m_localPlayer;
+            if (player == null) return;
+
+            _deer.UpgradeNearbyDeer(player.transform.position, DeerScanRadius);
+
+            // The Herald exists only while its own step is current, and is re-spawned whenever it is
+            // not standing — which is what makes it survive a logout, a zone unload, or a player who
+            // wandered off and left it behind. Its ZDO is non-persistent, so "not standing" is the
+            // normal state after any reload.
+            var quest = _challenges?.CurrentMainQuest;
+            bool heraldWanted = quest != null &&
+                                quest.Def.Kind == ChallengeKind.KillPrefab &&
+                                quest.Def.Param == DeerHerd.HeraldKillName;
+
+            if (heraldWanted && _deer.TrySpawnHerald(player))
+                Message($"{DeerHerd.HeraldName} is abroad in the meadows.");
+        }
+
+        /// <summary>
+        /// How far the herd scan reaches. Wider than the build scan: deer are spread across open
+        /// ground and a starred one should be starred before the player is close enough to shoot.
+        /// </summary>
+        private const float DeerScanRadius = 60f;
 
         /// <summary>
         /// Reports every biome this run has stood in, so <see cref="ChallengeKind.ReachBiome"/>
@@ -1555,6 +1617,7 @@ namespace ICanShowYouTheWorld.RunMode
                 if (scene != null)
                 {
                     var missing = manifest.CreaturePrefabs
+                        .Where(n => !SyntheticCreatureNames.Contains(n))
                         .Where(n => { var p = scene.GetPrefab(n); return p == null || p.GetComponent<Character>() == null; })
                         .ToList();
 
@@ -1941,7 +2004,16 @@ namespace ICanShowYouTheWorld.RunMode
         /// 1/0, exactly as the console path does — an item whose base quality isn't 1 would
         /// otherwise be handed over subtly wrong.
         /// </summary>
-        private void GrantItem(string prefabName, int count)
+        private void GrantItem(string prefabName, int count) => GrantItem(prefabName, count, -1, -1);
+
+        /// <summary>
+        /// As <see cref="GrantItem(string,int)"/>, but with an explicit quality and variant.
+        ///
+        /// Pass -1 for either to take the prefab's own default, which is what a quest reward wants.
+        /// The stash passes real values, because quality and variant are part of an item's identity
+        /// there: withdrawing a level-3 axe must not hand back a level-1 one.
+        /// </summary>
+        private void GrantItem(string prefabName, int count, int qualityOverride, int variantOverride)
         {
             if (string.IsNullOrEmpty(prefabName) || count <= 0) return;
 
@@ -1956,8 +2028,12 @@ namespace ICanShowYouTheWorld.RunMode
                 }
 
                 var itemDrop = prefab.GetComponent<ItemDrop>();
-                int quality = itemDrop != null && itemDrop.m_itemData != null ? itemDrop.m_itemData.m_quality : 1;
-                int variant = itemDrop != null && itemDrop.m_itemData != null ? itemDrop.m_itemData.m_variant : 0;
+                int quality = qualityOverride >= 0
+                    ? qualityOverride
+                    : itemDrop != null && itemDrop.m_itemData != null ? itemDrop.m_itemData.m_quality : 1;
+                int variant = variantOverride >= 0
+                    ? variantOverride
+                    : itemDrop != null && itemDrop.m_itemData != null ? itemDrop.m_itemData.m_variant : 0;
 
                 var player = Player.m_localPlayer;
                 var inventory = player == null ? null : player.GetInventory();
@@ -2240,11 +2316,116 @@ namespace ICanShowYouTheWorld.RunMode
                 if (c.IsPlayer() || c.IsTamed()) return;
 
                 _challenges?.ReportKill(PrefabNameOf(c));
+
+                // The herd answers separately, and may hand back a synthetic name — the Herald's,
+                // which is matched by identity rather than by prefab so ordinary deer cannot
+                // complete its step. Reported IN ADDITION to the ordinary kill above: killing the
+                // Herald is also killing a deer, and should count for both.
+                if (_deer != null && ActIsMeadows)
+                {
+                    string synthetic = _deer.OnCharacterDied(c);
+                    if (synthetic != null)
+                    {
+                        _challenges?.ReportKill(synthetic);
+                        Message($"{DeerHerd.HeraldName} falls.");
+                    }
+                }
             }
             catch (Exception ex)
             {
                 LogOnce("character-died", ex);
             }
+        }
+
+        // --- Stash ---
+
+        public IReadOnlyList<StashEntry> StashEntries => _active ? _stash.Entries : null;
+
+        /// <summary>
+        /// Moves every unequipped MATERIAL out of the player's inventory and into the stash, and
+        /// returns how many items moved.
+        ///
+        /// Materials only — ItemType.Material is a compiled enum, so no asset names are involved,
+        /// and it is the honest reading of "resources". Food, arrows, tools and gear stay put: a
+        /// button that emptied your quiver and your dinner into a box you cannot reach in a fight
+        /// would be a trap, however consistent.
+        ///
+        /// Equipped items are skipped outright. Pulling something out from under the equip state
+        /// is a class of bug worth not having, and nobody equips a material anyway.
+        ///
+        /// The item list is SNAPSHOTTED before anything is removed — mutating the inventory while
+        /// walking its own list is the same hazard Windfall's doubling has, in reverse.
+        /// </summary>
+        public int DepositMaterials()
+        {
+            if (!_active) return 0;
+
+            var player = Player.m_localPlayer;
+            var inventory = player == null ? null : player.GetInventory();
+            if (inventory == null) return 0;
+
+            var candidates = inventory.GetAllItems()
+                .Where(i => i != null && i.m_shared != null && !i.m_equipped && i.m_stack > 0)
+                .Where(i => i.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Material)
+                .Where(i => i.m_dropPrefab != null)
+                .ToList();
+
+            int moved = 0;
+            foreach (var item in candidates)
+            {
+                // Deposit FIRST: if the stash refuses (it is full and this is a new kind), the item
+                // must stay in the inventory rather than being removed into nothing.
+                int taken = _stash.Deposit(item.m_dropPrefab.name, item.m_stack, item.m_quality, item.m_variant);
+                if (taken <= 0) continue;
+
+                inventory.RemoveItem(item);
+                moved += taken;
+            }
+
+            if (moved > 0)
+            {
+                Message($"Stashed {moved} items.");
+                SaveState();
+            }
+            else if (candidates.Count > 0)
+            {
+                Message("Stash is full.");
+            }
+
+            return moved;
+        }
+
+        /// <summary>
+        /// Takes everything of one stashed kind back into the player's hands. Overflow drops at
+        /// their feet, via the same path a quest reward uses.
+        ///
+        /// The entry is removed from the stash only after the grant is attempted, so a failure to
+        /// resolve the prefab cannot quietly delete the contents.
+        /// </summary>
+        public void WithdrawStash(int index)
+        {
+            if (!_active) return;
+
+            var entries = _stash.Entries;
+            if (index < 0 || index >= entries.Count) return;
+
+            var entry = entries[index];
+            string prefab = entry.Prefab;
+            int count = entry.Count;
+            int quality = entry.Quality;
+            int variant = entry.Variant;
+
+            if (ResolveItemPrefab(prefab) == null)
+            {
+                Debug.LogError($"[ICanShowYouTheWorld] Stashed prefab '{prefab}' no longer resolves — " +
+                               "left in the stash rather than destroyed.");
+                Message($"Cannot withdraw {prefab}.");
+                return;
+            }
+
+            GrantItem(prefab, count, quality, variant);
+            _stash.WithdrawAll(index);
+            SaveState();
         }
 
         private static string PrefabNameOf(Character c)
@@ -2475,7 +2656,10 @@ namespace ICanShowYouTheWorld.RunMode
                 foreach (var category in s.builtCategories)
                     if (!string.IsNullOrEmpty(category)) _builtSeen.Add(category);
 
+            _stash.Restore(s.stashPrefabs, s.stashCounts, s.stashQualities, s.stashVariants);
+
             _rng = new Random(_rngSeed);
+            _deer = new DeerHerd(_cfg, _rng);
 
             BuildEngines(BuildChallengePool(), freshRun: false);
 
@@ -2701,6 +2885,10 @@ namespace ICanShowYouTheWorld.RunMode
                 rngSeed = _rngSeed,
                 visitedBiomes = _visitedBiomes,
                 builtCategories = _builtSeen.ToList(),
+                stashPrefabs = _stash.Entries.Select(e => e.Prefab).ToList(),
+                stashCounts = _stash.Entries.Select(e => e.Count).ToList(),
+                stashQualities = _stash.Entries.Select(e => e.Quality).ToList(),
+                stashVariants = _stash.Entries.Select(e => e.Variant).ToList(),
                 worldId = _worldId,
                 modifierKeys = _worldModifiers.ExportOriginalKeys(),
                 modifierValues = _worldModifiers.ExportOriginalValues()
@@ -3337,6 +3525,15 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
+                // Act I's climax before the boss, and the one deer that is an event rather than a
+                // counter. Param is SYNTHETIC — the Herald is an ordinary Deer wearing a name, so
+                // matching on "Deer" would let any deer finish this. The host reports this name only
+                // when that specific creature dies, matched by ZDOID. See DeerHerd.
+                Id = "mq-herald", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = DeerHerd.HeraldKillName,
+                Target = 1, Display = "Hunt Eikthyr's Herald", RewardText = "A hunter's bow, and the last trophies",
+            },
+            new ChallengeDefinition
+            {
                 Id = "mq-eikthyr", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Eikthyr",
                 Target = 1, Display = "Defeat Eikthyr", RewardText = "Antler pickaxe",
             },
@@ -3603,6 +3800,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // hunt for an hour without seeing. Handing them over is the point of this step:
                 // the run gates on the FIGHT, never on drop luck.
                 ["mq-deer"] = new[] { ("TrophyDeer", 2), ("DeerHide", 5) },
+                ["mq-herald"] = new[] { ("BowFineWood", 1), ("TrophyDeer", 2), ("ArrowFlint", 40) },
                 ["mq-eikthyr"] = new[] { ("PickaxeAntler", 1) },
 
                 // Act II. Ore rather than ingots where the act is about learning to smelt, ingots

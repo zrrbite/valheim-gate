@@ -1027,3 +1027,48 @@ config and it is a number, not a rebuild.
 ### RESULTS (Windows side appends here)
 
 *(pending)*
+
+---
+
+## 2026-08-22 — TASK: alpha30 — Eikthyr's Herd, and the stash
+
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha30**.
+
+The two things deferred twice so the acts got played first.
+
+**1. The stash — press `End`, it is the top section.** "Deposit materials" empties
+every unequipped **material** into it (not food, not arrows, not gear — those
+stay on you deliberately, a button that stashed your dinner mid-fight would be a
+trap). "Take" per row pulls a kind back. It follows you anywhere, survives a
+logout, and is meant to make moving house between acts painless. Things to judge:
+   - Is materials-only the right filter, or do you want food/arrows in there too?
+   - Does it survive a suspend/resume with contents intact?
+
+**2. Deer in Act I are Eikthyr's now.** Roughly half the deer you meet get a star
+— visibly bigger, several times the health, faster. One arrow will not do it any
+more. **Deer still cannot hurt you** — they run the game's passive animal AI,
+which has no attack at all, and giving them one is asset work I cannot do. So the
+hunt got harder to *catch* rather than dangerous.
+
+**3. Killing a deer may draw greylings** to the carcass (about 1 in 3). That is
+where the danger comes from. If it fires too often and hunting becomes a chore,
+`runDeerGreylingChance` is config.
+
+**4. There may be lightning** when a deer dies — pure flavour, and the one thing
+here riding an unverifiable prefab name. It tries several candidates and stays
+silent if none exist, so **no lightning is not a bug**, just an unlucky guess.
+Tell me if you see it, and tell me if the log says "no lightning effect prefab
+resolved".
+
+**5. New Act I step 14: "Hunt Eikthyr's Herald"** — a named two-star deer that
+spawns near you when that step comes up, between the deer hunt and Eikthyr. It
+should announce itself. **Killing an ordinary deer must NOT complete it** — it is
+matched by identity, not by species. If a normal deer finishes that step, that is
+a real bug. If the Herald never appears, also a bug: it is meant to re-spawn
+whenever the step is current and none is standing.
+
+**6. Act I is 15 steps now**, questline heat 45 across the saga.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*

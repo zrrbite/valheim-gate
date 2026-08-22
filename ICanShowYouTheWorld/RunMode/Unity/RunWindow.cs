@@ -178,6 +178,12 @@ namespace ICanShowYouTheWorld.RunMode
         private bool _pendingAbandon;
         private bool _pendingDiscard;
 
+        // Stash actions defer for a related but distinct reason: both mutate the entry list this
+        // section is in the middle of walking, and doing that mid-pass corrupts the layout stack
+        // for every window drawn afterwards. -1 means nothing pending.
+        private bool _pendingDeposit;
+        private int _pendingWithdraw = -1;
+
         // Failure sites already logged, keyed by site + message: a new fault still gets a line,
         // a repeating one doesn't flood OnGUI. Capped so a fault with a varying message
         // (positions, timings) can't grow the set without bound.
@@ -223,20 +229,31 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         public void ApplyPendingActions()
         {
-            if (!_pendingStart && !_pendingAbandon && !_pendingDiscard) return;
+            if (!_pendingStart && !_pendingAbandon && !_pendingDiscard &&
+                !_pendingDeposit && _pendingWithdraw < 0) return;
             if (Event.current == null || Event.current.type != EventType.Layout) return;
 
             bool start = _pendingStart;
             bool abandon = _pendingAbandon;
             bool discard = _pendingDiscard;
+            bool deposit = _pendingDeposit;
+            int withdraw = _pendingWithdraw;
             _pendingStart = false;
             _pendingAbandon = false;
             _pendingDiscard = false;
+            _pendingDeposit = false;
+            _pendingWithdraw = -1;
 
             try
             {
                 var run = Service;
                 if (run == null) return;
+
+                // Stash actions are handled before the lifecycle ones and do not compete with them:
+                // they never change which windows exist, so they cannot be the thing that has to
+                // wait, and an abandon queued in the same frame should still find the stash settled.
+                if (deposit) run.DepositMaterials();
+                if (withdraw >= 0) run.WithdrawStash(withdraw);
 
                 // Abandon wins if both somehow queued: it is the safer of the two to honour.
                 if (abandon) run.AbandonRun();
@@ -607,6 +624,52 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
+        /// The stash: deposit materials, take them back, from anywhere.
+        ///
+        /// Deliberately not an inventory screen. There is no grid and no drag-and-drop — one button
+        /// puts every material in, and one button per kind takes it out. The stash exists so that
+        /// moving house between acts is not an afternoon of hauling; making it a second inventory
+        /// to manage would reintroduce the chore it removes.
+        ///
+        /// Withdrawals are deferred to the next Layout pass, like the abandon button: mutating the
+        /// list this loop is walking, mid-IMGUI, corrupts the layout stack for every window drawn
+        /// afterwards.
+        /// </summary>
+        private void DrawStashSection(IRunService run)
+        {
+            var entries = run.StashEntries;
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("STASH", RunTheme.Header);
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("Deposit materials", GUILayout.Width(140f))) _pendingDeposit = true;
+            GUILayout.EndHorizontal();
+
+            if (entries == null || entries.Count == 0)
+            {
+                GUILayout.Label("  empty — materials you stash follow you between bases", RunTheme.Small);
+                return;
+            }
+
+            for (int i = 0; i < entries.Count; i++)
+            {
+                var entry = entries[i];
+
+                GUILayout.BeginHorizontal();
+                // Quality is shown only when it is not the ordinary 1, so the common case stays
+                // quiet and an upgraded tool is obvious.
+                string label = entry.Quality > 1
+                    ? $"  {entry.Prefab} +{entry.Quality - 1}"
+                    : "  " + entry.Prefab;
+
+                GUILayout.Label(label, RunTheme.Small, GUILayout.Width(HudContentWidth - 110f));
+                GUILayout.Label($"{entry.Count}", RunTheme.Small, GUILayout.Width(44f));
+                if (GUILayout.Button("Take", GUILayout.Width(52f))) _pendingWithdraw = i;
+                GUILayout.EndHorizontal();
+            }
+        }
+
+        /// <summary>
         /// The main questline: the one step in play, its progress, and what finishing it hands
         /// over. Random tasks pay in heat and boons; the questline pays in ITEMS, which is why the
         /// reward line is spelled out here rather than left as a surprise — it is the thing the
@@ -663,6 +726,10 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>Splits, tasks and held boons — the part of the HUD that scrolls.</summary>
         private void DrawHudSections(IRunService run)
         {
+            DrawStashSection(run);
+
+            GUILayout.Space(6f);
+
             // --- Splits ---
             GUILayout.Label("SPLITS", RunTheme.Header);
             var splits = run.Splits;

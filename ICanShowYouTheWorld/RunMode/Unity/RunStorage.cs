@@ -114,6 +114,23 @@ namespace ICanShowYouTheWorld.RunMode
         public List<string> builtCategories;
 
         /// <summary>
+        /// The run's stash, as four parallel lists — prefab, count, quality, variant — in the same
+        /// style as every other collection here, because Unity's JsonUtility cannot serialise a
+        /// list of objects nested in a plain class without a wrapper per element.
+        ///
+        /// Quality and variant are stored because they are part of an item's IDENTITY: a level-3
+        /// axe and a level-1 axe are different objects, and collapsing them would hand back two of
+        /// whichever was written last. Durability is deliberately NOT stored — a withdrawn tool
+        /// returns at full, which is a small gift rather than a loss.
+        ///
+        /// Null on a pre-alpha30 save; RunStash.Restore tolerates any short or absent list.
+        /// </summary>
+        public List<string> stashPrefabs;
+        public List<int> stashCounts;
+        public List<int> stashQualities;
+        public List<int> stashVariants;
+
+        /// <summary>
         /// The world this run belongs to. A saved run must never be resumed against a
         /// different world — its boss keys and world modifiers would be meaningless there.
         /// </summary>

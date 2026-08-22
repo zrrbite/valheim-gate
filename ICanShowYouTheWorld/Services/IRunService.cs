@@ -35,6 +35,18 @@ namespace ICanShowYouTheWorld.Services
         /// </summary>
         ICanShowYouTheWorld.RunMode.ActDefinition CurrentAct { get; }
 
+        /// <summary>
+        /// The run's stash — things set aside that follow the player between bases and acts; null
+        /// when inactive. See <see cref="ICanShowYouTheWorld.RunMode.RunStash"/>.
+        /// </summary>
+        IReadOnlyList<ICanShowYouTheWorld.RunMode.StashEntry> StashEntries { get; }
+
+        /// <summary>Moves every unequipped material into the stash; returns how many items moved.</summary>
+        int DepositMaterials();
+
+        /// <summary>Takes everything of one stashed kind back, by index into <see cref="StashEntries"/>.</summary>
+        void WithdrawStash(int index);
+
         /// <summary>Boon engine for the current run; null when inactive.</summary>
         ICanShowYouTheWorld.RunMode.BoonEngine Boons { get; }
 
