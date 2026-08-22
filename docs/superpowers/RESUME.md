@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-22, at `0.221.12-run.alpha33`. This is the "pick it back up
+Written 2026-08-22, at `0.221.12-run.alpha34`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -19,13 +19,13 @@ Everything below is what that file tells it.
 
 ## Where things stand
 
-- Branch **`feature/run-mode`**, 86 commits ahead of `main`. **Not merged**,
+- Branch **`feature/run-mode`**, 87 commits ahead of `main`. **Not merged**,
   deliberately — the mode is still being tuned in play.
-- Latest tag **`0.221.12-run.alpha33`**, pushed. The Mac has it deployed.
+- Latest tag **`0.221.12-run.alpha34`**, pushed. The Mac has it deployed.
 - Game version 0.221.12, Unity 6000.0.61. Windows is the play machine, the Mac
   is the test/build machine, the Deck travels (and is **stale** — it still has
   an older patched assembly and needs a re-patch before use).
-- Engine tests: `Tests/run_tests.sh`, 359 assertions, all passing.
+- Engine tests: `Tests/run_tests.sh`, 384 assertions, all passing.
 
 ## The loop
 
@@ -55,7 +55,7 @@ must read the tag you just pushed. **The version popup is the whole point of
 tagging every alpha** — it is the only way to be certain which build is being
 played.
 
-## What the mode is, as of alpha33
+## What the mode is, as of alpha34
 
 **Five acts**, one per boss. All five are written: I The Meadows (15 steps) →
 Eikthyr, II The Black Forest (9) → The Elder, III The Swamp (7) → Bonemass,
@@ -140,10 +140,32 @@ went from 10 to 14 across the two.
 move stamina ×0.5, stamina regen ×2.5, all stamina costs ×0.75, free melee and
 tools (ranged pays 25%), and the Hunter's Eye tracker panel.
 
-**17 boons**, never offering one already held: ten passives (Fleet-footed,
-Sharpened, Packmule, Hearty, Enduring, Vigorous, Cat's Breath, Marathoner,
-Acrobat, plus the three skill boons Woodsman/Hunter/Warrior), and five actives
-on Keypad 4-8 (Second Wind, Emberskin, Waystone, Packbrother, Windfall).
+**22 boons (alpha34)**, never offering one already held. Five actives on
+Keypad 4-8 (Second Wind, Emberskin, Waystone, Packbrother, Windfall) and seventeen
+passives across six kinds:
+
+| Kind | Boons |
+|---|---|
+| Stats | Fleet-footed, Sharpened, Packmule, Hearty, **Tireless** |
+| Skills | Woodsman, Hunter, Warrior |
+| **Resistance** | Irongut (poison), Coldblooded (frost), Fire-blooded (fire) |
+| **On-kill** | Bloodthirst (heals), Relentless (stamina) |
+| **Risk** | Glass Cannon (+40% dmg, −30% HP), Reckless (+50% dmg, +25% taken) |
+| **Heat** | Slow Burn (heat rises 25% slower), Forge-fed (damage scales with heat) |
+
+> **Why (owner, alpha33):** *"we need more boon types. There are like three sta
+> ones, and they seem a bit lack luster since we already regen quite fast."* It
+> was FIVE, and they competed with a baseline that already gives stamina ×0.5 cost
+> and ×2.5 regen — they were solving a solved problem. Merged into Tireless; the
+> freed slots bought four categories the pool had none of. Risk boons are the first
+> with a real COST, which turns an offer from "which number goes up" into a
+> decision. See [the design](specs/2026-08-22-boon-rebalance-design.md).
+
+`BoonDefinition.MinBosses` gates offers on world progression (resistances only) —
+the boon pool's equivalent of the challenge pool's `MaxTier`. **Note the pin fails
+silently:** `FirstBoonPin` naming a boon that no longer exists is ignored rather
+than logged, which nearly shipped un-steering every opening offer when the stamina
+merge deleted `"enduring"`.
 
 > **Windfall is deliberately strong, owner's call (alpha27):** one charge, never
 > refills, doubles every stack whose `m_maxStackSize > 1`. That includes FOOD,

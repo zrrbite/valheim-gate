@@ -1194,4 +1194,50 @@ which will now also catch this if I ever do it again.
 
 ### RESULTS (Windows side appends here)
 
+**Confirmed working.** Axe registered; the `Unknown` grep came back empty, which
+closed the asset-name blocker for all five acts in one launch.
+
+---
+
+## 2026-08-22 — TASK: alpha34 — the boon pool gets teeth
+
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha34**.
+
+Straight from your note that the stamina boons felt lacklustre. You said three —
+it was **five** (Enduring, Vigorous, Cat's Breath, Marathoner, Acrobat), all
+competing with a baseline that already gives stamina ×0.5 cost and ×2.5 regen.
+That's why they felt flat.
+
+**1. They're now one boon: `Tireless`** — max stamina, faster recovery, cheaper
+dodges. The four freed slots went on new categories. Pool is 22.
+
+**2. Ten new boons, four categories the pool had none of:**
+
+| | |
+|---|---|
+| **Irongut / Coldblooded / Fire-blooded** | Resistant to poison / frost / fire |
+| **Bloodthirst / Relentless** | Kills heal you / restore stamina |
+| **Glass Cannon** | +40% damage, **−30% max health** |
+| **Reckless** | +50% damage, **you take 25% more** |
+| **Slow Burn** | Heat rises 25% slower |
+| **Forge-fed** | Weapons hit harder the hotter the run |
+
+**3. Boons can now have downsides** — Glass Cannon and Reckless. Both say so in
+their description. Tell me if a cost ever surprises you; that would be a bug in
+the wording, not the boon.
+
+**4. Resistances won't be offered early** — Irongut needs 1 boss down, the other
+two need 2. Frost resistance in the Meadows would waste one of your three options.
+**If you ever see a resistance offered in Act I, that's a bug.**
+
+**5. Forge-fed is the one to watch.** Its damage moves with heat, which nothing
+else in the mode does. It should get stronger as the run heats up and weaker after
+a death drops your heat. If it ever feels like it ratchets up and never comes
+down, say so — that's the failure mode I designed against.
+
+**6. Sharpened now also covers weapons you craft AFTER taking it.** It didn't
+before; that was a quiet flaw found while making three damage boons coexist.
+
+### RESULTS (Windows side appends here)
+
 *(pending)*

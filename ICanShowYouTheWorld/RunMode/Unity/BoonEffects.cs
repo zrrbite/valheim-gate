@@ -52,6 +52,27 @@ namespace ICanShowYouTheWorld.RunMode
         private const float HeartyBaseHpBonus = 15f;
         private const float EnduringBaseStaminaBonus = 25f;
 
+        // Glass Cannon. Vanilla Player.m_baseHP is 25, so -7.5 is the stated 30%. A flat number
+        // rather than a multiplier because the field is shared with Hearty and with food, and two
+        // boons multiplying the same base in an order nobody controls is how compounding bugs start.
+        private const float GlassCannonBaseHpPenalty = 7.5f;
+        private const float GlassCannonDamageMultiplier = 1.4f;
+        private const float RecklessDamageMultiplier = 1.5f;
+
+        /// <summary>
+        /// How hard Forge-fed hits per point of heat. At the default heat weights a run reaching
+        /// the Plains sits near 45 heat, so this tops out around +45% — comparable to Sharpened
+        /// but earned by having run hot rather than by being picked.
+        /// </summary>
+        private const float ForgeFedPerHeat = 0.01f;
+
+        /// <summary>Cap on Forge-fed, so a pathological heat number cannot produce a silly multiplier.</summary>
+        private const float ForgeFedMaxMultiplier = 2f;
+
+        /// <summary>Health and stamina returned per kill by the on-kill boons.</summary>
+        private const float BloodthirstHealPerKill = 5f;
+        private const float RelentlessStaminaPerKill = 15f;
+
         // Packbrother. Two at a time keeps it a bodyguard rather than an army that trivialises
         // the heat curve, and the level tracks boss progress so a companion summoned in the
         // Plains isn't the same meadows wolf that dies to one Fuling.
@@ -142,33 +163,41 @@ namespace ICanShowYouTheWorld.RunMode
                 Id = "hearty", Amount = HeartyBaseHpBonus,
                 Get = p => p.m_baseHP, Set = (p, v) => p.m_baseHP = v
             },
+            // Tireless (alpha34) is FOUR rows sharing one id — the merge of what used to be
+            // Enduring, Vigorous, Cat's Breath and Acrobat. Five stamina boons competed for slots
+            // against a problem the run's baseline already solves (move stamina x0.5, regen x2.5,
+            // costs x0.75), so they became one boon worth picking. Marathoner's run-drain cut was
+            // dropped outright rather than folded in: baseline move stamina x0.5 IS that boon.
+            //
+            // Multiple rows per id is why ApplyFieldBoost works on every match rather than the first.
             new FieldBoost
             {
-                Id = "enduring", Amount = EnduringBaseStaminaBonus,
+                Id = "tireless", Amount = EnduringBaseStaminaBonus,
                 Get = p => p.m_baseStamina, Set = (p, v) => p.m_baseStamina = v
             },
-            // Alpha13 play-test: the passive pool thinned out fast once held passives stopped
-            // being re-offered. Four more one-field loans; amounts are flat adds against the
-            // vanilla values noted, chosen so a single application is meaningful but not silly.
             new FieldBoost
             {
-                Id = "vigorous", Amount = 3f,      // m_staminaRegen vanilla ~6/s -> ~9/s
+                Id = "tireless", Amount = 3f,      // m_staminaRegen vanilla ~6/s -> ~9/s
                 Get = p => p.m_staminaRegen, Set = (p, v) => p.m_staminaRegen = v
             },
             new FieldBoost
             {
-                Id = "catbreath", Amount = -0.5f,  // m_staminaRegenDelay vanilla ~1s -> 0.5s
+                Id = "tireless", Amount = -0.5f,   // m_staminaRegenDelay vanilla ~1s -> 0.5s
                 Get = p => p.m_staminaRegenDelay, Set = (p, v) => p.m_staminaRegenDelay = v
             },
             new FieldBoost
             {
-                Id = "marathoner", Amount = -4f,   // m_runStaminaDrain vanilla ~10/s -> ~6/s
-                Get = p => p.m_runStaminaDrain, Set = (p, v) => p.m_runStaminaDrain = v
+                Id = "tireless", Amount = -5f,     // m_dodgeStaminaUsage vanilla ~10 -> ~5
+                Get = p => p.m_dodgeStaminaUsage, Set = (p, v) => p.m_dodgeStaminaUsage = v
             },
+
+            // Glass Cannon's cost. Hearty's mechanism pointed the other way: -30% of vanilla base
+            // HP, as a flat subtraction so it cannot interact with food or with Hearty itself in
+            // ways neither was written for.
             new FieldBoost
             {
-                Id = "acrobat", Amount = -5f,      // m_dodgeStaminaUsage vanilla ~10 -> ~5
-                Get = p => p.m_dodgeStaminaUsage, Set = (p, v) => p.m_dodgeStaminaUsage = v
+                Id = "glasscannon", Amount = -GlassCannonBaseHpPenalty,
+                Get = p => p.m_baseHP, Set = (p, v) => p.m_baseHP = v
             },
         };
 
@@ -238,6 +267,28 @@ namespace ICanShowYouTheWorld.RunMode
                     ApplySkillBoon(boonId);
                     break;
 
+                case "irongut":
+                case "coldblood":
+                case "fireblood":
+                case "reckless":
+                    ApplyDamageModifier(boonId);
+                    break;
+
+                case "glasscannon":
+                    // Two halves: the cost is a field boost (see the table), the gain rides
+                    // Sharpened's snapshot so the two can never both claim the same weapon.
+                    ApplyFieldBoost(boonId);
+                    ApplyWeaponMultiplier(GlassCannonDamageMultiplier, "glasscannon");
+                    break;
+
+                case "forgefed":
+                    // Nothing to apply on gain — its multiplier is a function of live heat, and the
+                    // host re-applies it on every heat change (see RefreshForgeFed).
+                    break;
+
+                // bloodthirst/relentless have no effect on gain either: they act on the kill hook,
+                // which the host routes to OnKill.
+
                 case "tracker":
                     // Nothing to apply. Hunter's Eye is a panel RunWindow draws while the boon is
                     // held (see HoldsTracker) — pure observation, so there is no state to set here
@@ -290,6 +341,22 @@ namespace ICanShowYouTheWorld.RunMode
 
                 case "ember":
                     ForceCloakOff();
+                    break;
+
+                case "irongut":
+                case "coldblood":
+                case "fireblood":
+                case "reckless":
+                    UnapplyDamageModifier(boonId);
+                    break;
+
+                case "glasscannon":
+                    UnapplyFieldBoost(boonId);
+                    RemoveWeaponMultiplier(boonId);
+                    break;
+
+                case "forgefed":
+                    RemoveWeaponMultiplier(boonId);
                     break;
 
                 case "brother":
@@ -360,6 +427,11 @@ namespace ICanShowYouTheWorld.RunMode
                 // Belt and braces for the summons: the loop above already unwinds "brother" when
                 // it is held, but a run can end with companions alive and the boon already lost.
                 SafeInvoke(DespawnAllCompanions);
+                // Same reasoning for weapon damage: it is written into a PER-PREFAB shared block,
+                // so anything left boosted here outlives the run and the character. The per-boon
+                // unwinds above should have cleared it; this makes sure.
+                SafeInvoke(UnapplyWeaponMultipliers);
+                SafeInvoke(UnapplyAllDamageModifiers);
             }
         }
 
@@ -433,18 +505,20 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         private void ApplyFieldBoost(string boonId)
         {
-            var boost = FindFieldBoost(boonId);
-            if (boost == null) return;
-
             var player = Player.m_localPlayer;
             if (player == null) return;
 
-            if (boost.Taken && ReferenceEquals(boost.Owner, player)) return;
+            // EVERY row with this id, not just the first: a boon may lend more than one field, and
+            // Tireless lends four. A first-match lookup would silently apply a quarter of it.
+            foreach (var boost in _fieldBoosts.Where(b => b.Id == boonId))
+            {
+                if (boost.Taken && ReferenceEquals(boost.Owner, player)) continue;
 
-            boost.Owner = player;
-            boost.Original = boost.Get(player);
-            boost.Taken = true;
-            boost.Set(player, boost.Original + boost.Amount);
+                boost.Owner = player;
+                boost.Original = boost.Get(player);
+                boost.Taken = true;
+                boost.Set(player, boost.Original + boost.Amount);
+            }
         }
 
         /// <summary>
@@ -454,49 +528,236 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         private void UnapplyFieldBoost(string boonId)
         {
-            var boost = FindFieldBoost(boonId);
-            if (boost == null || !boost.Taken) return;
-
-            var owner = boost.Owner;
-            boost.Taken = false;
-            boost.Owner = null;
-
-            // Unity's == (not ReferenceEquals) is what's wanted here: a destroyed player must read
-            // as null, since writing fields on it is pointless and a fresh one has vanilla values.
-            if (owner == null) return;
-
-            boost.Set(owner, boost.Original);
-        }
-
-        private FieldBoost FindFieldBoost(string boonId)
-        {
-            foreach (var b in _fieldBoosts)
+            foreach (var boost in _fieldBoosts.Where(b => b.Id == boonId && b.Taken))
             {
-                if (b.Id == boonId) return b;
+                var owner = boost.Owner;
+                boost.Taken = false;
+                boost.Owner = null;
+
+                // Unity's == (not ReferenceEquals) is what's wanted here: a destroyed player must
+                // read as null, since writing fields on it is pointless and a fresh one has vanilla
+                // values.
+                if (owner == null) continue;
+
+                boost.Set(owner, boost.Original);
             }
-            return null;
         }
 
         // --- sharp ---
 
-        private void ApplySharp()
+        /// <summary>
+        /// Every live weapon-damage multiplier, by boon id. THREE boons multiply weapon damage now
+        /// — Sharpened, Glass Cannon and Forge-fed — and they must compose, so each registers a
+        /// factor here and the actual damage is always recomputed from the pristine snapshot as
+        /// the PRODUCT of them all.
+        ///
+        /// The alternative, each boon scaling whatever it found, is the compounding bug the sharp
+        /// snapshot was written to avoid: two boons applying in an order nobody controls, and the
+        /// first Unapply stomping the prefab's true original with a partly-boosted value.
+        /// </summary>
+        private readonly Dictionary<string, float> _weaponMultipliers = new Dictionary<string, float>();
+
+        private void ApplySharp() => ApplyWeaponMultiplier(SharpDamageMultiplier, "sharp");
+
+        private void UnapplySharp() => RemoveWeaponMultiplier("sharp");
+
+        /// <summary>Registers (or updates) one boon's weapon-damage factor and re-applies the product.</summary>
+        private void ApplyWeaponMultiplier(float multiplier, string boonId = "glasscannon")
+        {
+            _weaponMultipliers[boonId] = multiplier;
+            RefreshWeaponDamage();
+        }
+
+        private void RemoveWeaponMultiplier(string boonId)
+        {
+            if (!_weaponMultipliers.Remove(boonId)) return;
+
+            if (_weaponMultipliers.Count == 0) UnapplyWeaponMultipliers();
+            else RefreshWeaponDamage();
+        }
+
+        /// <summary>
+        /// Rewrites every equipped weapon's damage as its ORIGINAL times the product of the live
+        /// multipliers.
+        ///
+        /// Always from the original, never from the current value — which is what makes this safe to
+        /// call as often as we like, and is what lets Forge-fed change with heat rather than
+        /// ratcheting upward.
+        ///
+        /// Also run on the poll tick, so a weapon crafted or equipped after the boon was taken is
+        /// covered. Sharpened did not do that before alpha34: it applied once at pick time, and a
+        /// sword forged afterwards quietly missed out.
+        /// </summary>
+        internal void RefreshWeaponDamage()
         {
             var inventory = Player.m_localPlayer?.GetInventory();
-            if (inventory == null) return;
+            if (inventory == null || _weaponMultipliers.Count == 0) return;
+
+            float product = 1f;
+            foreach (var m in _weaponMultipliers.Values) product *= m;
 
             foreach (var item in inventory.GetEquippedItems())
             {
                 if (item == null || !item.IsWeapon()) continue;
 
                 var shared = item.m_shared;
-                if (shared == null || _sharpSnapshots.ContainsKey(shared)) continue; // already boosted — don't stack
+                if (shared == null) continue;
 
-                _sharpSnapshots[shared] = DamageHelpers.Copy(shared.m_damages);
-                shared.m_damages = DamageHelpers.Scaled(shared.m_damages, SharpDamageMultiplier);
+                // Snapshot on first sight only. Keyed by the SHARED block rather than the ItemData
+                // instance for the reason documented on _sharpSnapshots: m_shared is per-prefab, and
+                // a fresh instance after respawn points at the same already-boosted block.
+                if (!_sharpSnapshots.TryGetValue(shared, out var original))
+                {
+                    original = DamageHelpers.Copy(shared.m_damages);
+                    _sharpSnapshots[shared] = original;
+                }
+
+                shared.m_damages = DamageHelpers.Scaled(original, product);
             }
         }
 
-        private void UnapplySharp()
+        // --- Damage modifiers: resistances, and Reckless's cost ---
+
+        /// <summary>
+        /// The player's damage-modifier struct as it was before any boon touched it, and which
+        /// boons are currently modifying it.
+        ///
+        /// One snapshot rather than one per boon: <see cref="Character.m_damageModifiers"/> is a
+        /// single struct, so two boons each restoring "their" version would put back whichever ran
+        /// last and silently discard the other. Instead the pristine copy is kept once and the live
+        /// value is always recomputed from it.
+        /// </summary>
+        private HitData.DamageModifiers _damageModOriginal;
+        private Player _damageModOwner;
+        private readonly HashSet<string> _damageModBoons = new HashSet<string>();
+
+        private void ApplyDamageModifier(string boonId)
+        {
+            var player = Player.m_localPlayer;
+            if (player == null) return;
+
+            // A respawn hands back a Player with vanilla modifiers, so a new player means a new
+            // snapshot — the same reasoning the field boosts use.
+            if (!ReferenceEquals(_damageModOwner, player))
+            {
+                _damageModOwner = player;
+                _damageModOriginal = player.m_damageModifiers;
+            }
+
+            _damageModBoons.Add(boonId);
+            RefreshDamageModifiers();
+        }
+
+        private void UnapplyDamageModifier(string boonId)
+        {
+            if (!_damageModBoons.Remove(boonId)) return;
+
+            if (_damageModBoons.Count == 0) UnapplyAllDamageModifiers();
+            else RefreshDamageModifiers();
+        }
+
+        /// <summary>
+        /// Rewrites the player's modifiers as the ORIGINAL plus whatever the held boons say — never
+        /// as an edit of the current value, so this is safe to run repeatedly and a removed boon
+        /// leaves nothing behind.
+        /// </summary>
+        private void RefreshDamageModifiers()
+        {
+            var player = _damageModOwner;
+            if (player == null) return;
+
+            var mods = _damageModOriginal;
+
+            if (_damageModBoons.Contains("irongut")) mods.m_poison = HitData.DamageModifier.Resistant;
+            if (_damageModBoons.Contains("coldblood")) mods.m_frost = HitData.DamageModifier.Resistant;
+            if (_damageModBoons.Contains("fireblood")) mods.m_fire = HitData.DamageModifier.Resistant;
+
+            // Reckless's cost. "Weak" is the game's own one-step-worse modifier, which is roughly
+            // the stated 25% and, more importantly, is a value Valheim already balances around
+            // rather than a number invented here.
+            if (_damageModBoons.Contains("reckless"))
+            {
+                mods.m_blunt = HitData.DamageModifier.Weak;
+                mods.m_slash = HitData.DamageModifier.Weak;
+                mods.m_pierce = HitData.DamageModifier.Weak;
+            }
+
+            player.m_damageModifiers = mods;
+        }
+
+        /// <summary>Puts the pristine modifiers back and forgets every claim on them.</summary>
+        private void UnapplyAllDamageModifiers()
+        {
+            var owner = _damageModOwner;
+            _damageModBoons.Clear();
+            _damageModOwner = null;
+
+            // Unity's ==: a destroyed player reads as null, and a fresh one already has vanilla
+            // modifiers, so there is nothing to put back.
+            if (owner == null) return;
+
+            owner.m_damageModifiers = _damageModOriginal;
+        }
+
+        // --- On-kill boons ---
+
+        /// <summary>
+        /// Called by the host for every non-player, non-tamed death while a run is active.
+        ///
+        /// The Character death hook already exists for the questline's kill steps, so these boons
+        /// cost nothing structurally — which is most of why they were the cheapest new category to
+        /// add. They are also the only boons in the pool that reward AGGRESSION rather than raising
+        /// a number, which is what the pool was short of.
+        /// </summary>
+        public void OnKill()
+        {
+            var player = Player.m_localPlayer;
+            if (player == null) return;
+
+            var held = _heldBoons();
+            if (held == null) return;
+
+            foreach (var h in held)
+            {
+                switch (h.Def.Id)
+                {
+                    case "bloodthirst":
+                        // Heal, never overheal: Player.Heal clamps to max health itself, so this
+                        // cannot be used to bank health above the cap.
+                        try { player.Heal(BloodthirstHealPerKill); }
+                        catch (Exception e) { Debug.LogWarning($"[ICanShowYouTheWorld] Bloodthirst failed: {e.Message}"); }
+                        break;
+
+                    case "relentless":
+                        try { player.AddStamina(RelentlessStaminaPerKill); }
+                        catch (Exception e) { Debug.LogWarning($"[ICanShowYouTheWorld] Relentless failed: {e.Message}"); }
+                        break;
+                }
+            }
+        }
+
+        // --- Forge-fed ---
+
+        /// <summary>
+        /// Re-scales weapon damage for the run's current heat. Called by the host on every heat
+        /// change, and a no-op unless Forge-fed is held.
+        ///
+        /// This is the one boon whose strength MOVES, and it is only safe because the weapon
+        /// mechanism recomputes from a pristine snapshot: registering a new factor and refreshing
+        /// cannot ratchet, however many times heat changes. Capped so a pathological heat number
+        /// cannot produce a silly multiplier.
+        /// </summary>
+        public void RefreshForgeFed(float heat)
+        {
+            var held = _heldBoons();
+            if (held == null || !held.Any(h => h.Def.Id == "forgefed")) return;
+
+            float multiplier = Mathf.Clamp(1f + Mathf.Max(0f, heat) * ForgeFedPerHeat, 1f, ForgeFedMaxMultiplier);
+            ApplyWeaponMultiplier(multiplier, "forgefed");
+        }
+
+        /// <summary>Puts every weapon back and forgets every multiplier. The full unwind.</summary>
+        private void UnapplyWeaponMultipliers()
         {
             foreach (var kvp in _sharpSnapshots)
             {
@@ -505,6 +766,7 @@ namespace ICanShowYouTheWorld.RunMode
                 shared.m_damages = kvp.Value;
             }
             _sharpSnapshots.Clear();
+            _weaponMultipliers.Clear();
         }
 
         // --- pugilist ---

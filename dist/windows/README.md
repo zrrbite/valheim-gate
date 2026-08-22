@@ -23,7 +23,9 @@ From this folder, in PowerShell:
 ```
 
 Then start Valheim and open the **Credits** menu — that's what activates the
-mod. The popup should read **v0.221.12-1**.
+mod. **The installer prints the exact version the popup should read**, taken from
+the DLL it just installed, so it is right on every build rather than whatever was
+current when this page was written.
 
 **Picking up a mod change** (the common case — no Valheim update involved) only
 needs the mod DLL, which is identical on every platform:
@@ -80,9 +82,9 @@ The mod DLL itself is pure IL and identical on every platform, so the one in
 | `patcher\ICanShowYouTheWorld.dll` | The mod — also the symbol source the patcher reads |
 
 Built from the **`feature/run-mode`** branch (Run Mode preview), against Valheim
-0.221.12 / Unity 6000.0.61. Tagged `0.221.12-run.alpha33`; the version
+0.221.12 / Unity 6000.0.61. Tagged `0.221.12-run.alpha34`; the version
 constant now matches the build, so the in-game popup reads
-**v0.221.12-run.alpha33**.
+**v0.221.12-run.alpha34**.
 The script warns if this machine's Steam buildid differs from the tested one
 (`21981559`); it will still patch correctly, but the mod DLL was compiled
 against that version's API, so a large version gap wants a rebuild on the Mac.

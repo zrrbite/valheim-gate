@@ -48,6 +48,43 @@ $ExpectedBuildId = '21981559'
 function Write-Ok    { param($m) Write-Host "[ok]   $m" -ForegroundColor Green }
 function Write-Info  { param($m) Write-Host "[info] $m" -ForegroundColor Cyan }
 function Write-Warn2 { param($m) Write-Host "[warn] $m" -ForegroundColor Yellow }
+
+<#
+.SYNOPSIS
+    The mod version baked into a built ICanShowYouTheWorld.dll, or $null.
+
+.DESCRIPTION
+    READ from the DLL rather than written here as a constant. This line used to
+    say "the popup should read v0.221.12-1" and went on saying it for thirty-odd
+    alphas — which is worse than saying nothing, because checking the popup
+    against the tag you just installed is the ENTIRE point of tagging every
+    build. A version the installer states from memory is a version that can lie.
+
+    Reads the raw bytes and looks for the literal rather than loading the
+    assembly: ICanShowYouTheWorld.dll references UnityEngine and assembly_valheim,
+    and reflection would drag those in and fail outside the game process.
+    .NET stores string literals as UTF-16, hence the Unicode decode.
+#>
+function Get-ModVersion {
+    param([string]$Dll)
+
+    try {
+        if (-not (Test-Path $Dll)) { return $null }
+
+        $text = [Text.Encoding]::Unicode.GetString([IO.File]::ReadAllBytes($Dll))
+
+        # The tagged shape first (0.221.12-run.alpha34), then the older plain
+        # shape (0.221.12-1) so this still works on a pre-Run-Mode build.
+        foreach ($pattern in @('\d+\.\d+\.\d+-run\.alpha\d+', '\d+\.\d+\.\d+-\d+')) {
+            $m = [regex]::Match($text, $pattern)
+            if ($m.Success) { return $m.Value }
+        }
+    } catch {
+        # Diagnostics must never be the thing that fails an install.
+    }
+
+    return $null
+}
 function Write-Err   { param($m) Write-Host "[fail] $m" -ForegroundColor Red }
 
 function Find-ValheimManaged {
@@ -221,6 +258,14 @@ Write-Ok 'Installed ICanShowYouTheWorld.dll'
 
 Write-Host ''
 Write-Info 'Start Valheim and open the Credits menu to activate the mod.'
-Write-Info 'The popup should read v0.221.12-1.'
+
+$modVersion = Get-ModVersion $modTarget
+if ($modVersion) {
+    Write-Info "The popup should read v$modVersion."
+} else {
+    # Never state a version we did not read — a wrong one is worse than none.
+    Write-Warn2 'Could not read the version from the installed DLL; the popup should match the tag you pulled.'
+}
+
 Write-Info "Roll back with: .\Install-Mod.ps1 -Restore"
 Write-Warn2 'A Steam game update overwrites assembly_valheim.dll — re-run this script afterwards.'

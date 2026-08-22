@@ -11,6 +11,19 @@ namespace ICanShowYouTheWorld.RunMode
         public string Description;
         public bool IsPassive;
         public float CooldownSeconds; // 0 = no cooldown (passive or charge-based)
+
+        /// <summary>
+        /// Bosses that must be down before this boon may be OFFERED. 0 (the default) means always.
+        ///
+        /// Exists for boons that are worthless until the run has got somewhere — a frost resistance
+        /// offered in the Meadows costs the player one of three options on something that will do
+        /// nothing for hours. It is the boon pool's equivalent of the challenge pool's
+        /// <c>MaxTier</c>, which has gated content by world progression since alpha11.
+        ///
+        /// Compared against <see cref="BoonEngine.DefeatedBosses"/>, which the host derives from the
+        /// world rather than storing — the same reading the acts use.
+        /// </summary>
+        public int MinBosses;
     }
 
     public class HeldBoon
@@ -47,6 +60,18 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         public string FirstOfferPin;
 
+        /// <summary>
+        /// How many bosses this world has down, for <see cref="BoonDefinition.MinBosses"/>. Owned by
+        /// the host, which derives it from the world rather than storing it — the same reading the
+        /// act index takes. The default of 0 means an unset caller sees only ungated boons, which is
+        /// the safe direction: a boon offered too early is a wasted pick, one offered too late is
+        /// merely absent.
+        /// </summary>
+        public int DefeatedBosses;
+
+        /// <summary>Drops the current offer without picking from it. Used by the timeout and by tests.</summary>
+        public void ClearOffer() => offer.Clear();
+
         /// <summary>True once an offer has actually been produced, which is what spends the pin.</summary>
         private bool firstOfferMade;
 
@@ -66,7 +91,10 @@ namespace ICanShowYouTheWorld.RunMode
             // but with four of them in the pool that exemption turned most offers into a list of
             // things the player already owned. Waystone earns its charges from boss kills instead.
             var heldIds = new HashSet<string>(held.Select(h => h.Def.Id));
-            var options = pool.Where(d => !heldIds.Contains(d.Id)).ToList();
+            var options = pool
+                .Where(d => !heldIds.Contains(d.Id))
+                .Where(d => d.MinBosses <= DefeatedBosses)
+                .ToList();
             if (options.Count == 0) return;
 
             // The pin takes slot 0 and is removed from the draw pool, so the two random options

@@ -39,8 +39,13 @@ namespace ICanShowYouTheWorld.RunMode
         /// run is actually short of — everything from running away to chopping the opening chain's
         /// trees is gated on it — so the opening pick is steered there rather than left to the rng.
         /// The other two options are random, and the player is free to take one instead.
+        ///
+        /// Follows the stamina merge: this named "enduring" until alpha34 folded the five stamina
+        /// boons into Tireless. A pin naming a boon that no longer exists is not an error — the
+        /// engine simply ignores it — so this would have gone on quietly un-steering every opening
+        /// offer with nothing to show for it. Worth remembering that the pin fails SILENTLY.
         /// </summary>
-        private const string FirstBoonPin = "enduring";
+        private const string FirstBoonPin = "tireless";
 
         private const float BossPollIntervalSeconds = 1f;
         private const float AutosaveIntervalSeconds = 5f;
@@ -562,8 +567,7 @@ namespace ICanShowYouTheWorld.RunMode
 
                 if (!free)
                 {
-                    _heat.Remove(_cfg.RunRerollHeatCost);
-                    _worldModifiers.ApplyHeat(_heat.Heat, _cfg);
+                    RemoveHeat(_cfg.RunRerollHeatCost);
                 }
 
                 SaveState();
@@ -866,6 +870,10 @@ namespace ICanShowYouTheWorld.RunMode
             // silently eat the act's last reward.
             if (progressed) RefreshAct(announce: true);
 
+            // ...and boons gated on progression become offerable. Resistances are the reason this
+            // exists: frost resistance in the Meadows is a wasted pick out of only three options.
+            if (progressed) RefreshBoonGate();
+
             if (finished) FinishRun();
         }
 
@@ -933,6 +941,48 @@ namespace ICanShowYouTheWorld.RunMode
 
         /// <summary>True while the run is in Act I — the only act the herd applies to.</summary>
         private bool ActIsMeadows => _actIndex == 0;
+
+        /// <summary>Slow Burn's discount on heat GAINED. Losses are untouched — it slows the rise, not the fall.</summary>
+        private const float SlowBurnGainMultiplier = 0.75f;
+
+        /// <summary>
+        /// Raises heat, after Slow Burn's discount, and tells everything that cares.
+        ///
+        /// Every heat change goes through here or <see cref="RemoveHeat"/> so the world modifiers
+        /// and Forge-fed cannot fall out of step with the number — the same "one path, not several
+        /// copies" correction that the stat-delta baselines needed in alpha33.
+        /// </summary>
+        private void AddHeat(float amount)
+        {
+            if (amount > 0f && HoldsBoon("slowburn")) amount *= SlowBurnGainMultiplier;
+
+            _heat.Add(amount);
+            OnHeatChanged();
+        }
+
+        private void RemoveHeat(float amount)
+        {
+            _heat.Remove(amount);
+            OnHeatChanged();
+        }
+
+        /// <summary>
+        /// Pushes the current heat into the world's difficulty keys and re-scales Forge-fed.
+        ///
+        /// Forge-fed is the only boon whose strength moves during a run, and this is the one place
+        /// it can move from: heat changes on discrete events, never per frame, so re-applying here
+        /// is both sufficient and cheap.
+        /// </summary>
+        private void OnHeatChanged()
+        {
+            _worldModifiers.ApplyHeat(_heat.Heat, _cfg);
+
+            try { _boonEffects.RefreshForgeFed(_heat.Heat); }
+            catch (Exception ex) { LogOnce("forgefed-refresh", ex); }
+        }
+
+        private bool HoldsBoon(string boonId) =>
+            _boons != null && _boons.Held.Any(h => h.Def.Id == boonId);
 
         /// <summary>
         /// Stars nearby deer, and keeps the Herald standing while its step is the one in play.
@@ -1567,6 +1617,23 @@ namespace ICanShowYouTheWorld.RunMode
         /// Returns the current index unchanged when the world is not loaded — a momentary null
         /// ZoneSystem must not read as "no bosses dead" and throw the run back to Act I.
         /// </summary>
+        /// <summary>
+        /// Tells the boon engine how far the world has got, for <see cref="BoonDefinition.MinBosses"/>.
+        ///
+        /// Derived from the world's own keys rather than stored, exactly as the act index is, so a
+        /// resume and a run started on an already-progressed world both gate correctly without any
+        /// new save state.
+        /// </summary>
+        private void RefreshBoonGate()
+        {
+            if (_boons == null) return;
+
+            var zone = ZoneSystem.instance;
+            if (zone == null) return;
+
+            _boons.DefeatedBosses = Bosses.Count(b => SafeGetGlobalKey(zone, b.defeatKey));
+        }
+
         private int CurrentActIndex()
         {
             var zone = ZoneSystem.instance;
@@ -1640,6 +1707,7 @@ namespace ICanShowYouTheWorld.RunMode
             if (freshRun) _boons.FirstOfferPin = FirstBoonPin;
             _boons.Gained += OnBoonGained;
             _boons.Lost += OnBoonLost;
+            RefreshBoonGate();
 
             // Every act's chain, not just the current one: Act V's creature names are worth knowing
             // about during Act I, when there is still time to fix them.
@@ -1928,16 +1996,14 @@ namespace ICanShowYouTheWorld.RunMode
                 // and drown the player in choices at the same moment they gain four items.
                 if (def.MainQuest)
                 {
-                    _heat.Add(MainQuestHeatReward);
-                    _worldModifiers.ApplyHeat(_heat.Heat, _cfg);
+                    AddHeat(MainQuestHeatReward);
 
                     GrantQuestReward(def);
                     SaveState();   // the chain has advanced; don't wait for the autosave
                     return;
                 }
 
-                _heat.Add(def.HeatReward);
-                _worldModifiers.ApplyHeat(_heat.Heat, _cfg);
+                AddHeat(def.HeatReward);
                 _boons?.CreateOffer();
 
                 Message($"Challenge complete: {def.Display}  (+{def.HeatReward:0.#} heat)");
@@ -2360,8 +2426,7 @@ namespace ICanShowYouTheWorld.RunMode
 
                 if (c == Player.m_localPlayer)
                 {
-                    _heat.Remove(_cfg.RunDeathHeatPenalty);
-                    _worldModifiers.ApplyHeat(_heat.Heat, _cfg);
+                    RemoveHeat(_cfg.RunDeathHeatPenalty);
 
                     // RemoveLatest raises Lost, which unapplies the effect.
                     var lost = _boons?.RemoveLatest();
@@ -2381,6 +2446,10 @@ namespace ICanShowYouTheWorld.RunMode
                 // which is matched by identity rather than by prefab so ordinary deer cannot
                 // complete its step. Reported IN ADDITION to the ordinary kill above: killing the
                 // Herald is also killing a deer, and should count for both.
+                // On-kill boons see every non-player, non-tamed death, in every act.
+                try { _boonEffects.OnKill(); }
+                catch (Exception ex) { LogOnce("boon-on-kill", ex); }
+
                 if (_deer != null && ActIsMeadows)
                 {
                     string synthetic = _deer.OnCharacterDied(c);
@@ -2847,7 +2916,9 @@ namespace ICanShowYouTheWorld.RunMode
             // Nothing to re-apply on a save that carries no loans — including a save from
             // before loans existed. A fresh snapshot here would invent a grant the run never made.
             ReapplyLoanedSkills();
-            _worldModifiers.ApplyHeat(_heat.Heat, _cfg);
+            // OnHeatChanged, not ApplyHeat: a resumed run must also re-scale Forge-fed to the heat
+            // it is coming back at, or the boon would sit at its floor until the next heat change.
+            OnHeatChanged();
             _restorePending = true;
             _restoreWorldId = _worldId;
 
@@ -4001,6 +4072,16 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         private const float MainQuestHeatReward = 1f;
 
+        /// <summary>
+        /// The boon pool.
+        ///
+        /// Rebalanced in alpha34 (owner, on playing alpha33: "we need more boon types. There are
+        /// like three sta ones, and they seem a bit lack luster since we already regen quite fast").
+        /// It was five: Enduring, Vigorous, Cat's Breath, Marathoner and Acrobat — five of seventeen
+        /// slots spent on a problem the run's BASELINE already solves, since every run starts with
+        /// move stamina x0.5, regen x2.5 and all costs x0.75. They are now one boon, Tireless, worth
+        /// picking on its own, and the four freed slots went on categories the pool had none of.
+        /// </summary>
         internal static List<BoonDefinition> DefaultBoons() => new List<BoonDefinition>
         {
             new BoonDefinition { Id = "fleet", Display = "Fleet-footed", IsPassive = true,  Description = "Move and run faster." },
@@ -4008,14 +4089,45 @@ namespace ICanShowYouTheWorld.RunMode
             new BoonDefinition { Id = "brother", Display = "Packbrother", IsPassive = false, CooldownSeconds = 240f, Description = "Summon a wolf to fight for you. Two at a time." },
             new BoonDefinition { Id = "mule",  Display = "Packmule",     IsPassive = true,  Description = "Carry 100 more weight." },
             new BoonDefinition { Id = "hearty", Display = "Hearty",      IsPassive = true,  Description = "+15 max health." },
-            new BoonDefinition { Id = "enduring", Display = "Enduring",  IsPassive = true,  Description = "+25 max stamina." },
-            new BoonDefinition { Id = "vigorous",   Display = "Vigorous",     IsPassive = true, Description = "Stamina regenerates 50% faster." },
-            new BoonDefinition { Id = "catbreath",  Display = "Cat's Breath", IsPassive = true, Description = "Stamina recovery kicks in much sooner." },
-            new BoonDefinition { Id = "marathoner", Display = "Marathoner",   IsPassive = true, Description = "Running drains 40% less stamina." },
-            new BoonDefinition { Id = "acrobat",    Display = "Acrobat",      IsPassive = true, Description = "Dodge rolls cost half stamina." },
+            new BoonDefinition { Id = "tireless", Display = "Tireless",  IsPassive = true,  Description = "+25 max stamina, faster recovery, cheaper dodges." },
             new BoonDefinition { Id = "woodsman", Display = "Woodsman", IsPassive = true, Description = "Woodcutting skill to 60. Trees fall fast." },
             new BoonDefinition { Id = "hunter",   Display = "Hunter",   IsPassive = true, Description = "Bow skill to 50. Straighter, harder shots." },
             new BoonDefinition { Id = "warrior",  Display = "Warrior",  IsPassive = true, Description = "Axe, sword and club skill to 50." },
+
+            // --- Resistances (alpha34) ---
+            //
+            // Gated, because they are BIOME-SHAPED: frost resistance in the Meadows is a wasted
+            // pick, and an offer only holds three options. The gates are one biome early on
+            // purpose — being handed the swamp's answer while finishing the Black Forest is
+            // preparation, whereas being handed it in the swamp is a rescue.
+            new BoonDefinition { Id = "irongut",   Display = "Irongut",      IsPassive = true, MinBosses = 1, Description = "Resistant to poison." },
+            new BoonDefinition { Id = "coldblood", Display = "Coldblooded",  IsPassive = true, MinBosses = 2, Description = "Resistant to frost." },
+            new BoonDefinition { Id = "fireblood", Display = "Fire-blooded", IsPassive = true, MinBosses = 2, Description = "Resistant to fire." },
+
+            // --- On-kill (alpha34) ---
+            //
+            // The first boons that reward AGGRESSION rather than raising a stat. They ride the
+            // Character death hook the questline already uses, so they cost nothing structurally.
+            new BoonDefinition { Id = "bloodthirst", Display = "Bloodthirst", IsPassive = true, Description = "Every kill heals you." },
+            new BoonDefinition { Id = "relentless",  Display = "Relentless",  IsPassive = true, Description = "Every kill restores stamina." },
+
+            // --- Risk (alpha34) ---
+            //
+            // The first boons that COST something. Every other boon in the pool is pure gain, which
+            // makes an offer a question of which number goes up; these make it a decision. Both
+            // spell the cost out in the description — a downside the player did not see coming
+            // would be a different thing entirely.
+            new BoonDefinition { Id = "glasscannon", Display = "Glass Cannon", IsPassive = true, Description = "+40% weapon damage. -30% max health." },
+            new BoonDefinition { Id = "reckless",    Display = "Reckless",     IsPassive = true, Description = "+50% weapon damage. You take 25% more." },
+
+            // --- Heat (alpha34) ---
+            //
+            // Boons that engage the mode's own difficulty dial. Slow Burn buys slack; Forge-fed
+            // rewards running hot, which turns "work both quest tracks" from merely harder into a
+            // build.
+            new BoonDefinition { Id = "slowburn", Display = "Slow Burn", IsPassive = true, Description = "Heat rises 25% slower." },
+            new BoonDefinition { Id = "forgefed", Display = "Forge-fed", IsPassive = true, Description = "Your weapons hit harder the hotter the run." },
+
             new BoonDefinition { Id = "wind",  Display = "Second Wind",  IsPassive = false, CooldownSeconds = 120f, Description = "Heals you and nearby allies for 10s." },
             new BoonDefinition { Id = "ember", Display = "Emberskin",    IsPassive = false, CooldownSeconds = 180f, Description = "Cloak of flames burns nearby foes for 30s." },
             new BoonDefinition { Id = "way",   Display = "Waystone",     IsPassive = false, Description = "Teleport to the next boss altar. One charge." },

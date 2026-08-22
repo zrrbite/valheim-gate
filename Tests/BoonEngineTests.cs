@@ -220,5 +220,73 @@ static class BoonEngineTests
         s.CreateOffer();
         Check.That(s.CurrentOffer.Count == 3, "a pin on a held passive still yields three options");
         Check.That(s.CurrentOffer.All(d => d.Id != "fleet"), "a held passive is never offered, pinned or not");
+
+        MinBossesTests();
+    }
+
+    /// <summary>
+    /// MinBosses: a boon that is worthless until the run has got somewhere is not offered before
+    /// then.
+    ///
+    /// Resistances forced this. "Resistant to frost" in the Meadows is a wasted pick — the player
+    /// spends one of three options on something that does nothing for hours. The challenge pool has
+    /// had MaxTier for exactly this reason since alpha11; the boon pool had no equivalent.
+    /// </summary>
+    static void MinBossesTests()
+    {
+        Check.That(new BoonDefinition().MinBosses == 0, "MinBosses defaults to 0 — offered from the start");
+
+        var pool = new List<BoonDefinition>
+        {
+            new BoonDefinition { Id="fleet", Display="Fleet-footed", IsPassive=true },
+            new BoonDefinition { Id="sharp", Display="Sharpened",    IsPassive=true },
+            new BoonDefinition { Id="mule",  Display="Packmule",     IsPassive=true },
+            new BoonDefinition { Id="frost", Display="Coldblooded",  IsPassive=true, MinBosses = 2 },
+        };
+
+        // Before the gate opens, the boon simply is not among the options.
+        var early = new BoonEngine(pool, new Random(101), 45f) { DefeatedBosses = 0 };
+        for (int i = 0; i < 20; i++)
+        {
+            early.CreateOffer();
+            Check.That(early.CurrentOffer.All(d => d.Id != "frost"), "a gated boon is never offered too early");
+            early.ClearOffer();
+        }
+
+        // Exactly at the threshold it becomes available.
+        var ready = new BoonEngine(pool, new Random(102), 45f) { DefeatedBosses = 2 };
+        bool seen = false;
+        for (int i = 0; i < 20 && !seen; i++)
+        {
+            ready.CreateOffer();
+            seen = ready.CurrentOffer.Any(d => d.Id == "frost");
+            ready.ClearOffer();
+        }
+        Check.That(seen, "a gated boon is offered once its threshold is met");
+
+        // The gate must never shrink an offer below three while ungated options remain — a run
+        // should not be handed two choices because a third was filtered out.
+        var gatedPool = pool.Concat(new[]
+        {
+            new BoonDefinition { Id="poison", Display="Irongut",     IsPassive=true, MinBosses = 1 },
+            new BoonDefinition { Id="fire",   Display="Fire-blooded", IsPassive=true, MinBosses = 3 },
+        }).ToList();
+
+        var narrow = new BoonEngine(gatedPool, new Random(103), 45f) { DefeatedBosses = 0 };
+        narrow.CreateOffer();
+        Check.That(narrow.CurrentOffer.Count == 3, "the gate does not shrink an offer that has enough ungated options");
+        Check.That(narrow.CurrentOffer.All(d => d.MinBosses == 0), "only ungated boons are offered at zero bosses");
+
+        // Raising the count mid-run opens the gate without anything else changing.
+        narrow.ClearOffer();
+        narrow.DefeatedBosses = 3;
+        bool sawGated = false;
+        for (int i = 0; i < 30 && !sawGated; i++)
+        {
+            narrow.CreateOffer();
+            sawGated = narrow.CurrentOffer.Any(d => d.MinBosses > 0);
+            narrow.ClearOffer();
+        }
+        Check.That(sawGated, "raising the boss count opens the gate mid-run");
     }
 }
