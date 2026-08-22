@@ -178,12 +178,18 @@ None of these are blocked on code — they are blocked on someone playing.
    `runHeatEnemyLevelUpWeight` are config, so it is a number, not a rebuild.
 3. **`runHudMenuOffset`** (default 470) — how far the HUD slides left when the
    crafting window opens. Resolution- and UI-scale-dependent.
-4. **Read the log for `[ICanShowYouTheWorld] Unknown`** after any run start.
-   alpha27 validates every creature, item and reward name against ZNetScene and
-   ObjectDB and logs the failures — so this entry is no longer "play until
-   something feels stuck", it is "read one line". It should settle `ShieldWood`,
-   `CookedMeat`, `Flint`, `Resin`, `RawMeat`, `$item_cookedmeat` and all nine
-   boss foods in one launch. Anything it names is a one-line fix.
+4. ~~**Unverified asset names.**~~ **CLOSED 2026-08-22, in play on alpha33.** The
+   `[ICanShowYouTheWorld] Unknown` grep came back **empty**, and the validator
+   checks every name in ALL FIVE ACTS at run start — so one launch in Act I
+   settled the lot: `ShieldWood`, `CookedMeat`, `Flint`, `Resin`, `RawMeat`,
+   `$item_cookedmeat`, all nine boss-spoils foods, every Act II-V creature
+   (`gd_king`, `Draugr`, `Blob`, `Leech`, `StoneGolem`, `Fenring`, `Hatchling`,
+   `Dragon`, `Deathsquito`, `Lox`, `GoblinBrute`, `GoblinKing`) and ~25 later-act
+   reward items. **Acts II-V are content-verified without having been played.**
+
+   Keep running the grep after any build that adds names — it stays the cheapest
+   minute in the loop — but the backlog it was built to clear is gone. See
+   [`../../dist/windows/CHECKING-THE-LOG.md`](../../dist/windows/CHECKING-THE-LOG.md).
 5. **Lifecycle scenarios**, never proven in play: death mid-run must NOT log
    suspend/resume; logging out must suspend; switching world or character must
    not carry a run across.
@@ -240,9 +246,10 @@ The five that have each cost a build:
   verified at RUN time. `ValidateAssetNames` resolves every creature, item and
   reward name against ZNetScene and ObjectDB at run start and logs the failures,
   so a wrong name is now loud on first launch instead of a quest that silently
-  never completes. The preference order is unchanged and still right — a
-  `PlayerStatType` or a compiled component beats a name — but a name is no
-  longer a gamble you only settle in play.
+  never completes. **It came back clean on alpha33 across all five acts**, which
+  retired a blocker that had been open for weeks. The preference order is
+  unchanged and still right — a `PlayerStatType` or a compiled component beats a
+  name — but a name is no longer a gamble you only settle in play.
 
 ## Verify claims against the IL, not memory
 
