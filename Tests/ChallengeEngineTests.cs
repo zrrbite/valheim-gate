@@ -186,7 +186,125 @@ static class ChallengeEngineTests
 
         BuildPieceCompositeTests();
         ReachBiomeTests();
+        QuestTrackTests();
     }
+
+    /// <summary>
+    /// Two questlines side by side — a HUNT track and a CRAFT track — each advancing independently.
+    ///
+    /// The point of the split is that the player chooses which thread to pull, and since every step
+    /// pays heat, that choice IS the difficulty dial: pursue both and you are stronger but hotter,
+    /// rush the boss and you are safer with a lower score.
+    /// </summary>
+    static void QuestTrackTests()
+    {
+        var engine = new ChallengeEngine(Pool(), new Random(41), 120f);
+        engine.SetTracks(SampleTracks());
+
+        Check.That(engine.Tracks.Count == 2, "both tracks are installed");
+        Check.That(engine.Tracks[0].Id == "hunt" && engine.Tracks[1].Id == "craft", "tracks keep their order");
+        Check.That(engine.Tracks[0].Current.Def.Id == "h-1", "each track seats its own first step");
+        Check.That(engine.Tracks[1].Current.Def.Id == "c-1", "the second track seats independently");
+
+        // Independence: progress on one track must not touch the other.
+        engine.ReportKill("Boar");
+        engine.Tick(0.1f);
+        Check.That(engine.Tracks[0].Current.Def.Id == "h-2", "a kill advances the hunt track");
+        Check.That(engine.Tracks[1].Current.Def.Id == "c-1", "the craft track is untouched by a kill");
+
+        engine.ReportMeasure(ChallengeKind.BuildPiece, "Fire", 1f);
+        engine.Tick(0.1f);
+        Check.That(engine.Tracks[1].Current.Def.Id == "c-2", "a build advances the craft track");
+        Check.That(engine.Tracks[0].Current.Def.Id == "h-2", "the hunt track is untouched by a build");
+
+        // Neither track is ever drawn into a random slot, nor filtered by tier or the external gate.
+        var gated = new ChallengeEngine(Pool(), new Random(42), 120f) { MaxTier = -1 };
+        gated.ExternalFilter = _ => false;
+        gated.SetTracks(SampleTracks());
+        gated.Tick(0.1f);
+        Check.That(gated.Tracks.All(t => t.Current != null), "tracks ignore MaxTier and ExternalFilter");
+        Check.That(gated.Active.All(a => !a.Def.MainQuest), "no track step leaks into the random slots");
+
+        // Slot addressing: track i is addressed as -1-i, so track 0 keeps the historical -1.
+        Check.That(ChallengeEngine.TrackSlot(0) == ChallengeEngine.MainQuestSlot, "track 0 is the historical main-quest slot");
+        Check.That(ChallengeEngine.TrackSlot(1) == -2, "track 1 is the next slot down");
+
+        var slotted = new ChallengeEngine(Pool(), new Random(43), 120f);
+        slotted.SetTracks(SampleTracks());
+        slotted.ReportSlotMeasure(ChallengeEngine.TrackSlot(1), 1f);
+        Check.That(slotted.Tracks[1].Current.Progress == 1f, "a slot-addressed report credits its own track");
+        Check.That(slotted.Tracks[0].Current.Progress == 0f, "and only its own track");
+
+        // Completion fires per track, carrying the finished definition.
+        var completed = new List<string>();
+        var events = new ChallengeEngine(Pool(), new Random(44), 120f);
+        events.SetTracks(SampleTracks());
+        events.Completed += d => completed.Add(d.Id);
+        events.ReportKill("Boar");
+        events.ReportMeasure(ChallengeKind.BuildPiece, "Fire", 1f);
+        events.Tick(0.1f);
+        Check.That(completed.Contains("h-1") && completed.Contains("c-1"), "each track raises its own completion");
+
+        // An exhausted track goes quiet without disturbing the other.
+        var drained = new ChallengeEngine(Pool(), new Random(45), 120f);
+        drained.SetTracks(SampleTracks());
+        drained.ReportMeasure(ChallengeKind.BuildPiece, "Fire", 1f);
+        drained.Tick(0.1f);
+        drained.ReportMeasure(ChallengeKind.BuildPiece, "Bed", 1f);
+        drained.Tick(0.1f);
+        Check.That(drained.Tracks[1].Current == null, "an exhausted track has no current step");
+        Check.That(drained.Tracks[0].Current != null, "the other track carries on");
+        drained.Tick(0.1f);
+        Check.That(drained.Tracks[1].Current == null, "an exhausted track stays quiet");
+
+        // Restore seats each track independently, by id, replaying no rewards.
+        var resumed = new ChallengeEngine(Pool(), new Random(46), 120f);
+        var resumedEvents = new List<string>();
+        resumed.SetTracks(SampleTracks());
+        resumed.Completed += d => resumedEvents.Add(d.Id);
+        resumed.RestoreTrack("hunt", 1, 2f, "h-2");
+        resumed.RestoreTrack("craft", 1, 0f, "c-2");
+        Check.That(resumed.Tracks[0].Current.Def.Id == "h-2" && resumed.Tracks[0].Current.Progress == 2f,
+            "a restore seats the saved step with its progress");
+        Check.That(resumed.Tracks[1].Current.Def.Id == "c-2", "each track restores independently");
+        Check.That(resumedEvents.Count == 0, "a restore replays no completions");
+
+        // An unknown track id is ignored rather than throwing — a save from a build with different
+        // track names must not stop a resume.
+        resumed.RestoreTrack("nonsense", 0, 0f, null);
+        Check.That(resumed.Tracks.Count == 2, "an unknown track id changes nothing");
+
+        // The single-chain API still works: it installs one track, which is what keeps every
+        // pre-track test in this file meaningful.
+        var legacy = new ChallengeEngine(Pool(), new Random(47), 120f);
+        legacy.SetMainChain(MainChain());
+        Check.That(legacy.Tracks.Count == 1, "SetMainChain installs exactly one track");
+        Check.That(legacy.CurrentMainQuest != null && legacy.CurrentMainQuest.Def.Id == "mq-1",
+            "CurrentMainQuest still reads the first track");
+    }
+
+    /// <summary>A hunt track and a craft track, each two steps, sharing no ids.</summary>
+    static List<QuestTrack> SampleTracks() => new List<QuestTrack>
+    {
+        new QuestTrack
+        {
+            Id = "hunt", Label = "HUNT",
+            Chain = new List<ChallengeDefinition>
+            {
+                new ChallengeDefinition { Id="h-1", MainQuest=true, Kind=ChallengeKind.KillPrefab, Param="Boar", Target=1, Display="Kill a boar" },
+                new ChallengeDefinition { Id="h-2", MainQuest=true, Kind=ChallengeKind.KillPrefab, Param="Eikthyr", Target=1, Display="Defeat Eikthyr" },
+            },
+        },
+        new QuestTrack
+        {
+            Id = "craft", Label = "CRAFT",
+            Chain = new List<ChallengeDefinition>
+            {
+                new ChallengeDefinition { Id="c-1", MainQuest=true, Kind=ChallengeKind.BuildPiece, Param="Fire", Target=1, Display="Build a fire" },
+                new ChallengeDefinition { Id="c-2", MainQuest=true, Kind=ChallengeKind.BuildPiece, Param="Bed", Target=1, Display="Build a bed" },
+            },
+        },
+    };
 
     /// <summary>
     /// ReachBiome: "you have stood in this biome during this run". Param names a Heightmap.Biome

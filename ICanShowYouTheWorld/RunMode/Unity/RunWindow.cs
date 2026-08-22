@@ -173,9 +173,11 @@ namespace ICanShowYouTheWorld.RunMode
         /// is essentially never visible to a Layout pass, whereas the swap always is. Null means
         /// "nothing seen yet", which must not flash — otherwise every run would open with one.
         /// </summary>
-        private string _lastMainQuestId;
-        private bool _mainQuestSeen;
-        private float _questFlashAt = float.NegativeInfinity;
+        // Per-track completion flash: the step each track was last seen on, and when it last changed.
+        // Keyed by track id rather than held as one value, so advancing one questline does not flash
+        // the other — see UpdateQuestFlash.
+        private readonly Dictionary<string, string> _lastTrackStepIds = new Dictionary<string, string>();
+        private readonly Dictionary<string, float> _trackFlashAt = new Dictionary<string, float>();
 
         /// <summary>Challenge ids seen completed, and when — drives the brief gold flash on a row.</summary>
         private readonly HashSet<string> _seenCompletedIds = new HashSet<string>();
@@ -531,15 +533,38 @@ namespace ICanShowYouTheWorld.RunMode
             return 1f - Mathf.Clamp01((Time.realtimeSinceStartup - at) / CompletionFlashSeconds);
         }
 
+        /// <summary>
+        /// Flashes a track's row gold when its step changes.
+        ///
+        /// Kept PER TRACK. A single shared timestamp would flash both rows whenever either advanced,
+        /// which reads as "something happened over there too" — precisely the wrong signal when the
+        /// whole point of two tracks is telling them apart. The first sighting of a track never
+        /// flashes: seeing something for the first time is not it changing.
+        /// </summary>
         private void UpdateQuestFlash(ChallengeEngine challenges)
         {
             if (Event.current == null || Event.current.type != EventType.Layout) return;
 
-            string id = challenges?.CurrentMainQuest?.Def?.Id;
-            if (_mainQuestSeen && id != _lastMainQuestId) _questFlashAt = Time.realtimeSinceStartup;
+            var tracks = challenges?.Tracks;
+            if (tracks == null) return;
 
-            _mainQuestSeen = true;
-            _lastMainQuestId = id;
+            foreach (var track in tracks)
+            {
+                if (track.Id == null) continue;
+
+                string stepId = track.Current?.Def?.Id;
+                if (_lastTrackStepIds.TryGetValue(track.Id, out var previous) && stepId != previous)
+                    _trackFlashAt[track.Id] = Time.realtimeSinceStartup;
+
+                _lastTrackStepIds[track.Id] = stepId;
+            }
+        }
+
+        /// <summary>How gold a track's row should be right now: 1 just after it advanced, decaying to 0.</summary>
+        private float TrackFlash01(string trackId)
+        {
+            if (trackId == null || !_trackFlashAt.TryGetValue(trackId, out var at)) return 0f;
+            return 1f - Mathf.Clamp01((Time.realtimeSinceStartup - at) / CompletionFlashSeconds);
         }
 
         private void UpdateOfferFadeState(int offerCount)
@@ -719,40 +744,56 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
-        /// The main questline: the one step in play, its progress, and what finishing it hands
-        /// over. Random tasks pay in heat and boons; the questline pays in ITEMS, which is why the
-        /// reward line is spelled out here rather than left as a surprise — it is the thing the
-        /// player is meant to be steering towards.
+        /// The questlines: one row per track, each with its step, progress and reward.
         ///
-        /// Deliberately narrow: exactly one step is ever shown (the engine only keeps one), and
-        /// nothing here is interactive — a questline step cannot be rerolled.
+        /// Both are always shown rather than one at a time. The point of two tracks is that the
+        /// player chooses which thread to pull — and since every step pays heat, that choice is the
+        /// difficulty dial. A thread you have to press a key to see is one you forget you have, and
+        /// a dial you cannot see is not a dial.
+        ///
+        /// Random tasks pay in heat and boons; questlines pay in ITEMS, which is why the reward line
+        /// is spelled out rather than left as a surprise. Nothing here is interactive — a questline
+        /// step cannot be rerolled.
         /// </summary>
         private void DrawQuestSection(IRunService run)
         {
-            // The act is the header, so the questline always says WHERE in the saga it is rather
-            // than just what the next step happens to be. Falls back to the bare word when no act
+            // The act is the header, so the questlines always say WHERE in the saga they are rather
+            // than just what the next steps happen to be. Falls back to the bare word when no act
             // is seated — a run resumed from a save written before acts existed.
             var act = run.CurrentAct;
             GUILayout.Label(act == null ? "QUEST" : act.Banner, RunTheme.Header);
 
-            // Same gold flash a finished task row gets, decaying back to the steady color.
-            float flash = 1f - Mathf.Clamp01((Time.realtimeSinceStartup - _questFlashAt) / CompletionFlashSeconds);
+            var tracks = run.Challenges?.Tracks;
+            if (tracks == null || tracks.Count == 0)
+            {
+                GUILayout.Label("  no questline", RunTheme.Small);
+                return;
+            }
 
-            var quest = run.Challenges?.CurrentMainQuest;
+            // Each row carries its OWN flash — see UpdateQuestFlash.
+            for (int i = 0; i < tracks.Count; i++) DrawQuestTrack(tracks[i], TrackFlash01(tracks[i].Id));
+        }
+
+        /// <summary>One track's row. An exhausted track says so rather than vanishing — a row that
+        /// disappeared would read as a bug, and "done" is information.</summary>
+        private void DrawQuestTrack(QuestTrack track, float flash)
+        {
+            var quest = track.Current;
+
             if (quest == null)
             {
-                // The chain ran out. For every act but the last this is a blink — the act flips on
-                // the next boss poll and a new chain is seated within the second — so what this
-                // really shows is the END of the saga. It used to read "Act I complete" and then
-                // stay that way forever, which was the whole complaint.
+                // For the hunt track of any act but the last, this is a blink: the act flips on the
+                // next boss poll and new tracks are seated within the second. A CRAFT track can sit
+                // here for real, though — finishing it early is allowed, and so is never finishing
+                // it before the boss falls.
                 GUI.contentColor = Color.Lerp(RunTheme.CompleteGreen, RunTheme.AccentGold, flash);
-                GUILayout.Label(act == null ? "  Questline complete" : $"  {act.Title} complete", RunTheme.Body);
+                GUILayout.Label($"  {track.Label}   done", RunTheme.Small);
                 GUI.contentColor = Color.white;
                 return;
             }
 
             GUI.contentColor = Color.Lerp(RunTheme.TextParchment, RunTheme.AccentGold, flash);
-            GUILayout.Label("  " + quest.Def.Display, RunTheme.Body);
+            GUILayout.Label($"  {track.Label}   {quest.Def.Display}", RunTheme.Body);
             GUI.contentColor = Color.white;
 
             GUILayout.BeginHorizontal();

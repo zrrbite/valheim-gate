@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-22, at `0.221.12-run.alpha31`. This is the "pick it back up
+Written 2026-08-22, at `0.221.12-run.alpha32`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -19,13 +19,13 @@ Everything below is what that file tells it.
 
 ## Where things stand
 
-- Branch **`feature/run-mode`**, 83 commits ahead of `main`. **Not merged**,
+- Branch **`feature/run-mode`**, 84 commits ahead of `main`. **Not merged**,
   deliberately — the mode is still being tuned in play.
-- Latest tag **`0.221.12-run.alpha31`**, pushed. The Mac has it deployed.
+- Latest tag **`0.221.12-run.alpha32`**, pushed. The Mac has it deployed.
 - Game version 0.221.12, Unity 6000.0.61. Windows is the play machine, the Mac
   is the test/build machine, the Deck travels (and is **stale** — it still has
   an older patched assembly and needs a re-patch before use).
-- Engine tests: `Tests/run_tests.sh`, 332 assertions, all passing.
+- Engine tests: `Tests/run_tests.sh`, 359 assertions, all passing.
 
 ## The loop
 
@@ -55,13 +55,28 @@ must read the tag you just pushed. **The version popup is the whole point of
 tagging every alpha** — it is the only way to be certain which build is being
 played.
 
-## What the mode is, as of alpha31
+## What the mode is, as of alpha32
 
-**Five acts**, one per boss, each a questline chain ending on its own boss kill.
-All five are now written: I The Meadows (15 steps) → Eikthyr, II The Black Forest
-(9) → The Elder, III The Swamp (7) → Bonemass, IV The Mountains (7) → Moder,
-V The Plains (7) → Yagluth. Every act opens on an arrival step and carries mob
-beats plus (except the Mountains) a building beat.
+**Five acts**, one per boss. All five are written: I The Meadows (15 steps) →
+Eikthyr, II The Black Forest (9) → The Elder, III The Swamp (7) → Bonemass,
+IV The Mountains (7) → Moder, V The Plains (7) → Yagluth.
+
+**Each act runs TWO questlines side by side (alpha32)** — a HUNT track of its
+kills and a CRAFT track of everything else, advancing independently, both shown in
+the HUD. `RunService.Split` cuts an act's steps by `Kind`, so a step added later
+lands on the right track without anyone remembering to put it there.
+
+> **This is the difficulty dial, and it was the owner's framing:** *"the good
+> thing about dual paths is that you can decide if you want the heat."* Every
+> questline step pays heat, so working both tracks makes you stronger AND hotter;
+> running the hunt track straight at the boss keeps you cool, poorer and
+> lower-scoring. It also reframes the short craft tracks in the later acts (Act IV
+> has two steps) — those acts simply offer less optional heat, rather than being
+> thin. See [the design](specs/2026-08-22-quest-tracks-design.md).
+
+The BOSS is the last step of every hunt track, which is what keeps "the act is
+over" observable. An unfinished craft track when the boss falls is simply
+unfinished — the cost of rushing, and nothing extra to persist.
 
 Which act is current is **derived from the world's defeated-boss count**, never
 stored — so it cannot drift, a resume recomputes it, and a run started on a world

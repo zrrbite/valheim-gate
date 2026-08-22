@@ -65,6 +65,20 @@ namespace ICanShowYouTheWorld.RunMode
         public string mainQuestId;
 
         /// <summary>
+        /// Per-track questline positions, as parallel lists — one entry per track, in the act's
+        /// track order. Written since alpha32, when one questline became two.
+        ///
+        /// Null on an older save, which is what <see cref="mainQuestId"/> above is still here for:
+        /// that single id is resolved across EVERY track's chain and seats whichever track owns it,
+        /// leaving the other at its start. Same id-over-index principle the single chain already
+        /// used, one level up.
+        /// </summary>
+        public List<string> trackIds;
+        public List<int> trackIndices;
+        public List<float> trackProgress;
+        public List<string> trackStepIds;
+
+        /// <summary>
         /// The player's WoodCutting skill level as it stood before the run LOANED them 100 (see
         /// RunService's skill boost — "max woodcutting from the start", with no grinding for it).
         /// Restored when the run finishes or is abandoned, so the loan is never permanent.

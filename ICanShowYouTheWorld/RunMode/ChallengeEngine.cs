@@ -196,6 +196,38 @@ namespace ICanShowYouTheWorld.RunMode
         }
     }
 
+    /// <summary>
+    /// One questline running in a reserved slot of its own — a THREAD the player can pull.
+    ///
+    /// The run has more than one because a single chain forced an order: to reach the next kill you
+    /// had to build the next building. Two tracks let the player choose which thread to pull, and
+    /// since every step pays heat, that choice IS the difficulty dial — pursue both and you are
+    /// stronger but hotter, rush the boss and you are safer with a lower score.
+    ///
+    /// A track is never drawn, never rerolled and never tier- or filter-gated, exactly as the single
+    /// main chain was: it is content the run guarantees, not content the rng offers.
+    /// </summary>
+    public class QuestTrack
+    {
+        /// <summary>Stable id — "hunt", "craft". Used by saves and restores, never shown.</summary>
+        public string Id;
+
+        /// <summary>Short player-facing name for the HUD row, e.g. "HUNT".</summary>
+        public string Label;
+
+        /// <summary>The ordered steps.</summary>
+        public List<ChallengeDefinition> Chain = new List<ChallengeDefinition>();
+
+        /// <summary>
+        /// Position in <see cref="Chain"/>; equal to its Count once the track is exhausted.
+        /// Owned by the engine — assign through <see cref="ChallengeEngine.RestoreTrack"/>.
+        /// </summary>
+        public int Index;
+
+        /// <summary>The step in play, or null when this track is exhausted or empty.</summary>
+        public ActiveChallenge Current;
+    }
+
     /// <summary>Keeps up to 3 distinct challenges active; each refills after its own cooldown.</summary>
     public class ChallengeEngine
     {
@@ -216,104 +248,132 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         private bool dealtAnything;
 
-        /// <summary>The ordered main-quest chain, or empty when none was set. See <see cref="SetMainChain"/>.</summary>
-        private List<ChallengeDefinition> mainChain = new List<ChallengeDefinition>();
-
-        /// <summary>Position in <see cref="mainChain"/>; equal to its Count once the chain is exhausted.</summary>
-        private int mainIndex;
-
-        private ActiveChallenge mainQuest;
+        /// <summary>The questlines running side by side, in display order. See <see cref="SetTracks"/>.</summary>
+        private readonly List<QuestTrack> tracks = new List<QuestTrack>();
 
         public IReadOnlyList<ActiveChallenge> Active => active;
         public event Action<ChallengeDefinition> Completed;
 
         /// <summary>
-        /// The one main-quest step in play right now, in a RESERVED slot of its own — it is not in
-        /// <see cref="Active"/>, does not count against the three random slots, is never drawn or
-        /// rerolled, and is not filtered by <see cref="MaxTier"/> or <see cref="ExternalFilter"/>.
-        /// Null when no chain was set or the chain has been exhausted.
+        /// The questlines in play. Each holds one step at a time in a RESERVED slot of its own — not
+        /// in <see cref="Active"/>, not counting against the three random slots, never drawn or
+        /// rerolled, and never filtered by <see cref="MaxTier"/> or <see cref="ExternalFilter"/>.
         /// </summary>
-        public ActiveChallenge CurrentMainQuest => mainQuest;
+        public IReadOnlyList<QuestTrack> Tracks => tracks;
 
         /// <summary>
-        /// The slot index that addresses <see cref="CurrentMainQuest"/> in
-        /// <see cref="ReportSlotMeasure"/>. Negative on purpose: the main quest sits outside the
-        /// active list, so it cannot share that list's index space, and every other negative index
-        /// keeps its existing "ignored" behaviour.
+        /// The first track's current step. Kept because a single questline was all this engine had
+        /// until tracks arrived, and the tests that pinned that behaviour are still worth running.
+        /// New code should read <see cref="Tracks"/> — with two questlines, "the main quest" is not
+        /// a well-formed question.
+        /// </summary>
+        public ActiveChallenge CurrentMainQuest => tracks.Count > 0 ? tracks[0].Current : null;
+
+        /// <summary>
+        /// The slot index addressing the FIRST track in <see cref="ReportSlotMeasure"/>. Negative on
+        /// purpose: tracks sit outside the active list, so they cannot share its index space, and
+        /// every other negative index keeps its existing "ignored" behaviour.
         /// </summary>
         public const int MainQuestSlot = -1;
 
         /// <summary>
-        /// How far along the main-quest chain the run is: 0 = the first step, Count = exhausted.
-        /// Persisted by the host so a resumed run picks the questline up where it left off.
+        /// The slot index addressing track <paramref name="trackIndex"/>: -1, -2, -3…
         ///
-        /// The setter re-seats the current step with ZERO progress and fires nothing — assigning
-        /// an index is a restore, not a completion. Use <see cref="RestoreMainQuest"/> to bring
-        /// part-finished progress back with it.
+        /// Track 0 deliberately lands on <see cref="MainQuestSlot"/>, so the addressing a single
+        /// questline used still means the same thing now that there are several.
+        /// </summary>
+        public static int TrackSlot(int trackIndex) => -1 - trackIndex;
+
+        /// <summary>
+        /// How far along the FIRST track the run is. See <see cref="CurrentMainQuest"/> for why this
+        /// single-questline view is kept; new code should read <see cref="Tracks"/>.
         /// </summary>
         public int MainQuestIndex
         {
-            get => mainIndex;
-            set => RestoreMainQuest(value, 0f);
+            get => tracks.Count > 0 ? tracks[0].Index : 0;
+            set { if (tracks.Count > 0) RestoreTrack(tracks[0].Id, value, 0f, null); }
         }
 
         /// <summary>
-        /// Installs the ordered main-quest chain and starts it at step 0. The chain is kept
-        /// entirely apart from the random pool: its definitions are never drawn, never rerolled
-        /// into a slot, and never tier- or filter-gated, so a questline step cannot be lost to the
-        /// rng or to a world whose progression hasn't caught up yet.
+        /// Installs the questlines and starts each at its own step 0. Tracks are kept entirely apart
+        /// from the random pool: their definitions are never drawn, never rerolled into a slot, and
+        /// never tier- or filter-gated, so a questline step cannot be lost to the rng or to a world
+        /// whose progression hasn't caught up yet.
         ///
-        /// A null or empty chain simply means "no questline" — <see cref="CurrentMainQuest"/> stays
-        /// null and nothing else about the engine changes.
+        /// A null or empty list simply means "no questlines" and nothing else about the engine
+        /// changes. The tracks are COPIED, so the caller's act table is not mutated as the run
+        /// advances — an act is content, and content must be replayable.
         /// </summary>
-        public void SetMainChain(List<ChallengeDefinition> chain)
+        public void SetTracks(IList<QuestTrack> newTracks)
         {
-            mainChain = chain == null ? new List<ChallengeDefinition>() : chain.ToList();
-            mainIndex = 0;
-            mainQuest = mainIndex < mainChain.Count ? MakeActive(mainChain[mainIndex]) : null;
+            tracks.Clear();
+            if (newTracks == null) return;
+
+            foreach (var t in newTracks.Where(t => t != null))
+            {
+                var copy = new QuestTrack
+                {
+                    Id = t.Id,
+                    Label = t.Label,
+                    Chain = t.Chain == null ? new List<ChallengeDefinition>() : t.Chain.ToList(),
+                    Index = 0,
+                };
+                copy.Current = copy.Chain.Count > 0 ? MakeActive(copy.Chain[0]) : null;
+                tracks.Add(copy);
+            }
         }
 
         /// <summary>
-        /// Puts the chain back at <paramref name="index"/> with <paramref name="progress"/> on that
-        /// step, WITHOUT firing <see cref="Completed"/> for any step it skips past — a resume must
-        /// restore a position, not replay the rewards that got the run there.
-        ///
-        /// Call after <see cref="SetMainChain"/> (which defines what the index means). An index at
-        /// or beyond the chain's length is the exhausted state and leaves
-        /// <see cref="CurrentMainQuest"/> null; a negative one is clamped to the start, matching
-        /// the malformed-save tolerance the rest of the restore path uses.
+        /// Installs a SINGLE unnamed track. The shape this engine had before questlines could run
+        /// side by side, kept so the tests that pinned that behaviour still exercise it.
         /// </summary>
+        public void SetMainChain(List<ChallengeDefinition> chain) =>
+            SetTracks(new List<QuestTrack> { new QuestTrack { Id = "main", Label = "QUEST", Chain = chain } });
+
+        /// <summary>Restores the first track. See <see cref="RestoreTrack"/>.</summary>
         public void RestoreMainQuest(int index, float progress) => RestoreMainQuest(index, progress, null);
 
-        /// <summary>
-        /// Restores the questline position, preferring the saved step's ID over its index.
-        ///
-        /// The index alone is only meaningful against the exact chain that wrote it, and the chain
-        /// is content that changes between builds. Reordering it — as alpha17 did, inserting two
-        /// steps and moving the deer hunt — silently reattributes an old save's position to a
-        /// different step, and since a step is complete the moment Progress >= Target, a position
-        /// carried over from a longer objective fires an instant, unearned completion (rewards and
-        /// all) on the first tick.
-        ///
-        /// So: find the saved ID and resume exactly where the player was. Failing that (a save from
-        /// before IDs were written, or a step that no longer exists), keep the index but DROP the
-        /// progress — the player repeats a step at worst, rather than being handed one.
-        /// </summary>
+        /// <summary>Restores the first track by id-preferred position. See <see cref="RestoreTrack"/>.</summary>
         public void RestoreMainQuest(int index, float progress, string id)
         {
-            int byId = id == null ? -1 : mainChain.FindIndex(d => d.Id == id);
+            if (tracks.Count > 0) RestoreTrack(tracks[0].Id, index, progress, id);
+        }
+
+        /// <summary>
+        /// Puts one track back at a saved position, WITHOUT firing <see cref="Completed"/> for any
+        /// step it skips past — a resume must restore a position, not replay the rewards that got
+        /// the run there.
+        ///
+        /// Prefers the saved step's ID over its index. The index alone is only meaningful against
+        /// the exact chain that wrote it, and chains are content that changes between builds:
+        /// reordering one silently reattributes an old save's position to a different step, and
+        /// since a step is complete the moment Progress >= Target, a position carried over from a
+        /// longer objective fires an instant, unearned completion — rewards and all — on the first
+        /// tick. Failing an id match (a save from before ids were written, or a step that no longer
+        /// exists), the index is kept but the progress DROPPED: the player repeats a step at worst,
+        /// rather than being handed one.
+        ///
+        /// An unknown track id is ignored rather than throwing. A save written by a build with
+        /// different track names must never stop a resume; that track simply starts fresh.
+        /// </summary>
+        public void RestoreTrack(string trackId, int index, float progress, string stepId)
+        {
+            var track = tracks.FirstOrDefault(t => t.Id == trackId);
+            if (track == null) return;
+
+            int byId = stepId == null ? -1 : track.Chain.FindIndex(d => d.Id == stepId);
             bool trusted = byId >= 0;
 
-            mainIndex = Math.Max(0, trusted ? byId : index);
+            track.Index = Math.Max(0, trusted ? byId : index);
 
-            if (mainIndex >= mainChain.Count)
+            if (track.Index >= track.Chain.Count)
             {
-                mainQuest = null;
+                track.Current = null;
                 return;
             }
 
-            mainQuest = MakeActive(mainChain[mainIndex]);
-            mainQuest.Progress = trusted ? Math.Max(0f, progress) : 0f;
+            track.Current = MakeActive(track.Chain[track.Index]);
+            track.Current.Progress = trusted ? Math.Max(0f, progress) : 0f;
         }
 
         /// <summary>
@@ -340,14 +400,21 @@ namespace ICanShowYouTheWorld.RunMode
 
         public void Tick(float dt)
         {
-            // (0) The main quest advances first, so a host handler that reads CurrentMainQuest
-            // during the event already sees the NEXT step rather than the one it just finished
-            // (the finished definition is the event's own argument).
-            if (mainQuest != null && mainQuest.Done)
+            // (0) The questlines advance first, so a host handler that reads Tracks during the event
+            // already sees the NEXT step rather than the one it just finished (the finished
+            // definition is the event's own argument). Each track advances independently — that is
+            // the whole point of there being more than one.
+            //
+            // Advanced by index rather than by foreach: the handler is host code that can legally
+            // call back into this engine, and a collection modified during enumeration would throw.
+            for (int i = 0; i < tracks.Count; i++)
             {
-                var finished = mainQuest.Def;
-                mainIndex++;
-                mainQuest = mainIndex < mainChain.Count ? MakeActive(mainChain[mainIndex]) : null;
+                var track = tracks[i];
+                if (track.Current == null || !track.Current.Done) continue;
+
+                var finished = track.Current.Def;
+                track.Index++;
+                track.Current = track.Index < track.Chain.Count ? MakeActive(track.Chain[track.Index]) : null;
                 Completed?.Invoke(finished);
             }
 
@@ -417,16 +484,19 @@ namespace ICanShowYouTheWorld.RunMode
         {
             foreach (var a in active) CreditKill(a, prefab);
 
-            // The main quest measures through exactly the same reports as a random slot; it just
-            // lives outside the active list.
-            if (mainQuest != null) CreditKill(mainQuest, prefab);
+            // Questlines measure through exactly the same reports as a random slot; they just live
+            // outside the active list. Every track sees every report — a kill that appears in two
+            // tracks' chains legitimately counts for both.
+            foreach (var track in tracks)
+                if (track.Current != null) CreditKill(track.Current, prefab);
         }
 
         public void ReportMeasure(ChallengeKind kind, string param, float value)
         {
             foreach (var a in active) CreditMeasure(a, kind, param, value);
 
-            if (mainQuest != null) CreditMeasure(mainQuest, kind, param, value);
+            foreach (var track in tracks)
+                if (track.Current != null) CreditMeasure(track.Current, kind, param, value);
         }
 
         private static void CreditKill(ActiveChallenge a, string prefab)
@@ -522,15 +592,20 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         public void ReportSlotMeasure(int slotIndex, float value)
         {
-            // The main quest has its own baseline for exactly the same reason a random slot does,
-            // so it needs the same slot-addressed report — see MainQuestSlot.
-            if (slotIndex == MainQuestSlot)
+            // A track holds its own baseline for exactly the same reason a random slot does, so it
+            // needs the same slot-addressed report — see TrackSlot. Negative indices address tracks
+            // from -1 down; anything past the last track is ignored, like any other bad slot.
+            if (slotIndex < 0)
             {
-                if (mainQuest != null) mainQuest.Progress = Math.Max(mainQuest.Progress, value);
+                int trackIndex = -1 - slotIndex;
+                if (trackIndex >= tracks.Count) return;
+
+                var current = tracks[trackIndex].Current;
+                if (current != null) current.Progress = Math.Max(current.Progress, value);
                 return;
             }
 
-            if (slotIndex < 0 || slotIndex >= active.Count) return;
+            if (slotIndex >= active.Count) return;
 
             var a = active[slotIndex];
             a.Progress = Math.Max(a.Progress, value);

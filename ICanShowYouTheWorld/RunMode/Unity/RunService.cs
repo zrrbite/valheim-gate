@@ -951,10 +951,13 @@ namespace ICanShowYouTheWorld.RunMode
             // not standing — which is what makes it survive a logout, a zone unload, or a player who
             // wandered off and left it behind. Its ZDO is non-persistent, so "not standing" is the
             // normal state after any reload.
-            var quest = _challenges?.CurrentMainQuest;
-            bool heraldWanted = quest != null &&
-                                quest.Def.Kind == ChallengeKind.KillPrefab &&
-                                quest.Def.Param == DeerHerd.HeraldKillName;
+            // Asked of every track rather than just the first: the Herald step lives on HUNT, which
+            // is track 0 today, but tying a content check to a track's position would break the
+            // moment the tracks were reordered.
+            bool heraldWanted = _challenges != null && _challenges.Tracks.Any(t =>
+                t.Current != null &&
+                t.Current.Def.Kind == ChallengeKind.KillPrefab &&
+                t.Current.Def.Param == DeerHerd.HeraldKillName);
 
             if (heraldWanted && _deer.TrySpawnHerald(player))
                 Message($"{DeerHerd.HeraldName} is abroad in the meadows.");
@@ -1113,8 +1116,8 @@ namespace ICanShowYouTheWorld.RunMode
         {
             foreach (var a in _challenges.Active) yield return a;
 
-            var quest = _challenges.CurrentMainQuest;
-            if (quest != null) yield return quest;
+            foreach (var track in _challenges.Tracks)
+                if (track.Current != null) yield return track.Current;
         }
 
         /// <summary>
@@ -1169,17 +1172,21 @@ namespace ICanShowYouTheWorld.RunMode
                 _challenges.ReportSlotMeasure(i, Mathf.Max(0f, current.Value - a.Baseline));
             }
 
-            // The questline's own reserved slot, on exactly the same terms — it holds its own
-            // Baseline for the same reason a random slot does.
-            var quest = _challenges.CurrentMainQuest;
-            if (quest != null && quest.Def.Kind == ChallengeKind.StatDelta && !float.IsNaN(quest.Baseline))
+            // Each questline's own reserved slot, on exactly the same terms — a track holds its own
+            // Baseline for the same reason a random slot does, and two tracks can be measuring the
+            // same stat from different zero points, which is precisely why the report is
+            // slot-addressed rather than param-scoped.
+            var tracks = _challenges.Tracks;
+            for (int i = 0; i < tracks.Count; i++)
             {
+                var quest = tracks[i].Current;
+                if (quest == null || quest.Def.Kind != ChallengeKind.StatDelta || float.IsNaN(quest.Baseline)) continue;
+
                 float? questCurrent = ReadPlayerStat(quest.Def.Param);
-                if (questCurrent != null)
-                {
-                    _challenges.ReportSlotMeasure(
-                        ChallengeEngine.MainQuestSlot, Mathf.Max(0f, questCurrent.Value - quest.Baseline));
-                }
+                if (questCurrent == null) continue;
+
+                _challenges.ReportSlotMeasure(
+                    ChallengeEngine.TrackSlot(i), Mathf.Max(0f, questCurrent.Value - quest.Baseline));
             }
         }
 
@@ -1448,29 +1455,37 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         private void ValidateActs()
         {
-            // Duplicate step ids are the dangerous one. RestoreMainQuest resolves a saved position
-            // by id against the current act's chain, so an id in two acts lets a resume seat the
-            // wrong act's step — and a step is complete the moment Progress >= Target, so that can
-            // fire an unearned completion, rewards and all, on the first tick.
-            var ids = _acts.SelectMany(a => a.Chain).Select(c => c.Id).ToList();
+            // Duplicate step ids are the dangerous one, and with tracks the hazard is now
+            // two-dimensional. RestoreTrack resolves a saved position by id against ONE track's
+            // chain, so an id appearing twice anywhere lets a resume seat the wrong step — and a
+            // step is complete the moment Progress >= Target, so that can fire an unearned
+            // completion, rewards and all, on the first tick.
+            var ids = _acts.SelectMany(a => a.AllSteps).Select(c => c.Id).ToList();
             var duplicates = ids.GroupBy(id => id).Where(g => g.Count() > 1).Select(g => g.Key).ToList();
 
             if (duplicates.Count > 0)
-                Debug.LogError("[ICanShowYouTheWorld] Duplicate questline step ids across acts — a resume " +
-                               $"can seat the wrong act's step: {string.Join(", ", duplicates.ToArray())}");
+                Debug.LogError("[ICanShowYouTheWorld] Duplicate questline step ids across acts/tracks — a " +
+                               $"resume can seat the wrong step: {string.Join(", ", duplicates.ToArray())}");
 
-            // An act whose last step is not its boss leaves the questline exhausted while the act is
-            // still running — the dead end acts exist to remove.
             foreach (var act in _acts)
             {
-                var last = act.Chain.LastOrDefault();
-                if (last == null)
-                    Debug.LogError($"[ICanShowYouTheWorld] {act.Label} has an empty chain — it will read as complete on arrival.");
-                else if (last.Kind != ChallengeKind.KillPrefab)
-                    Debug.LogError($"[ICanShowYouTheWorld] {act.Label} does not end on its boss (last step '{last.Id}').");
-
                 if (!Bosses.Any(b => b.defeatKey == act.BossDefeatKey))
                     Debug.LogError($"[ICanShowYouTheWorld] {act.Label} names a boss key no boss has: '{act.BossDefeatKey}'.");
+
+                // The BOSS lives on the hunt track, and its last step being the boss is what makes
+                // "the act is over" observable. A craft track may legitimately be short or even
+                // empty; a hunt track that does not end on a kill cannot end the act.
+                var hunt = act.Tracks.FirstOrDefault(t => t.Id == HuntTrackId);
+                if (hunt == null || hunt.Chain.Count == 0)
+                {
+                    Debug.LogError($"[ICanShowYouTheWorld] {act.Label} has no hunt track — its boss is unreachable.");
+                    continue;
+                }
+
+                var last = hunt.Chain.LastOrDefault();
+                if (last == null || last.Kind != ChallengeKind.KillPrefab)
+                    Debug.LogError($"[ICanShowYouTheWorld] {act.Label}'s hunt track does not end on its boss " +
+                                   $"(last step '{last?.Id ?? "none"}').");
             }
 
             // A build category may appear in ONE act only. _builtSeen latches for the whole run, so
@@ -1481,7 +1496,7 @@ namespace ICanShowYouTheWorld.RunMode
             var categoryOwners = new Dictionary<string, string>();
             foreach (var act in _acts)
             {
-                foreach (var category in act.Chain
+                foreach (var category in act.AllSteps
                              .Where(c => c.Kind == ChallengeKind.BuildPiece && !string.IsNullOrEmpty(c.Param))
                              .Select(c => c.Param)
                              .Distinct())
@@ -1532,10 +1547,10 @@ namespace ICanShowYouTheWorld.RunMode
             _actIndex = next;
 
             // Re-seat even when the index is unchanged if nothing is seated yet: this is also the
-            // path that installs the chain at run start.
-            if (!changed && _challenges.CurrentMainQuest != null) return;
+            // path that installs the act's tracks at run start.
+            if (!changed && _challenges.Tracks.Count > 0) return;
 
-            _challenges.SetMainChain(_acts[_actIndex].Chain);
+            _challenges.SetTracks(_acts[_actIndex].Tracks);
 
             if (!announce || !changed) return;
 
@@ -2428,6 +2443,50 @@ namespace ICanShowYouTheWorld.RunMode
             SaveState();
         }
 
+        /// <summary>
+        /// Puts every questline back where it was.
+        ///
+        /// A save written since alpha32 carries a position per track and each is restored by id, as
+        /// before. An OLDER save carries one <c>mainQuestId</c> from when there was one questline —
+        /// and that id could belong to either track now, since the split cut the old chain in two.
+        /// So it is looked up across every track's chain and seats whichever one owns it, leaving
+        /// the other at its start.
+        ///
+        /// Restoring the other track to zero rather than guessing is the conservative direction: a
+        /// player repeats a step at worst. Guessing a position would risk seating a step whose
+        /// target is already met, which fires an unearned completion — rewards and all — on the
+        /// first tick.
+        /// </summary>
+        private void RestoreQuestTracks(RunSaveState s)
+        {
+            if (s.trackIds != null && s.trackIds.Count > 0)
+            {
+                for (int i = 0; i < s.trackIds.Count; i++)
+                {
+                    _challenges.RestoreTrack(
+                        s.trackIds[i],
+                        s.trackIndices != null && i < s.trackIndices.Count ? s.trackIndices[i] : 0,
+                        s.trackProgress != null && i < s.trackProgress.Count ? s.trackProgress[i] : 0f,
+                        s.trackStepIds != null && i < s.trackStepIds.Count ? s.trackStepIds[i] : null);
+                }
+                return;
+            }
+
+            if (string.IsNullOrEmpty(s.mainQuestId)) return;
+
+            var owner = _challenges.Tracks.FirstOrDefault(t => t.Chain.Any(d => d.Id == s.mainQuestId));
+            if (owner == null)
+            {
+                Debug.Log($"[ICanShowYouTheWorld] Saved questline step '{s.mainQuestId}' belongs to no current " +
+                          "track; both questlines start at the beginning of this act.");
+                return;
+            }
+
+            _challenges.RestoreTrack(owner.Id, s.mainQuestIndex, s.mainQuestProgress, s.mainQuestId);
+            Debug.Log($"[ICanShowYouTheWorld] Migrated a pre-track save: '{s.mainQuestId}' resumed on the " +
+                      $"{owner.Label} track.");
+        }
+
         private static string PrefabNameOf(Character c)
         {
             var go = c.gameObject;
@@ -2703,7 +2762,7 @@ namespace ICanShowYouTheWorld.RunMode
             // which takes a fresh one): re-baselining can only ever cost the player the fraction
             // of a single craft, because the restored PROGRESS is kept and the report path takes
             // the max of the two.
-            _challenges.RestoreMainQuest(s.mainQuestIndex, s.mainQuestProgress, s.mainQuestId);
+            RestoreQuestTracks(s);
 
             // Anything the save didn't carry a baseline for (a pre-alpha4 save, or a slot that
             // never managed to take one) gets its zero point NOW rather than staying NaN forever.
@@ -2873,9 +2932,16 @@ namespace ICanShowYouTheWorld.RunMode
                     .ToList(),
                 // Independent of the actives lists above: the questline lives in a reserved slot
                 // of its own, so it saves as a position + a progress value, not as a list entry.
+                // Kept written for one build's worth of backwards compatibility: a save made here
+                // and read by an alpha31 binary still finds its first track where it expects it.
                 mainQuestIndex = _challenges?.MainQuestIndex ?? 0,
                 mainQuestProgress = _challenges?.CurrentMainQuest?.Progress ?? 0f,
                 mainQuestId = _challenges?.CurrentMainQuest?.Def?.Id,
+
+                trackIds = _challenges?.Tracks.Select(t => t.Id).ToList(),
+                trackIndices = _challenges?.Tracks.Select(t => t.Index).ToList(),
+                trackProgress = _challenges?.Tracks.Select(t => t.Current?.Progress ?? 0f).ToList(),
+                trackStepIds = _challenges?.Tracks.Select(t => t.Current?.Def?.Id).ToList(),
                 skillLoanTypes = _skillLoans.Keys.Select(k => (int)k).ToList(),
                 skillLoanOriginals = _skillLoans.Values.Select(v => v.Original).ToList(),
                 skillLoanLevels = _skillLoans.Values.Select(v => v.Level).ToList(),
@@ -3380,32 +3446,70 @@ namespace ICanShowYouTheWorld.RunMode
             new ActDefinition
             {
                 Id = "act1", Numeral = "I", Title = "The Meadows",
-                BossDefeatKey = "defeated_eikthyr", Chain = MainQuestChain(),
+                BossDefeatKey = "defeated_eikthyr", Tracks = Split(MainQuestChain()),
             },
             new ActDefinition
             {
                 Id = "act2", Numeral = "II", Title = "The Black Forest",
-                BossDefeatKey = "defeated_gdking", Chain = BlackForestChain(),
+                BossDefeatKey = "defeated_gdking", Tracks = Split(BlackForestChain()),
             },
             new ActDefinition
             {
                 Id = "act3", Numeral = "III", Title = "The Swamp",
-                BossDefeatKey = "defeated_bonemass", Chain = SwampChain(),
+                BossDefeatKey = "defeated_bonemass", Tracks = Split(SwampChain()),
             },
             new ActDefinition
             {
                 Id = "act4", Numeral = "IV", Title = "The Mountains",
-                BossDefeatKey = "defeated_dragon", Chain = MountainChain(),
+                BossDefeatKey = "defeated_dragon", Tracks = Split(MountainChain()),
             },
             new ActDefinition
             {
                 Id = "act5", Numeral = "V", Title = "The Plains",
-                BossDefeatKey = "defeated_goblinking", Chain = PlainsChain(),
+                BossDefeatKey = "defeated_goblinking", Tracks = Split(PlainsChain()),
             },
         };
 
-        /// <summary>Every act's chain, for the name validator — Act V's names are worth checking in Act I.</summary>
-        internal static IEnumerable<ChallengeDefinition> AllActChains() => Acts().SelectMany(a => a.Chain);
+        public const string HuntTrackId = "hunt";
+        public const string CraftTrackId = "craft";
+
+        /// <summary>
+        /// Cuts an act's steps into the two tracks, along the seam the content already had: KILLS go
+        /// to HUNT, everything else to CRAFT.
+        ///
+        /// Splitting rather than hand-writing two lists is deliberate. The acts are written as one
+        /// ordered narrative and read better that way, the seam is a property of each step's Kind
+        /// rather than an editorial decision, and a step added later lands on the right track without
+        /// anyone having to remember to put it there.
+        ///
+        /// Relative order is preserved within each track, so each still reads as a progression.
+        ///
+        /// Note the consequence, visible rather than hidden: the later acts are kill-heavy, so their
+        /// CRAFT tracks are short — Act IV's is two steps. That is what splitting existing content
+        /// means, and with heat as a player-steered dial a short track simply offers less optional
+        /// heat in that act rather than being a defect.
+        /// </summary>
+        internal static List<QuestTrack> Split(List<ChallengeDefinition> chain)
+        {
+            var steps = chain ?? new List<ChallengeDefinition>();
+
+            return new List<QuestTrack>
+            {
+                new QuestTrack
+                {
+                    Id = HuntTrackId, Label = "HUNT",
+                    Chain = steps.Where(d => d.Kind == ChallengeKind.KillPrefab).ToList(),
+                },
+                new QuestTrack
+                {
+                    Id = CraftTrackId, Label = "CRAFT",
+                    Chain = steps.Where(d => d.Kind != ChallengeKind.KillPrefab).ToList(),
+                },
+            };
+        }
+
+        /// <summary>Every act's steps, for the name validator — Act V's names are worth checking in Act I.</summary>
+        internal static IEnumerable<ChallengeDefinition> AllActChains() => Acts().SelectMany(a => a.AllSteps);
 
         // --- Act I: the Meadows → Eikthyr arc ---
 

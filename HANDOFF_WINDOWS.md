@@ -1100,3 +1100,50 @@ spend.
 ### RESULTS (Windows side appends here)
 
 *(pending)*
+
+---
+
+## 2026-08-22 — TASK: alpha32 — two questlines, and heat becomes a dial
+
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha32**.
+
+Your idea, and your line about it — *"the good thing about dual paths is that you
+can decide if you want the heat"* — turned out to be the whole design, so I built
+it that way.
+
+**1. The quest panel now shows TWO rows: HUNT and CRAFT.** They advance
+independently. Every act's kills are on one, everything else on the other:
+
+```
+ACT I — THE MEADOWS
+  HUNT   Hunt 5 Boar          2/5
+  CRAFT  Build a cooking station   0/1
+         Reward: Meat to cook on it
+```
+
+**2. This is the difficulty dial.** Every questline step pays heat, so working
+both tracks makes you stronger AND hotter; running the hunt track straight to the
+boss keeps you cool, poorer and lower-scoring. **That is the thing to judge in
+play: does that trade feel like a real decision, or is one path obviously right?**
+
+**3. The act still ends when the boss dies** — the boss is the last hunt step. If
+your craft track is unfinished when the boss falls, those steps are gone. That is
+the cost of rushing and it is intentional; tell me if it feels punitive rather
+than like a choice.
+
+**4. Act IV's craft track is only two steps** (arrive, mine silver). The Mountains
+have no distinctive building, so that act just offers less optional heat. Say if
+it reads as thin rather than as a lull.
+
+**5. Your existing save will migrate.** It has one questline position from before
+the split; it gets looked up across both tracks and seats whichever owns it, with
+the other starting at that act's beginning. The log says
+`Migrated a pre-track save: '<step>' resumed on the <TRACK> track`. **If you see
+that line, check the other track looks sane rather than half-done.**
+
+**6. Watch the flashes.** Each row flashes gold on its OWN advance. If completing
+a kill also flashes the craft row, that's a bug.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*

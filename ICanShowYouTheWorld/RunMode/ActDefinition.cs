@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 
 namespace ICanShowYouTheWorld.RunMode
 {
@@ -33,12 +34,23 @@ namespace ICanShowYouTheWorld.RunMode
         public string BossDefeatKey;
 
         /// <summary>
-        /// This act's questline, handed to <see cref="ChallengeEngine.SetMainChain"/> when the act
-        /// becomes current. Every chain ends with its own boss kill, so a chain running out and the
-        /// act ending are the same event — except in the final act, where running out means the
-        /// saga is done.
+        /// This act's questlines, handed to <see cref="ChallengeEngine.SetTracks"/> when the act
+        /// becomes current. Two of them: HUNT and CRAFT.
+        ///
+        /// They run side by side because one chain forced an order — to reach the next kill you had
+        /// to build the next building. Two tracks let the player choose which thread to pull, and
+        /// since every step pays heat, that choice is the difficulty dial: pursue both and you are
+        /// stronger but hotter, rush the boss and you are safer with a lower score.
+        ///
+        /// The BOSS lives on the hunt track, which is what still makes "the act is over" observable:
+        /// the act flips on the world's defeated-boss count either way, so an unfinished craft track
+        /// is simply unfinished. Rushing has a real cost, and nothing new has to be persisted.
         /// </summary>
-        public List<ChallengeDefinition> Chain = new List<ChallengeDefinition>();
+        public List<QuestTrack> Tracks = new List<QuestTrack>();
+
+        /// <summary>Every step across every track — for validation and for the name manifest.</summary>
+        public IEnumerable<ChallengeDefinition> AllSteps =>
+            Tracks.Where(t => t != null && t.Chain != null).SelectMany(t => t.Chain);
 
         /// <summary>"ACT II — THE BLACK FOREST", the banner the HUD and the announcement use.</summary>
         public string Banner => $"ACT {Numeral} — {Title.ToUpperInvariant()}";
