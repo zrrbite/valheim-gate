@@ -11,6 +11,7 @@ Standing context for the Windows side:
 - The mod installs via `dist\windows\Install-Mod.ps1` (full run re-patches;
   `-ModOnly` only when just the mod DLL changed).
 - Log: `%USERPROFILE%\AppData\LocalLow\IronGate\Valheim\Player.log`
+  — human-readable guide to reading it: [`dist/windows/CHECKING-THE-LOG.md`](dist/windows/CHECKING-THE-LOG.md)
 - Run state: `%USERPROFILE%\AppData\LocalLow\IronGate\Valheim\ICSYTW_run_*.json`
 - End every commit with the Co-Authored-By trailer your session uses.
 

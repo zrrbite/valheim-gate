@@ -7,6 +7,13 @@ SSH from the Mac to this machine isn't working yet, so the normal push-based
 deploy (`Scripts/upload_windows.sh`) can't be used. This folder is the
 fallback: everything needed to install the mod locally, pulled through git.
 
+## After installing, check the log
+
+**[CHECKING-THE-LOG.md](CHECKING-THE-LOG.md)** — one page, one command, one
+minute. The mod validates every creature/item/reward name it uses when a run
+starts; a wrong one fails silently and costs an evening of play to find. Worth
+doing after any build that changed quest content.
+
 ## Just run this
 
 From this folder, in PowerShell:
