@@ -1,10 +1,13 @@
 # Run Mode — build notes and review findings
 
-*Status as of 2026-08-17: ALL 13 tasks implemented and reviewed; final
-whole-branch review done, its five merge-blockers fixed and re-verified, plus
-one residual (freeze-gated rerolls). Branch `feature/run-mode`, nothing
-pushed. Deployed to the Mac (both patcher injections, signature valid).
-**Remaining: the in-game smoke checklist below, then merge.***
+*This file is the RECORD of what review and play-testing caught, and why the
+code is shaped the way it is. For current status and how to resume, see
+[RESUME.md](RESUME.md) — as of 2026-08-22 the branch is at
+`0.221.12-run.alpha25`, pushed and play-tested, still unmerged.*
+
+*Status when the initial build finished, 2026-08-17: all 13 tasks implemented
+and reviewed; final whole-branch review done, its five merge-blockers fixed and
+re-verified, plus one residual (freeze-gated rerolls).*
 
 ## Baseline empowerment (as of alpha17)
 

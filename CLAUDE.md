@@ -146,8 +146,11 @@ keyboard-remap ability the mod relies on.
 
 ### Run Mode ("Saga")
 
-A roguelite challenge mode layered on the mod (branch `feature/run-mode`;
-design in `docs/superpowers/specs/`, build notes in `docs/superpowers/`).
+A roguelite challenge mode layered on the mod (branch `feature/run-mode`).
+**Resuming work on it? Read `docs/superpowers/RESUME.md` first** — current
+state, the build/tag/deploy loop, what is waiting on a play-test, and the
+landmines. Design lives in `docs/superpowers/specs/`, the reasoning behind the
+landmines in `docs/superpowers/2026-08-16-run-mode-build-notes.md`.
 `End` opens the Run window: lobby outside a run, Heat HUD during one. While a
 run is live, GM-mode commands are gated off (`InputManager.Gate`) and F1 shows
 the Heat HUD instead of the cheat windows.
