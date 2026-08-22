@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-22, at `0.221.12-run.alpha27`. This is the "pick it back up
+Written 2026-08-22, at `0.221.12-run.alpha28`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -19,13 +19,13 @@ Everything below is what that file tells it.
 
 ## Where things stand
 
-- Branch **`feature/run-mode`**, 79 commits ahead of `main`. **Not merged**,
+- Branch **`feature/run-mode`**, 80 commits ahead of `main`. **Not merged**,
   deliberately — the mode is still being tuned in play.
-- Latest tag **`0.221.12-run.alpha27`**, pushed. The Mac has it deployed.
+- Latest tag **`0.221.12-run.alpha28`**, pushed. The Mac has it deployed.
 - Game version 0.221.12, Unity 6000.0.61. Windows is the play machine, the Mac
   is the test/build machine, the Deck travels (and is **stale** — it still has
   an older patched assembly and needs a re-patch before use).
-- Engine tests: `Tests/run_tests.sh`, 276 assertions, all passing.
+- Engine tests: `Tests/run_tests.sh`, 299 assertions, all passing.
 
 ## The loop
 
@@ -55,7 +55,21 @@ must read the tag you just pushed. **The version popup is the whole point of
 tagging every alpha** — it is the only way to be certain which build is being
 played.
 
-## What the mode is, as of alpha27
+## What the mode is, as of alpha28
+
+**Five acts**, one per boss, each a questline chain ending on its own boss kill:
+I The Meadows → Eikthyr, II The Black Forest → The Elder, III The Swamp →
+Bonemass, IV The Mountains → Moder, V The Plains → Yagluth. Acts I and II are
+written in full; **III to V are three or four steps each, deliberately thin** —
+enough that no boss is a dead end, not enough to be a design. Fleshing them out
+wants someone who has played that far.
+
+Which act is current is **derived from the world's defeated-boss count**, never
+stored — so it cannot drift, a resume recomputes it, and a run started on a world
+that already killed Eikthyr correctly begins in Act II. The transition rides the
+1 Hz boss poll, which is safe only because `_challenges.Tick` runs every frame
+and has therefore already fired the finishing step's reward. See
+[the design](specs/2026-08-22-acts-design.md).
 
 **Act I**, 14 steps, all of it doable without leaving the Meadows: craft an axe
 → craft a hammer → build a workbench → hunt 5 boar → raise a roof (6 pieces) →
@@ -133,6 +147,23 @@ None of these are blocked on code — they are blocked on someone playing.
 8. **Tracker colours**, reworked in alpha27: a species can now change colour when
    another walks into range and claims the slot it preferred. Better than boar
    and deer both reading white, but worth a verdict.
+9. **The Act I → Act II transition**, never seen firing. Killing Eikthyr should
+   banner "ACT II — THE BLACK FOREST" and immediately seat the first Black Forest
+   step. Also: what should Acts III-V actually be about?
+
+## Decided, not yet built (next up)
+
+Both approved in the alpha28 session; detail in
+[the acts design](specs/2026-08-22-acts-design.md).
+
+- **Deer focus in Act I** — all four: starred deer ("Eikthyr's Herd"), a named
+  2-star Herald as a late step, contested kills drawing greylings to a carcass,
+  and lightning on the kill. The constraint that shaped them: **deer cannot be
+  made to attack**, since they run `AnimalAI` which has no attack at all.
+- **Universal storage** as a run-window stash panel — deposit/withdraw anywhere,
+  persisted with the run, storing prefab + count + quality + variant. Rejected:
+  making every built chest share one inventory, which needs a third patcher
+  injection and a re-patch of every machine.
 
 ## Landmines
 

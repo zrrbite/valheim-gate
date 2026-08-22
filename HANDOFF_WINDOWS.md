@@ -941,3 +941,43 @@ Eikthyr before any random task.
 ### RESULTS (Windows side appends here)
 
 *(pending)*
+
+---
+
+## 2026-08-22 — TASK: alpha28 — the saga gets acts
+
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha28**.
+
+Straight from your verdict. "Act 1 complete and then nothing" was literally what
+the code did — a hardcoded string, and no Act II behind it.
+
+**1. The quest panel is now headed with the act**: `ACT I — THE MEADOWS`. When
+Eikthyr falls you should get a banner announcement — **ACT II — THE BLACK
+FOREST** — and the questline should immediately seat its first step (mine the
+Black Forest). That transition is the single most important thing to confirm.
+
+**2. Act II is written in full**, seven steps: mine → build a smelter → forge
+three bronze things → 10 greydwarves → 3 brutes → a troll → The Elder. The troll
+step hands over the three Ancient Seeds his altar wants, so you never farm for
+them — same principle as the deer trophies.
+
+**3. Acts III, IV and V exist but are THIN** — three or four steps each. That is
+on purpose: enough that no boss is a dead end, not enough to be a real design. If
+you get that far, tell me what those acts should actually be about.
+
+**4. Boon list says "Activated"** instead of "Keypad 8" overflowing the column.
+The key is still on the strip above as `[8]`.
+
+**5. If you resume your existing run and Eikthyr is already dead, it will jump
+straight into Act II.** That is correct — the act is derived from the world, not
+the save — but it will look abrupt the first time. Not a bug.
+
+**6. Check the log again for `[ICanShowYouTheWorld] Unknown`.** Act II–V added a
+lot of new names (`gd_king`, `Draugr`, `Blob`, `Hatchling`, `Dragon`, `Lox`,
+`GoblinBrute`, plus every new reward item). The validator checks ALL acts at run
+start, so one launch in Act I tells us whether Act V is sound. This is the single
+most useful thing you can paste back.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*

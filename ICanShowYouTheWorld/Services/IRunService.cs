@@ -29,6 +29,12 @@ namespace ICanShowYouTheWorld.Services
         /// <summary>Challenge engine for the current run; null when inactive.</summary>
         ICanShowYouTheWorld.RunMode.ChallengeEngine Challenges { get; }
 
+        /// <summary>
+        /// The act the run is currently in; null when inactive. Derived from the world's defeated
+        /// bosses rather than stored, so it cannot disagree with the world.
+        /// </summary>
+        ICanShowYouTheWorld.RunMode.ActDefinition CurrentAct { get; }
+
         /// <summary>Boon engine for the current run; null when inactive.</summary>
         ICanShowYouTheWorld.RunMode.BoonEngine Boons { get; }
 

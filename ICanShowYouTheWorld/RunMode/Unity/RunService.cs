@@ -137,6 +137,16 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         private readonly HashSet<string> _builtSeen = new HashSet<string>();
 
+        /// <summary>The saga's acts, built once per service. Pure content — see <see cref="Acts"/>.</summary>
+        private readonly List<ActDefinition> _acts = Acts();
+
+        /// <summary>
+        /// Index into <see cref="_acts"/>. Not persisted: <see cref="CurrentActIndex"/> derives it
+        /// from the world's defeated bosses, and this only caches that between polls so
+        /// <see cref="RefreshAct"/> can tell a transition from a no-op.
+        /// </summary>
+        private int _actIndex;
+
         /// <summary>
         /// Reused across polls: <see cref="Piece.GetAllPiecesInRadius"/> fills a caller-owned list,
         /// and this runs once a second for the life of a run.
@@ -260,6 +270,9 @@ namespace ICanShowYouTheWorld.RunMode
         public float Heat => _active ? _heat.Heat : 0f;
         public ChallengeEngine Challenges => _active ? _challenges : null;
         public BoonEngine Boons => _active ? _boons : null;
+
+        public ActDefinition CurrentAct =>
+            _active && _actIndex >= 0 && _actIndex < _acts.Count ? _acts[_actIndex] : null;
 
         public float CurrentScore =>
             _active
@@ -819,6 +832,14 @@ namespace ICanShowYouTheWorld.RunMode
             // Existing actives are untouched; only future draws and rerolls see the new ceiling.
             if (progressed) RefreshMaxTier();
 
+            // ...and the saga moves to the next act. Safe to do here, AFTER the questline has had
+            // its say: _challenges.Tick runs every frame while this poll runs once a second, so the
+            // boss step's own completion (and its reward) has already fired many times over by the
+            // time the key is read here. Do not move this into the per-frame path without
+            // rechecking that — swapping the chain out from under an uncompleted final step would
+            // silently eat the act's last reward.
+            if (progressed) RefreshAct(announce: true);
+
             if (finished) FinishRun();
         }
 
@@ -907,6 +928,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // the iron cooking station both, which is the intent — the quest is "you can cook
                 // now", not "you built one specific piece".
                 ["Cooking"] = p => p.GetComponentInChildren<CookingStation>(true) != null,
+                ["Smelter"] = p => p.GetComponentInChildren<Smelter>(true) != null,
             };
 
         /// <summary>
@@ -1312,6 +1334,92 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
+        /// Checks the act table's own invariants at run start.
+        ///
+        /// ActDefinitionTests covers these rules, but only against a stand-in table — the real one
+        /// lives here, in game-coupled code the unit harness deliberately excludes. So the rules are
+        /// asserted against the REAL table at runtime, where a content edit that breaks one shows up
+        /// on the next launch instead of in a run hours later.
+        /// </summary>
+        private void ValidateActs()
+        {
+            // Duplicate step ids are the dangerous one. RestoreMainQuest resolves a saved position
+            // by id against the current act's chain, so an id in two acts lets a resume seat the
+            // wrong act's step — and a step is complete the moment Progress >= Target, so that can
+            // fire an unearned completion, rewards and all, on the first tick.
+            var ids = _acts.SelectMany(a => a.Chain).Select(c => c.Id).ToList();
+            var duplicates = ids.GroupBy(id => id).Where(g => g.Count() > 1).Select(g => g.Key).ToList();
+
+            if (duplicates.Count > 0)
+                Debug.LogError("[ICanShowYouTheWorld] Duplicate questline step ids across acts — a resume " +
+                               $"can seat the wrong act's step: {string.Join(", ", duplicates.ToArray())}");
+
+            // An act whose last step is not its boss leaves the questline exhausted while the act is
+            // still running — the dead end acts exist to remove.
+            foreach (var act in _acts)
+            {
+                var last = act.Chain.LastOrDefault();
+                if (last == null)
+                    Debug.LogError($"[ICanShowYouTheWorld] {act.Label} has an empty chain — it will read as complete on arrival.");
+                else if (last.Kind != ChallengeKind.KillPrefab)
+                    Debug.LogError($"[ICanShowYouTheWorld] {act.Label} does not end on its boss (last step '{last.Id}').");
+
+                if (!Bosses.Any(b => b.defeatKey == act.BossDefeatKey))
+                    Debug.LogError($"[ICanShowYouTheWorld] {act.Label} names a boss key no boss has: '{act.BossDefeatKey}'.");
+            }
+        }
+
+        /// <summary>
+        /// Which act the run is in: the number of bosses the WORLD records as dead, clamped to the
+        /// last act.
+        ///
+        /// Derived rather than stored, deliberately. It cannot drift from the world, a resume
+        /// recomputes it instead of trusting a save, and a run started on a world that already
+        /// killed Eikthyr correctly begins in Act II rather than replaying the Meadows. It is the
+        /// same reading <see cref="RefreshMaxTier"/> already takes, for the same reasons.
+        ///
+        /// Returns the current index unchanged when the world is not loaded — a momentary null
+        /// ZoneSystem must not read as "no bosses dead" and throw the run back to Act I.
+        /// </summary>
+        private int CurrentActIndex()
+        {
+            var zone = ZoneSystem.instance;
+            if (zone == null) return _actIndex;
+
+            int defeated = Bosses.Count(b => SafeGetGlobalKey(zone, b.defeatKey));
+            return Mathf.Clamp(defeated, 0, _acts.Count - 1);
+        }
+
+        /// <summary>
+        /// Seats the act the world says the run is in, swapping the questline chain if it changed.
+        ///
+        /// <paramref name="announce"/> distinguishes a TRANSITION from a restore: crossing into an
+        /// act mid-run is an event worth a banner, whereas starting or resuming into one is just
+        /// where the run already was, and announcing that on every resume would be noise.
+        /// </summary>
+        private void RefreshAct(bool announce)
+        {
+            if (_challenges == null) return;
+
+            int next = CurrentActIndex();
+            bool changed = next != _actIndex;
+            _actIndex = next;
+
+            // Re-seat even when the index is unchanged if nothing is seated yet: this is also the
+            // path that installs the chain at run start.
+            if (!changed && _challenges.CurrentMainQuest != null) return;
+
+            _challenges.SetMainChain(_acts[_actIndex].Chain);
+
+            if (!announce || !changed) return;
+
+            string banner = _acts[_actIndex].Banner;
+            Announce(banner);
+            Message(banner);
+            Debug.Log($"[ICanShowYouTheWorld] Act transition → {_acts[_actIndex].Label}");
+        }
+
+        /// <summary>
         /// Builds the challenge and boon engines for a run.
         ///
         /// <paramref name="freshRun"/> distinguishes StartRun from a resume. Only a fresh run pins
@@ -1337,14 +1445,19 @@ namespace ICanShowYouTheWorld.RunMode
             // is never pool-filtered (see SetMainChain), so the kill-hook trimming applied to
             // `pool` doesn't reach it — a run without the death hook would have an unfinishable
             // questline, which BuildChallengePool already warns about for the same reason.
-            _challenges.SetMainChain(MainQuestChain());
+            // Seats whichever act the world says this run is in — Act I on a fresh world, a later
+            // one on a world whose bosses are already down. No banner: starting or resuming into an
+            // act is not a transition.
+            RefreshAct(announce: false);
 
             _boons = new BoonEngine(DefaultBoons(), _rng, _cfg.RunBoonOfferTimeoutSeconds);
             if (freshRun) _boons.FirstOfferPin = FirstBoonPin;
             _boons.Gained += OnBoonGained;
             _boons.Lost += OnBoonLost;
 
-            ValidateAssetNames(pool.Concat(MainQuestChain()));
+            // Every act's chain, not just the current one: Act V's creature names are worth knowing
+            // about during Act I, when there is still time to fix them.
+            ValidateAssetNames(pool.Concat(AllActChains()));
         }
 
         /// <summary>
@@ -1440,6 +1553,8 @@ namespace ICanShowYouTheWorld.RunMode
                 if (scene == null || odb == null)
                     Debug.LogWarning("[ICanShowYouTheWorld] Asset-name validation ran before the game's " +
                                      "registries were ready; some names were not checked this run.");
+
+                ValidateActs();
             }
             catch (Exception e)
             {
@@ -2968,7 +3083,54 @@ namespace ICanShowYouTheWorld.RunMode
             },
         };
 
-        // --- Main questline (v1: the Meadows → Eikthyr arc) ---
+        // --- The saga: one act per boss ---
+
+        /// <summary>
+        /// The five acts, in order, aligned one-to-one with <see cref="Bosses"/>. Which one is
+        /// current is derived from the world's defeated-boss count — see
+        /// <see cref="CurrentActIndex"/> — so this table is pure content.
+        ///
+        /// Acts I and II are written out in full. III to V are deliberately SHORT: three or four
+        /// steps each, enough that no act is ever the dead end Act I used to be, and no more than
+        /// that until someone has played that far and can say what belongs there. Thin is honest;
+        /// absent is a bug.
+        ///
+        /// Every chain ends with its own boss, which is what makes "the chain ran out" and "the act
+        /// is over" the same event.
+        /// </summary>
+        internal static List<ActDefinition> Acts() => new List<ActDefinition>
+        {
+            new ActDefinition
+            {
+                Id = "act1", Numeral = "I", Title = "The Meadows",
+                BossDefeatKey = "defeated_eikthyr", Chain = MainQuestChain(),
+            },
+            new ActDefinition
+            {
+                Id = "act2", Numeral = "II", Title = "The Black Forest",
+                BossDefeatKey = "defeated_gdking", Chain = BlackForestChain(),
+            },
+            new ActDefinition
+            {
+                Id = "act3", Numeral = "III", Title = "The Swamp",
+                BossDefeatKey = "defeated_bonemass", Chain = SwampChain(),
+            },
+            new ActDefinition
+            {
+                Id = "act4", Numeral = "IV", Title = "The Mountains",
+                BossDefeatKey = "defeated_dragon", Chain = MountainChain(),
+            },
+            new ActDefinition
+            {
+                Id = "act5", Numeral = "V", Title = "The Plains",
+                BossDefeatKey = "defeated_goblinking", Chain = PlainsChain(),
+            },
+        };
+
+        /// <summary>Every act's chain, for the name validator — Act V's names are worth checking in Act I.</summary>
+        internal static IEnumerable<ChallengeDefinition> AllActChains() => Acts().SelectMany(a => a.Chain);
+
+        // --- Act I: the Meadows → Eikthyr arc ---
 
         /// <summary>
         /// The ordered main quest. Unlike the random tasks it is never drawn, never rerolled and
@@ -3091,6 +3253,145 @@ namespace ICanShowYouTheWorld.RunMode
             },
         };
 
+        // --- Act II: the Black Forest → The Elder ---
+
+        /// <summary>
+        /// Written out in full, on the same terms as Act I: small steps, item rewards, and every
+        /// measure something already proven. MineHits and CraftsOrUpgrades are PlayerStatTypes;
+        /// Smelter is a compiled class, so the smelter step carries no more asset-name risk than the
+        /// cooking station did.
+        ///
+        /// The boss step kills "gd_king". The boss TABLE holds "GDKing" — that is the LOCATION, and
+        /// the two are different strings. Exactly the confusion the alpha27 validator now catches on
+        /// first launch rather than after an unwinnable run.
+        ///
+        /// Ancient Seeds are HANDED OVER rather than farmed, for the same reason deer trophies are
+        /// in Act I: the Elder's altar wants three, they drop from greydwarf shamans and brutes, and
+        /// gating an act's finale on drop luck is the one thing this questline never does.
+        /// </summary>
+        internal static List<ChallengeDefinition> BlackForestChain() => new List<ChallengeDefinition>
+        {
+            new ChallengeDefinition
+            {
+                // Eikthyr's antler pickaxe is what opens this act, so the act opens by using it.
+                Id = "bf-copper", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "MineHits",
+                Target = 40, Display = "Mine the Black Forest (40 hits)", RewardText = "Copper, tin, and coal to smelt it",
+            },
+            new ChallengeDefinition
+            {
+                Id = "bf-smelter", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Smelter",
+                Target = 1, Display = "Build a smelter", RewardText = "More ore than it can hold",
+            },
+            new ChallengeDefinition
+            {
+                Id = "bf-bronze", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "CraftsOrUpgrades",
+                Target = 3, Display = "Forge three things in bronze", RewardText = "Bronze for armour",
+            },
+            new ChallengeDefinition
+            {
+                Id = "bf-greydwarf", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Greydwarf",
+                Target = 10, Display = "Kill 10 Greydwarves", RewardText = "A bronze buckler and arrows",
+            },
+            new ChallengeDefinition
+            {
+                Id = "bf-brute", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Greydwarf_Elite",
+                Target = 3, Display = "Kill 3 Greydwarf Brutes", RewardText = "Root armour against their arrows",
+            },
+            new ChallengeDefinition
+            {
+                Id = "bf-troll", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Troll",
+                Target = 1, Display = "Kill a Troll", RewardText = "Troll hide, and the seeds the Elder wants",
+            },
+            new ChallengeDefinition
+            {
+                Id = "bf-elder", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "gd_king",
+                Target = 1, Display = "Defeat The Elder", RewardText = "The swamp key",
+            },
+        };
+
+        // --- Acts III-V: short chains, deliberately ---
+
+        /// <summary>
+        /// The remaining acts are three or four steps each. They exist so that beating a boss is
+        /// never the dead end Act I used to be — not because this is the final shape of the swamp,
+        /// the mountains or the plains. Fleshing them out wants someone who has played that far.
+        ///
+        /// Their creature names are the standard vanilla prefabs and are checked at run start by
+        /// the validator, so a wrong one shows up in the log on the first launch of any run rather
+        /// than as an unwinnable act hours in.
+        /// </summary>
+        internal static List<ChallengeDefinition> SwampChain() => new List<ChallengeDefinition>
+        {
+            new ChallengeDefinition
+            {
+                Id = "sw-draugr", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Draugr",
+                Target = 8, Display = "Kill 8 Draugr", RewardText = "Poison resistance mead and arrows",
+            },
+            new ChallengeDefinition
+            {
+                Id = "sw-iron", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "MineHits",
+                Target = 60, Display = "Dig up the crypts (60 mining hits)", RewardText = "Iron, already smelted",
+            },
+            new ChallengeDefinition
+            {
+                Id = "sw-blob", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Blob",
+                Target = 5, Display = "Kill 5 Blobs", RewardText = "Withered bone — Bonemass's summons",
+            },
+            new ChallengeDefinition
+            {
+                Id = "sw-bonemass", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Bonemass",
+                Target = 1, Display = "Defeat Bonemass", RewardText = "Wishbone",
+            },
+        };
+
+        internal static List<ChallengeDefinition> MountainChain() => new List<ChallengeDefinition>
+        {
+            new ChallengeDefinition
+            {
+                Id = "mt-wolf", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Wolf",
+                Target = 6, Display = "Kill 6 Wolves", RewardText = "Wolf armour against the cold",
+            },
+            new ChallengeDefinition
+            {
+                Id = "mt-drake", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Hatchling",
+                Target = 4, Display = "Kill 4 Drakes", RewardText = "Dragon tears and arrows",
+            },
+            new ChallengeDefinition
+            {
+                Id = "mt-silver", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "MineHits",
+                Target = 60, Display = "Mine silver (60 hits)", RewardText = "Silver, and Moder's summons",
+            },
+            new ChallengeDefinition
+            {
+                Id = "mt-moder", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Dragon",
+                Target = 1, Display = "Defeat Moder", RewardText = "Dragon tears",
+            },
+        };
+
+        internal static List<ChallengeDefinition> PlainsChain() => new List<ChallengeDefinition>
+        {
+            new ChallengeDefinition
+            {
+                Id = "pl-fuling", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Goblin",
+                Target = 10, Display = "Kill 10 Fulings", RewardText = "Padded armour and black metal",
+            },
+            new ChallengeDefinition
+            {
+                Id = "pl-lox", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Lox",
+                Target = 3, Display = "Kill 3 Lox", RewardText = "Lox meat, and a feast before the end",
+            },
+            new ChallengeDefinition
+            {
+                Id = "pl-berserker", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "GoblinBrute",
+                Target = 2, Display = "Kill 2 Fuling Berserkers", RewardText = "Yagluth's summons",
+            },
+            new ChallengeDefinition
+            {
+                Id = "pl-yagluth", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "GoblinKing",
+                Target = 1, Display = "Defeat Yagluth", RewardText = "The saga is complete",
+            },
+        };
+
         /// <summary>
         /// What each questline step actually hands over, keyed by step id: (item prefab name,
         /// count). The chain's RewardText is the player-facing spelling of the same thing — they
@@ -3139,6 +3440,36 @@ namespace ICanShowYouTheWorld.RunMode
                 // the run gates on the FIGHT, never on drop luck.
                 ["mq-deer"] = new[] { ("TrophyDeer", 2), ("DeerHide", 5) },
                 ["mq-eikthyr"] = new[] { ("PickaxeAntler", 1) },
+
+                // Act II. Ore rather than ingots where the act is about learning to smelt, ingots
+                // where it is about getting on with it — bf-copper pays raw so the smelter step has
+                // a reason to exist, bf-smelter pays raw again to feed it, and bf-bronze pays
+                // finished bronze so the armour is a decision rather than another smelting trip.
+                ["bf-copper"] = new[] { ("CopperOre", 20), ("TinOre", 10), ("Coal", 20) },
+                ["bf-smelter"] = new[] { ("CopperOre", 30), ("TinOre", 15), ("Coal", 30) },
+                ["bf-bronze"] = new[] { ("Bronze", 10), ("ArrowBronze", 40) },
+                ["bf-greydwarf"] = new[] { ("ShieldBronzeBuckler", 1), ("ArrowBronze", 40) },
+                ["bf-brute"] = new[] { ("ArmorRootChest", 1), ("ArmorRootLegs", 1) },
+                // The seeds are the point: the Elder's altar wants three, they drop from shamans
+                // and brutes, and an act finale must never gate on drop luck (see mq-deer).
+                ["bf-troll"] = new[] { ("TrollHide", 10), ("AncientSeed", 3) },
+                ["bf-elder"] = new[] { ("SwampKey", 1) },
+
+                // Acts III-V, thin like their chains. Each pays the next step's tedious part and
+                // the pre-boss step pays that boss's summoning items, on the Act I pattern.
+                ["sw-draugr"] = new[] { ("MeadPoisonResist", 5), ("ArrowIron", 40) },
+                ["sw-iron"] = new[] { ("Iron", 30), ("Coal", 30) },
+                ["sw-blob"] = new[] { ("WitheredBone", 3), ("MeadPoisonResist", 5) },
+                ["sw-bonemass"] = new[] { ("Wishbone", 1) },
+
+                ["mt-wolf"] = new[] { ("ArmorWolfChest", 1), ("ArmorWolfLegs", 1) },
+                ["mt-drake"] = new[] { ("ArrowFrost", 40), ("Crystal", 10) },
+                ["mt-silver"] = new[] { ("Silver", 30), ("DragonEgg", 3) },
+                ["mt-moder"] = new[] { ("DragonTear", 5) },
+
+                ["pl-fuling"] = new[] { ("ArmorPaddedCuirass", 1), ("BlackMetal", 20) },
+                ["pl-lox"] = new[] { ("LoxMeat", 10), ("Barley", 20) },
+                ["pl-berserker"] = new[] { ("GoblinTotem", 5) },
             };
 
         /// <summary>

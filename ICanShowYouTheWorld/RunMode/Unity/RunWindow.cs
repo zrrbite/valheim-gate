@@ -617,7 +617,11 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         private void DrawQuestSection(IRunService run)
         {
-            GUILayout.Label("QUEST", RunTheme.Header);
+            // The act is the header, so the questline always says WHERE in the saga it is rather
+            // than just what the next step happens to be. Falls back to the bare word when no act
+            // is seated — a run resumed from a save written before acts existed.
+            var act = run.CurrentAct;
+            GUILayout.Label(act == null ? "QUEST" : act.Banner, RunTheme.Header);
 
             // Same gold flash a finished task row gets, decaying back to the steady color.
             float flash = 1f - Mathf.Clamp01((Time.realtimeSinceStartup - _questFlashAt) / CompletionFlashSeconds);
@@ -625,10 +629,12 @@ namespace ICanShowYouTheWorld.RunMode
             var quest = run.Challenges?.CurrentMainQuest;
             if (quest == null)
             {
-                // Chain exhausted (or none installed, on a run started before the questline
-                // existed) — the Meadows arc is over and the rest of the run is the bosses.
+                // The chain ran out. For every act but the last this is a blink — the act flips on
+                // the next boss poll and a new chain is seated within the second — so what this
+                // really shows is the END of the saga. It used to read "Act I complete" and then
+                // stay that way forever, which was the whole complaint.
                 GUI.contentColor = Color.Lerp(RunTheme.CompleteGreen, RunTheme.AccentGold, flash);
-                GUILayout.Label("  Act I complete", RunTheme.Body);
+                GUILayout.Label(act == null ? "  Questline complete" : $"  {act.Title} complete", RunTheme.Body);
                 GUI.contentColor = Color.white;
                 return;
             }
@@ -856,31 +862,16 @@ namespace ICanShowYouTheWorld.RunMode
             }
         }
 
-        private static string BoonStatus(HeldBoon h)
-        {
-            if (h.Def.IsPassive) return "passive";
-
-            string key = ActivationKey(h.Def.Id);
-            string state = h.CooldownRemaining > 0f
-                ? $"{h.CooldownRemaining:0}s"
-                : h.Def.CooldownSeconds <= 0f ? $"x{h.Charges}" : "ready";
-
-            return key == null ? state : $"{state}  [{key}]";
-        }
-
-        /// <summary>Mirrors RunService.HandleBoonActivationInput — Keypad4/5/6/7/8.</summary>
-        private static string ActivationKey(string boonId)
-        {
-            switch (boonId)
-            {
-                case "wind": return "Keypad 4";
-                case "ember": return "Keypad 5";
-                case "way": return "Keypad 6";
-                case "brother": return "Keypad 7";
-                case "windfall": return "Keypad 8";
-                default: return null;
-            }
-        }
+        /// <summary>
+        /// The right-hand status column of the held-boon list — a FIXED 104px
+        /// (<see cref="BoonStatusWidth"/>), which is what this has to fit inside. It used to read
+        /// "ready  [Keypad 8]", which does not, and spilled over the column.
+        ///
+        /// So it says what KIND of boon this is, matching the "always on" a passive prints in the
+        /// same column, and nothing more. The key and the live state are not lost: the activation
+        /// strip above the list already shows "[8] Windfall x1", which is the place to read them.
+        /// </summary>
+        private static string BoonStatus(HeldBoon h) => h.Def.IsPassive ? "always on" : "Activated";
 
         // --- Lobby ---
 

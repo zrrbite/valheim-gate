@@ -22,6 +22,7 @@ static class TestMain
         ChallengeEngineTests.Run();
         BoonEngineTests.Run();
         NameManifestTests.Run();
+        ActDefinitionTests.Run();
         Console.WriteLine(Check.Failures == 0 ? "ALL PASS" : $"{Check.Failures} FAILURES");
         return Check.Failures == 0 ? 0 : 1;
     }
