@@ -73,6 +73,14 @@ on Keypad 4-7 (Second Wind, Emberskin, Waystone, Packbrother).
 
 **Boss kills** pay food for the tier just cleared and refill Waystone.
 
+> **Design ruling, kept (owner, alpha25):** boss spoils are FOOD, not gear or
+> materials, and that is the point — they hand over the health and stamina pool
+> an hour of farming and cooking would have bought, while leaving the cookpot
+> entirely usable for anyone who wants to cook. Reward the effect, leave the
+> activity optional. It also self-balances for a timed mode: food buffs expire,
+> so the spoils are a strong opening for the next biome rather than a permanent
+> bump that compounds across a long run.
+
 ## Waiting on a human
 
 None of these are blocked on code — they are blocked on someone playing.
