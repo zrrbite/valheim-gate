@@ -15,6 +15,7 @@ static class NameManifestTests
             new ChallengeDefinition { Id = "k-boar", Kind = ChallengeKind.KillPrefab, Param = "Boar", Target = 3 },
             new ChallengeDefinition { Id = "c-wood", Kind = ChallengeKind.CollectItem, Param = "$item_wood", Target = 25 },
             new ChallengeDefinition { Id = "b-fire", Kind = ChallengeKind.BuildPiece, Param = "Fire", Target = 1 },
+            new ChallengeDefinition { Id = "r-swamp", Kind = ChallengeKind.ReachBiome, Param = "Swamp", Target = 1 },
 
             // Bucketed by kind, not by shape: altitude and stat-delta params are not asset names
             // and must not end up anywhere in the manifest.
@@ -57,5 +58,7 @@ static class NameManifestTests
         Check.That(!m.CreaturePrefabs.Contains("Jumps") && !m.ItemNames.Contains("Jumps"),
             "a StatDelta param is not an asset name and is never collected");
         Check.That(!m.ItemNames.Contains(""), "CollectFood carries no param and contributes nothing");
+        Check.That(m.Biomes.SequenceEqual(new[] { "Swamp" }), "biome names come from ReachBiome challenges");
+        Check.That(!m.PieceCategories.Contains("Swamp"), "a biome is not a build category");
     }
 }

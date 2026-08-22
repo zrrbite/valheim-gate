@@ -25,8 +25,17 @@ namespace ICanShowYouTheWorld.RunMode
     /// That last part is why targets are absolute rather than incremental: the caller re-reports
     /// every poll and stops reporting once the player walks away from their house, so progress
     /// relies on ReportMeasure's max-semantics to latch.
+    ///
+    /// ReachBiome is "you have stood here during this run". Param names a Heightmap.Biome member,
+    /// resolved host-side against the visited-biome bitmask the run already keeps, and it is
+    /// param-scoped for the same reason the others are.
+    ///
+    /// It exists so the questline can ask for a DESTINATION rather than a means of travel. Asking
+    /// for a boat would hard-stall a chain on a world where the biome happens to be walkable — the
+    /// chain is linear and has no skip — whereas "reach the Swamp" is true however you got there.
+    /// Boats are a random-pool concern, where a gate can safely make them situational.
     /// </summary>
-    public enum ChallengeKind { KillPrefab, ReachAltitude, BuildHeight, CollectItem, NoArmorMinutes, CollectFood, StatDelta, BuildPiece }
+    public enum ChallengeKind { KillPrefab, ReachAltitude, BuildHeight, CollectItem, NoArmorMinutes, CollectFood, StatDelta, BuildPiece, ReachBiome }
 
     public class ChallengeDefinition
     {
@@ -444,7 +453,7 @@ namespace ICanShowYouTheWorld.RunMode
             // no-armor minutes, CollectFood) is a single world-wide quantity and ignores param
             // entirely.
             if ((kind == ChallengeKind.CollectItem || kind == ChallengeKind.StatDelta ||
-                 kind == ChallengeKind.BuildPiece) &&
+                 kind == ChallengeKind.BuildPiece || kind == ChallengeKind.ReachBiome) &&
                 a.Def.Param != param) return;
 
             a.Progress = Math.Max(a.Progress, value);

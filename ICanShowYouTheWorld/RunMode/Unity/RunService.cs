@@ -901,7 +901,42 @@ namespace ICanShowYouTheWorld.RunMode
 
             PollStatDeltas();
             PollBuiltPieces();
+            PollReachedBiomes();
         }
+
+        /// <summary>
+        /// Reports every biome this run has stood in, so <see cref="ChallengeKind.ReachBiome"/>
+        /// steps complete.
+        ///
+        /// Reads the same <see cref="_visitedBiomes"/> mask the challenge filter uses, which is only
+        /// ever OR-ed into — so arrival is permanent by construction, and leaving a biome cannot
+        /// un-earn having reached it.
+        ///
+        /// Reports the whole mask every poll rather than only newly-entered biomes, for the reason
+        /// the build scanner does the same: a step dealt AFTER the player was already there must
+        /// still complete, and the engine deliberately starts each chain step at zero.
+        /// </summary>
+        private void PollReachedBiomes()
+        {
+            if (_challenges == null || _visitedBiomes == 0) return;
+
+            foreach (var biome in ReportableBiomes)
+            {
+                if ((_visitedBiomes & (int)biome) == 0) continue;
+                _challenges.ReportMeasure(ChallengeKind.ReachBiome, biome.ToString(), 1f);
+            }
+        }
+
+        /// <summary>
+        /// The biomes a ReachBiome challenge may name. Enumerated rather than derived from
+        /// Enum.GetValues so that None (0) and the composite reads never appear as objectives.
+        /// </summary>
+        private static readonly Heightmap.Biome[] ReportableBiomes =
+        {
+            Heightmap.Biome.Meadows, Heightmap.Biome.BlackForest, Heightmap.Biome.Swamp,
+            Heightmap.Biome.Mountain, Heightmap.Biome.Plains, Heightmap.Biome.Ocean,
+            Heightmap.Biome.Mistlands, Heightmap.Biome.AshLands, Heightmap.Biome.DeepNorth,
+        };
 
         /// <summary>
         /// What each <see cref="ChallengeKind.BuildPiece"/> category means, as a test against a
@@ -928,7 +963,15 @@ namespace ICanShowYouTheWorld.RunMode
                 // the iron cooking station both, which is the intent — the quest is "you can cook
                 // now", not "you built one specific piece".
                 ["Cooking"] = p => p.GetComponentInChildren<CookingStation>(true) != null,
+                // Smelter also matches the charcoal kiln and the blast furnace — all three carry a
+                // Smelter component and there is no separate class for them. "Build a smelter" is
+                // therefore really "build something that smelts", which is close enough to the
+                // intent and better than naming a prefab.
                 ["Smelter"] = p => p.GetComponentInChildren<Smelter>(true) != null,
+                ["Portal"] = p => p.GetComponentInChildren<Teleport>(true) != null,
+                ["Fermenter"] = p => p.GetComponentInChildren<Fermenter>(true) != null,
+                ["Windmill"] = p => p.GetComponentInChildren<Windmill>(true) != null,
+                ["Ship"] = p => p.GetComponentInChildren<Ship>(true) != null,
             };
 
         /// <summary>
@@ -1367,6 +1410,27 @@ namespace ICanShowYouTheWorld.RunMode
                 if (!Bosses.Any(b => b.defeatKey == act.BossDefeatKey))
                     Debug.LogError($"[ICanShowYouTheWorld] {act.Label} names a boss key no boss has: '{act.BossDefeatKey}'.");
             }
+
+            // A build category may appear in ONE act only. _builtSeen latches for the whole run, so
+            // a category an earlier act already satisfied is reported as built from the moment a
+            // later act's step is dealt — the step completes instantly and hands over its reward for
+            // nothing. This is invisible in review and obvious in play, which is the worst
+            // combination, so it is checked here.
+            var categoryOwners = new Dictionary<string, string>();
+            foreach (var act in _acts)
+            {
+                foreach (var category in act.Chain
+                             .Where(c => c.Kind == ChallengeKind.BuildPiece && !string.IsNullOrEmpty(c.Param))
+                             .Select(c => c.Param)
+                             .Distinct())
+                {
+                    if (categoryOwners.TryGetValue(category, out var owner))
+                        Debug.LogError($"[ICanShowYouTheWorld] Build category '{category}' is used by both " +
+                                       $"{owner} and {act.Label} — the run-long latch will auto-complete the later one.");
+                    else
+                        categoryOwners[category] = act.Label;
+                }
+            }
         }
 
         /// <summary>
@@ -1530,6 +1594,17 @@ namespace ICanShowYouTheWorld.RunMode
                 if (badCategories.Count > 0)
                     Debug.LogError("[ICanShowYouTheWorld] Unknown BUILD categories — these quests can never " +
                                    $"be dealt or completed: {string.Join(", ", badCategories.ToArray())}");
+
+                // Also our own vocabulary. A ReachBiome step opens an act, so a typo here stalls the
+                // act at its very first beat — with the player standing in the biome, demonstrably
+                // having arrived, and nothing happening.
+                var badBiomes = manifest.Biomes
+                    .Where(b => !Enum.TryParse<Heightmap.Biome>(b, out _))
+                    .ToList();
+
+                if (badBiomes.Count > 0)
+                    Debug.LogError("[ICanShowYouTheWorld] Unknown BIOME names — their arrival steps can never " +
+                                   $"complete: {string.Join(", ", badBiomes.ToArray())}");
 
                 // Reward prefabs already log at grant time, but that only fires when someone
                 // actually reaches the step — which for the later boss spoils is hours in, if ever.
@@ -2935,7 +3010,21 @@ namespace ICanShowYouTheWorld.RunMode
             // before alpha26 this was drawable from the first minute of a run, when the player has
             // no hammer, let alone a door.
             new ChallengeDefinition { Id = "s-doors",  Tier = 1, Kind = ChallengeKind.StatDelta, Param = "DoorsOpened",      Target = 8,  HeatReward = 1, RequiresBuilt = "Door", Display = "Open 8 doors" },
-            new ChallengeDefinition { Id = "s-sail",   Tier = 2, Kind = ChallengeKind.StatDelta, Param = "DistanceSail",     Target = 180, Biomes = 0, HeatReward = 2, Display = "Sail for 90 seconds" },
+            // --- Boats: pool only, and gated twice. ---
+            //
+            // A boat quest is only ever sensible on a world where water is in the way, and nothing
+            // knows that in advance. So these are never chain steps (the chain is linear and would
+            // hard-stall) and they are gated on evidence rather than guesswork: Biomes = Ocean means
+            // "this run has been on open water", RequiresBuilt = "Ship" means "this run owns a boat".
+            // A landlocked run satisfies neither and is never dealt one.
+            //
+            // The Ocean gate is conservative on purpose. Valheim assigns Ocean to deep water, so
+            // paddling off a beach usually still reads as the shore's own biome — the gate really
+            // fires for players genuinely out on open water. Never offering is the right way to be
+            // wrong here.
+            new ChallengeDefinition { Id = "s-boat",   Tier = 1, Kind = ChallengeKind.BuildPiece, Param = "Ship", Target = 1, Biomes = (int)Heightmap.Biome.Ocean, HeatReward = 2, Display = "Build a boat" },
+            new ChallengeDefinition { Id = "s-sail",   Tier = 2, Kind = ChallengeKind.StatDelta, Param = "DistanceSail",     Target = 180, Biomes = (int)Heightmap.Biome.Ocean, RequiresBuilt = "Ship", HeatReward = 2, Display = "Sail for 90 seconds" },
+            new ChallengeDefinition { Id = "s-sail2",  Tier = 2, Kind = ChallengeKind.StatDelta, Param = "DistanceSail",     Target = 420, Biomes = (int)Heightmap.Biome.Ocean, RequiresBuilt = "Ship", HeatReward = 3, Display = "Sail for 3 minutes" },
 
             // --- Composite (multi-objective) quests — alpha8. ---
             // Each is a small checklist ("kill 1 boar, gather some food, ...") rather than a
@@ -3273,6 +3362,14 @@ namespace ICanShowYouTheWorld.RunMode
         {
             new ChallengeDefinition
             {
+                // Every act opens on arrival. ReachBiome asks for the DESTINATION and says nothing
+                // about how you got there — which is the only safe thing for a linear chain to ask,
+                // since a boat step would stall on a world where the biome is walkable.
+                Id = "bf-arrive", MainQuest = true, Kind = ChallengeKind.ReachBiome, Param = "BlackForest",
+                Target = 1, Display = "Reach the Black Forest", RewardText = "A torch, and arrows for the dark",
+            },
+            new ChallengeDefinition
+            {
                 // Eikthyr's antler pickaxe is what opens this act, so the act opens by using it.
                 Id = "bf-copper", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "MineHits",
                 Target = 40, Display = "Mine the Black Forest (40 hits)", RewardText = "Copper, tin, and coal to smelt it",
@@ -3286,6 +3383,14 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 Id = "bf-bronze", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "CraftsOrUpgrades",
                 Target = 3, Display = "Forge three things in bronze", RewardText = "Bronze for armour",
+            },
+            new ChallengeDefinition
+            {
+                // The act where the run stops being about one base. A portal is the other half of
+                // the answer to "we have to leave our house behind": the stash carries your things,
+                // a portal carries you.
+                Id = "bf-portal", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Portal",
+                Target = 1, Display = "Build a portal", RewardText = "Fine wood and cores for its twin",
             },
             new ChallengeDefinition
             {
@@ -3312,25 +3417,34 @@ namespace ICanShowYouTheWorld.RunMode
         // --- Acts III-V: short chains, deliberately ---
 
         /// <summary>
-        /// The remaining acts are three or four steps each. They exist so that beating a boss is
-        /// never the dead end Act I used to be — not because this is the final shape of the swamp,
-        /// the mountains or the plains. Fleshing them out wants someone who has played that far.
+        /// Acts III to V, seven steps each, on the same rhythm as Act II: arrive, fight, build,
+        /// gather, fight, boss.
         ///
         /// Their creature names are the standard vanilla prefabs and are checked at run start by
         /// the validator, so a wrong one shows up in the log on the first launch of any run rather
         /// than as an unwinnable act hours in.
+        ///
+        /// Note what each BUILD step is chosen for: the fermenter is not decoration, it is how you
+        /// make poison resistance mead, which is the answer to Bonemass. The building step teaches
+        /// the fight.
         /// </summary>
         internal static List<ChallengeDefinition> SwampChain() => new List<ChallengeDefinition>
         {
             new ChallengeDefinition
             {
-                Id = "sw-draugr", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Draugr",
-                Target = 8, Display = "Kill 8 Draugr", RewardText = "Poison resistance mead and arrows",
+                Id = "sw-arrive", MainQuest = true, Kind = ChallengeKind.ReachBiome, Param = "Swamp",
+                Target = 1, Display = "Reach the Swamp", RewardText = "Poison resistance mead to survive it",
             },
             new ChallengeDefinition
             {
-                Id = "sw-iron", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "MineHits",
-                Target = 60, Display = "Dig up the crypts (60 mining hits)", RewardText = "Iron, already smelted",
+                Id = "sw-draugr", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Draugr",
+                Target = 8, Display = "Kill 8 Draugr", RewardText = "Iron arrows and a shield",
+            },
+            new ChallengeDefinition
+            {
+                // The mead this makes IS the Bonemass fight. Building it here is the hint.
+                Id = "sw-fermenter", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Fermenter",
+                Target = 1, Display = "Build a fermenter", RewardText = "Honey and herbs for the mead",
             },
             new ChallengeDefinition
             {
@@ -3339,13 +3453,38 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
+                Id = "sw-iron", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "MineHits",
+                Target = 60, Display = "Dig up the crypts (60 mining hits)", RewardText = "Iron, already smelted",
+            },
+            new ChallengeDefinition
+            {
+                Id = "sw-leech", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Leech",
+                Target = 3, Display = "Kill 3 Leeches", RewardText = "An iron mace — blunt beats bone",
+            },
+            new ChallengeDefinition
+            {
                 Id = "sw-bonemass", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Bonemass",
                 Target = 1, Display = "Defeat Bonemass", RewardText = "Wishbone",
             },
         };
 
+        /// <summary>
+        /// The Mountains have NO build step, and that is deliberate rather than an oversight: no
+        /// distinctively mountain-built piece has a compiled class of its own, and every category
+        /// that does is already claimed by an earlier act. Inventing a filler step would be worse
+        /// than an extra fight, so the act gets an extra fight.
+        ///
+        /// (Reusing an earlier act's category would not work anyway — the built-piece latch runs for
+        /// the whole RUN, so "build a fire" in Act IV would complete the instant it was dealt. That
+        /// rule is enforced by ValidateActs.)
+        /// </summary>
         internal static List<ChallengeDefinition> MountainChain() => new List<ChallengeDefinition>
         {
+            new ChallengeDefinition
+            {
+                Id = "mt-arrive", MainQuest = true, Kind = ChallengeKind.ReachBiome, Param = "Mountain",
+                Target = 1, Display = "Reach the Mountains", RewardText = "Frost resistance mead and warm hide",
+            },
             new ChallengeDefinition
             {
                 Id = "mt-wolf", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Wolf",
@@ -3354,12 +3493,22 @@ namespace ICanShowYouTheWorld.RunMode
             new ChallengeDefinition
             {
                 Id = "mt-drake", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Hatchling",
-                Target = 4, Display = "Kill 4 Drakes", RewardText = "Dragon tears and arrows",
+                Target = 4, Display = "Kill 4 Drakes", RewardText = "Frost arrows and dragon tears",
             },
             new ChallengeDefinition
             {
                 Id = "mt-silver", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "MineHits",
-                Target = 60, Display = "Mine silver (60 hits)", RewardText = "Silver, and Moder's summons",
+                Target = 60, Display = "Mine silver (60 hits)", RewardText = "Silver, already smelted",
+            },
+            new ChallengeDefinition
+            {
+                Id = "mt-golem", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "StoneGolem",
+                Target = 2, Display = "Kill 2 Stone Golems", RewardText = "Crystal, and a silver blade",
+            },
+            new ChallengeDefinition
+            {
+                Id = "mt-fenring", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Fenring",
+                Target = 3, Display = "Kill 3 Fenrings", RewardText = "Dragon eggs — Moder's summons",
             },
             new ChallengeDefinition
             {
@@ -3372,13 +3521,28 @@ namespace ICanShowYouTheWorld.RunMode
         {
             new ChallengeDefinition
             {
+                Id = "pl-arrive", MainQuest = true, Kind = ChallengeKind.ReachBiome, Param = "Plains",
+                Target = 1, Display = "Reach the Plains", RewardText = "Padded armour — deathsquitos are quick",
+            },
+            new ChallengeDefinition
+            {
                 Id = "pl-fuling", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Goblin",
-                Target = 10, Display = "Kill 10 Fulings", RewardText = "Padded armour and black metal",
+                Target = 10, Display = "Kill 10 Fulings", RewardText = "Black metal and needle arrows",
+            },
+            new ChallengeDefinition
+            {
+                Id = "pl-windmill", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Windmill",
+                Target = 1, Display = "Build a windmill", RewardText = "Barley and flour for the last feast",
+            },
+            new ChallengeDefinition
+            {
+                Id = "pl-squito", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Deathsquito",
+                Target = 5, Display = "Kill 5 Deathsquitos", RewardText = "A black metal blade",
             },
             new ChallengeDefinition
             {
                 Id = "pl-lox", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Lox",
-                Target = 3, Display = "Kill 3 Lox", RewardText = "Lox meat, and a feast before the end",
+                Target = 3, Display = "Kill 3 Lox", RewardText = "Lox meat pies, and a cape",
             },
             new ChallengeDefinition
             {
@@ -3445,7 +3609,9 @@ namespace ICanShowYouTheWorld.RunMode
                 // where it is about getting on with it — bf-copper pays raw so the smelter step has
                 // a reason to exist, bf-smelter pays raw again to feed it, and bf-bronze pays
                 // finished bronze so the armour is a decision rather than another smelting trip.
+                ["bf-arrive"] = new[] { ("Torch", 1), ("ArrowFlint", 40) },
                 ["bf-copper"] = new[] { ("CopperOre", 20), ("TinOre", 10), ("Coal", 20) },
+                ["bf-portal"] = new[] { ("FineWood", 20), ("SurtlingCore", 4), ("GreydwarfEye", 10) },
                 ["bf-smelter"] = new[] { ("CopperOre", 30), ("TinOre", 15), ("Coal", 30) },
                 ["bf-bronze"] = new[] { ("Bronze", 10), ("ArrowBronze", 40) },
                 ["bf-greydwarf"] = new[] { ("ShieldBronzeBuckler", 1), ("ArrowBronze", 40) },
@@ -3457,18 +3623,27 @@ namespace ICanShowYouTheWorld.RunMode
 
                 // Acts III-V, thin like their chains. Each pays the next step's tedious part and
                 // the pre-boss step pays that boss's summoning items, on the Act I pattern.
-                ["sw-draugr"] = new[] { ("MeadPoisonResist", 5), ("ArrowIron", 40) },
-                ["sw-iron"] = new[] { ("Iron", 30), ("Coal", 30) },
+                ["sw-arrive"] = new[] { ("MeadPoisonResist", 5) },
+                ["sw-draugr"] = new[] { ("ArrowIron", 40), ("ShieldIronTower", 1) },
+                ["sw-fermenter"] = new[] { ("Honey", 20), ("Thistle", 20) },
                 ["sw-blob"] = new[] { ("WitheredBone", 3), ("MeadPoisonResist", 5) },
+                ["sw-iron"] = new[] { ("Iron", 30), ("Coal", 30) },
+                ["sw-leech"] = new[] { ("MaceIron", 1) },
                 ["sw-bonemass"] = new[] { ("Wishbone", 1) },
 
+                ["mt-arrive"] = new[] { ("MeadFrostResist", 5), ("WolfPelt", 10) },
                 ["mt-wolf"] = new[] { ("ArmorWolfChest", 1), ("ArmorWolfLegs", 1) },
-                ["mt-drake"] = new[] { ("ArrowFrost", 40), ("Crystal", 10) },
-                ["mt-silver"] = new[] { ("Silver", 30), ("DragonEgg", 3) },
+                ["mt-drake"] = new[] { ("ArrowFrost", 40), ("DragonTear", 2) },
+                ["mt-silver"] = new[] { ("Silver", 30), ("Coal", 30) },
+                ["mt-golem"] = new[] { ("Crystal", 10), ("SwordSilver", 1) },
+                ["mt-fenring"] = new[] { ("DragonEgg", 3) },
                 ["mt-moder"] = new[] { ("DragonTear", 5) },
 
-                ["pl-fuling"] = new[] { ("ArmorPaddedCuirass", 1), ("BlackMetal", 20) },
-                ["pl-lox"] = new[] { ("LoxMeat", 10), ("Barley", 20) },
+                ["pl-arrive"] = new[] { ("ArmorPaddedCuirass", 1), ("ArmorPaddedGreaves", 1) },
+                ["pl-fuling"] = new[] { ("BlackMetal", 20), ("ArrowNeedle", 40) },
+                ["pl-windmill"] = new[] { ("Barley", 30), ("BarleyFlour", 20) },
+                ["pl-squito"] = new[] { ("SwordBlackmetal", 1) },
+                ["pl-lox"] = new[] { ("LoxMeat", 10), ("CapeLox", 1) },
                 ["pl-berserker"] = new[] { ("GoblinTotem", 5) },
             };
 

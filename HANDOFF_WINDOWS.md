@@ -981,3 +981,49 @@ most useful thing you can paste back.
 ### RESULTS (Windows side appends here)
 
 *(pending)*
+
+---
+
+## 2026-08-22 — TASK: alpha29 — the acts get filled in, and boats behave
+
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha29**.
+
+Acts III–V were placeholders in alpha28. Now every act is 7–9 real steps with a
+building beat and mob beats of its own.
+
+**1. `[ICanShowYouTheWorld] Unknown` in the log — still the first thing to check,
+and this build has the most new names yet.** Every creature and item across all
+five acts is validated at run start. `Leech`, `StoneGolem`, `Fenring`,
+`Deathsquito`, `Windmill`, `Thistle`, `SurtlingCore`, `MeadFrostResist`,
+`ArrowNeedle`, `CapeLox` and about twenty more are unproven. One launch in Act I
+checks all of them. Paste back anything it names.
+
+**2. Each act now opens with an arrival step** — "Reach the Black Forest",
+"Reach the Swamp" and so on. Should tick the moment you set foot in the biome.
+
+**3. Boats: you should NEVER see a boat quest unless water is genuinely in play.**
+They are pool-only and gated on having been on the Ocean biome *and* owning a
+boat. If a boat quest shows up on a world where you have never sailed, that is a
+bug worth reporting. If you sail a lot and never see one, tell me that too — the
+Ocean gate is deliberately conservative and may be too tight.
+
+**4. Build steps per act**: smelter + portal (Act II), fermenter (Act III),
+windmill (Act V). **The Mountains have no build step on purpose** — Valheim has no
+distinctively mountain-built piece with its own class, and I would rather admit
+that than invent filler. A category can only be used by one act, because the
+built-piece latch runs for the whole run.
+
+**5. The fermenter step is a hint, not decoration** — poison resistance mead is
+the Bonemass fight, so Act III makes you build the thing that brews it.
+
+**6. Act II now has a portal step.** Combined with the stash (still unbuilt),
+watch whether travel stops mattering entirely — that would be too much.
+
+**7. Total questline heat is now 44** across the saga — roughly **×3.2 enemy
+damage by the Plains** before any random task. That is much steeper than anything
+played so far. If the Plains feel impossible rather than hard, the weights are
+config and it is a number, not a rebuild.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*

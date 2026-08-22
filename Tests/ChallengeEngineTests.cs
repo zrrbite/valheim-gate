@@ -185,6 +185,50 @@ static class ChallengeEngineTests
         Check.That(g2.Active.Any(a => a.Def.Id == "s-doors"), "the door task is drawable once a door exists");
 
         BuildPieceCompositeTests();
+        ReachBiomeTests();
+    }
+
+    /// <summary>
+    /// ReachBiome: "you have stood in this biome during this run". Param names a Heightmap.Biome
+    /// member; the host resolves it against the visited-biome bitmask it already keeps.
+    ///
+    /// It exists so a questline can ask for a DESTINATION rather than a means of travel. An act
+    /// that demanded a boat would hard-stall on a world where the biome is walkable, and the chain
+    /// has no skip; "reach the Swamp" is true however you got there.
+    /// </summary>
+    static void ReachBiomeTests()
+    {
+        var chain = new List<ChallengeDefinition>
+        {
+            new ChallengeDefinition { Id = "a3-arrive", MainQuest = true, Kind = ChallengeKind.ReachBiome, Param = "Swamp", Target = 1, Display = "Reach the Swamp" },
+            new ChallengeDefinition { Id = "a3-boss",   MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Bonemass", Target = 1, Display = "Defeat Bonemass" },
+        };
+
+        var e = new ChallengeEngine(Pool(), new Random(31), 120f);
+        e.SetMainChain(chain);
+
+        // Param-scoped: arriving somewhere else is not arriving here.
+        e.ReportMeasure(ChallengeKind.ReachBiome, "Mountain", 1f);
+        e.Tick(0.1f);
+        Check.That(e.CurrentMainQuest.Def.Id == "a3-arrive", "a different biome does not advance the chain");
+
+        e.ReportMeasure(ChallengeKind.ReachBiome, "Swamp", 1f);
+        e.Tick(0.1f);
+        Check.That(e.CurrentMainQuest.Def.Id == "a3-boss", "reaching the named biome advances the chain");
+
+        // The host derives this from a bitmask it only ever ORs into, so a report can never go
+        // backwards — but the engine should not depend on that, and max-semantics means it doesn't.
+        var e2 = new ChallengeEngine(Pool(), new Random(32), 120f);
+        e2.SetMainChain(new List<ChallengeDefinition> { chain[0] });
+        e2.ReportMeasure(ChallengeKind.ReachBiome, "Swamp", 1f);
+        e2.ReportMeasure(ChallengeKind.ReachBiome, "Swamp", 0f);
+        Check.That(e2.CurrentMainQuest.Progress == 1f, "leaving the biome does not un-earn arriving in it");
+
+        // Wrong kind, right param: must not credit.
+        var e3 = new ChallengeEngine(Pool(), new Random(33), 120f);
+        e3.SetMainChain(new List<ChallengeDefinition> { chain[0] });
+        e3.ReportMeasure(ChallengeKind.CollectItem, "Swamp", 1f);
+        Check.That(e3.CurrentMainQuest.Progress == 0f, "a CollectItem report never credits a ReachBiome step");
     }
 
     /// <summary>

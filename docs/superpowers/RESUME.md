@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-22, at `0.221.12-run.alpha28`. This is the "pick it back up
+Written 2026-08-22, at `0.221.12-run.alpha29`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -19,13 +19,13 @@ Everything below is what that file tells it.
 
 ## Where things stand
 
-- Branch **`feature/run-mode`**, 80 commits ahead of `main`. **Not merged**,
+- Branch **`feature/run-mode`**, 81 commits ahead of `main`. **Not merged**,
   deliberately — the mode is still being tuned in play.
-- Latest tag **`0.221.12-run.alpha28`**, pushed. The Mac has it deployed.
+- Latest tag **`0.221.12-run.alpha29`**, pushed. The Mac has it deployed.
 - Game version 0.221.12, Unity 6000.0.61. Windows is the play machine, the Mac
   is the test/build machine, the Deck travels (and is **stale** — it still has
   an older patched assembly and needs a re-patch before use).
-- Engine tests: `Tests/run_tests.sh`, 299 assertions, all passing.
+- Engine tests: `Tests/run_tests.sh`, 305 assertions, all passing.
 
 ## The loop
 
@@ -55,21 +55,37 @@ must read the tag you just pushed. **The version popup is the whole point of
 tagging every alpha** — it is the only way to be certain which build is being
 played.
 
-## What the mode is, as of alpha28
+## What the mode is, as of alpha29
 
-**Five acts**, one per boss, each a questline chain ending on its own boss kill:
-I The Meadows → Eikthyr, II The Black Forest → The Elder, III The Swamp →
-Bonemass, IV The Mountains → Moder, V The Plains → Yagluth. Acts I and II are
-written in full; **III to V are three or four steps each, deliberately thin** —
-enough that no boss is a dead end, not enough to be a design. Fleshing them out
-wants someone who has played that far.
+**Five acts**, one per boss, each a questline chain ending on its own boss kill.
+All five are now written: I The Meadows (14 steps) → Eikthyr, II The Black Forest
+(9) → The Elder, III The Swamp (7) → Bonemass, IV The Mountains (7) → Moder,
+V The Plains (7) → Yagluth. Every act opens on an arrival step and carries mob
+beats plus (except the Mountains) a building beat.
 
 Which act is current is **derived from the world's defeated-boss count**, never
 stored — so it cannot drift, a resume recomputes it, and a run started on a world
 that already killed Eikthyr correctly begins in Act II. The transition rides the
 1 Hz boss poll, which is safe only because `_challenges.Tick` runs every frame
-and has therefore already fired the finishing step's reward. See
-[the design](specs/2026-08-22-acts-design.md).
+and has therefore already fired the finishing step's reward. See the
+[acts](specs/2026-08-22-acts-design.md) and
+[act content](specs/2026-08-22-act-content-design.md) designs.
+
+Two rules the content follows, both learned the hard way:
+
+- **The chain asks for destinations; the pool asks for transport.** The chain is
+  linear with no skip, so a boat step would hard-stall a run on a world where the
+  biome is walkable. Acts open with `ReachBiome` ("Reach the Swamp") which is true
+  however you travelled; boat quests are pool-only, gated on `Biomes = Ocean` AND
+  `RequiresBuilt = "Ship"`, so a landlocked run is never dealt one.
+- **A build category may appear in ONE act only.** `_builtSeen` latches for the
+  whole run, so a category an earlier act satisfied auto-completes a later act's
+  step the moment it is dealt. `ValidateActs` enforces this. The Mountains
+  therefore have **no** build step — no distinctively mountain-built piece has a
+  compiled class, and filler would be worse than an extra fight.
+
+Questline heat across the saga is **44** (14+9+7+7+7) — roughly ×3.2 enemy damage
+by the Plains before any random task, and far steeper than anything played.
 
 **Act I**, 14 steps, all of it doable without leaving the Meadows: craft an axe
 → craft a hammer → build a workbench → hunt 5 boar → raise a roof (6 pieces) →
@@ -149,7 +165,12 @@ None of these are blocked on code — they are blocked on someone playing.
    and deer both reading white, but worth a verdict.
 9. **The Act I → Act II transition**, never seen firing. Killing Eikthyr should
    banner "ACT II — THE BLACK FOREST" and immediately seat the first Black Forest
-   step. Also: what should Acts III-V actually be about?
+   step.
+10. **The boat gate.** A boat quest must NEVER appear on a world where water is
+    not in play — and equally, if a run sails a lot and still never sees one, the
+    Ocean gate is too tight. Both directions are worth a report.
+11. **Is the saga's heat curve survivable?** 44 questline heat by the Plains,
+    ×3.2 enemy damage, on a model that has never been tuned. Config, not code.
 
 ## Decided, not yet built (next up)
 

@@ -35,6 +35,15 @@ namespace ICanShowYouTheWorld.RunMode
         public List<string> PieceCategories = new List<string>();
 
         /// <summary>
+        /// Biome names from ReachBiome challenges — resolved host-side against Heightmap.Biome.
+        ///
+        /// Worth checking even though it is our own vocabulary rather than Valheim's: a ReachBiome
+        /// step is the FIRST step of an act, so a typo there stalls the whole act at its opening
+        /// beat, with the player having demonstrably arrived and nothing happening.
+        /// </summary>
+        public List<string> Biomes = new List<string>();
+
+        /// <summary>
         /// Walks every definition — its own Kind/Param and each of its Subs — and buckets the names
         /// it depends on. Null-safe throughout and de-duplicated; order is the order first seen, so
         /// the validator's output reads in pool order rather than at random.
@@ -69,6 +78,7 @@ namespace ICanShowYouTheWorld.RunMode
                 case ChallengeKind.KillPrefab: AddTo(CreaturePrefabs, param); break;
                 case ChallengeKind.CollectItem: AddTo(ItemNames, param); break;
                 case ChallengeKind.BuildPiece: AddTo(PieceCategories, param); break;
+                case ChallengeKind.ReachBiome: AddTo(Biomes, param); break;
             }
         }
 
