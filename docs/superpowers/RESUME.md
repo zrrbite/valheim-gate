@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-22, at `0.221.12-run.alpha30`. This is the "pick it back up
+Written 2026-08-22, at `0.221.12-run.alpha31`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -19,9 +19,9 @@ Everything below is what that file tells it.
 
 ## Where things stand
 
-- Branch **`feature/run-mode`**, 82 commits ahead of `main`. **Not merged**,
+- Branch **`feature/run-mode`**, 83 commits ahead of `main`. **Not merged**,
   deliberately — the mode is still being tuned in play.
-- Latest tag **`0.221.12-run.alpha30`**, pushed. The Mac has it deployed.
+- Latest tag **`0.221.12-run.alpha31`**, pushed. The Mac has it deployed.
 - Game version 0.221.12, Unity 6000.0.61. Windows is the play machine, the Mac
   is the test/build machine, the Deck travels (and is **stale** — it still has
   an older patched assembly and needs a re-patch before use).
@@ -55,7 +55,7 @@ must read the tag you just pushed. **The version popup is the whole point of
 tagging every alpha** — it is the only way to be certain which build is being
 played.
 
-## What the mode is, as of alpha30
+## What the mode is, as of alpha31
 
 **Five acts**, one per boss, each a questline chain ending on its own boss kill.
 All five are now written: I The Meadows (15 steps) → Eikthyr, II The Black Forest
@@ -105,9 +105,10 @@ its step; its synthetic kill name is the one entry in `SyntheticCreatureNames`,
 exempt from the validator. See [the design](specs/2026-08-22-deer-and-stash-design.md).
 
 **The stash (alpha30)** is run state, not a chest — reachable wherever the run
-window opens, so it follows you between bases and acts. "Deposit materials" moves
-every unequipped `ItemType.Material`; food, arrows and gear deliberately stay on
-you. Quality and variant are part of an entry's identity (a level-3 axe is not a
+window opens, so it follows you between bases and acts. Since **alpha31** it is its
+own scrollable window beside the tracker rather than a section of the Run HUD
+(owner: "it clutters the main Run window"). "Deposit materials" moves every
+unequipped `ItemType.Material`; food, arrows and gear deliberately stay on you. Quality and variant are part of an entry's identity (a level-3 axe is not a
 level-1 axe); durability is not stored, so a withdrawn tool returns at full.
 
 The homestead steps (alpha26-27) each sit immediately before the step that

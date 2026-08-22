@@ -1072,3 +1072,31 @@ whenever the step is current and none is standing.
 ### RESULTS (Windows side appends here)
 
 *(pending)*
+
+---
+
+## 2026-08-22 — TASK: alpha31 — the stash gets its own window
+
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha31**.
+
+Small one, straight from your note that the stash cluttered the Run window.
+
+**The stash is now its own panel, bottom-left, immediately right of the tracker.**
+It is up whenever a run is, it is draggable, and the list **scrolls** — it can hold
+128 kinds, so it had to. The header and the "Deposit materials" button stay put
+outside the scroll, so the one control you always want never scrolls away.
+
+The Run window is back to what it was before alpha30: timer, heat, score,
+questline, splits, tasks, boons.
+
+Worth a look: at your resolution, does the stash window sit clear of both the
+tracker and the HUD? Both windows remember where you drag them until the game
+window resizes.
+
+Everything from alpha26-30 is still in this build and still unplayed — the log
+grep for `[ICanShowYouTheWorld] Unknown` remains the highest-value minute you can
+spend.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*

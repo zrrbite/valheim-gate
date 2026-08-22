@@ -55,6 +55,17 @@ namespace ICanShowYouTheWorld.RunMode
         private const float TrackerWidth = 340f;
         private const float TrackerHeight = 250f;
 
+        // --- Stash ---
+        //
+        // Its own window, beside the tracker, rather than a section of the HUD (owner, alpha31:
+        // "it clutters the main Run window"). The HUD is the thing you read at a glance mid-fight —
+        // timer, heat, the current step — and a list of stored materials is neither urgent nor
+        // short. Same bottom-left strip as the tracker, which is where the panels you consult
+        // rather than watch already live.
+        private const int StashWindowId = 14;
+        private const float StashWidth = 320f;
+        private const float StashHeight = 250f;
+
         /// <summary>
         /// Species colors, so a row keeps its identity when the list re-sorts. Distance ordering
         /// means rows swap places constantly as things move, and a wall of same-colored text is
@@ -127,6 +138,8 @@ namespace ICanShowYouTheWorld.RunMode
         private Rect _lobbyRect;
         private Rect _offerRect;
         private Rect _trackerRect;
+        private Rect _stashRect;
+        private Vector2 _stashScroll;
 
         /// <summary>Reused across frames — a fresh list every OnGUI would churn the heap.</summary>
         private readonly List<Character> _trackerBuffer = new List<Character>();
@@ -341,6 +354,13 @@ namespace ICanShowYouTheWorld.RunMode
                         _trackerRect = GUILayout.Window(TrackerWindowId, _trackerRect, DrawTracker,
                             GUIContent.none, RunTheme.Panel,
                             GUILayout.Width(TrackerWidth), GUILayout.Height(TrackerHeight));
+
+                        // Beside the tracker, on the same bottom strip. Always up during a run:
+                        // every run has a stash, and a panel you have to summon is one you forget
+                        // you have.
+                        _stashRect = GUILayout.Window(StashWindowId, _stashRect, DrawStash,
+                            GUIContent.none, RunTheme.Panel,
+                            GUILayout.Width(StashWidth), GUILayout.Height(StashHeight));
                     }
 
                     var boons = run.Boons;
@@ -401,6 +421,11 @@ namespace ICanShowYouTheWorld.RunMode
             // window changes size, so this is a starting point rather than a decree.
             _trackerRect = new Rect(10f, Mathf.Max(10f, viewHeight - TrackerHeight - 10f),
                 TrackerWidth, TrackerHeight);
+            // Immediately right of the tracker, sharing its bottom edge. Both are draggable and
+            // keep their dragged positions until the game window resizes, so this is a starting
+            // point rather than a decree.
+            _stashRect = new Rect(TrackerWidth + 20f, Mathf.Max(10f, viewHeight - StashHeight - 10f),
+                StashWidth, StashHeight);
             _lobbyRect = new Rect((viewWidth - LobbyWidth) * 0.5f, (viewHeight - LobbyHeight) * 0.5f,
                 LobbyWidth, LobbyHeight);
             _offerRect = new Rect((viewWidth - OfferWidth) * 0.5f, (viewHeight - OfferHeight) * 0.5f,
@@ -631,41 +656,65 @@ namespace ICanShowYouTheWorld.RunMode
         /// moving house between acts is not an afternoon of hauling; making it a second inventory
         /// to manage would reintroduce the chore it removes.
         ///
+        /// The header and the deposit button sit OUTSIDE the scroll view, so the one control you
+        /// always want stays put however long the list gets — the same reasoning that keeps the
+        /// abandon button out of the HUD's scroll view.
+        ///
         /// Withdrawals are deferred to the next Layout pass, like the abandon button: mutating the
         /// list this loop is walking, mid-IMGUI, corrupts the layout stack for every window drawn
         /// afterwards.
         /// </summary>
-        private void DrawStashSection(IRunService run)
+        private void DrawStashBody()
         {
+            var run = Service;
+            if (run == null) return;
+
             var entries = run.StashEntries;
+            int kinds = entries?.Count ?? 0;
 
             GUILayout.BeginHorizontal();
             GUILayout.Label("STASH", RunTheme.Header);
             GUILayout.FlexibleSpace();
-            if (GUILayout.Button("Deposit materials", GUILayout.Width(140f))) _pendingDeposit = true;
+            if (kinds > 0) GUILayout.Label($"{kinds} kinds", RunTheme.Small);
             GUILayout.EndHorizontal();
 
-            if (entries == null || entries.Count == 0)
+            if (GUILayout.Button("Deposit materials")) _pendingDeposit = true;
+
+            GUILayout.Space(4f);
+
+            if (kinds == 0)
             {
-                GUILayout.Label("  empty — materials you stash follow you between bases", RunTheme.Small);
+                GUILayout.Label("  empty — what you stash follows you\n  between bases and acts", RunTheme.Small);
                 return;
             }
 
-            for (int i = 0; i < entries.Count; i++)
+            _stashScroll = GUILayout.BeginScrollView(_stashScroll, false, false,
+                GUIStyle.none, GUI.skin.verticalScrollbar, GUIStyle.none, GUILayout.ExpandHeight(true));
+
+            // finally, not a plain call: a throw inside the body must still close the group, or
+            // every window drawn after this one inherits a broken layout stack.
+            try
             {
-                var entry = entries[i];
+                for (int i = 0; i < entries.Count; i++)
+                {
+                    var entry = entries[i];
 
-                GUILayout.BeginHorizontal();
-                // Quality is shown only when it is not the ordinary 1, so the common case stays
-                // quiet and an upgraded tool is obvious.
-                string label = entry.Quality > 1
-                    ? $"  {entry.Prefab} +{entry.Quality - 1}"
-                    : "  " + entry.Prefab;
+                    GUILayout.BeginHorizontal();
+                    // Quality is shown only when it is not the ordinary 1, so the common case stays
+                    // quiet and an upgraded tool is obvious.
+                    string label = entry.Quality > 1
+                        ? $"  {entry.Prefab} +{entry.Quality - 1}"
+                        : "  " + entry.Prefab;
 
-                GUILayout.Label(label, RunTheme.Small, GUILayout.Width(HudContentWidth - 110f));
-                GUILayout.Label($"{entry.Count}", RunTheme.Small, GUILayout.Width(44f));
-                if (GUILayout.Button("Take", GUILayout.Width(52f))) _pendingWithdraw = i;
-                GUILayout.EndHorizontal();
+                    GUILayout.Label(label, RunTheme.Small, GUILayout.Width(StashWidth - 150f));
+                    GUILayout.Label($"{entry.Count}", RunTheme.Small, GUILayout.Width(44f));
+                    if (GUILayout.Button("Take", GUILayout.Width(52f))) _pendingWithdraw = i;
+                    GUILayout.EndHorizontal();
+                }
+            }
+            finally
+            {
+                GUILayout.EndScrollView();
             }
         }
 
@@ -726,10 +775,6 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>Splits, tasks and held boons — the part of the HUD that scrolls.</summary>
         private void DrawHudSections(IRunService run)
         {
-            DrawStashSection(run);
-
-            GUILayout.Space(6f);
-
             // --- Splits ---
             GUILayout.Label("SPLITS", RunTheme.Header);
             var splits = run.Splits;
@@ -1029,6 +1074,16 @@ namespace ICanShowYouTheWorld.RunMode
         {
             try { DrawTrackerBody(); }
             catch (Exception ex) { LogOnce("tracker", ex); }
+
+            GUI.DragWindow();
+        }
+
+        // --- Stash panel ---
+
+        private void DrawStash(int id)
+        {
+            try { DrawStashBody(); }
+            catch (Exception ex) { LogOnce("stash", ex); }
 
             GUI.DragWindow();
         }
