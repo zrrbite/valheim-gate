@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-22, at `0.221.12-run.alpha25`. This is the "pick it back up
+Written 2026-08-22, at `0.221.12-run.alpha26`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -19,13 +19,13 @@ Everything below is what that file tells it.
 
 ## Where things stand
 
-- Branch **`feature/run-mode`**, 75 commits ahead of `main`. **Not merged**,
+- Branch **`feature/run-mode`**, 78 commits ahead of `main`. **Not merged**,
   deliberately — the mode is still being tuned in play.
-- Latest tag **`0.221.12-run.alpha25`**, pushed. The Mac has it deployed.
+- Latest tag **`0.221.12-run.alpha26`**, pushed. The Mac has it deployed.
 - Game version 0.221.12, Unity 6000.0.61. Windows is the play machine, the Mac
   is the test/build machine, the Deck travels (and is **stale** — it still has
   an older patched assembly and needs a re-patch before use).
-- Engine tests: `Tests/run_tests.sh`, 250 assertions, all passing.
+- Engine tests: `Tests/run_tests.sh`, 263 assertions, all passing.
 
 ## The loop
 
@@ -55,12 +55,22 @@ must read the tag you just pushed. **The version popup is the whole point of
 tagging every alpha** — it is the only way to be certain which build is being
 played.
 
-## What the mode is, as of alpha25
+## What the mode is, as of alpha26
 
-**Act I** (all of it doable without leaving the Meadows): craft an axe → craft
-a hammer → build a workbench → hunt 5 boar → raise a roof (6 pieces) → kill 6
-greylings → settle in (2 min at home) → sleep through the night → hunt 3 deer
-(pays Eikthyr's summoning trophies) → defeat Eikthyr.
+**Act I**, 13 steps, all of it doable without leaving the Meadows: craft an axe
+→ craft a hammer → build a workbench → hunt 5 boar → raise a roof (6 pieces) →
+**build a fire** → kill 6 greylings → settle in (2 min at home) → **build a
+bed** → sleep through the night → **build a chest** → hunt 3 deer (pays
+Eikthyr's summoning trophies) → defeat Eikthyr.
+
+The three homestead steps (alpha26) each sit immediately before the step that
+already, silently, depended on them: `TimeInBase` only accrues while
+`IsSafeInHome`, which needs a roof AND a fire, and `Sleep` needs a bed. They
+measure with `ChallengeKind.BuildPiece`, which asks whether the player has built
+a piece carrying a COMPILED component (`Fireplace`, `Bed`, `Container`, `Door`)
+rather than naming a prefab — see
+[the design](specs/2026-08-22-homestead-steps-design.md). Act I's questline heat
+went from 10 to 13 with them.
 
 **Baseline empowerment**, every run, no picking: resources ×3, skill gain ×3,
 move stamina ×0.5, stamina regen ×2.5, all stamina costs ×0.75, free melee and
@@ -101,12 +111,20 @@ None of these are blocked on code — they are blocked on someone playing.
 4. **Unverified asset names.** Item and prefab names are Unity data, invisible
    from the assembly. A wrong ITEM name logs loudly in `GrantItem` and grants
    nothing; a wrong CREATURE name fails **silently** and stalls a quest. Still
-   unconfirmed in play: `ShieldWood`, `CookedMeat`, and every boss-spoils food
-   past Eikthyr's tier (`Honey`, `Sausages`, `CarrotSoup`, `TurnipStew`,
+   unconfirmed in play: `ShieldWood`, `CookedMeat`, `Flint` and `Resin` (both
+   new in alpha26's homestead rewards), and every boss-spoils food past
+   Eikthyr's tier (`Honey`, `Sausages`, `CarrotSoup`, `TurnipStew`,
    `SerpentStew`, `WolfMeatSkewer`, `OnionSoup`, `LoxMeatPie`, `BloodPudding`).
+
+   The alpha26 build steps are deliberately NOT exposed to this: they match on
+   compiled component types, which do not compile when wrong.
 5. **Lifecycle scenarios**, never proven in play: death mid-run must NOT log
    suspend/resume; logging out must suspend; switching world or character must
    not carry a run across.
+6. **alpha26's build detection**, never seen running: do the fire/bed/chest
+   steps tick within a second of placing the piece, and does "Open 8 doors" now
+   stay out of the pool until a door exists? `runBuildScanRadius` (default 20)
+   is the knob if detection needs the player to stand implausibly close.
 
 ## Landmines
 

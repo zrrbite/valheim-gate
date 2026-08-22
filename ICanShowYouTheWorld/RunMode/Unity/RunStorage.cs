@@ -103,6 +103,17 @@ namespace ICanShowYouTheWorld.RunMode
         public int visitedBiomes;
 
         /// <summary>
+        /// Categories of building piece the player has been seen to have built this run — the
+        /// vocabulary of ChallengeKind.BuildPiece ("Fire", "Bed", "Chest", "Door").
+        ///
+        /// Persisted because the live scan only sees what is near the player: resume a run out in
+        /// the field and an unpersisted set would be empty, un-finishing a completed build step and
+        /// pulling the door task back out of the draw pool until the player next walked home.
+        /// Null on old saves, which reads as "nothing yet" and re-latches on the next scan.
+        /// </summary>
+        public List<string> builtCategories;
+
+        /// <summary>
         /// The world this run belongs to. A saved run must never be resumed against a
         /// different world — its boss keys and world modifiers would be meaningless there.
         /// </summary>

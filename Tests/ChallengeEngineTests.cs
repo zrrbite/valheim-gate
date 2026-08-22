@@ -98,6 +98,91 @@ static class ChallengeEngineTests
         OpenerTests();
         CompositeTests();
         MainQuestTests();
+        BuildPieceTests();
+    }
+
+    /// <summary>
+    /// BuildPiece: the "you have built one of these" measure. It is param-scoped like CollectItem
+    /// and StatDelta — the host reports a CATEGORY ("Fire", "Bed", "Chest", "Door") that names a
+    /// compiled Valheim type rather than an asset name — and it latches, because the host reports
+    /// only what it can currently see near the player and a player walks away from their house.
+    ///
+    /// RequiresBuilt is the same vocabulary pointed the other way: a gate on whether a definition
+    /// may be DEALT at all. The engine itself knows nothing about it; it rides ExternalFilter,
+    /// which is what these cases exercise.
+    /// </summary>
+    static void BuildPieceTests()
+    {
+        Check.That(new ChallengeDefinition().RequiresBuilt == null, "RequiresBuilt defaults to null");
+
+        var pool = new List<ChallengeDefinition>
+        {
+            new ChallengeDefinition { Id="fire",  Kind=ChallengeKind.BuildPiece, Param="Fire",  Target=1, Display="Build a fire" },
+            new ChallengeDefinition { Id="bed",   Kind=ChallengeKind.BuildPiece, Param="Bed",   Target=1, Display="Build a bed" },
+            new ChallengeDefinition { Id="chest", Kind=ChallengeKind.BuildPiece, Param="Chest", Target=1, Display="Build a chest" },
+        };
+
+        // Param-scoping: a fire must not satisfy a bed. This is the whole reason BuildPiece joins
+        // CollectItem/StatDelta in CreditMeasure's param test rather than defaulting to the
+        // world-wide behaviour altitude and no-armor use.
+        var e = new ChallengeEngine(pool, new Random(7), 120f);
+        e.Tick(0.1f);
+        var bed = e.Active.First(a => a.Def.Id == "bed");
+        e.ReportMeasure(ChallengeKind.BuildPiece, "Fire", 1f);
+        Check.That(bed.Progress == 0f, "a fire report leaves a bed challenge alone");
+        e.ReportMeasure(ChallengeKind.BuildPiece, "Bed", 1f);
+        Check.That(bed.Progress == 1f, "a bed report credits the bed challenge");
+        Check.That(bed.Done, "one piece is enough to finish a BuildPiece challenge");
+
+        // A different KIND carrying the same param must not credit it either.
+        var e2 = new ChallengeEngine(pool.Where(d => d.Id == "fire").ToList(), new Random(8), 120f);
+        e2.Tick(0.1f);
+        e2.ReportMeasure(ChallengeKind.CollectItem, "Fire", 1f);
+        Check.That(e2.Active[0].Progress == 0f, "a CollectItem report never credits a BuildPiece challenge");
+
+        // Latching: the host stops seeing the piece (reports 0) once the player walks away, and
+        // ReportMeasure's max-semantics must hold the completed progress rather than undo it.
+        var e3 = new ChallengeEngine(pool.Where(d => d.Id == "chest").ToList(), new Random(9), 120f);
+        e3.Tick(0.1f);
+        e3.ReportMeasure(ChallengeKind.BuildPiece, "Chest", 1f);
+        e3.ReportMeasure(ChallengeKind.BuildPiece, "Chest", 0f);
+        Check.That(e3.Active[0].Progress == 1f, "walking away from the piece does not un-earn it");
+
+        // A BuildPiece step works in the reserved questline slot on the same terms.
+        var q = new ChallengeEngine(Pool(), new Random(10), 120f);
+        q.SetMainChain(new List<ChallengeDefinition>
+        {
+            new ChallengeDefinition { Id="mq-fire", MainQuest=true, Kind=ChallengeKind.BuildPiece, Param="Fire", Target=1, Display="Build a fire" },
+            new ChallengeDefinition { Id="mq-bed",  MainQuest=true, Kind=ChallengeKind.BuildPiece, Param="Bed",  Target=1, Display="Build a bed" },
+        });
+        q.ReportMeasure(ChallengeKind.BuildPiece, "Bed", 1f);
+        q.Tick(0.1f);
+        Check.That(q.CurrentMainQuest.Def.Id == "mq-fire", "a bed does not advance past the fire step");
+        q.ReportMeasure(ChallengeKind.BuildPiece, "Fire", 1f);
+        q.Tick(0.1f);
+        Check.That(q.CurrentMainQuest.Def.Id == "mq-bed", "the fire advances the chain");
+        // The bed report from before the step existed must not carry over — each step is a fresh
+        // ActiveChallenge, so the chain cannot be fast-forwarded by reporting ahead of it.
+        Check.That(q.CurrentMainQuest.Progress == 0f, "the next step starts at zero, not at an earlier report");
+
+        // RequiresBuilt gating, as the host wires it: a definition naming a category the run has
+        // not built yet is undrawable, and becomes drawable once the latch set gains it.
+        var built = new HashSet<string>();
+        var gatePool = new List<ChallengeDefinition>
+        {
+            new ChallengeDefinition { Id="s-doors", Kind=ChallengeKind.StatDelta, Param="DoorsOpened", Target=8, RequiresBuilt="Door", Display="Open 8 doors" },
+            new ChallengeDefinition { Id="s-jump",  Kind=ChallengeKind.StatDelta, Param="Jumps",       Target=15, Display="Jump 15 times" },
+        };
+        var g = new ChallengeEngine(gatePool, new Random(11), 120f);
+        g.ExternalFilter = d => string.IsNullOrEmpty(d.RequiresBuilt) || built.Contains(d.RequiresBuilt);
+        g.Tick(0.1f);
+        Check.That(g.Active.All(a => a.Def.Id != "s-doors"), "a door task is undrawable before a door is built");
+
+        built.Add("Door");
+        var g2 = new ChallengeEngine(gatePool, new Random(12), 120f);
+        g2.ExternalFilter = d => string.IsNullOrEmpty(d.RequiresBuilt) || built.Contains(d.RequiresBuilt);
+        g2.Tick(0.1f);
+        Check.That(g2.Active.Any(a => a.Def.Id == "s-doors"), "the door task is drawable once a door exists");
     }
 
     /// <summary>The v1-shaped main chain: a stat-delta step, then two kill steps.</summary>

@@ -122,6 +122,27 @@ namespace ICanShowYouTheWorld.RunMode
         /// are only dealt once the player has actually been where they live. Meadows is seeded
         /// at run start.</summary>
         private int _visitedBiomes;
+
+        /// <summary>
+        /// Categories of building piece the player has been seen to have built during THIS run —
+        /// the vocabulary of <see cref="ChallengeKind.BuildPiece"/> and
+        /// <see cref="ChallengeDefinition.RequiresBuilt"/>. Feeds the questline's build steps and
+        /// the ExternalFilter gate, and is persisted with the run.
+        ///
+        /// LATCHED, never removed from. The scan can only see what is near the player right now,
+        /// so a set that could shrink would un-earn a finished step the moment the player left
+        /// home, and would make a gated task flicker in and out of the draw pool depending on where
+        /// they were standing when a slot refilled. Tearing the piece down again does not undo the
+        /// fact that they built it.
+        /// </summary>
+        private readonly HashSet<string> _builtSeen = new HashSet<string>();
+
+        /// <summary>
+        /// Reused across polls: <see cref="Piece.GetAllPiecesInRadius"/> fills a caller-owned list,
+        /// and this runs once a second for the life of a run.
+        /// </summary>
+        private readonly List<Piece> _pieceBuffer = new List<Piece>();
+
         private float _saveTimer;
         private float _noArmorSeconds;
         private bool _frozen;
@@ -388,6 +409,17 @@ namespace ICanShowYouTheWorld.RunMode
 
                 _visitedBiomes = (int)Heightmap.Biome.Meadows;
                 try { if (Player.m_localPlayer != null) _visitedBiomes |= (int)Player.m_localPlayer.GetCurrentBiome(); } catch { }
+
+                // Clears state from any earlier run in this session; it does NOT stop an existing
+                // house from being credited, and is not trying to.
+                //
+                // KNOWN AND ACCEPTED: start a run standing in a base you already built and the
+                // fire/bed/chest steps complete within a second of being dealt, rewards and all.
+                // Distinguishing "built during this run" needs a per-piece ZDO snapshot taken at
+                // run start, which still misses anything outside its radius — real machinery for
+                // half a fix. Anyone running at an established base has skipped far more than three
+                // steps' worth of progression already; the mode is built for a fresh start.
+                _builtSeen.Clear();
                 _worldModifiers.ApplyBaseline(_cfg);
                 // Free melee/tool stamina is baseline empowerment: the early game's stamina tax
                 // is tedium, not difficulty. Re-run on the poll tick for newly crafted gear.
@@ -845,6 +877,98 @@ namespace ICanShowYouTheWorld.RunMode
             _challenges.ReportMeasure(ChallengeKind.NoArmorMinutes, string.Empty, _noArmorSeconds / 60f);
 
             PollStatDeltas();
+            PollBuiltPieces();
+        }
+
+        /// <summary>
+        /// What each <see cref="ChallengeKind.BuildPiece"/> category means, as a test against a
+        /// placed piece.
+        ///
+        /// Every one of these is a COMPILED Valheim class, checked against the IL — which is the
+        /// entire point. A category could just as easily have been a prefab name ("piece_workbench",
+        /// "bed"), but prefab names are Unity asset data, invisible to this build, and a wrong one
+        /// fails SILENTLY: the quest simply never completes and the questline stalls with no error
+        /// anywhere. A wrong type name does not compile.
+        ///
+        /// GetComponentInChildren rather than GetComponent because a piece's behaviour is not
+        /// guaranteed to sit on the same GameObject as its Piece component, and `true` includes
+        /// inactive children — an unlit campfire is still a fire you built.
+        /// </summary>
+        private static readonly Dictionary<string, Func<Piece, bool>> PieceCategories =
+            new Dictionary<string, Func<Piece, bool>>
+            {
+                ["Fire"] = p => p.GetComponentInChildren<Fireplace>(true) != null,
+                ["Bed"] = p => p.GetComponentInChildren<Bed>(true) != null,
+                ["Chest"] = p => p.GetComponentInChildren<Container>(true) != null,
+                ["Door"] = p => p.GetComponentInChildren<Door>(true) != null,
+            };
+
+        /// <summary>
+        /// Latches which categories of piece the player has built (see <see cref="_builtSeen"/>) and
+        /// reports them to the challenge engine.
+        ///
+        /// Scans for every category the run has not yet seen, not merely the one the current quest
+        /// step asks for, so that a player who built a chest an hour before the chest step came up
+        /// is credited for the chest they already own rather than being told to build a second one.
+        /// The scan stops entirely once all four have been seen, which in a finished house is most
+        /// of the run.
+        ///
+        /// The latched set is re-reported EVERY poll, including when nothing new was found. The
+        /// engine starts each chain step at zero on purpose (a report cannot be banked against a
+        /// step that does not exist yet), so the re-report is what lets an already-satisfied step
+        /// complete on the poll after it is dealt.
+        ///
+        /// IsCreator() — verified in the IL as m_creator == the local profile's player ID — is what
+        /// makes this "you built it" rather than "you are standing near one": it excludes every
+        /// world-generated ruin, and in a shared world it excludes other players' houses too.
+        /// </summary>
+        private void PollBuiltPieces()
+        {
+            if (_challenges == null) return;
+
+            if (_builtSeen.Count < PieceCategories.Count) ScanForBuiltPieces();
+
+            foreach (var category in _builtSeen)
+                _challenges.ReportMeasure(ChallengeKind.BuildPiece, category, 1f);
+        }
+
+        /// <summary>
+        /// One radius scan around the player, adding any newly recognised category to
+        /// <see cref="_builtSeen"/>. Split out from <see cref="PollBuiltPieces"/> so the set is not
+        /// mutated while it is being enumerated for reporting.
+        /// </summary>
+        private void ScanForBuiltPieces()
+        {
+            var player = Player.m_localPlayer;
+            if (player == null) return;
+
+            _pieceBuffer.Clear();
+            try
+            {
+                Piece.GetAllPiecesInRadius(
+                    player.transform.position, _cfg.RunBuildScanRadius, _pieceBuffer);
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[ICanShowYouTheWorld] Build-piece scan failed: {e.Message}");
+                return;
+            }
+
+            foreach (var piece in _pieceBuffer)
+            {
+                // Everything found — the rest of a base's several hundred pieces are wasted work.
+                if (_builtSeen.Count >= PieceCategories.Count) break;
+
+                if (piece == null || !piece.IsCreator()) continue;
+
+                foreach (var entry in PieceCategories)
+                {
+                    if (_builtSeen.Contains(entry.Key)) continue;
+                    if (entry.Value(piece)) _builtSeen.Add(entry.Key);
+                }
+            }
+
+            _pieceBuffer.Clear();
         }
 
         /// <summary>
@@ -1193,7 +1317,13 @@ namespace ICanShowYouTheWorld.RunMode
         private void BuildEngines(List<ChallengeDefinition> pool, bool freshRun)
         {
             _challenges = new ChallengeEngine(pool, _rng, _cfg.RunChallengeRefillSeconds);
-            _challenges.ExternalFilter = d => d.Biomes == 0 || (d.Biomes & _visitedBiomes) != 0;
+            // Two gates on what may be DEALT, both asking the same kind of question: has the run
+            // actually reached the thing this task is about? Biomes covers "have you been there";
+            // RequiresBuilt covers "do you own one of these" — a door task dealt to a player with
+            // no door is a dead slot they have to pay heat to reroll.
+            _challenges.ExternalFilter = d =>
+                (d.Biomes == 0 || (d.Biomes & _visitedBiomes) != 0) &&
+                (string.IsNullOrEmpty(d.RequiresBuilt) || _builtSeen.Contains(d.RequiresBuilt));
             _challenges.Completed += OnChallengeCompleted;
 
             // The questline is installed for a fresh run and a resume alike; only its POSITION
@@ -2037,6 +2167,15 @@ namespace ICanShowYouTheWorld.RunMode
                 ? s.visitedBiomes
                 : (int)Heightmap.Biome.Meadows;   // pre-biome-gating save: seed the floor
             try { if (Player.m_localPlayer != null) _visitedBiomes |= (int)Player.m_localPlayer.GetCurrentBiome(); } catch { }
+
+            // Null on a pre-alpha26 save, which reads as "nothing built yet" and re-latches from
+            // the next scan. The ExternalFilter closure reads this set live, so restoring it here —
+            // before or after BuildEngines — is equally correct.
+            _builtSeen.Clear();
+            if (s.builtCategories != null)
+                foreach (var category in s.builtCategories)
+                    if (!string.IsNullOrEmpty(category)) _builtSeen.Add(category);
+
             _rng = new Random(_rngSeed);
 
             BuildEngines(BuildChallengePool(), freshRun: false);
@@ -2262,6 +2401,7 @@ namespace ICanShowYouTheWorld.RunMode
                 heldBoonCharges = held.Select(h => h.Charges).ToList(),
                 rngSeed = _rngSeed,
                 visitedBiomes = _visitedBiomes,
+                builtCategories = _builtSeen.ToList(),
                 worldId = _worldId,
                 modifierKeys = _worldModifiers.ExportOriginalKeys(),
                 modifierValues = _worldModifiers.ExportOriginalValues()
@@ -2567,7 +2707,10 @@ namespace ICanShowYouTheWorld.RunMode
             new ChallengeDefinition { Id = "s-run",    Tier = 0, Kind = ChallengeKind.StatDelta, Param = "DistanceRun",      Target = 400, HeatReward = 1, Display = "Run 400m" },
             new ChallengeDefinition { Id = "s-mine",   Tier = 2, Kind = ChallengeKind.StatDelta, Param = "MineHits",         Target = 35,  HeatReward = 2, Display = "Land 35 mining hits" },
             new ChallengeDefinition { Id = "s-craft",  Tier = 1, Kind = ChallengeKind.StatDelta, Param = "CraftsOrUpgrades", Target = 5,   HeatReward = 1, Display = "Craft or upgrade 5 times" },
-            new ChallengeDefinition { Id = "s-doors",  Tier = 1, Kind = ChallengeKind.StatDelta, Param = "DoorsOpened",      Target = 8,  HeatReward = 1, Display = "Open 8 doors" },
+            // Gated on owning a door rather than on tier: DoorsOpened cannot move without one, and
+            // before alpha26 this was drawable from the first minute of a run, when the player has
+            // no hammer, let alone a door.
+            new ChallengeDefinition { Id = "s-doors",  Tier = 1, Kind = ChallengeKind.StatDelta, Param = "DoorsOpened",      Target = 8,  HeatReward = 1, RequiresBuilt = "Door", Display = "Open 8 doors" },
             new ChallengeDefinition { Id = "s-sail",   Tier = 2, Kind = ChallengeKind.StatDelta, Param = "DistanceSail",     Target = 180, Biomes = 0, HeatReward = 2, Display = "Sail for 90 seconds" },
 
             // --- Composite (multi-objective) quests — alpha8. ---
@@ -2696,6 +2839,21 @@ namespace ICanShowYouTheWorld.RunMode
                 Id = "mq-shelter", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "Builds",
                 Target = 6, Display = "Raise a roof (6 pieces)", RewardText = "Timber and stone to finish it",
             },
+            // The homestead steps (alpha26). Each one lands immediately before the step that
+            // already, silently, required it: TimeInBase only accrues while Player.IsSafeInHome,
+            // which needs real comfort — a roof AND a fire — and Sleep needs a bed. Both of those
+            // prerequisites used to be invisible, so a player who had not built a fire watched
+            // "Settle in" sit at zero with nothing telling them why.
+            //
+            // They measure with ChallengeKind.BuildPiece, which asks the host whether the player
+            // has built a piece carrying a given COMPILED component (Fireplace, Bed, Container) —
+            // never a prefab name, which is asset data this build cannot verify and which fails
+            // silently when wrong. See PieceCategories.
+            new ChallengeDefinition
+            {
+                Id = "mq-fire", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Fire",
+                Target = 1, Display = "Build a fire", RewardText = "Hide for a bed, flint for arrowheads",
+            },
             new ChallengeDefinition
             {
                 // Greyling, not Greydwarf: the greydwarf proper lives in the Black Forest, and
@@ -2720,8 +2878,21 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
+                Id = "mq-bed", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Bed",
+                Target = 1, Display = "Build a bed", RewardText = "Timber and resin for the rest of the house",
+            },
+            new ChallengeDefinition
+            {
                 Id = "mq-rest", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "Sleep",
                 Target = 1, Display = "Sleep through the night", RewardText = "A hot meal and arrows",
+            },
+            new ChallengeDefinition
+            {
+                // Last of the homestead steps, and the only one nothing downstream depends on —
+                // it sits here because somewhere to put the spoils is what you want BEFORE a hunt,
+                // and its reward feeds the hunt directly.
+                Id = "mq-chest", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Chest",
+                Target = 1, Display = "Build a chest", RewardText = "A full quiver before the hunt",
             },
             new ChallengeDefinition
             {
@@ -2767,6 +2938,13 @@ namespace ICanShowYouTheWorld.RunMode
                 ["mq-home"] = new[] { ("ShieldWood", 1), ("ArrowFlint", 20) },
                 ["mq-grey"] = new[] { ("HelmetLeather", 1), ("CapeDeerHide", 1), ("ArrowFlint", 30) },
                 ["mq-shelter"] = new[] { ("Wood", 40), ("Stone", 20) },
+                // The homestead steps each pay for the next one. The hide matters most: a bed
+                // wants deer hide, the bed step lands at #9, and the chain does not otherwise hand
+                // over a hide until the deer hunt at #12 — without this the player is sent off to
+                // farm deer for a step that is meant to take two minutes.
+                ["mq-fire"] = new[] { ("DeerHide", 6), ("Flint", 10) },
+                ["mq-bed"] = new[] { ("Wood", 30), ("Resin", 10) },
+                ["mq-chest"] = new[] { ("ArrowFlint", 30) },
                 ["mq-rest"] = new[] { ("CookedMeat", 10), ("ArrowFlint", 20) },
                 // Eikthyr's altar wants two deer trophies, and a trophy is a drop the player can
                 // hunt for an hour without seeing. Handing them over is the point of this step:

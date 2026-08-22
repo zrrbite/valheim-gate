@@ -54,6 +54,7 @@ namespace ICanShowYouTheWorld.Core
         float RunStaminaRegenRate { get; set; }
         float RunStaminaRate { get; set; }
         float RunHudMenuOffset { get; set; }
+        float RunBuildScanRadius { get; set; }
         float RunHeatEnemyDamageWeight { get; set; }
         float RunHeatEnemyLevelUpWeight { get; set; }
         float RunHeatScoreWeight { get; set; }
@@ -140,6 +141,12 @@ namespace ICanShowYouTheWorld.Core
         // readable and the HUD's buttons stay clickable. The right value depends on resolution and
         // UI scale, which is why it is a config knob rather than a constant.
         [SerializeField] private float runHudMenuOffset = 470f;
+
+        // Radius, in metres, of the once-a-second scan that decides whether the player has built a
+        // fire / bed / chest / door (the questline's build steps and the door task's gate). Wide
+        // enough to take in a starter house from anywhere inside it, small enough that the scan
+        // stays cheap; the scan stops altogether once all four have been found.
+        [SerializeField] private float runBuildScanRadius = 20f;
         [SerializeField] private float runHeatEnemyDamageWeight = 0.05f;
         [SerializeField] private float runHeatEnemyLevelUpWeight = 0.05f;
         [SerializeField] private float runHeatScoreWeight = 0.1f;
@@ -196,6 +203,7 @@ namespace ICanShowYouTheWorld.Core
         public float RunStaminaRegenRate { get => runStaminaRegenRate; set => runStaminaRegenRate = value; }
         public float RunStaminaRate { get => runStaminaRate; set => runStaminaRate = value; }
         public float RunHudMenuOffset { get => runHudMenuOffset; set => runHudMenuOffset = value; }
+        public float RunBuildScanRadius { get => runBuildScanRadius; set => runBuildScanRadius = value; }
         public float RunHeatEnemyDamageWeight { get => runHeatEnemyDamageWeight; set => runHeatEnemyDamageWeight = value; }
         public float RunHeatEnemyLevelUpWeight { get => runHeatEnemyLevelUpWeight; set => runHeatEnemyLevelUpWeight = value; }
         public float RunHeatScoreWeight { get => runHeatScoreWeight; set => runHeatScoreWeight = value; }

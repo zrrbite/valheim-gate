@@ -15,8 +15,18 @@ namespace ICanShowYouTheWorld.RunMode
     /// value that stat held when the challenge was dealt — see <see cref="ActiveChallenge.Baseline"/>.
     /// Resolving the name and computing the delta belongs to the caller; the engine only matches
     /// on the string.
+    ///
+    /// BuildPiece is "the player has built one of these", and is param-scoped for the same reason:
+    /// Param names a CATEGORY of building piece — "Fire", "Bed", "Chest", "Door" — and a report
+    /// about one must not credit a challenge asking for another. The categories deliberately name
+    /// COMPILED Valheim types (Fireplace, Bed, Container, Door) rather than prefab names, which are
+    /// Unity asset data this build cannot verify and which fail silently when wrong; resolving a
+    /// category to a component belongs to the caller, which reports only what it can currently see.
+    /// That last part is why targets are absolute rather than incremental: the caller re-reports
+    /// every poll and stops reporting once the player walks away from their house, so progress
+    /// relies on ReportMeasure's max-semantics to latch.
     /// </summary>
-    public enum ChallengeKind { KillPrefab, ReachAltitude, BuildHeight, CollectItem, NoArmorMinutes, CollectFood, StatDelta }
+    public enum ChallengeKind { KillPrefab, ReachAltitude, BuildHeight, CollectItem, NoArmorMinutes, CollectFood, StatDelta, BuildPiece }
 
     public class ChallengeDefinition
     {
@@ -77,6 +87,22 @@ namespace ICanShowYouTheWorld.RunMode
         /// host-side, keyed by <see cref="Id"/>. Null/empty for anything with no reward to show.
         /// </summary>
         public string RewardText;
+
+        /// <summary>
+        /// Gate on whether this definition may be DEALT at all: the run must already have built a
+        /// piece of the named category (the same vocabulary
+        /// <see cref="ChallengeKind.BuildPiece"/> uses). Null or empty means no gate.
+        ///
+        /// The engine does not read this — it rides <see cref="ExternalFilter"/>, host-side, next
+        /// to the biome gate, because only the host knows what the run has built. It exists here
+        /// so the requirement is authored on the definition it belongs to rather than as a special
+        /// case buried in a lambda.
+        ///
+        /// The point is that a task can be impossible to complete without being impossible to
+        /// notice: "Open 8 doors" dealt to a player with no door is not a challenge, it is a dead
+        /// slot they must pay heat to reroll.
+        /// </summary>
+        public string RequiresBuilt;
 
         /// <summary>
         /// When set (non-null, non-empty), this definition is a COMPOSITE/multi-objective
@@ -411,11 +437,13 @@ namespace ICanShowYouTheWorld.RunMode
 
             if (a.Def.Kind != kind) return;
 
-            // CollectItem and StatDelta are the param-scoped measures: each tracks ONE named
-            // thing (an item, a lifetime stat), so a report about a different one must not
-            // touch it. Every other kind (altitude, build height, no-armor minutes,
-            // CollectFood) is a single world-wide quantity and ignores param entirely.
-            if ((kind == ChallengeKind.CollectItem || kind == ChallengeKind.StatDelta) &&
+            // CollectItem, StatDelta and BuildPiece are the param-scoped measures: each tracks ONE
+            // named thing (an item, a lifetime stat, a category of building piece), so a report
+            // about a different one must not touch it. Every other kind (altitude, build height,
+            // no-armor minutes, CollectFood) is a single world-wide quantity and ignores param
+            // entirely.
+            if ((kind == ChallengeKind.CollectItem || kind == ChallengeKind.StatDelta ||
+                 kind == ChallengeKind.BuildPiece) &&
                 a.Def.Param != param) return;
 
             a.Progress = Math.Max(a.Progress, value);

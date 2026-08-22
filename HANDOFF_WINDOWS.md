@@ -847,3 +847,55 @@ Also worth a verdict: 6 pieces — still busywork, or about right?
 ### RESULTS (Windows side appends here)
 
 *(pending)*
+
+---
+
+## 2026-08-22 — TASK: alpha26 — fire, bed, chest; the door task waits for a door
+
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha26**.
+
+Act I is 13 steps now, up from 10. The three new ones are homestead beats, each
+sitting immediately before the step that already secretly needed it:
+
+```
+ 5 Raise a roof (6)     →   6 BUILD A FIRE   →   7 Kill 6 Greylings
+ 8 Settle in (2 min)    →   9 BUILD A BED    →  10 Sleep through the night
+                          11 BUILD A CHEST   →  12 Hunt 3 Deer  →  13 Eikthyr
+```
+
+"Settle in" never accrued without a fire and "Sleep" never worked without a bed
+— those prerequisites were real all along, just invisible. Now they are steps.
+
+1. **Do the three new steps detect correctly?** They look for a piece *you*
+   built carrying a `Fireplace` / `Bed` / `Container` component, within 20m of
+   you, checked once a second. A campfire, any bed, any chest should each tick
+   its step within about a second of being placed. If one sits at 0/1 while the
+   thing is plainly standing in front of you, say which — and try walking closer
+   before you call it (20m is `runBuildScanRadius` in the config, hot-editable).
+
+2. **"Open 8 doors" should not appear until you have built a door.** It used to
+   be drawable from minute one, when you have no hammer. Build a door, and it
+   becomes eligible for the next refill — it will not appear instantly, since it
+   still has to win a random draw.
+
+3. **Two new item names, both unverified** (asset data, invisible from the
+   assembly): `Flint` and `Resin`, in the fire and bed rewards. A wrong one logs
+   loudly in `GrantItem` and grants nothing. Tell me if either line appears.
+   `DeerHide`, `Wood` and `ArrowFlint` in those same rewards are already proven.
+
+4. **Does the bed step strand you?** It lands at #9 but deer hide normally comes
+   at #12, so the fire step at #6 hands over 6 hides to cover it. If the bed
+   still sends you hunting, the hide count is wrong.
+
+5. **Act I now pays 13 heat instead of 10** — enemies hit ~1.65× instead of
+   ~1.50× by the time you reach Eikthyr, before random tasks. This is the first
+   build where that curve is worth an opinion. Does the boss fight feel
+   meaningfully hotter, or is it lost in the noise?
+
+Known and accepted, not a bug: start a run standing in a base you already built
+and the fire/bed/chest steps complete immediately, rewards and all. The mode is
+built for a fresh start.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
