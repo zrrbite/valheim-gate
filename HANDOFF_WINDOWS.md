@@ -1147,4 +1147,51 @@ a kill also flashes the craft row, that's a bug.
 
 ### RESULTS (Windows side appends here)
 
+**"Craft an axe didn't register."** Confirmed and fixed in alpha33 — see below.
+**Do not play alpha32**; the entire CRAFT track was stalled at its first step.
+
+---
+
+## 2026-08-22 — TASK: alpha33 — fixes the dead CRAFT track
+
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha33**.
+
+**alpha32 was broken and this is the fix. Skip alpha32.**
+
+You found it on the first step: "Craft an axe" never registered. It was not just
+that step — **ten steps across the saga could never register**, and all of them
+were on the CRAFT track:
+
+```
+Act I    mq-axe, mq-hammer, mq-bench, mq-shelter, mq-home, mq-rest
+Act II   bf-copper, bf-bronze
+Act III  sw-iron
+Act IV   mt-silver
+```
+
+What happened: those steps measure a lifetime player stat as a DELTA, so each
+needs a "zero point" snapshot taken when it's dealt. When I split one questline
+into two in alpha32, I updated the code that *reads* those stats to walk both
+tracks, but not the code that *takes the snapshot* — it still only did the first
+track, which is HUNT. So every CRAFT step of that kind sat un-baselined and was
+silently skipped forever. The build/arrive steps were fine, which is why the track
+looked alive rather than obviously dead.
+
+The real cause was two copies of "walk the actives and the questlines" that drifted
+apart. They're now one shared enumeration, so they cannot disagree again.
+
+**Also added: this class of failure is now loud.** If a stat-based questline step
+ever sits without its zero point, the log says so and names the step:
+
+```
+Questline step 'mq-axe' on the CRAFT track has no stat baseline —
+it can never register progress. This is a bug in the mod, not the save.
+```
+
+**What to check:** start a run, craft an axe, and watch the CRAFT row tick to 1/1.
+Then just play — every step that was dead should now count. And the usual grep,
+which will now also catch this if I ever do it again.
+
+### RESULTS (Windows side appends here)
+
 *(pending)*

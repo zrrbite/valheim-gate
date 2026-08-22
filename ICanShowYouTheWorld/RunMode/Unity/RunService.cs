@@ -458,6 +458,8 @@ namespace ICanShowYouTheWorld.RunMode
                 _builtSeen.Clear();
                 _stash.Clear();
                 _deer.Reset();
+                _unbaselinedSeen.Clear();
+                _warnedUnbaselined.Clear();
                 _worldModifiers.ApplyBaseline(_cfg);
                 // Free melee/tool stamina is baseline empowerment: the early game's stamina tax
                 // is tedium, not difficulty. Re-run on the poll tick for newly crafted gear.
@@ -1180,7 +1182,13 @@ namespace ICanShowYouTheWorld.RunMode
             for (int i = 0; i < tracks.Count; i++)
             {
                 var quest = tracks[i].Current;
-                if (quest == null || quest.Def.Kind != ChallengeKind.StatDelta || float.IsNaN(quest.Baseline)) continue;
+                if (quest == null || quest.Def.Kind != ChallengeKind.StatDelta) continue;
+
+                if (float.IsNaN(quest.Baseline))
+                {
+                    WarnUnbaselined(quest.Def.Id, tracks[i].Label);
+                    continue;
+                }
 
                 float? questCurrent = ReadPlayerStat(quest.Def.Param);
                 if (questCurrent == null) continue;
@@ -1188,6 +1196,33 @@ namespace ICanShowYouTheWorld.RunMode
                 _challenges.ReportSlotMeasure(
                     ChallengeEngine.TrackSlot(i), Mathf.Max(0f, questCurrent.Value - quest.Baseline));
             }
+        }
+
+        /// <summary>Steps seen un-baselined at a previous poll, and steps already warned about.</summary>
+        private readonly HashSet<string> _unbaselinedSeen = new HashSet<string>();
+        private readonly HashSet<string> _warnedUnbaselined = new HashSet<string>();
+
+        /// <summary>
+        /// Complains, once per step, about a StatDelta questline step that has no baseline.
+        ///
+        /// Such a step can never register progress: the poll above has nothing to measure from and
+        /// skips it, silently, forever. That is exactly how alpha32 shipped with "Craft an axe" —
+        /// the first step of the run — quietly doing nothing, because the baseline sync had not been
+        /// updated when one questline became two.
+        ///
+        /// Warns only on the SECOND consecutive poll, a second apart. The baseline sync runs every
+        /// playable frame but can legitimately no-op for a frame or two if the player profile is
+        /// briefly unreachable, and an error blaming the mod for that would be worse than the
+        /// silence it replaces. Two polls later is no longer transient.
+        /// </summary>
+        private void WarnUnbaselined(string stepId, string trackLabel)
+        {
+            if (string.IsNullOrEmpty(stepId)) return;
+            if (_unbaselinedSeen.Add(stepId)) return;           // first sighting: could be transient
+            if (!_warnedUnbaselined.Add(stepId)) return;        // already said so once
+
+            Debug.LogError($"[ICanShowYouTheWorld] Questline step '{stepId}' on the {trackLabel} track has no " +
+                           "stat baseline — it can never register progress. This is a bug in the mod, not the save.");
         }
 
         /// <summary>
@@ -1200,13 +1235,23 @@ namespace ICanShowYouTheWorld.RunMode
         /// wherever they've already got to and wipe the progress out. That is exactly why the
         /// baseline is persisted rather than recomputed.
         /// </summary>
+        /// <summary>
+        /// Snapshots the zero point for every StatDelta challenge that does not have one yet.
+        ///
+        /// Goes through <see cref="MeasuredChallenges"/> — the SAME enumeration the polls use — and
+        /// that sharing is the point. This method used to keep its own copy of "the actives plus the
+        /// questline", and when one questline became two in alpha32 the copy was not updated: it
+        /// synced only track 0, so every StatDelta step on the CRAFT track never got a baseline, and
+        /// PollStatDeltas skips un-baselined slots. "Craft an axe" — the first step of the run —
+        /// silently never registered, along with nine other steps across the saga.
+        ///
+        /// One enumeration means the baseline sync and the polls cannot disagree about what exists.
+        /// </summary>
         private void SyncStatDeltaBaselines()
         {
             if (_challenges == null) return;
 
-            foreach (var a in _challenges.Active) SyncStatDeltaBaseline(a);
-
-            SyncStatDeltaBaseline(_challenges.CurrentMainQuest);
+            foreach (var a in MeasuredChallenges()) SyncStatDeltaBaseline(a);
         }
 
         private void SyncStatDeltaBaseline(ActiveChallenge a)

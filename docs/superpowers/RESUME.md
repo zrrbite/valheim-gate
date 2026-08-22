@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-22, at `0.221.12-run.alpha32`. This is the "pick it back up
+Written 2026-08-22, at `0.221.12-run.alpha33`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -19,9 +19,9 @@ Everything below is what that file tells it.
 
 ## Where things stand
 
-- Branch **`feature/run-mode`**, 84 commits ahead of `main`. **Not merged**,
+- Branch **`feature/run-mode`**, 86 commits ahead of `main`. **Not merged**,
   deliberately — the mode is still being tuned in play.
-- Latest tag **`0.221.12-run.alpha32`**, pushed. The Mac has it deployed.
+- Latest tag **`0.221.12-run.alpha33`**, pushed. The Mac has it deployed.
 - Game version 0.221.12, Unity 6000.0.61. Windows is the play machine, the Mac
   is the test/build machine, the Deck travels (and is **stale** — it still has
   an older patched assembly and needs a re-patch before use).
@@ -55,7 +55,7 @@ must read the tag you just pushed. **The version popup is the whole point of
 tagging every alpha** — it is the only way to be certain which build is being
 played.
 
-## What the mode is, as of alpha32
+## What the mode is, as of alpha33
 
 **Five acts**, one per boss. All five are written: I The Meadows (15 steps) →
 Eikthyr, II The Black Forest (9) → The Elder, III The Swamp (7) → Bonemass,
@@ -229,6 +229,13 @@ The five that have each cost a build:
 - **Anything a run grants must be given back**, and given back *correctly* —
   skills return what was LENT (subtract the loan), not the pre-run level, or the
   run confiscates what the player earned.
+- **A StatDelta step needs a BASELINE before it can measure anything**, and a step
+  without one is skipped silently, forever. alpha32 shipped with ten dead steps —
+  the whole StatDelta half of the CRAFT track, "Craft an axe" included — because
+  the baseline sync kept its own copy of "the actives plus the questline" and was
+  not updated when one questline became two. It now shares `MeasuredChallenges()`
+  with the polls so the two cannot disagree, and an un-baselined step logs loudly.
+  **The general rule: two copies of the same enumeration will drift.**
 - **Asset names cannot be verified at BUILD time** — but since alpha27 they are
   verified at RUN time. `ValidateAssetNames` resolves every creature, item and
   reward name against ZNetScene and ObjectDB at run start and logs the failures,
