@@ -2921,7 +2921,23 @@ namespace ICanShowYouTheWorld.RunMode
         {
             GrantQuestSkills(def);
 
-            if (def.Id == null || !QuestRewards.TryGetValue(def.Id, out var items) || items == null) return;
+            if (def.Id == null) return;
+
+            string boonId;
+            if (QuestBoons.TryGetValue(def.Id, out boonId) && _boons != null)
+            {
+                try
+                {
+                    if (_boons.Grant(boonId))
+                    {
+                        var granted = _boons.Held.FirstOrDefault(h => h.Def.Id == boonId);
+                        if (granted != null) Message($"Well rested. {granted.Def.Display} earned.");
+                    }
+                }
+                catch (Exception ex) { LogOnce("grant-quest-boon", ex); }
+            }
+
+            if (!QuestRewards.TryGetValue(def.Id, out var items) || items == null) return;
 
             foreach (var (prefabName, count) in items) GrantItem(prefabName, count);
 
@@ -4704,7 +4720,7 @@ namespace ICanShowYouTheWorld.RunMode
             new ChallengeDefinition
             {
                 Id = "mq-rest", MainQuest = true, Track = HearthTrackId, Kind = ChallengeKind.StatDelta, Param = "Sleep",
-                Target = 1, Display = "Sleep through the night", RewardText = "A hot meal, arrows, and a fishing rod",
+                Target = 1, Display = "Sleep through the night", RewardText = "A hot meal, a fishing rod \u2014 and Tireless, for sleeping well",
                 Hint = "A bed you have claimed, and nothing hostile nearby.",
             },
             new ChallengeDefinition
@@ -5172,6 +5188,23 @@ namespace ICanShowYouTheWorld.RunMode
         /// names, and <see cref="GrantQuestReward"/> logs loudly if one fails to resolve rather
         /// than failing silently.
         /// </summary>
+        /// <summary>
+        /// Boons a questline step awards outright, by step id.
+        ///
+        /// Items are the usual currency, but some steps earn something items cannot say. Sleeping
+        /// a full night in a bed you built, under a roof you raised, is the run telling you the
+        /// homestead is working — so it pays in the thing rest actually gives (owner: "we rested
+        /// well and now have a nice place to sleep, so a Well rested boon should be awarded").
+        ///
+        /// Deliberately rare. A boon is the run's real power currency, normally bought with heat,
+        /// and handing them out freely would make the offer wheel meaningless.
+        /// </summary>
+        private static readonly Dictionary<string, string> QuestBoons =
+            new Dictionary<string, string>
+            {
+                ["mq-rest"] = "tireless",
+            };
+
         private static readonly Dictionary<string, (string prefab, int count)[]> QuestRewards =
             new Dictionary<string, (string, int)[]>
             {

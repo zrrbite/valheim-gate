@@ -289,4 +289,36 @@ static class BoonEngineTests
         }
         Check.That(sawGated, "raising the boss count opens the gate mid-run");
     }
+
+    /// <summary>
+    /// Grant: a boon awarded by a questline step rather than chosen from an offer.
+    ///
+    /// It raises Gained like any other acquisition, so a granted boon is applied and repaid
+    /// through exactly the same path — nothing about it is a special case downstream.
+    /// </summary>
+    public static void GrantTests()
+    {
+        var pool = new List<BoonDefinition>
+        {
+            new BoonDefinition { Id = "tireless", Display = "Tireless", IsPassive = true },
+            new BoonDefinition { Id = "hearty",   Display = "Hearty",   IsPassive = true },
+        };
+
+        var e = new BoonEngine(pool, new Random(91), 60f);
+
+        BoonDefinition raised = null;
+        e.Gained += d => raised = d;
+
+        Check.That(e.Grant("tireless"), "a known boon is granted");
+        Check.That(raised != null && raised.Id == "tireless", "and raises Gained, so effects apply as normal");
+        Check.That(e.Held.Any(h => h.Def.Id == "tireless"), "and it is held");
+
+        raised = null;
+        Check.That(!e.Grant("tireless"), "granting one already held changes nothing");
+        Check.That(raised == null, "and raises no second Gained, so an effect cannot be applied twice");
+
+        Check.That(!e.Grant("nonsense"), "an unknown id is refused rather than throwing");
+        Check.That(!e.Grant(null), "and so is a null one");
+        Check.That(e.Held.Count == 1, "none of which added anything");
+    }
 }

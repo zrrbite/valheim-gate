@@ -120,6 +120,28 @@ namespace ICanShowYouTheWorld.RunMode
             firstOfferMade = true;
         }
 
+        /// <summary>
+        /// Grants a boon outright, without an offer. Returns false if the id is unknown or already
+        /// held.
+        ///
+        /// For boons a QUESTLINE STEP awards rather than the offer wheel — the homestead handing
+        /// over what it earned. It raises Gained like any other acquisition, so the effect is
+        /// applied and repaid through exactly the same path; nothing about a granted boon is a
+        /// special case after this line.
+        /// </summary>
+        public bool Grant(string boonId)
+        {
+            if (string.IsNullOrEmpty(boonId)) return false;
+            if (held.Any(h => h.Def.Id == boonId)) return false;
+
+            var def = pool.FirstOrDefault(b => b.Id == boonId);
+            if (def == null) return false;
+
+            held.Add(new HeldBoon { Def = def });
+            Gained?.Invoke(def);
+            return true;
+        }
+
         public bool Pick(int index)
         {
             if (index < 0 || index >= offer.Count) return false;

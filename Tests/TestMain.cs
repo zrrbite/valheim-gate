@@ -21,6 +21,7 @@ static class TestMain
         HeatModelTests.Run();
         ChallengeEngineTests.Run();
         BoonEngineTests.Run();
+        BoonEngineTests.GrantTests();
         NameManifestTests.Run();
         ActDefinitionTests.Run();
         HearthRecordsTests.Run();
