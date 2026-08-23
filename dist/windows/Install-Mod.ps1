@@ -19,6 +19,10 @@
 .PARAMETER Restore
     Put the vanilla assembly back and remove the mod DLL.
 
+.PARAMETER AllowStale
+    Install even when the bundled mod DLL does not match the tag you pulled.
+    Only useful for deliberately installing an older build.
+
 .PARAMETER ManagedPath
     Override auto-detection, e.g.
     "D:\SteamLibrary\steamapps\common\Valheim\valheim_Data\Managed"
@@ -31,6 +35,7 @@
 param(
     [switch]$ModOnly,
     [switch]$Restore,
+    [switch]$AllowStale,
     [string]$ManagedPath
 )
 
@@ -90,6 +95,43 @@ function Get-ModVersion {
     return $null
 }
 function Write-Err   { param($m) Write-Host "[fail] $m" -ForegroundColor Red }
+
+<#
+.SYNOPSIS
+    Refuse to install a bundled DLL that is older than the tag we pulled.
+
+.DESCRIPTION
+    dist\windows\patcher\ICanShowYouTheWorld.dll is a committed binary, and nothing
+    on the Mac refreshes it as a side effect of building — staging it is a separate
+    step (Scripts\stage_windows.sh). Skip that step and this installer copies a
+    STALE build while reporting its version perfectly correctly, so the symptom is
+    "the mod says the wrong version" and the cause is three machines away.
+
+    The repo is right here and it knows which tag it is on, so compare the two.
+    Silence when git is unavailable: a diagnostic must never block an install.
+#>
+function Assert-BundledFresh {
+    param([string]$Dll)
+
+    $tag = $null
+    try { $tag = (& git -C $here describe --tags --abbrev=0 2>$null) } catch { return }
+    if (-not $tag) { return }
+
+    $bundled = Get-ModVersion $Dll
+    if (-not $bundled) { return }
+
+    if ($bundled -eq $tag) {
+        Write-Ok "Bundled build $bundled matches the tag you pulled."
+        return
+    }
+
+    Write-Err "The bundled mod DLL is $bundled, but this checkout is at $tag."
+    Write-Info 'It was never staged for Windows, so installing would give you the OLD build.'
+    Write-Info 'On the Mac: Scripts/stage_windows.sh, then commit and push. Then git pull here.'
+    Write-Info 'Override with -AllowStale if you really do want the older build.'
+    if (-not $AllowStale) { exit 1 }
+    Write-Warn2 'Continuing anyway (-AllowStale).'
+}
 
 function Find-ValheimManaged {
     # 1. Steam's own record of where it is installed
@@ -169,6 +211,8 @@ try {
     Write-Info 'Re-run this script from an elevated PowerShell (Run as Administrator).'
     exit 1
 }
+
+Assert-BundledFresh $modSource
 
 # Mod-only refresh: the mod DLL is pure IL and identical on every platform, so
 # a change to the mod alone needs no re-patching — the patched assembly already
