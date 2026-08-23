@@ -1289,6 +1289,7 @@ namespace ICanShowYouTheWorld.RunMode
                 case "way": return "[6]";
                 case "brother": return "[7]";
                 case "windfall": return "[8]";
+                case "bonecaller": return "[0]";
                 default: return "";
             }
         }

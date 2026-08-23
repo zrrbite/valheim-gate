@@ -894,6 +894,7 @@ namespace ICanShowYouTheWorld.RunMode
             else if (Input.GetKeyDown(KeyCode.Keypad6)) TryActivateHeldBoon("way");
             else if (Input.GetKeyDown(KeyCode.Keypad7)) TryActivateHeldBoon("brother");
             else if (Input.GetKeyDown(KeyCode.Keypad8)) TryActivateHeldBoon("windfall");
+            else if (Input.GetKeyDown(KeyCode.Keypad0)) TryActivateHeldBoon("bonecaller");
             // Keypad 9 is not a boon: Homeward is a run mechanic earned from bosses, so it sits
             // beside the boon keys rather than among them.
             else if (Input.GetKeyDown(KeyCode.Keypad9)) TryHomeward();
@@ -1622,6 +1623,10 @@ namespace ICanShowYouTheWorld.RunMode
 
             try { _boonEffects.RefreshForgeFed(_heat.Heat); }
             catch (Exception ex) { LogOnce("forgefed-refresh", ex); }
+
+            // The pen grows during a run, so the shepherd's blessing has to find the new arrivals.
+            try { _boonEffects.RefreshShepherd(_boons != null && _boons.Held.Any(h => h.Def.Id == "shepherd")); }
+            catch (Exception ex) { LogOnce("shepherd-refresh", ex); }
         }
 
         private bool HoldsBoon(string boonId) =>
@@ -5321,6 +5326,12 @@ namespace ICanShowYouTheWorld.RunMode
             new BoonDefinition { Id = "fleet", Display = "Fleet-footed", IsPassive = true,  Description = "Move and run faster." },
             new BoonDefinition { Id = "sharp", Display = "Sharpened",    IsPassive = true,  Description = "Your weapons deal 20% more damage." },
             new BoonDefinition { Id = "brother", Display = "Packbrother", IsPassive = false, CooldownSeconds = 240f, Description = "Summon a wolf to fight for you. Two at a time." },
+            // Testable from Act I: you tame a boar on the hearth track, so this has something to
+            // work on long before a boss falls.
+            new BoonDefinition { Id = "shepherd", Display = "Shepherd", IsPassive = true, Description = "Your tamed animals hit harder and hold longer. New ones too." },
+            // Act II onward. Skeletons in the Meadows would be a Black Forest answer to a Meadows
+            // problem, and the flavour belongs with the burial chambers.
+            new BoonDefinition { Id = "bonecaller", Display = "Bonecaller", IsPassive = false, CooldownSeconds = 180f, MinBosses = 1, Description = "Raise two skeletons to fight for you. [0]" },
             new BoonDefinition { Id = "mule",  Display = "Packmule",     IsPassive = true,  Description = "Carry 100 more weight." },
             new BoonDefinition { Id = "hearty", Display = "Hearty",      IsPassive = true,  Description = "+15 max health." },
             new BoonDefinition { Id = "tireless", Display = "Tireless",  IsPassive = true,  Description = "+25 max stamina, faster recovery, cheaper dodges." },

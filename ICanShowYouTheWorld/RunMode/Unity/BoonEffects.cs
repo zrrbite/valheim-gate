@@ -77,7 +77,15 @@ namespace ICanShowYouTheWorld.RunMode
         // the heat curve, and the level tracks boss progress so a companion summoned in the
         // Plains isn't the same meadows wolf that dies to one Fuling.
         private const string CompanionPrefab = "Wolf";
-        private const int MaxCompanions = 2;
+        private const string BonePrefab = "Skeleton";
+
+        /// <summary>
+        /// How many summoned companions may stand at once, across ALL summoning boons.
+        ///
+        /// One shared cap rather than one each: the retinue is the thing being limited, and two
+        /// boons with two caps would quietly become a retinue of four.
+        /// </summary>
+        private const int MaxCompanions = 4;
         private static readonly string[] CompanionNames =
             { "Freki", "Geri", "Hati", "Skoll", "Vigi", "Garm" };
 
@@ -280,6 +288,15 @@ namespace ICanShowYouTheWorld.RunMode
                     ApplyWeaponMultiplier(GlassCannonDamageMultiplier, "glasscannon");
                     break;
 
+                case "shepherd":
+                    // Rides the legacy PetBuff statics rather than IPetService: the legacy world is
+                    // the one that is actually ticked, and — more to the point — it is the one with
+                    // a ResetPetBuffs. Power is loaned, so an effect with no way back is not an
+                    // option.
+                    try { PetBuff.BuffAllPets(false); }
+                    catch (Exception e) { Debug.LogWarning($"[ICanShowYouTheWorld] Shepherd: {e.Message}"); }
+                    break;
+
                 case "forgefed":
                     // Nothing to apply on gain — its multiplier is a function of live heat, and the
                     // host re-applies it on every heat change (see RefreshForgeFed).
@@ -354,6 +371,11 @@ namespace ICanShowYouTheWorld.RunMode
                     RemoveWeaponMultiplier(boonId);
                     break;
 
+                case "shepherd":
+                    try { PetBuff.ResetPetBuffs(); }
+                    catch (Exception e) { Debug.LogWarning($"[ICanShowYouTheWorld] Shepherd reset: {e.Message}"); }
+                    break;
+
                 case "forgefed":
                     RemoveWeaponMultiplier(boonId);
                     break;
@@ -387,6 +409,7 @@ namespace ICanShowYouTheWorld.RunMode
                 case "ember": return ActivateEmber();
                 case "way": return ActivateWay();
                 case "brother": return ActivateBrother();
+                case "bonecaller": return ActivateBonecaller();
                 case "windfall": return ActivateWindfall();
                 default: return false;
             }
@@ -813,6 +836,21 @@ namespace ICanShowYouTheWorld.RunMode
         /// cannot ratchet, however many times heat changes. Capped so a pathological heat number
         /// cannot produce a silly multiplier.
         /// </summary>
+        /// <summary>
+        /// Re-applies the shepherd's blessing to anything tamed SINCE it was granted.
+        ///
+        /// A passive applied once would only ever bless the animals you already had, and the whole
+        /// point of Act I's hearth is that the pen grows. Cheap enough to run on the same slow
+        /// tick that refreshes Forge-fed.
+        /// </summary>
+        public void RefreshShepherd(bool held)
+        {
+            if (!held) return;
+
+            try { PetBuff.BuffAllPets(false); }
+            catch { /* a missed refresh is cosmetic; the next one catches it */ }
+        }
+
         public void RefreshForgeFed(float heat)
         {
             var held = _heldBoons();
@@ -1105,24 +1143,52 @@ namespace ICanShowYouTheWorld.RunMode
         /// no matter how the run (or the process) ends. Cleanup on top of that is what keeps it
         /// from outliving the run within a single session.
         /// </summary>
-        private bool ActivateBrother()
+        private bool ActivateBrother() => Summon(CompanionPrefab, 1, named: true);
+
+        /// <summary>
+        /// Raises skeletons that stay raised — Tameable's own Tame(), so they follow, fight, and
+        /// are cleaned up at run end like any other companion.
+        ///
+        /// Two at a time, because one skeleton is a curiosity and a pair is a shield wall.
+        /// </summary>
+        private bool ActivateBonecaller() => Summon(BonePrefab, 2, named: false);
+
+        /// <summary>
+        /// Spawns <paramref name="count"/> tamed followers of a prefab, within the shared retinue
+        /// cap.
+        ///
+        /// Non-persistent, exactly as Packbrother's wolves have always been: summoned company must
+        /// not outlive the session and accumulate in someone's world. Power is loaned.
+        /// </summary>
+        private bool Summon(string prefabName, int count, bool named)
         {
             var player = Player.m_localPlayer;
             var scene = ZNetScene.instance;
             if (player == null || scene == null) return false;
 
-            var prefab = scene.GetPrefab(CompanionPrefab);
+            var prefab = scene.GetPrefab(prefabName);
             if (prefab == null)
             {
-                LastActivationMessage = $"Missing prefab: {CompanionPrefab}";
+                LastActivationMessage = $"Missing prefab: {prefabName}";
                 return false;
             }
 
+            bool any = false;
+            for (int i = 0; i < count; i++)
+                any |= SummonOne(player, prefab, named, i);
+
+            return any;
+        }
+
+        private bool SummonOne(Player player, GameObject prefab, bool named, int index)
+        {
             // Oldest out first, so the summon always succeeds rather than refusing at the cap.
             PruneDeadCompanions();
             while (_companions.Count >= MaxCompanions) DespawnCompanion(_companions[0]);
 
-            Vector3 pos = player.transform.position + player.transform.forward * 2f;
+            Vector3 pos = player.transform.position
+                        + player.transform.forward * 2f
+                        + player.transform.right * (index == 0 ? 0f : index % 2 == 0 ? 1.5f : -1.5f);
             var inst = UnityEngine.Object.Instantiate(prefab, pos, Quaternion.identity);
             if (inst == null) return false;
 
@@ -1141,13 +1207,17 @@ namespace ICanShowYouTheWorld.RunMode
 
             ch.SetTamed(true);
             ch.SetLevel(CompanionLevel());
-            ch.m_name = CompanionNames[_companionNameIndex++ % CompanionNames.Length];
+
+            // SetTamed is the whole of it: Tameable.Tame() is private, and this is the same path
+            // Packbrother's wolves have used since alpha1.
+
+            if (named) ch.m_name = CompanionNames[_companionNameIndex++ % CompanionNames.Length];
 
             var ai = inst.GetComponent<MonsterAI>();
             if (ai != null) ai.SetFollowTarget(player.gameObject);
 
             _companions.Add(zdo.m_uid);
-            LastActivationMessage = $"{ch.m_name} answers the call.";
+            LastActivationMessage = named ? $"{ch.m_name} answers the call." : "The bones remember.";
             return true;
         }
 
