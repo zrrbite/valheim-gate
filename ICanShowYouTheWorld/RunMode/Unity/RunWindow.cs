@@ -211,6 +211,11 @@ namespace ICanShowYouTheWorld.RunMode
         private GUIStyle _stripStyle;
         private GUIStyle _noticeStyle;
         private GUIStyle _timerStyle;
+        private GUIStyle _titleStyle;
+        private GUIStyle _subtitleStyle;
+
+        /// <summary>The Hud whose tip list we have already added to; guards against adding twice.</summary>
+        private Hud _tippedHud;
 
         public void ToggleVisible() => Visible = !Visible;
 
@@ -310,13 +315,20 @@ namespace ICanShowYouTheWorld.RunMode
                 var run = Service;
                 if (run == null) return;
 
+                EnsureStyles();
+
+                // The title card is drawn BEFORE the main-menu guard below, because the moment it
+                // exists for — a loading screen — is precisely a moment with no player. It has its
+                // own, tighter condition instead: the game's loading screen must actually be up,
+                // which is false on the main menu (there is no Hud there at all).
+                DrawSagaTitle(run, viewWidth, viewHeight);
+
                 // Nothing Run Mode draws belongs on the main menu — not the strip, not the HUD,
                 // not the offer, and not the lobby (whose Start/Discard buttons act on a world
                 // that isn't there). Suspending an active run already clears the in-world case;
                 // this also covers the parked-run notice and any menu frame before that lands.
                 if (Player.m_localPlayer == null) return;
 
-                EnsureStyles();
                 Layout(viewWidth, viewHeight);
 
                 if (run.IsRunActive)
@@ -425,7 +437,7 @@ namespace ICanShowYouTheWorld.RunMode
             // some resolutions and UI scales (owner, alpha40: "they block health and food"). The
             // margin is config for the same reason the HUD's menu offset is — the right number
             // depends on the screen, so it cannot be a constant that is right for everyone.
-            float panelX = _config?.RunSidePanelX ?? 320f;
+            float panelX = _config?.RunSidePanelX ?? 190f;
 
             _trackerRect = new Rect(panelX, Mathf.Max(10f, viewHeight - TrackerHeight - 10f),
                 TrackerWidth, TrackerHeight);
@@ -467,11 +479,28 @@ namespace ICanShowYouTheWorld.RunMode
                 normal = { textColor = RunTheme.TextParchment }
             };
 
+            _titleStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontStyle = FontStyle.Bold,
+                fontSize = 46,
+                alignment = TextAnchor.MiddleCenter,
+                normal = { textColor = RunTheme.AccentGold }
+            };
+
+            _subtitleStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 22,
+                alignment = TextAnchor.MiddleCenter,
+                normal = { textColor = RunTheme.TextParchment }
+            };
+
             if (font != null)
             {
                 _stripStyle.font = font;
                 _noticeStyle.font = font;
                 _timerStyle.font = font;
+                _titleStyle.font = font;
+                _subtitleStyle.font = font;
             }
         }
 
@@ -581,6 +610,97 @@ namespace ICanShowYouTheWorld.RunMode
             else if (offerCount <= 0) _offerShownAt = float.NegativeInfinity;
             _lastOfferCount = offerCount;
         }
+
+        // --- Saga title card (loading screens) ---
+
+        /// <summary>
+        /// "VALHEIM: THE SAGA" over the game's loading screen, with the act underneath.
+        ///
+        /// Typographic rather than an image: nothing has to be drawn, nothing extra has to ship
+        /// beside the DLL, and — unlike a static picture — it can say which act you are loading
+        /// into, which is the part that actually means something.
+        ///
+        /// Shown ONLY while a saga is live or one is waiting to resume. A vanilla world loading on
+        /// a vanilla save looks exactly like vanilla, which is the same rule the rest of the mode
+        /// keeps: it changes the game while it is running the mode, and not otherwise.
+        /// </summary>
+        private void DrawSagaTitle(IRunService run, float viewWidth, float viewHeight)
+        {
+            if (!LoadingScreenUp()) return;
+            if (!run.IsRunActive && !(_concrete?.HasPendingResume ?? false)) return;
+
+            EnsureSagaTips();
+
+            // Upper third rather than centred: the game puts its own progress bar and tip low, and
+            // this should sit above them rather than argue with them.
+            float y = viewHeight * 0.22f;
+
+            GUI.Label(new Rect(0f, y, viewWidth, 60f), "VALHEIM: THE SAGA", _titleStyle);
+
+            var act = run.CurrentAct;
+            if (act != null)
+                GUI.Label(new Rect(0f, y + 56f, viewWidth, 30f), act.Label, _subtitleStyle);
+        }
+
+        /// <summary>
+        /// True while the game's loading screen is actually on screen.
+        ///
+        /// Reads the Hud's loading CanvasGroup rather than guessing from a null player: the main
+        /// menu also has no player, and nothing this mod draws belongs there. On the menu there is
+        /// no Hud at all, so this is false — which is exactly the discrimination needed.
+        /// </summary>
+        private static bool LoadingScreenUp()
+        {
+            try
+            {
+                var hud = Hud.instance;
+                return hud != null && hud.m_loadingScreen != null && hud.m_loadingScreen.alpha > 0.05f;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Adds the saga's own lines to the game's loading-tip rotation, once per Hud.
+        ///
+        /// Guarded by the Hud instance it was done to, not a bool: a Hud is rebuilt per scene load,
+        /// and a plain flag would leave the tips missing from every load after the first. Reference
+        /// equality rather than Unity's ==, for the usual reason — a destroyed Hud must read as
+        /// "different", not as null-and-therefore-skip.
+        /// </summary>
+        private void EnsureSagaTips()
+        {
+            try
+            {
+                var hud = Hud.instance;
+                if (hud == null || hud.m_loadingTips == null) return;
+                if (ReferenceEquals(hud, _tippedHud)) return;
+
+                _tippedHud = hud;
+                hud.m_loadingTips.AddRange(SagaLoadingTips);
+            }
+            catch
+            {
+                // Cosmetic. Never worth taking a load screen down for.
+            }
+        }
+
+        /// <summary>
+        /// Tips the saga adds to the game's rotation. Each one is something the mode actually does
+        /// that a player could reasonably not know — the same test the questline hints use.
+        /// </summary>
+        private static readonly string[] SagaLoadingTips =
+        {
+            "Heat is a choice. Every quest you finish makes the world harder and you stronger.",
+            "What you put in the stash follows you. You never have to carry a base to the next act.",
+            "The Herald runs. Follow the tracks on the strip, not your instincts.",
+            "A boss altar is only marked once the saga asks you to find it.",
+            "Every boss felled is a way home. Keypad 9 returns you to your bed.",
+            "Two questlines run at once. Doing both is stronger, hotter, and worth more.",
+            "Power is loaned. Everything the saga grants goes back when it ends.",
+        };
 
         // --- Strip (always on during a run, F1 or no F1) ---
 

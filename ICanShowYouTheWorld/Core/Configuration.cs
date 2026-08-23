@@ -161,10 +161,14 @@ namespace ICanShowYouTheWorld.Core
         [SerializeField] private float runDiscoverRadius = 30f;
 
         // How far from the left edge the bottom-left panels (tracker, stash) sit. They were flush
-        // at 10px, which overlapped Valheim's own health/food readout at some resolutions and UI
-        // scales (owner, alpha40: "they block health and food"). Config rather than a constant for
-        // exactly that reason — the same call as runHudMenuOffset.
-        [SerializeField] private float runSidePanelX = 320f;
+        // at 10px, which overlapped Valheim's own health/food readout (owner, alpha40: "they block
+        // health and food") — and then 320 overshot ("TOO far right, they should only be moved just
+        // past the health bar"). 190 clears the bar without stranding the panels mid-screen.
+        //
+        // Config rather than a constant because the right number depends on resolution and UI
+        // scale, the same call as runHudMenuOffset. Both panels are draggable too, and keep where
+        // they are put until the game window resizes.
+        [SerializeField] private float runSidePanelX = 190f;
 
         // --- Eikthyr's Herd: the deer of Act I ---
         //

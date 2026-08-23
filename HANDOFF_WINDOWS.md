@@ -1523,3 +1523,38 @@ never read as ten at once. Harvesting a finished crop doesn't take the step back
 ### RESULTS (Windows side appends here)
 
 *(pending)*
+
+---
+
+## 2026-08-23 — TASK: alpha42 — Valheim: The Saga, on the loading screen
+
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha42**.
+
+**1. Loading screens are branded** — while a saga is live or one is waiting to
+resume:
+
+```
+            VALHEIM: THE SAGA
+           Act II — The Black Forest
+```
+
+Typographic rather than a picture, deliberately: nothing has to be drawn, nothing
+extra ships beside the DLL, and it can name the act you're loading into — which a
+static image never could. If you'd rather have real artwork later, the plumbing to
+swap the actual loading image exists (`Texture2D.LoadImage`); it just needs someone
+to make the art, which isn't me.
+
+**A vanilla world on a vanilla save still looks completely vanilla.** The branding
+only appears when the mode is actually in play, same rule as everything else here.
+
+**2. The game's own loading tips gained seven saga lines** — heat being a choice,
+the stash following you, the Herald's tracks being on the strip, and so on. Each is
+something the mode does that you could reasonably not know.
+
+**3. Panels moved back left** — 320 overshot ("TOO far right"). Now 190, which
+should clear the health bar without stranding them mid-screen. `runSidePanelX` if
+it's still not right, and both windows are draggable.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
