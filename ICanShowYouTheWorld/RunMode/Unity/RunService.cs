@@ -1105,16 +1105,12 @@ namespace ICanShowYouTheWorld.RunMode
                 _records.Report(HearthRecords.Foraged, ReadPlayerStat("ItemsPickedUp") ?? 0f);
 
                 var caught = FishHeld(player);
-                if (caught.Heaviest > 0f)
-                    _records.Report(HearthRecords.HeaviestFish, caught.Heaviest, caught.HeaviestName);
+                if (caught.Total > 0) _records.Report(HearthRecords.BestHaul, caught.Total);
 
                 // Marked here rather than at run end, so the star appears the moment the record
                 // is beaten — which is when it means something.
                 _records.MarkPersonalBests(PermanentRecord.GetRecordBests(player));
 
-                var best = _records.Get(HearthRecords.HeaviestFish);
-                _challenges.ReportMeasure(ChallengeKind.PlayerState, "FishBeatsBest",
-                    best != null && best.IsPersonalBest ? 1f : 0f);
             }
             catch
             {
@@ -1192,13 +1188,24 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
-        /// Things whose prefab name contains "Fish" but which are not a catch: the rod, the bait,
-        /// and a trophy if one ever exists.
+        /// Things whose prefab name contains "Fish" but which are not a fish you caught.
+        ///
+        /// The tackle (rod, bait), and — less obviously — the PREPARED DISHES. A run-start dump of
+        /// the real registry settled what is actually in there:
+        ///
+        ///     FishAndBread(1), FishAndBreadUncooked(1), FishAnglerRaw(0.5),
+        ///     FishCooked(0.5), FishRaw(0.5), FishWraps(1)
+        ///
+        /// Three of those six are cooking recipes. Counting fish wraps as a catch would have let
+        /// the larder finish a fishing step, and it inflated the species count enough that the
+        /// impossible "3 species" step passed validation.
         /// </summary>
         private static bool IsFishingGear(string prefabName) =>
             prefabName.IndexOf("Rod", StringComparison.OrdinalIgnoreCase) >= 0 ||
             prefabName.IndexOf("Bait", StringComparison.OrdinalIgnoreCase) >= 0 ||
-            prefabName.IndexOf("Trophy", StringComparison.OrdinalIgnoreCase) >= 0;
+            prefabName.IndexOf("Trophy", StringComparison.OrdinalIgnoreCase) >= 0 ||
+            prefabName.IndexOf("AndBread", StringComparison.OrdinalIgnoreCase) >= 0 ||
+            prefabName.IndexOf("Wraps", StringComparison.OrdinalIgnoreCase) >= 0;
 
         /// <summary>What the player is carrying, fish-wise. One scan, four questions.</summary>
         private struct FishCatch
@@ -1392,9 +1399,7 @@ namespace ICanShowYouTheWorld.RunMode
                 _challenges.ReportMeasure(ChallengeKind.PlayerState, "TamedNearby", CountTamedNearby(player));
                 var fish = FishHeld(player);
                 _challenges.ReportMeasure(ChallengeKind.PlayerState, "FishHeld", fish.Total);
-                _challenges.ReportMeasure(ChallengeKind.PlayerState, "FishSpecies", fish.Species);
                 _challenges.ReportMeasure(ChallengeKind.PlayerState, "CookedFishHeld", fish.Cooked);
-                _challenges.ReportMeasure(ChallengeKind.PlayerState, "HeaviestFish", fish.Heaviest);
 
                 ReportSkillLevels(player);
 
@@ -3007,7 +3012,7 @@ namespace ICanShowYouTheWorld.RunMode
             new[] { ("Sausages", 10), ("CarrotSoup", 5) },            // after the Elder -> Swamp
             new[] { ("TurnipStew", 5), ("SerpentStew", 3) },          // after Bonemass -> Mountain
             new[] { ("WolfMeatSkewer", 10), ("OnionSoup", 5) },       // after Moder -> Plains
-            new[] { ("LoxMeatPie", 5), ("BloodPudding", 10) },        // after Yagluth
+            new[] { ("LoxPie", 5), ("BloodPudding", 10) },        // after Yagluth
         };
 
         private void GrantBossSpoils()
@@ -4288,7 +4293,7 @@ namespace ICanShowYouTheWorld.RunMode
             new ChallengeDefinition { Id = "c-stone",     Tier = 0, Kind = ChallengeKind.CollectItem, Param = "$item_stone", Target = 25, HeatReward = 1, Display = "Hold 25 Stone" },
             // Fishing bounties live in the POOL rather than the questline: they are the kind of
             // thing you take on when you fancy it, and the pool is where optional heat is bought.
-            new ChallengeDefinition { Id = "c-fishbig",  Tier = 1, Kind = ChallengeKind.PlayerState, Param = "HeaviestFish",   Target = 4, HeatReward = 2, Display = "Land a big one (4.0+)" },
+            new ChallengeDefinition { Id = "c-fishhaul", Tier = 1, Kind = ChallengeKind.PlayerState, Param = "FishHeld",       Target = 8, HeatReward = 2, Display = "A day at the water (8 fish)" },
             new ChallengeDefinition { Id = "c-fishcook", Tier = 1, Kind = ChallengeKind.PlayerState, Param = "CookedFishHeld", Target = 3, HeatReward = 2, Display = "Fish supper (3 cooked)" },
             new ChallengeDefinition { Id = "c-food",      Tier = 0, Kind = ChallengeKind.CollectFood, Param = "", Target = 10, HeatReward = 1, Display = "Hold 10 food items" },
             new ChallengeDefinition { Id = "naked-5",     Tier = 0, Kind = ChallengeKind.NoArmorMinutes, Param = "", Target = 3, HeatReward = 3, Display = "Wear no armor for 3 minutes" },
@@ -4788,9 +4793,13 @@ namespace ICanShowYouTheWorld.RunMode
                 // stacking every fishing step together would turn the homestead act into a
                 // fishing act for ten minutes.
                 Id = "mq-fish-varied", MainQuest = true, Track = HearthTrackId, Kind = ChallengeKind.PlayerState,
-                Param = "FishSpecies", Target = 3, Display = "A varied catch (3 species)",
-                RewardText = "Bait, and a cauldron for the catch",
-                Hint = "Different water holds different fish. Try the shallows, then somewhere deeper.",
+                // NOT species. This game ships exactly two catchable fish items — FishRaw and
+                // FishAnglerRaw, the latter a Mistlands fish — so "3 species" could never be done
+                // in the Meadows. Only the cooking recipes made it look possible. A haul is the
+                // honest version of the same idea: keep at it rather than land one and leave.
+                Param = "FishHeld", Target = 5, Display = "A good haul (5 fish)",
+                RewardText = "Bait, and salt for the catch",
+                Hint = "Deeper water bites more often. Keep the bait topped up.",
             },
             new ChallengeDefinition
             {
@@ -4819,9 +4828,12 @@ namespace ICanShowYouTheWorld.RunMode
                 // the HOMESTEAD record are the same object — finishing this puts the star on the
                 // panel in the same instant.
                 Id = "mq-fish-best", MainQuest = true, Track = HearthTrackId, Kind = ChallengeKind.PlayerState,
-                Param = "FishBeatsBest", Target = 1, Display = "The one that got away",
+                // Weight was the plan, and every fish in this game weighs 0.5 — so "heavier than
+                // your best" would have completed on the first cast, forever. A full larder is a
+                // homestead idea anyway, and it needs the cooking station the hearth already built.
+                Param = "CookedFishHeld", Target = 5, Display = "A fisherman's larder (5 cooked)",
                 RewardText = "A feast from the water",
-                Hint = "Land a fish heavier than any you have caught before.",
+                Hint = "Cook them on the station. Cooked fish keeps and feeds better.",
             },
             new ChallengeDefinition
             {
@@ -5270,7 +5282,7 @@ namespace ICanShowYouTheWorld.RunMode
                 ["mq-comfort"] = new[] { ("DeerHide", 10), ("Resin", 20), ("Wood", 30) },
                 ["bf-trophy"] = new[] { ("Wood", 30), ("Resin", 15) },
                 ["mq-fish"] = new[] { ("FishingBait", 100), ("Wood", 20) },
-                ["mq-fish-varied"] = new[] { ("FishingBait", 100), ("Cauldron", 1) },
+                ["mq-fish-varied"] = new[] { ("FishingBait", 100), ("Honey", 20) },
                 ["mq-fish-skill"] = new[] { ("FishingBait", 150), ("CookedMeat", 10) },
                 ["mq-fish-best"] = new[] { ("FishingBait", 150), ("Honey", 20) },
                 ["mq-forage"] = new[] { ("CarrotSeeds", 10), ("Honey", 10) },
@@ -5330,7 +5342,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // The seeds are the point: the Elder's altar wants three, they drop from shamans
                 // and brutes, and an act finale must never gate on drop luck (see mq-deer).
                 ["bf-troll"] = new[] { ("TrollHide", 10), ("AncientSeed", 3) },
-                ["bf-elder"] = new[] { ("SwampKey", 1) },
+                ["bf-elder"] = new[] { ("CryptKey", 1) },
 
                 // Acts III-V, thin like their chains. Each pays the next step's tedious part and
                 // the pre-boss step pays that boss's summoning items, on the Act I pattern.

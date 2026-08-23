@@ -8,7 +8,7 @@ namespace ICanShowYouTheWorld.RunMode
     /// The homestead's answer to boss splits.
     ///
     /// Splits measure a run against the clock, which is the speed-runner's question. These measure
-    /// it against ITSELF — the heaviest fish landed, the most comfortable the house ever got, the
+    /// it against ITSELF — the biggest haul landed, the most comfortable the house ever got, the
     /// largest the pen ever grew. Nothing here affects score, heat or progression; they exist
     /// because "how big was the fish" is a thing people want to know and tell each other about.
     ///
@@ -26,7 +26,7 @@ namespace ICanShowYouTheWorld.RunMode
         {
             public string Id;
 
-            /// <summary>Player-facing row name, e.g. "Heaviest fish".</summary>
+            /// <summary>Player-facing row name, e.g. "Best haul".</summary>
             public string Label;
 
             public float Value;
@@ -34,13 +34,13 @@ namespace ICanShowYouTheWorld.RunMode
             /// <summary>What set it — a fish's name, say. Empty for records that are just a number.</summary>
             public string Detail = string.Empty;
 
-            /// <summary>Decimal places for <see cref="Value"/>. Weights want one; counts want none.</summary>
+            /// <summary>Decimal places for <see cref="Value"/>. Counts want none.</summary>
             public int Decimals;
 
             /// <summary>True when this run's value beats the character's all-time best.</summary>
             public bool IsPersonalBest;
 
-            /// <summary>The value and its detail, as one phrase: "Pike, 4.0" or just "7".</summary>
+            /// <summary>The value and its detail, as one phrase: "Pike, 4" or just "7".</summary>
             public string Text
             {
                 get
@@ -57,7 +57,11 @@ namespace ICanShowYouTheWorld.RunMode
         /// Declared rather than discovered so the panel has a stable shape from the first second of
         /// a run — a list that grew as things happened would reorder itself under the player's eyes.
         /// </summary>
-        public const string HeaviestFish = "fish";
+        /// <summary>
+        /// Kept as id "fish" so stored personal bests survive, but it is a HAUL now, not a weight.
+        /// Every fish in this game weighs 0.5, so "heaviest" was a record that could never move.
+        /// </summary>
+        public const string BestHaul = "fish";
         public const string Comfort = "comfort";
         public const string LargestPen = "pen";
         public const string Trophies = "trophies";
@@ -66,7 +70,7 @@ namespace ICanShowYouTheWorld.RunMode
 
         private readonly List<Record> records = new List<Record>
         {
-            new Record { Id = HeaviestFish, Label = "Heaviest fish", Decimals = 1 },
+            new Record { Id = BestHaul,     Label = "Best haul",     Decimals = 0 },
             new Record { Id = Comfort,      Label = "Comfort",       Decimals = 0 },
             new Record { Id = LargestPen,   Label = "Largest pen",   Decimals = 0 },
             new Record { Id = Trophies,     Label = "Trophies hung", Decimals = 0 },
@@ -84,8 +88,8 @@ namespace ICanShowYouTheWorld.RunMode
         /// Offers a value. Kept only if it beats what is already there.
         ///
         /// <paramref name="detail"/> travels WITH the value rather than being latched separately:
-        /// a record reading "Tuna, 4.0" — the name of the best fish beside the weight of a
-        /// different one — would be worse than showing nothing.
+        /// a record naming one thing beside a number set by another would be worse than showing
+        /// nothing.
         /// </summary>
         public void Report(string id, float value, string detail = null)
         {

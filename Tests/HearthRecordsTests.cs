@@ -19,13 +19,13 @@ static class HearthRecordsTests
         Check.That(r.All.Count == 6, "but the table's shape is fixed from the first second");
 
         // Latching: a smaller fish does not replace a bigger one.
-        r.Report(HearthRecords.HeaviestFish, 4f, "Pike");
-        r.Report(HearthRecords.HeaviestFish, 1.5f, "Perch");
-        Check.That(r.ValueOf(HearthRecords.HeaviestFish) == 4f, "a smaller fish does not beat a bigger one");
-        Check.That(r.Get(HearthRecords.HeaviestFish).Detail == "Pike", "and the name stays with the weight that set it");
+        r.Report(HearthRecords.BestHaul, 4f, "Pike");
+        r.Report(HearthRecords.BestHaul, 1.5f, "Perch");
+        Check.That(r.ValueOf(HearthRecords.BestHaul) == 4f, "a smaller value does not beat a bigger one");
+        Check.That(r.Get(HearthRecords.BestHaul).Detail == "Pike", "and the detail stays with the value that set it");
 
-        r.Report(HearthRecords.HeaviestFish, 8f, "Tuna");
-        Check.That(r.Get(HearthRecords.HeaviestFish).Text == "Tuna, 8.0", "a bigger fish takes both the weight and the name");
+        r.Report(HearthRecords.BestHaul, 8f, "Tuna");
+        Check.That(r.Get(HearthRecords.BestHaul).Text == "Tuna, 8", "a bigger value takes both the number and the name");
 
         // Counts render without decimals; weights with one.
         r.Report(HearthRecords.Comfort, 7f);
@@ -43,10 +43,10 @@ static class HearthRecordsTests
         // Personal bests: beating counts, matching does not.
         r.MarkPersonalBests(new Dictionary<string, float>
         {
-            { HearthRecords.HeaviestFish, 9f },
+            { HearthRecords.BestHaul, 9f },
             { HearthRecords.Comfort, 7f },
         });
-        Check.That(!r.Get(HearthRecords.HeaviestFish).IsPersonalBest, "a smaller fish than your best is not a best");
+        Check.That(!r.Get(HearthRecords.BestHaul).IsPersonalBest, "a value below your best is not a best");
         Check.That(!r.Get(HearthRecords.Comfort).IsPersonalBest, "matching your best is not beating it");
 
         // A first run has no stored bests at all, so everything it does is a best.
