@@ -44,6 +44,15 @@ namespace ICanShowYouTheWorld.RunMode
     /// one instance per boss, which is what makes it safe in a linear chain — unlike a rune stone,
     /// which is scattered by luck and could never be found.
     ///
+    /// PlayerEvent is a THING THAT HAPPENED that the game does not usefully count itself —
+    /// Param names it ("MealEaten"), and the host reports each occurrence as it sees it. It
+    /// accumulates like a kill rather than latching like a measure, because an event has no
+    /// current value to read: miss the moment and it is gone.
+    ///
+    /// It exists because Player.EatFood increments the game's own FoodEaten stat ONLY on the
+    /// branch where the meal was refused — all three slots full, nothing depleted enough to
+    /// replace — so "Eat 3 meals" was counting meals NOT eaten.
+    ///
     /// PlayerState is a plain FACT about the player that the game keeps but does not count — Param
     /// names one ("SpawnPointSet"), and the host answers yes or no.
     ///
@@ -51,7 +60,7 @@ namespace ICanShowYouTheWorld.RunMode
     /// records it as a spawn point and nothing increments. Latched by max-semantics like the other
     /// host-reported measures, so a fact that stops being true does not un-earn the step.
     /// </summary>
-    public enum ChallengeKind { KillPrefab, ReachAltitude, BuildHeight, CollectItem, NoArmorMinutes, CollectFood, StatDelta, BuildPiece, ReachBiome, DiscoverLocation, PlayerState }
+    public enum ChallengeKind { KillPrefab, ReachAltitude, BuildHeight, CollectItem, NoArmorMinutes, CollectFood, StatDelta, BuildPiece, ReachBiome, DiscoverLocation, PlayerState, PlayerEvent }
 
     public class ChallengeDefinition
     {
@@ -523,15 +532,22 @@ namespace ICanShowYouTheWorld.RunMode
             }
         }
 
-        public void ReportKill(string prefab)
+        public void ReportKill(string prefab) => ReportEvent(ChallengeKind.KillPrefab, prefab);
+
+        /// <summary>
+        /// Credits one occurrence of something that HAPPENED, as opposed to something that can be
+        /// read off the world. Kills are the original case; see <see cref="ChallengeKind.PlayerEvent"/>
+        /// for the general one.
+        /// </summary>
+        public void ReportEvent(ChallengeKind kind, string param)
         {
-            foreach (var a in active) CreditKill(a, prefab);
+            foreach (var a in active) CreditEvent(a, kind, param);
 
             // Questlines measure through exactly the same reports as a random slot; they just live
             // outside the active list. Every track sees every report — a kill that appears in two
             // tracks' chains legitimately counts for both.
             foreach (var track in tracks)
-                if (track.Current != null) CreditKill(track.Current, prefab);
+                if (track.Current != null) CreditEvent(track.Current, kind, param);
         }
 
         public void ReportMeasure(ChallengeKind kind, string param, float value)
@@ -542,12 +558,12 @@ namespace ICanShowYouTheWorld.RunMode
                 if (track.Current != null) CreditMeasure(track.Current, kind, param, value);
         }
 
-        private static void CreditKill(ActiveChallenge a, string prefab)
+        private static void CreditEvent(ActiveChallenge a, ChallengeKind kind, string param)
         {
-            if (a.Def.Kind == ChallengeKind.KillPrefab && a.Def.Param == prefab)
+            if (a.Def.Kind == kind && a.Def.Param == param)
                 a.Progress += 1f;
 
-            CreditKillSub(a, prefab);
+            CreditEventSub(a, kind, param);
         }
 
         private static void CreditMeasure(ActiveChallenge a, ChallengeKind kind, string param, float value)
@@ -580,14 +596,14 @@ namespace ICanShowYouTheWorld.RunMode
         /// distinction <see cref="ReportKill"/> and <see cref="ReportMeasure"/> already draw for
         /// simple challenges.
         /// </summary>
-        private static void CreditKillSub(ActiveChallenge a, string prefab)
+        private static void CreditEventSub(ActiveChallenge a, ChallengeKind kind, string param)
         {
             if (a.Def.Subs == null || a.Def.Subs.Count == 0 || a.SubProgress == null) return;
 
             for (int i = 0; i < a.Def.Subs.Count; i++)
             {
                 var sub = a.Def.Subs[i];
-                if (sub.Kind != ChallengeKind.KillPrefab || sub.Param != prefab) continue;
+                if (sub.Kind != kind || sub.Param != param) continue;
                 if (i >= a.SubProgress.Count) continue;
 
                 a.SubProgress[i] = Math.Min(sub.Target, a.SubProgress[i] + 1f);
@@ -597,7 +613,7 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>
         /// Credits a composite's CollectItem/CollectFood/BuildPiece subs from a measure report, with
         /// the same max-semantics and param-scoping <see cref="ReportMeasure"/> uses for simple
-        /// challenges. KillPrefab subs are not touched here — see <see cref="CreditKillSub"/>.
+        /// challenges. Event subs are not touched here — see <see cref="CreditEventSub"/>.
         ///
         /// BuildPiece qualifies on the rule composites actually require (see
         /// <see cref="ChallengeDefinition.Subs"/>): it is an absolute quantity needing no per-sub

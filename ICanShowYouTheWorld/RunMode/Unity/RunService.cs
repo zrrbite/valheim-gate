@@ -1074,7 +1074,63 @@ namespace ICanShowYouTheWorld.RunMode
             PollDeerHerd();
             PollDiscoveries();
             PollPlayerState();
+            PollMeals();
             RefreshActPin();
+        }
+
+        /// <summary>Remaining burn time per active food, as of the last poll; see <see cref="PollMeals"/>.</summary>
+        private readonly Dictionary<string, float> _foodTimes = new Dictionary<string, float>();
+        private bool _foodSeeded;
+
+        /// <summary>
+        /// Detects meals actually eaten, by watching the food slots rather than the game's counter.
+        ///
+        /// Valheim's own FoodEaten stat is incremented on exactly one branch of Player.EatFood —
+        /// the one where the meal was REFUSED because all three slots were full and nothing was
+        /// depleted enough to replace. Both successful branches return without touching it. So
+        /// "Eat 3 meals" measured meals not eaten, and eating normally moved nothing.
+        ///
+        /// A food's burn time only ever counts DOWN, so a slot whose remaining time went up is a
+        /// meal just eaten — and that catches all three cases: a new food, a food replacing a
+        /// depleted one, and topping the same food up again. Matched by name rather than slot
+        /// index, since an expiring food shifts every index after it.
+        /// </summary>
+        private void PollMeals()
+        {
+            var player = Player.m_localPlayer;
+            if (player == null) return;
+
+            List<Player.Food> foods;
+            try { foods = player.GetFoods(); }
+            catch { return; }
+            if (foods == null) return;
+
+            int meals = 0;
+
+            foreach (var food in foods)
+            {
+                if (food == null || string.IsNullOrEmpty(food.m_name)) continue;
+
+                float previous;
+                bool known = _foodTimes.TryGetValue(food.m_name, out previous);
+
+                // A whole second of slack: burn time falls every frame, so anything rising past
+                // that is an actual meal rather than float noise.
+                if (!known || food.m_time > previous + 1f) meals++;
+
+                _foodTimes[food.m_name] = food.m_time;
+            }
+
+            // Drop foods that have expired, so eating them again later reads as new.
+            var gone = _foodTimes.Keys.Where(name => !foods.Any(f => f != null && f.m_name == name)).ToList();
+            foreach (var name in gone) _foodTimes.Remove(name);
+
+            // The first poll of a run establishes what is already burning; a player who loaded in
+            // with a full food bar has not just eaten three meals.
+            if (!_foodSeeded) { _foodSeeded = true; return; }
+
+            for (int i = 0; i < meals; i++)
+                _challenges?.ReportEvent(ChallengeKind.PlayerEvent, "MealEaten");
         }
 
         /// <summary>
@@ -3868,7 +3924,7 @@ namespace ICanShowYouTheWorld.RunMode
             new ChallengeDefinition { Id = "s-mine2",   Tier = 2, Kind = ChallengeKind.StatDelta, Param = "MineHits",         Target = 70, HeatReward = 2, Display = "Land 70 mining hits" },
             new ChallengeDefinition { Id = "s-kills",   Tier = 1, Kind = ChallengeKind.StatDelta, Param = "EnemyKills",       Target = 8,  HeatReward = 2, Display = "Kill 8 creatures — anything" },
             new ChallengeDefinition { Id = "s-kills2",  Tier = 2, Kind = ChallengeKind.StatDelta, Param = "EnemyKills",       Target = 15, HeatReward = 3, Display = "Kill 15 creatures — anything" },
-            new ChallengeDefinition { Id = "s-food",    Tier = 1, Kind = ChallengeKind.StatDelta, Param = "FoodEaten",        Target = 3,  HeatReward = 1, Display = "Eat 3 meals" },
+            new ChallengeDefinition { Id = "s-food",    Tier = 1, Kind = ChallengeKind.PlayerEvent, Param = "MealEaten",       Target = 3,  HeatReward = 1, Display = "Eat 3 meals" },
             new ChallengeDefinition { Id = "s-sleep",   Tier = 0, Kind = ChallengeKind.StatDelta, Param = "Sleep",            Target = 1,  HeatReward = 1, Display = "Sleep through a night" },
             new ChallengeDefinition { Id = "s-run",    Tier = 0, Kind = ChallengeKind.StatDelta, Param = "DistanceRun",      Target = 400, HeatReward = 1, Display = "Run 400m" },
             new ChallengeDefinition { Id = "s-mine",   Tier = 2, Kind = ChallengeKind.StatDelta, Param = "MineHits",         Target = 35,  HeatReward = 2, Display = "Land 35 mining hits" },

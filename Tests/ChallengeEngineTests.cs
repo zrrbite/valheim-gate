@@ -207,6 +207,51 @@ static class ChallengeEngineTests
         QuestTrackTests();
         DiscoverLocationTests();
         PlayerStateTests();
+        PlayerEventTests();
+    }
+
+    /// <summary>
+    /// PlayerEvent: a thing that HAPPENED. Accumulates like a kill rather than latching like a
+    /// measure — an event has no current value to read back, so missing the moment loses it.
+    ///
+    /// "Eat 3 meals" is why: the game's FoodEaten stat only counts meals it REFUSED.
+    /// </summary>
+    static void PlayerEventTests()
+    {
+        var step = new ChallengeDefinition
+        {
+            Id = "meals", MainQuest = true, Kind = ChallengeKind.PlayerEvent, Param = "MealEaten",
+            Target = 3, Display = "Eat 3 meals",
+        };
+
+        var e = new ChallengeEngine(Pool(), new Random(71), 120f);
+        e.SetMainChain(new List<ChallengeDefinition> { step });
+
+        // Accumulates: three separate events, not three reports of the same value.
+        e.ReportEvent(ChallengeKind.PlayerEvent, "MealEaten");
+        e.ReportEvent(ChallengeKind.PlayerEvent, "MealEaten");
+        Check.That(e.CurrentMainQuest.Progress == 2f, "each event adds one");
+
+        // Param-scoped: a different event is not this one.
+        e.ReportEvent(ChallengeKind.PlayerEvent, "SomethingElse");
+        Check.That(e.CurrentMainQuest.Progress == 2f, "an unrelated event does not count");
+
+        e.ReportEvent(ChallengeKind.PlayerEvent, "MealEaten");
+        e.Tick(0.1f);
+        Check.That(e.CurrentMainQuest == null, "the third meal completes the step");
+
+        // Kills still ride the same path they always did.
+        var e2 = new ChallengeEngine(Pool(), new Random(72), 120f);
+        e2.SetMainChain(new List<ChallengeDefinition>
+        {
+            new ChallengeDefinition { Id = "k", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Deer", Target = 2, Display = "Hunt 2 Deer" },
+        });
+        e2.ReportKill("Boar");
+        Check.That(e2.CurrentMainQuest.Progress == 0f, "the wrong prefab does not count");
+        e2.ReportKill("Deer");
+        e2.ReportKill("Deer");
+        e2.Tick(0.1f);
+        Check.That(e2.CurrentMainQuest == null, "ReportKill still completes a kill step");
     }
 
     /// <summary>
