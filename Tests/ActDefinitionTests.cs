@@ -102,4 +102,69 @@ static class ActDefinitionTests
         Check.That(bare.Tracks != null && bare.Tracks.Count == 0, "an act's track list defaults to empty, not null");
         Check.That(!bare.AllSteps.Any(), "an act with no tracks has no steps");
     }
+
+    /// <summary>
+    /// SeatingFor: unfinished work from an earlier act follows the run forward.
+    ///
+    /// An act ends when its boss dies, and a player can summon a boss whenever they like — so no
+    /// questline gate can stop an act from ending early. Carrying the work forward can.
+    /// </summary>
+    public static void SeatingTests()
+    {
+        var acts = Sample();
+
+        // Act I gets a hearth; no other act has one. That is the whole reason it can carry —
+        // "hunt" exists in every act, so a leftover would collide with the new act's own.
+        acts[0].Tracks.Add(new QuestTrack
+        {
+            Id = "hearth", Label = "HEARTH",
+            Chain = new List<ChallengeDefinition>
+            {
+                new ChallengeDefinition { Id = "cozy1", MainQuest = true, Kind = ChallengeKind.PlayerState, Param = "Comfort", Target = 5, Display = "Comfort" },
+                new ChallengeDefinition { Id = "cozy2", MainQuest = true, Kind = ChallengeKind.PlayerState, Param = "FishHeld", Target = 3, Display = "Fish" },
+            },
+        });
+
+        // Run start: nothing is live, so everything the acts offer is seated and the save decides.
+        var atStart = ActDefinition.SeatingFor(acts, 0, new List<QuestTrack>());
+        Check.That(atStart.Any(t => t.Id == "hearth"), "Act I seats its own hearth");
+
+        var laterAtStart = ActDefinition.SeatingFor(acts, 1, new List<QuestTrack>());
+        Check.That(laterAtStart.Any(t => t.Id == "hearth"),
+                   "a resume into Act II seats the hearth so the save can restore it");
+
+        // Looked up by id rather than by position: how many tracks Sample() gives an act is not
+        // this test's business.
+        var hearthChain = acts[0].Tracks.First(t => t.Id == "hearth").Chain;
+        var huntChain = acts[0].Tracks.First(t => t.Id == "hunt").Chain;
+
+        // Act change with the hearth still unfinished: it carries.
+        var live = new List<QuestTrack>
+        {
+            new QuestTrack { Id = "hunt", Label = "HUNT", Chain = huntChain },
+            new QuestTrack { Id = "hearth", Label = "HEARTH", Chain = hearthChain,
+                             Current = new ActiveChallenge { Def = hearthChain[1] } },
+        };
+        var carried = ActDefinition.SeatingFor(acts, 1, live);
+        Check.That(carried.Any(t => t.Id == "hearth"), "an unfinished hearth carries into Act II");
+        Check.That(carried.Count(t => t.Id == "hunt") == 1, "and Act II's own hunt track is not duplicated");
+        Check.That(carried[0].Id == "hunt", "the act's own tracks still come first");
+
+        // Finished before the boss fell: it does not follow.
+        var done = new List<QuestTrack>
+        {
+            new QuestTrack { Id = "hunt", Label = "HUNT", Chain = huntChain },
+            new QuestTrack { Id = "hearth", Label = "HEARTH", Chain = hearthChain, Current = null },
+        };
+        Check.That(!ActDefinition.SeatingFor(acts, 1, done).Any(t => t.Id == "hearth"),
+                   "a finished hearth does not follow the run around");
+
+        // Already dropped stays dropped, rather than reappearing at the next act change.
+        var dropped = new List<QuestTrack>
+        {
+            new QuestTrack { Id = "hunt", Label = "HUNT", Chain = acts[1].Tracks.First(t => t.Id == "hunt").Chain },
+        };
+        Check.That(!ActDefinition.SeatingFor(acts, 2, dropped).Any(t => t.Id == "hearth"),
+                   "a hearth already dropped does not come back");
+    }
 }

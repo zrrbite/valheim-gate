@@ -23,6 +23,7 @@ static class TestMain
         BoonEngineTests.Run();
         NameManifestTests.Run();
         ActDefinitionTests.Run();
+        ActDefinitionTests.SeatingTests();
         RunStashTests.Run();
         LoanLedgerTests.Run();
         Console.WriteLine(Check.Failures == 0 ? "ALL PASS" : $"{Check.Failures} FAILURES");

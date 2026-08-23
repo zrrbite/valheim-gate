@@ -90,23 +90,41 @@ Config: `runHomewardCooldownMinutes`, default 10.
 ## The act ends on a kill, and that destroys tracks
 
 `RefreshAct` swaps the whole chain on a boss death, so every unfinished step on
-every track is discarded, rewards and all. HUNT is six steps and HEARTH is
-nine: following the hunt naturally destroys most of the homestead.
+every track was discarded, rewards and all. HUNT is six steps and HEARTH is
+nine: following the hunt naturally destroyed most of the homestead.
 
-Act I's altar step therefore carries `RequiresTrackComplete = "hearth"`. Until
-the hearth is done it stays visible but dimmed, under the saga's own reason:
+A questline gate was tried first — the altar waiting on the hearth — and it is
+the wrong tool. **The mod does not touch the altar.** A player can hang two
+trophies and summon Eikthyr whenever they like, and the act flips on the
+world's `defeated_eikthyr` key, not on the questline. So a gate steers someone
+following the tracker and does nothing about the case that actually loses the
+work.
 
-> *The altar sleeps. Eikthyr answers only a hunter with a home.*
+Instead, **unfinished work carries forward**. `ActDefinition.SeatingFor` seats
+an act's own tracks plus any unfinished track from an earlier act whose id the
+new act does not reuse.
 
-A blocked step takes **no credit at all**, not merely a hidden display —
-otherwise the gate would delay the label while the step quietly completed
-behind it. Blocked state is recomputed every tick rather than latched, so the
-gate opens on the very tick that finishes the hearth.
+Only a unique id may carry: `hunt` and `craft` exist in every act, so a
+leftover would collide with the new act's own track on save. In practice that
+means Act I's hearth — exactly the homestead work this protects.
 
-**A gate naming a track the act does not have counts as satisfied**, so Acts
-II-V — which drop the hearth entirely — can never be deadlocked by one. That
-makes a typo silently vacuous, so `ValidateActs` reports a gate naming a track
-absent from its own act.
+Three cases, all tested:
+
+- **Run start**, nothing live: seat it and let the save decide, so a resume
+  into Act II restores a carried hearth rather than dropping it.
+- **Act change, unfinished**: it carries, with its position restored after
+  `SetTracks` — which seats every chain at its beginning, so without that the
+  hearth would restart from step one.
+- **Finished, or already dropped**: it does not come back.
+
+This restores full agency. Rush the boss if you want; the cozy work follows
+you into the Black Forest.
+
+The `RequiresTrackComplete` mechanism stays in the engine, tested and guarded
+by `ValidateActs`, but **nothing uses it**. It is kept because gating a later
+act's boss on its own preparation is a plausible want (Bonemass without the
+poison mead), and it is the kind of thing that is easier to keep than to
+rebuild. If it is still unused when Act II is next touched, delete it.
 
 The fishing rod moved from the trophy step to the **Herald**, so it arrives on
 the hunt track and never depends on hearth progress: there is room to sit by

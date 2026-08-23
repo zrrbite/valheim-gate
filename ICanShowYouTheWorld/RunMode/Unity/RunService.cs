@@ -2265,7 +2265,23 @@ namespace ICanShowYouTheWorld.RunMode
             // path that installs the act's tracks at run start.
             if (!changed && _challenges.Tracks.Count > 0) return;
 
-            _challenges.SetTracks(_acts[_actIndex].Tracks);
+            var own = _acts[_actIndex].Tracks;
+            var live = _challenges.Tracks.ToList();
+            var seated = ActDefinition.SeatingFor(_acts, _actIndex, live);
+
+            // SetTracks seats every chain at its beginning, so a carried track's position has to
+            // be put back afterwards or the hearth would restart from step one.
+            var carried = seated
+                .Where(x => !own.Any(o => o.Id == x.Id))
+                .Select(x => live.FirstOrDefault(l => l.Id == x.Id))
+                .Where(x => x != null)
+                .Select(x => new { x.Id, x.Index, Progress = x.Current?.Progress ?? 0f, StepId = x.Current?.Def?.Id })
+                .ToList();
+
+            _challenges.SetTracks(seated);
+
+            foreach (var c in carried)
+                _challenges.RestoreTrack(c.Id, c.Index, c.Progress, c.StepId);
 
             if (!announce || !changed) return;
 
@@ -4553,8 +4569,7 @@ namespace ICanShowYouTheWorld.RunMode
             new ChallengeDefinition
             {
                 Id = "mq-find", MainQuest = true, Track = HuntTrackId, Kind = ChallengeKind.DiscoverLocation,
-                RequiresTrackComplete = HearthTrackId,
-                BlockedText = "The altar sleeps. Eikthyr answers only a hunter with a home.", Param = "Eikthyrnir",
+                Param = "Eikthyrnir",
                 Target = 1, Display = "Find Eikthyr's altar", RewardText = "Eikthyr's summoning stones await",
                 Hint = "Two standing stones in the meadows, ringed with runes. Look for open ground.",
             },

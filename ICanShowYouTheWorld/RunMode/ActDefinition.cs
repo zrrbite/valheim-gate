@@ -48,6 +48,50 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         public List<QuestTrack> Tracks = new List<QuestTrack>();
 
+        /// <summary>
+        /// Which tracks should be seated for <paramref name="actIndex"/>: the act's own, plus any
+        /// UNFINISHED track from an earlier act whose id this act does not reuse.
+        ///
+        /// It exists because an act ends when its boss dies, and the boss lives on the hunt track.
+        /// With tracks of unequal length, following the shortest one to the end would discard
+        /// whatever the others had left — and since a player can summon a boss whenever they like,
+        /// no questline gate could prevent that. Carrying the work forward can.
+        ///
+        /// Only an id the new act does not reuse may carry: "hunt" and "craft" exist in every act,
+        /// so a leftover would collide with the new act's own track on save. In practice that
+        /// means Act I's hearth, which is exactly the homestead work this protects.
+        ///
+        /// <paramref name="live"/> is the current seating, empty at run start. Empty means "seat
+        /// it and let the save decide"; a track present but exhausted, or absent entirely, has
+        /// already been finished or dropped and does not come back.
+        /// </summary>
+        public static List<QuestTrack> SeatingFor(
+            IList<ActDefinition> acts, int actIndex, IList<QuestTrack> live)
+        {
+            var seated = new List<QuestTrack>();
+            if (acts == null || actIndex < 0 || actIndex >= acts.Count) return seated;
+
+            seated.AddRange(acts[actIndex].Tracks.Where(t => t != null));
+
+            for (int i = 0; i < actIndex; i++)
+            {
+                foreach (var t in acts[i].Tracks.Where(t => t != null))
+                {
+                    if (seated.Any(x => x.Id == t.Id)) continue;
+
+                    if (live != null && live.Count > 0)
+                    {
+                        var already = live.FirstOrDefault(x => x != null && x.Id == t.Id);
+                        if (already == null || already.Current == null) continue;
+                    }
+
+                    seated.Add(t);
+                }
+            }
+
+            return seated;
+        }
+
         /// <summary>Every step across every track — for validation and for the name manifest.</summary>
         public IEnumerable<ChallengeDefinition> AllSteps =>
             Tracks.Where(t => t != null && t.Chain != null).SelectMany(t => t.Chain);
