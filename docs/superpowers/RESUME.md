@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, at `0.221.12-run.alpha42`. This is the "pick it back up
+Written 2026-08-23, at `0.221.12-run.alpha42.1`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -21,7 +21,7 @@ Everything below is what that file tells it.
 
 - Branch **`feature/run-mode`**, 96 commits ahead of `main`. **Not merged**,
   deliberately — the mode is still being tuned in play.
-- Latest tag **`0.221.12-run.alpha42`**, pushed. The Mac has it deployed.
+- Latest tag **`0.221.12-run.alpha42.1`**, pushed. The Mac has it deployed.
 - Game version 0.221.12, Unity 6000.0.61. Windows is the play machine, the Mac
   is the test/build machine, the Deck travels (and is **stale** — it still has
   an older patched assembly and needs a re-patch before use).
@@ -36,7 +36,10 @@ Every alpha follows the same seven steps. It takes about a minute.
 msbuild Valheim.sln -p:Configuration=Debug -v:minimal   # must be clean
 Tests/run_tests.sh                                      # must say ALL PASS
 
-# 2. bump ICanShowYouTheWorld/Assets/Version.cs to the next alpha
+# 2. bump ICanShowYouTheWorld/Assets/Version.cs
+#    alpha<N>   for a mechanic/content change worth a play-test brief
+#    alpha<N>.<B> for a fix, a tuning number, a nudged panel
+#    ALWAYS bump one of them: the popup is the only proof of what is being played
 # 3. refresh the Windows kit + docs
 cp ICanShowYouTheWorld/bin/Debug/ICanShowYouTheWorld.dll dist/windows/patcher/
 sed -i '' 's/alphaN/alphaN+1/g' dist/windows/README.md HANDOFF_WINDOWS.md

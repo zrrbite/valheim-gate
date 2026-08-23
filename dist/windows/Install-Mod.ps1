@@ -73,9 +73,13 @@ function Get-ModVersion {
 
         $text = [Text.Encoding]::Unicode.GetString([IO.File]::ReadAllBytes($Dll))
 
-        # The tagged shape first (0.221.12-run.alpha34), then the older plain
+        # The tagged shape first (0.221.12-run.alpha42.1), then the older plain
         # shape (0.221.12-1) so this still works on a pre-Run-Mode build.
-        foreach ($pattern in @('\d+\.\d+\.\d+-run\.alpha\d+', '\d+\.\d+\.\d+-\d+')) {
+        #
+        # The optional .N is the BUILD number, and matching it is not cosmetic: without
+        # it this regex matches "alpha42" out of "alpha42.1" and prints a version that
+        # does not exist, which defeats the entire point of checking the popup.
+        foreach ($pattern in @('\d+\.\d+\.\d+-run\.alpha\d+(?:\.\d+)?', '\d+\.\d+\.\d+-\d+')) {
             $m = [regex]::Match($text, $pattern)
             if ($m.Success) { return $m.Value }
         }
