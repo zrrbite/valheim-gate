@@ -172,7 +172,7 @@ namespace ICanShowYouTheWorld.Core
         // Config rather than a constant because the right number depends on resolution and UI
         // scale, the same call as runHudMenuOffset. Both panels are draggable too, and keep where
         // they are put until the game window resizes.
-        [SerializeField] private float runSidePanelX = 30f;
+        [SerializeField] private float runSidePanelX = 75f;
 
         // --- Eikthyr's Herd: the deer of Act I ---
         //

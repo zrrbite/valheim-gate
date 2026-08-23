@@ -4652,19 +4652,6 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
-                // Beside the bench it upgrades, on CRAFT. It spent a version on HEARTH and read as
-                // homestead work; it is crafting work, and CRAFT was the shorter track anyway.
-                //
-                // The two the Meadows can actually build: a chopping block and a tanning rack.
-                // Wood, flint and hide — no bronze, which is the check the trophy step failed
-                // (owner: "we have two upgrades for the workbench, we should have those in HEARTH").
-                Id = "mq-upgrade", MainQuest = true, Kind = ChallengeKind.BuildPiece,
-                Param = "StationUpgrade", Target = 2, Display = "Upgrade the workbench (2)",
-                RewardText = "Flint, hide and resin",
-                Hint = "A chopping block and a tanning rack, both inside the bench's circle.",
-            },
-            new ChallengeDefinition
-            {
                 Id = "mq-shelter", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "Builds",
                 Target = 6, Display = "Raise a roof (6 pieces)", RewardText = "Timber and stone to finish it",
                 Hint = "Roof pieces overhead — walls alone are not shelter.",
@@ -4760,6 +4747,21 @@ namespace ICanShowYouTheWorld.RunMode
                 // and its reward feeds the hunt directly.
                 Id = "mq-chest", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Chest",
                 Target = 1, Display = "Build a chest", RewardText = "A full quiver before the hunt",
+            },
+            new ChallengeDefinition
+            {
+                // LAST on the crafting track, not beside the bench it upgrades. Sitting fourth it
+                // arrived before the flint and deer hide it wants, so it read as a wall rather
+                // than a step (owner: "it's too early"). The bench upgrades are what you build
+                // once the house is finished and you are improving it, which is exactly here.
+                //
+                // The two the Meadows can actually build: a chopping block and a tanning rack.
+                // Wood, flint and hide — no bronze, which is the check the trophy step failed
+                // (owner: "we have two upgrades for the workbench, we should have those in HEARTH").
+                Id = "mq-upgrade", MainQuest = true, Kind = ChallengeKind.BuildPiece,
+                Param = "StationUpgrade", Target = 2, Display = "Upgrade the workbench (2)",
+                RewardText = "Flint, hide and resin",
+                Hint = "A chopping block and a tanning rack, both inside the bench's circle.",
             },
             new ChallengeDefinition
             {

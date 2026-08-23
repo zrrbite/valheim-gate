@@ -438,7 +438,7 @@ namespace ICanShowYouTheWorld.RunMode
             // some resolutions and UI scales (owner, alpha40: "they block health and food"). The
             // margin is config for the same reason the HUD's menu offset is — the right number
             // depends on the screen, so it cannot be a constant that is right for everyone.
-            float panelX = _config?.RunSidePanelX ?? 30f;
+            float panelX = _config?.RunSidePanelX ?? 75f;
 
             _trackerRect = new Rect(panelX, Mathf.Max(10f, viewHeight - TrackerHeight - 10f),
                 TrackerWidth, TrackerHeight);
