@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using ICanShowYouTheWorld.Core;
 using ICanShowYouTheWorld.Services;
+using System.Linq;
 using UnityEngine;
 
 namespace ICanShowYouTheWorld.RunMode
@@ -1079,6 +1080,29 @@ namespace ICanShowYouTheWorld.RunMode
             }
 
             GUILayout.Space(6f);
+
+            // --- Homestead (splits measure the run against the clock; these measure it against
+            //     itself). Hidden entirely until something has actually happened, so a fresh run
+            //     is not headed by six empty rows. ---
+            var records = run.Records;
+            if (records != null && records.Achieved.Any())
+            {
+                GUILayout.Label("HOMESTEAD", RunTheme.Header);
+
+                foreach (var record in records.Achieved)
+                {
+                    GUILayout.BeginHorizontal();
+                    GUILayout.Label($"  {record.Label}", RunTheme.Small, GUILayout.Width(110f));
+
+                    GUI.contentColor = record.IsPersonalBest ? RunTheme.AccentGold : RunTheme.TextParchment;
+                    GUILayout.Label(record.Text + (record.IsPersonalBest ? "  ★ best" : string.Empty), RunTheme.Small);
+                    GUI.contentColor = Color.white;
+
+                    GUILayout.EndHorizontal();
+                }
+
+                GUILayout.Space(6f);
+            }
 
             // --- Tasks (the three random, rerollable slots — the questline is drawn above) ---
             GUILayout.Label("TASKS", RunTheme.Header);

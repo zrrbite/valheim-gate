@@ -21,6 +21,11 @@ namespace ICanShowYouTheWorld.RunMode
         public List<string> defeatedBossKeys;
         public List<string> splitLabels;
         public List<float> splitTimes;
+
+        // Homestead records: the run's superlatives, saved alongside the splits they sit beside.
+        public List<string> recordIds;
+        public List<float> recordValues;
+        public List<string> recordDetails;
         public List<string> activeChallengeIds;
         public List<float> activeChallengeProgress;
 
@@ -432,6 +437,15 @@ namespace ICanShowYouTheWorld.RunMode
         private const int MainlandBossCount = 5;
 
         /// <summary>
+        /// Prefix for a homestead record's all-time best, e.g. "ICSYTW_saga_rec_fish".
+        ///
+        /// One key per record rather than one packed blob, so a record added later cannot corrupt
+        /// the ones already stored, and a record removed simply leaves an ignored key behind.
+        /// Stored as "value|detail" — the detail is what set it, like a fish's name.
+        /// </summary>
+        private const string RecordKeyPrefix = "ICSYTW_saga_rec_";
+
+        /// <summary>
         /// Records a boss defeat into the character's saga record. No-op if already recorded.
         /// </summary>
         public static void RecordBossKill(Player p, string bossKey)
@@ -482,6 +496,66 @@ namespace ICanShowYouTheWorld.RunMode
             catch (Exception ex)
             {
                 Debug.LogError($"[ICanShowYouTheWorld] Failed to record score '{score}': {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Every homestead record's all-time best for this character, by record id.
+        ///
+        /// Missing keys are simply absent rather than zero, so a first run's every record counts
+        /// as a personal best — which is the point of a first run.
+        /// </summary>
+        public static Dictionary<string, float> GetRecordBests(Player p)
+        {
+            var bests = new Dictionary<string, float>();
+            if (p == null || p.m_customData == null) return bests;
+
+            try
+            {
+                foreach (var pair in p.m_customData)
+                {
+                    if (pair.Key == null || !pair.Key.StartsWith(RecordKeyPrefix)) continue;
+
+                    string id = pair.Key.Substring(RecordKeyPrefix.Length);
+                    string raw = (pair.Value ?? string.Empty).Split('|')[0];
+
+                    float value;
+                    if (float.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out value))
+                        bests[id] = value;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[ICanShowYouTheWorld] Could not read homestead records: {ex.Message}");
+            }
+
+            return bests;
+        }
+
+        /// <summary>
+        /// Writes a homestead record's best, if this run beat it.
+        ///
+        /// Called when a run ENDS, whether by felling the boss or abandoning: the fish was still
+        /// caught either way, and a record you only keep by winning is a record most runs never
+        /// get to set.
+        /// </summary>
+        public static void RecordHearth(Player p, string id, float value, string detail)
+        {
+            if (p == null || p.m_customData == null || string.IsNullOrEmpty(id) || value <= 0f) return;
+
+            try
+            {
+                var bests = GetRecordBests(p);
+
+                float best;
+                if (bests.TryGetValue(id, out best) && value <= best) return;
+
+                p.m_customData[RecordKeyPrefix + id] =
+                    value.ToString("0.###", CultureInfo.InvariantCulture) + "|" + (detail ?? string.Empty);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[ICanShowYouTheWorld] Failed to record '{id}': {ex.Message}");
             }
         }
 

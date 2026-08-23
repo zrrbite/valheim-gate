@@ -217,6 +217,9 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         private Player _trackedPlayer;
 
+        /// <summary>The homestead's answer to splits — see <see cref="HearthRecords"/>.</summary>
+        private readonly HearthRecords _records = new HearthRecords();
+
         private readonly List<string> _splitLabels = new List<string>();
         private readonly List<float> _splitTimes = new List<float>();
 
@@ -410,6 +413,8 @@ namespace ICanShowYouTheWorld.RunMode
 
             return _bearingResult;
         }
+
+        public HearthRecords Records => _records;
 
         public int HomewardCharges => _active ? _homewardCharges : 0;
         public float EarnedHealth => _active ? _taskHealthReward : 0f;
@@ -1079,6 +1084,67 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
+        /// Feeds the homestead records from what the poll can already see.
+        ///
+        /// Everything here is a MAXIMUM the run reached, latched by HearthRecords, so losing the
+        /// fish to a death or tearing the house down does not take the record with it.
+        /// </summary>
+        private void PollHearthRecords(Player player)
+        {
+            try
+            {
+                _records.Report(HearthRecords.Comfort, player.GetComfortLevel());
+                _records.Report(HearthRecords.LargestPen, CountTamedNearby(player));
+
+                // The stats are lifetime totals for the character, not this run's — but these are
+                // records rather than scores, and "the most trophies this homestead ever had" is
+                // the truer reading of the row anyway.
+                _records.Report(HearthRecords.Trophies, ReadPlayerStat("ItemStandUses") ?? 0f);
+                _records.Report(HearthRecords.NightsSlept, ReadPlayerStat("Sleep") ?? 0f);
+                _records.Report(HearthRecords.Foraged, ReadPlayerStat("ItemsPickedUp") ?? 0f);
+
+                ReportHeaviestFish(player);
+
+                // Marked here rather than at run end, so the star appears the moment the record
+                // is beaten — which is when it means something.
+                _records.MarkPersonalBests(PermanentRecord.GetRecordBests(player));
+            }
+            catch
+            {
+                // Flavour must never be the thing that breaks a poll.
+            }
+        }
+
+        /// <summary>
+        /// The biggest fish the player is carrying, by item weight.
+        ///
+        /// Weight is the only size the game exposes, and it happens to line up with the species
+        /// ladder — a perch weighs less than a pike weighs less than a tuna — so "heaviest" reads
+        /// exactly as an angler would mean it. Named through Localization, because the prefabs are
+        /// called things like "Fish2".
+        /// </summary>
+        private void ReportHeaviestFish(Player player)
+        {
+            var items = player.GetInventory()?.GetAllItems();
+            if (items == null) return;
+
+            foreach (var item in items)
+            {
+                if (item?.m_shared == null || item.m_shared.m_food <= 0f) continue;
+
+                var prefab = item.m_dropPrefab;
+                if (prefab == null || prefab.name.IndexOf("Fish", StringComparison.OrdinalIgnoreCase) < 0)
+                    continue;
+
+                string name;
+                try { name = Localization.instance.Localize(item.m_shared.m_name); }
+                catch { name = prefab.name; }
+
+                _records.Report(HearthRecords.HeaviestFish, item.m_shared.m_weight, name);
+            }
+        }
+
+        /// <summary>
         /// Fish in the player's inventory, counted by PREFAB name rather than by localisation
         /// token.
         ///
@@ -1235,6 +1301,8 @@ namespace ICanShowYouTheWorld.RunMode
 
                 _challenges.ReportMeasure(ChallengeKind.PlayerState, "TamedNearby", CountTamedNearby(player));
                 _challenges.ReportMeasure(ChallengeKind.PlayerState, "FishHeld", CountFishHeld(player));
+
+                PollHearthRecords(player);
             }
             catch
             {
@@ -1978,6 +2046,16 @@ namespace ICanShowYouTheWorld.RunMode
 
             try { PermanentRecord.RecordScore(Player.m_localPlayer, LastScore); }
             catch (Exception ex) { LogOnce("record-score", ex); }
+
+            // Homestead bests are written whether the run was won or abandoned: the fish was
+            // caught either way, and a record you only keep by winning is one most runs never get
+            // to set.
+            try
+            {
+                foreach (var record in _records.Achieved)
+                    PermanentRecord.RecordHearth(Player.m_localPlayer, record.Id, record.Value, record.Detail);
+            }
+            catch (Exception ex) { LogOnce("record-hearth", ex); }
 
             _restorePending = !_worldModifiers.RestoreAll();
             _restoreWorldId = _restorePending ? _worldId : null;
@@ -3562,6 +3640,8 @@ namespace ICanShowYouTheWorld.RunMode
 
             _splitLabels.Clear();
             _splitTimes.Clear();
+            _records.Restore(s.recordIds, s.recordValues, s.recordDetails);
+
             if (s.splitLabels != null) _splitLabels.AddRange(s.splitLabels);
             if (s.splitTimes != null) _splitTimes.AddRange(s.splitTimes);
 
@@ -3744,6 +3824,9 @@ namespace ICanShowYouTheWorld.RunMode
                 elapsedSeconds = _elapsed,
                 heat = _heat.Heat,
                 defeatedBossKeys = _accountedBossKeys.ToList(),
+                recordIds = _records.All.Select(r => r.Id).ToList(),
+                recordValues = _records.All.Select(r => r.Value).ToList(),
+                recordDetails = _records.All.Select(r => r.Detail).ToList(),
                 splitLabels = _splitLabels.ToList(),
                 splitTimes = _splitTimes.ToList(),
                 activeChallengeIds = active.Select(a => a.Def.Id).ToList(),

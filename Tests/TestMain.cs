@@ -23,6 +23,7 @@ static class TestMain
         BoonEngineTests.Run();
         NameManifestTests.Run();
         ActDefinitionTests.Run();
+        HearthRecordsTests.Run();
         ActDefinitionTests.SeatingTests();
         RunStashTests.Run();
         LoanLedgerTests.Run();

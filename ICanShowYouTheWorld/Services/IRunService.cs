@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using ICanShowYouTheWorld.RunMode;
 
 namespace ICanShowYouTheWorld.Services
 {
@@ -25,6 +26,7 @@ namespace ICanShowYouTheWorld.Services
 
         /// <summary>Boss splits recorded this run, formatted as "Eikthyr  12:34".</summary>
         IReadOnlyList<string> Splits { get; }
+        HearthRecords Records { get; }
 
         /// <summary>Challenge engine for the current run; null when inactive.</summary>
         ICanShowYouTheWorld.RunMode.ChallengeEngine Challenges { get; }
