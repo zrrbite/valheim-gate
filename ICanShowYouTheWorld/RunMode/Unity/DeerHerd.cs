@@ -357,15 +357,41 @@ namespace ICanShowYouTheWorld.RunMode
                 return;
             }
 
-            int count = 1 + _rng.Next(Math.Max(1, _cfg.RunDeerGreylingMax));
+            // A pack with a floor. The old 1-to-max roll could produce a single greyling, which
+            // reads as one wandering up by accident rather than as the forest noticing.
+            int min = Math.Max(1, _cfg.RunDeerGreylingMin);
+            int max = Math.Max(min, _cfg.RunDeerGreylingMax);
+            int count = min + _rng.Next(max - min + 1);
+
+            // Same convention as RunDeerStarLevel: 1 is plain, 2 is one star, 3 is two.
+            int level = Mathf.Clamp(_cfg.RunDeerGreylingLevel, 1, 3);
 
             for (int i = 0; i < count; i++)
             {
                 float angle = (float)(_rng.NextDouble() * Math.PI * 2.0);
-                Vector3 pos = position + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 4f;
+
+                // Spread over a band rather than a ring: five of them on one 4m circle land in
+                // each other's laps and shove the pack apart on spawn.
+                float radius = 3f + (float)(_rng.NextDouble() * 4.0);
+                Vector3 pos = position + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
 
                 var inst = UnityEngine.Object.Instantiate(prefab, pos, Quaternion.identity);
                 if (inst == null) continue;
+
+                // Set immediately, while it is at full health: SetLevel recomputes max health from
+                // the current value, so starring a damaged creature bakes in the damage.
+                if (level > 1)
+                {
+                    try
+                    {
+                        var ch = inst.GetComponent<Character>();
+                        if (ch != null) ch.SetLevel(level);
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogWarning($"[ICanShowYouTheWorld] Could not star a greyling: {e.Message}");
+                    }
+                }
 
                 // Non-persistent for the same reason the Herald is: summoned company should not
                 // outlive the session and accumulate in someone's world.
