@@ -1078,6 +1078,40 @@ namespace ICanShowYouTheWorld.RunMode
             RefreshActPin();
         }
 
+        /// <summary>
+        /// Tamed creatures penned near the player.
+        ///
+        /// Counted within a radius rather than world-wide because the step is "a pen of three" —
+        /// three boar scattered across the map is not a homestead. The radius is generous enough
+        /// for a real enclosure and mean enough to exclude one wandering off.
+        /// </summary>
+        private static float CountTamedNearby(Player player)
+        {
+            try
+            {
+                var all = Character.GetAllCharacters();
+                if (all == null) return 0f;
+
+                Vector3 here = player.transform.position;
+                int count = 0;
+
+                foreach (var c in all)
+                {
+                    if (c == null || !c.IsTamed()) continue;
+                    if (Vector3.Distance(c.transform.position, here) > TamedPenRadius) continue;
+                    count++;
+                }
+
+                return count;
+            }
+            catch
+            {
+                return 0f;
+            }
+        }
+
+        private const float TamedPenRadius = 40f;
+
         /// <summary>Remaining burn time per active food, as of the last poll; see <see cref="PollMeals"/>.</summary>
         private readonly Dictionary<string, float> _foodTimes = new Dictionary<string, float>();
         private bool _foodSeeded;
@@ -1148,6 +1182,22 @@ namespace ICanShowYouTheWorld.RunMode
                 var profile = Game.instance?.GetPlayerProfile();
                 if (profile != null && profile.HaveCustomSpawnPoint())
                     _challenges.ReportMeasure(ChallengeKind.PlayerState, "SpawnPointSet", 1f);
+
+                var player = Player.m_localPlayer;
+                if (player == null) return;
+
+                // Comfort is the game's own measure of how much of a HOME a shelter is: a fire, a
+                // bed, a chair, a table, each adding one under a roof. Valheim never puts a quest
+                // on it, so most players never learn the system exists.
+                _challenges.ReportMeasure(ChallengeKind.PlayerState, "Comfort", player.GetComfortLevel());
+
+                // Three foods at once is roughly triple the health of one, and is the single most
+                // useful thing a new player can learn before the Black Forest.
+                var foods = player.GetFoods();
+                if (foods != null)
+                    _challenges.ReportMeasure(ChallengeKind.PlayerState, "FoodSlotsFilled", foods.Count);
+
+                _challenges.ReportMeasure(ChallengeKind.PlayerState, "TamedNearby", CountTamedNearby(player));
             }
             catch
             {
@@ -4230,7 +4280,7 @@ namespace ICanShowYouTheWorld.RunMode
             new ChallengeDefinition
             {
                 Id = "mq-boar", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Boar",
-                Target = 5, Display = "Hunt 5 Boar", RewardText = "Leather leggings + a quiver of arrows",
+                Target = 4, Display = "Hunt 4 Boar", RewardText = "Leather leggings + a quiver of arrows",
             },
             new ChallengeDefinition
             {
@@ -4265,12 +4315,22 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
+                // Placed right after the cooking station, because that is the moment the player
+                // CAN do it and the moment it is worth learning: three foods at once is roughly
+                // triple the health of one, and most people eat a single thing and then wonder
+                // why the Black Forest kills them.
+                Id = "mq-meal", MainQuest = true, Kind = ChallengeKind.PlayerState, Param = "FoodSlotsFilled",
+                Target = 3, Display = "Sit down to a proper meal", RewardText = "A stocked larder",
+                Hint = "Three different foods at once — cooked meat, berries, mushrooms.",
+            },
+            new ChallengeDefinition
+            {
                 // Greyling, not Greydwarf: the greydwarf proper lives in the Black Forest, and
                 // every step before Eikthyr should be doable without leaving the Meadows. Greylings
                 // are the weaker meadows cousin, hence the higher count. The ID is deliberately
                 // unchanged so a run already part-way through this step keeps its progress.
                 Id = "mq-grey", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Greyling",
-                Target = 6, Display = "Kill 6 Greylings", RewardText = "Helmet + cape + more arrows",
+                Target = 4, Display = "Kill 4 Greylings", RewardText = "Helmet + cape + more arrows",
             },
             // Build it, live in it, sleep in it. All three ride stats Valheim keeps itself, so
             // none of them can silently stall the chain the way a check against a named building
@@ -4303,11 +4363,31 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
+                // The game's own measure of how much of a HOME a shelter is. Fire and bed are
+                // already built by now, so this asks for the furniture: a chair, a table, a
+                // banner, each adding one under a roof. Valheim never quests on comfort, so the
+                // system usually goes unnoticed until someone reads a wiki.
+                Id = "mq-comfort", MainQuest = true, Kind = ChallengeKind.PlayerState, Param = "Comfort",
+                Target = 5, Display = "Make it comfortable (comfort 5)",
+                RewardText = "Hide and resin to furnish it",
+                Hint = "A chair and a table, under the roof, near the fire. Rested lasts longer for each.",
+            },
+            new ChallengeDefinition
+            {
                 // Last of the homestead steps, and the only one nothing downstream depends on —
                 // it sits here because somewhere to put the spoils is what you want BEFORE a hunt,
                 // and its reward feeds the hunt directly.
                 Id = "mq-chest", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Chest",
                 Target = 1, Display = "Build a chest", RewardText = "A full quiver before the hunt",
+            },
+            new ChallengeDefinition
+            {
+                // The first step in the saga that makes you no stronger at all, on purpose. It
+                // gives the boar and deer trophies a use besides summoning Eikthyr, and turns the
+                // house into a record of the hunt that paid for it.
+                Id = "mq-trophy", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "ItemStandUses",
+                Target = 1, Display = "Hang a trophy", RewardText = "Wood and resin for the hall",
+                Hint = "An item stand on the wall, then place a trophy on it.",
             },
             new ChallengeDefinition
             {
@@ -4318,6 +4398,15 @@ namespace ICanShowYouTheWorld.RunMode
                 Id = "mq-tame", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "CreatureTamed",
                 Target = 1, Display = "Tame a boar", RewardText = "Food enough to keep it, and a friend for it",
                 Hint = "Pen it, drop food, and stay out of sight until it calms.",
+            },
+            new ChallengeDefinition
+            {
+                // Last on the track by design: boar breed on their own schedule, and this is the
+                // one homestead step that can take real time. The hunt track runs in parallel, so
+                // a slow pen delays nothing on the way to Eikthyr.
+                Id = "mq-pen", MainQuest = true, Kind = ChallengeKind.PlayerState, Param = "TamedNearby",
+                Target = 3, Display = "A pen of three", RewardText = "Feed enough for a herd",
+                Hint = "Two tamed boar in a pen, fed and left alone, will raise a third.",
             },
             new ChallengeDefinition
             {
@@ -4717,6 +4806,12 @@ namespace ICanShowYouTheWorld.RunMode
                 ["mq-cook"] = new[] { ("RawMeat", 8) },
                 ["mq-bed"] = new[] { ("Wood", 30), ("Resin", 10) },
                 ["mq-chest"] = new[] { ("ArrowFlint", 30) },
+                // The cozy steps pay in the materials the NEXT cozy step wants, so the
+                // homestead funds its own decoration rather than the hunt funding it.
+                ["mq-meal"] = new[] { ("CookedMeat", 5), ("Raspberry", 20), ("Mushroom", 10) },
+                ["mq-comfort"] = new[] { ("DeerHide", 10), ("Resin", 20), ("Wood", 30) },
+                ["mq-trophy"] = new[] { ("Wood", 30), ("Resin", 15) },
+                ["mq-pen"] = new[] { ("Carrot", 20), ("Raspberry", 30) },
                 ["mq-rest"] = new[] { ("CookedMeat", 10), ("ArrowFlint", 20) },
                 // Eikthyr's altar wants two deer trophies, and a trophy is a drop the player can
                 // hunt for an hour without seeing. Handing them over is the point of this step:
