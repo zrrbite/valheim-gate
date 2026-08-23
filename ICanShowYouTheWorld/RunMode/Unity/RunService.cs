@@ -1024,7 +1024,7 @@ namespace ICanShowYouTheWorld.RunMode
             var inventory = player.GetInventory();
             if (inventory != null)
             {
-                // Only the item names actually being asked for — CountItems is a full scan.
+                // Only the item names actually being asked for; they are counted in a single pass.
                 // Drawn from BOTH a simple challenge's own Kind/Param and a composite's Subs:
                 // a composite's top-level Kind/Param are unused filler (see
                 // ChallengeDefinition.Subs), so a "hold 25 wood" SUB would never be polled if this
@@ -1033,11 +1033,15 @@ namespace ICanShowYouTheWorld.RunMode
                 // through the very same reports, so anything it asks for has to be polled too.
                 var wanted = MeasuredChallenges()
                     .SelectMany(CollectItemParams)
-                    .Distinct();
+                    .Distinct()
+                    .ToList();
 
+                var held = CountHeld(inventory, wanted);
                 foreach (var itemName in wanted)
                 {
-                    _challenges.ReportMeasure(ChallengeKind.CollectItem, itemName, inventory.CountItems(itemName));
+                    int count;
+                    _challenges.ReportMeasure(ChallengeKind.CollectItem, itemName,
+                        held.TryGetValue(itemName, out count) ? count : 0);
                 }
 
                 if (MeasuredChallenges().Any(HasCollectFood))
@@ -1744,6 +1748,40 @@ namespace ICanShowYouTheWorld.RunMode
         /// Only called when a CollectFood challenge is actually active: this walks the whole
         /// inventory, and it runs on the poll timer.
         /// </summary>
+        /// <summary>
+        /// How many of each named item the player is holding, in ONE pass over the inventory.
+        ///
+        /// Deliberately not <c>Inventory.CountItems</c>. That method takes a
+        /// <c>matchWorldLevel</c> parameter defaulting to TRUE, and silently skips any stack whose
+        /// <c>m_worldLevel</c> is below the world's current one — so "Hold 25 Stone" could not be
+        /// completed with loose surface stone, which carries the level its zone was generated at
+        /// rather than today's, while wood from a freshly felled tree counted normally. A
+        /// challenge asking for stone means stone; where it has been lying is not our business.
+        ///
+        /// Counting here rather than passing the flag also removes the trap instead of stepping
+        /// over it, and turns N full scans into one.
+        /// </summary>
+        private static Dictionary<string, int> CountHeld(Inventory inventory, List<string> names)
+        {
+            var counts = new Dictionary<string, int>();
+            foreach (var name in names) counts[name] = 0;
+
+            var items = inventory?.GetAllItems();
+            if (items == null) return counts;
+
+            foreach (var item in items)
+            {
+                if (item?.m_shared == null) continue;
+
+                // Same comparison the game makes: the localisation token on shared data.
+                int running;
+                if (counts.TryGetValue(item.m_shared.m_name, out running))
+                    counts[item.m_shared.m_name] = running + item.m_stack;
+            }
+
+            return counts;
+        }
+
         private static float CountFood(Inventory inventory)
         {
             var items = inventory.GetAllItems();
@@ -2135,7 +2173,7 @@ namespace ICanShowYouTheWorld.RunMode
                                        $"never progress: {string.Join(", ", missing.ToArray())}");
                 }
 
-                // CollectItem matches Inventory.CountItems, which compares against m_shared.m_name —
+                // CollectItem compares against m_shared.m_name, as the game itself does —
                 // the "$item_" token, not the prefab name. Both are accepted here so a definition
                 // written either way validates; only a name that is neither is a real typo.
                 if (odb != null && odb.m_items != null)
