@@ -4781,7 +4781,8 @@ namespace ICanShowYouTheWorld.RunMode
             new ChallengeDefinition
             {
                 Id = "bf-smelter", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Smelter",
-                Target = 1, Display = "Build a smelter", RewardText = "More ore than it can hold",
+                Target = 1, Display = "Build a smelter",
+                RewardText = "Ore, and surtling cores enough to never crawl a crypt again",
                 Hint = "Stone, and surtling cores from the burial chambers.",
             },
             new ChallengeDefinition
@@ -5151,7 +5152,14 @@ namespace ICanShowYouTheWorld.RunMode
                 ["bf-plant"] = new[] { ("CarrotSeeds", 20), ("QueenBee", 1) },
                 ["mq-tame"] = new[] { ("Carrot", 20), ("RawMeat", 10) },
                 ["bf-bees"] = new[] { ("Honey", 20) },
-                ["bf-smelter"] = new[] { ("CopperOre", 30), ("TinOre", 15), ("Coal", 30) },
+                // Thirty cores, which is a smelter, a kiln and eleven portals — a lifetime
+                // supply by any honest reckoning (owner: "getting surtling cores is not fun").
+                //
+                // Deliberately paid AFTER the smelter rather than before: cores are what a smelter
+                // COSTS, so the step still makes you crawl one burial chamber. You do the unfun
+                // thing once, prove it, and never do it again. Handing them over earlier would
+                // skip the part that gives the reward its meaning.
+                ["bf-smelter"] = new[] { ("CopperOre", 30), ("TinOre", 15), ("Coal", 30), ("SurtlingCore", 30) },
                 ["bf-bronze"] = new[] { ("Bronze", 10), ("ArrowBronze", 40) },
                 ["bf-greydwarf"] = new[] { ("ShieldBronzeBuckler", 1), ("ArrowBronze", 40) },
                 ["bf-brute"] = new[] { ("ArmorRootChest", 1), ("ArmorRootLegs", 1) },
