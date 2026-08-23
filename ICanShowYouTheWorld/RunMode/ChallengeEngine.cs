@@ -119,6 +119,21 @@ namespace ICanShowYouTheWorld.RunMode
         public string Hint;
 
         /// <summary>
+        /// Which track this step belongs on, overriding the default routing. Null = route by
+        /// <see cref="Kind"/>, which is what nearly every step wants.
+        ///
+        /// Exists because Kind is only a proxy for track, and the proxy broke the first time a Kind
+        /// disagreed with its meaning: the discovery steps ("Find Eikthyr's altar") are a HUNT
+        /// concern but are not kills, so routing by Kind silently filed them under CRAFT — with
+        /// Eikthyr's name showing at the end of the crafting questline.
+        ///
+        /// The default is still Kind, because it is right for everything else and means a new step
+        /// lands correctly without anyone remembering to think about it. This is the escape hatch
+        /// for when it isn't.
+        /// </summary>
+        public string Track;
+
+        /// <summary>
         /// Gate on whether this definition may be DEALT at all: the run must already have built a
         /// piece of the named category (the same vocabulary
         /// <see cref="ChallengeKind.BuildPiece"/> uses). Null or empty means no gate.

@@ -56,6 +56,7 @@ namespace ICanShowYouTheWorld.Core
         float RunHudMenuOffset { get; set; }
         float RunBuildScanRadius { get; set; }
         float RunDiscoverRadius { get; set; }
+        float RunSidePanelX { get; set; }
         float RunDeerStarChance { get; set; }
         int RunDeerStarLevel { get; set; }
         float RunDeerGreylingChance { get; set; }
@@ -159,6 +160,12 @@ namespace ICanShowYouTheWorld.Core
         // centre, tight enough that passing a mile away does not.
         [SerializeField] private float runDiscoverRadius = 30f;
 
+        // How far from the left edge the bottom-left panels (tracker, stash) sit. They were flush
+        // at 10px, which overlapped Valheim's own health/food readout at some resolutions and UI
+        // scales (owner, alpha40: "they block health and food"). Config rather than a constant for
+        // exactly that reason — the same call as runHudMenuOffset.
+        [SerializeField] private float runSidePanelX = 320f;
+
         // --- Eikthyr's Herd: the deer of Act I ---
         //
         // Eikthyr is the stag god, so his act's deer are his. None of this makes deer AGGRESSIVE —
@@ -227,6 +234,7 @@ namespace ICanShowYouTheWorld.Core
         public float RunHudMenuOffset { get => runHudMenuOffset; set => runHudMenuOffset = value; }
         public float RunBuildScanRadius { get => runBuildScanRadius; set => runBuildScanRadius = value; }
         public float RunDiscoverRadius { get => runDiscoverRadius; set => runDiscoverRadius = value; }
+        public float RunSidePanelX { get => runSidePanelX; set => runSidePanelX = value; }
         public float RunDeerStarChance { get => runDeerStarChance; set => runDeerStarChance = value; }
         public int RunDeerStarLevel { get => runDeerStarLevel; set => runDeerStarLevel = value; }
         public float RunDeerGreylingChance { get => runDeerGreylingChance; set => runDeerGreylingChance = value; }

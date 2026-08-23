@@ -1788,6 +1788,29 @@ namespace ICanShowYouTheWorld.RunMode
                 if (last == null || last.Kind != ChallengeKind.KillPrefab)
                     Debug.LogError($"[ICanShowYouTheWorld] {act.Label}'s hunt track does not end on its boss " +
                                    $"(last step '{last?.Id ?? "none"}').");
+
+                // The discovery step must sit immediately before the boss, ON THE SAME TRACK.
+                //
+                // The "ends on a kill" check above passed happily while the discovery step was
+                // filed under CRAFT by the Kind-based routing — the hunt track still ended on the
+                // boss, it had simply lost the step that was supposed to precede it, and Eikthyr's
+                // name turned up at the end of the crafting questline instead. An invariant that
+                // only looks at the last element cannot see a missing one.
+                var discovery = act.AllSteps.FirstOrDefault(c => c.Kind == ChallengeKind.DiscoverLocation);
+                if (discovery == null)
+                {
+                    Debug.LogError($"[ICanShowYouTheWorld] {act.Label} has no discovery step — its finale is unearned.");
+                }
+                else
+                {
+                    int discoveryIndex = hunt.Chain.IndexOf(discovery);
+                    if (discoveryIndex < 0)
+                        Debug.LogError($"[ICanShowYouTheWorld] {act.Label}'s discovery step '{discovery.Id}' is not on " +
+                                       "the hunt track — check its Track override.");
+                    else if (discoveryIndex != hunt.Chain.Count - 2)
+                        Debug.LogError($"[ICanShowYouTheWorld] {act.Label}'s discovery step '{discovery.Id}' is not " +
+                                       "immediately before the boss.");
+                }
             }
 
             // A build category may appear in ONE act only. _builtSeen latches for the whole run, so
@@ -3899,17 +3922,25 @@ namespace ICanShowYouTheWorld.RunMode
         {
             var steps = chain ?? new List<ChallengeDefinition>();
 
+            // An explicit Track wins; otherwise Kind decides. See ChallengeDefinition.Track for why
+            // the override exists — Kind is only a PROXY for track, and the discovery steps are the
+            // case where the proxy is wrong.
+            string TrackOf(ChallengeDefinition d) =>
+                !string.IsNullOrEmpty(d.Track)
+                    ? d.Track
+                    : d.Kind == ChallengeKind.KillPrefab ? HuntTrackId : CraftTrackId;
+
             return new List<QuestTrack>
             {
                 new QuestTrack
                 {
                     Id = HuntTrackId, Label = "HUNT",
-                    Chain = steps.Where(d => d.Kind == ChallengeKind.KillPrefab).ToList(),
+                    Chain = steps.Where(d => TrackOf(d) == HuntTrackId).ToList(),
                 },
                 new QuestTrack
                 {
                     Id = CraftTrackId, Label = "CRAFT",
-                    Chain = steps.Where(d => d.Kind != ChallengeKind.KillPrefab).ToList(),
+                    Chain = steps.Where(d => TrackOf(d) == CraftTrackId).ToList(),
                 },
             };
         }
@@ -4050,7 +4081,7 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
-                Id = "mq-find", MainQuest = true, Kind = ChallengeKind.DiscoverLocation, Param = "Eikthyrnir",
+                Id = "mq-find", MainQuest = true, Track = HuntTrackId, Kind = ChallengeKind.DiscoverLocation, Param = "Eikthyrnir",
                 Target = 1, Display = "Find Eikthyr's altar", RewardText = "Eikthyr's summoning stones await",
                 Hint = "Two standing stones in the meadows, ringed with runes. Look for open ground.",
             },
@@ -4133,7 +4164,7 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
-                Id = "bf-find", MainQuest = true, Kind = ChallengeKind.DiscoverLocation, Param = "GDKing",
+                Id = "bf-find", MainQuest = true, Track = HuntTrackId, Kind = ChallengeKind.DiscoverLocation, Param = "GDKing",
                 Target = 1, Display = "Find the Elder's altar", RewardText = "The Elder's altar, and what it wants",
                 Hint = "A ring of stone in the deep forest, guarded. Follow the oldest trees.",
             },
@@ -4196,7 +4227,7 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
-                Id = "sw-find", MainQuest = true, Kind = ChallengeKind.DiscoverLocation, Param = "Bonemass",
+                Id = "sw-find", MainQuest = true, Track = HuntTrackId, Kind = ChallengeKind.DiscoverLocation, Param = "Bonemass",
                 Target = 1, Display = "Find Bonemass's altar", RewardText = "Blunt weapons, and a way in",
                 Hint = "A skull on a mound, deep in the mire. Watch the water — it hides the path.",
             },
@@ -4253,7 +4284,7 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
-                Id = "mt-find", MainQuest = true, Kind = ChallengeKind.DiscoverLocation, Param = "Dragonqueen",
+                Id = "mt-find", MainQuest = true, Track = HuntTrackId, Kind = ChallengeKind.DiscoverLocation, Param = "Dragonqueen",
                 Target = 1, Display = "Find Moder's altar", RewardText = "Frost mead for the summit",
                 Hint = "The highest bone-ringed peak. Cold enough to kill without a mead.",
             },
@@ -4300,7 +4331,7 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
-                Id = "pl-find", MainQuest = true, Kind = ChallengeKind.DiscoverLocation, Param = "GoblinKing",
+                Id = "pl-find", MainQuest = true, Track = HuntTrackId, Kind = ChallengeKind.DiscoverLocation, Param = "GoblinKing",
                 Target = 1, Display = "Find Yagluth's altar", RewardText = "The last of the run's provisions",
                 Hint = "A ruin of stone hands in the tall grass. Fulings camp near it.",
             },

@@ -421,12 +421,18 @@ namespace ICanShowYouTheWorld.RunMode
             // Valheim's own health/stamina/food readout and the hotbar; down here it is out of the
             // way of both. The window is draggable and its dragged position is kept until the game
             // window changes size, so this is a starting point rather than a decree.
-            _trackerRect = new Rect(10f, Mathf.Max(10f, viewHeight - TrackerHeight - 10f),
+            // Clear of Valheim's own health/stamina/food readout, which these used to sit under at
+            // some resolutions and UI scales (owner, alpha40: "they block health and food"). The
+            // margin is config for the same reason the HUD's menu offset is — the right number
+            // depends on the screen, so it cannot be a constant that is right for everyone.
+            float panelX = _config?.RunSidePanelX ?? 320f;
+
+            _trackerRect = new Rect(panelX, Mathf.Max(10f, viewHeight - TrackerHeight - 10f),
                 TrackerWidth, TrackerHeight);
             // Immediately right of the tracker, sharing its bottom edge. Both are draggable and
             // keep their dragged positions until the game window resizes, so this is a starting
             // point rather than a decree.
-            _stashRect = new Rect(TrackerWidth + 20f, Mathf.Max(10f, viewHeight - StashHeight - 10f),
+            _stashRect = new Rect(panelX + TrackerWidth + 10f, Mathf.Max(10f, viewHeight - StashHeight - 10f),
                 StashWidth, StashHeight);
             _lobbyRect = new Rect((viewWidth - LobbyWidth) * 0.5f, (viewHeight - LobbyHeight) * 0.5f,
                 LobbyWidth, LobbyHeight);

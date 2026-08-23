@@ -1454,3 +1454,35 @@ somewhere new, the fix didn't take.
 ### RESULTS (Windows side appends here)
 
 *(pending)*
+
+---
+
+## 2026-08-23 — TASK: alpha40 — Eikthyr was on the wrong questline
+
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha40**.
+
+**1. You were right about "Kill Eikthyr" under CRAFT.** What you saw was *"Find
+Eikthyr's altar"* sitting at the end of the crafting questline — the discovery step
+was on the wrong track.
+
+The split routes steps by their KIND (kills → HUNT, everything else → CRAFT), and a
+discovery step isn't a kill, so it quietly fell into CRAFT. I designed it as "HUNT
+track, immediately before the boss" and the automatic routing put it elsewhere
+without saying anything. Steps can now name their track explicitly, and the five
+discovery steps do.
+
+The validator also gained a check for this exact shape — the old one only asked
+"does HUNT end on the boss", which stayed true while the step before it went
+missing. An invariant that only looks at the last item can't see an absent one.
+
+**2. The bottom-left panels moved right**, clear of the health/food readout.
+`runSidePanelX` in the config (default 320) if it's still not right for your
+resolution — both panels are draggable too, and remember where you put them until
+the window resizes.
+
+**What to check:** the CRAFT track should now end at "Build a chest", and HUNT
+should read `… → Hunt the Herald → Find Eikthyr's altar → Defeat Eikthyr`.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
