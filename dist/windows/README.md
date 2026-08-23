@@ -7,6 +7,11 @@ SSH from the Mac to this machine isn't working yet, so the normal push-based
 deploy (`Scripts/upload_windows.sh`) can't be used. This folder is the
 fallback: everything needed to install the mod locally, pulled through git.
 
+## Testing a new build
+
+**[TEST-PLAN.md](TEST-PLAN.md)** — what to check, ordered by what catches the most
+for the least play. Start there after any install.
+
 ## After installing, check the log
 
 **[CHECKING-THE-LOG.md](CHECKING-THE-LOG.md)** — one page, one command, one
