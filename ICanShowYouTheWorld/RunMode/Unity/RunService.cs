@@ -1671,6 +1671,10 @@ namespace ICanShowYouTheWorld.RunMode
                 // BuildPiece learn to count: "plant a seed" is thin, "plant ten" is a crop.
                 ["Plant"] = p => p.GetComponentInChildren<Plant>(true) != null,
                 ["Beehive"] = p => p.GetComponentInChildren<Beehive>(true) != null,
+                // Workbench and forge upgrades both carry StationExtension and no class separates
+                // them — but a forge is Act II work, so in the Meadows this can only mean the
+                // chopping block and the tanning rack.
+                ["StationUpgrade"] = p => p.GetComponentInChildren<StationExtension>(true) != null,
             };
 
         /// <summary>
@@ -4606,6 +4610,16 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
+                // The two the Meadows can actually build: a chopping block and a tanning rack.
+                // Wood, flint and hide — no bronze, which is the check the trophy step failed
+                // (owner: "we have two upgrades for the workbench, we should have those in HEARTH").
+                Id = "mq-upgrade", MainQuest = true, Track = HearthTrackId, Kind = ChallengeKind.BuildPiece,
+                Param = "StationUpgrade", Target = 2, Display = "Upgrade the workbench (2)",
+                RewardText = "Flint, hide and resin",
+                Hint = "A chopping block and a tanning rack, both inside the bench's circle.",
+            },
+            new ChallengeDefinition
+            {
                 Id = "mq-home", MainQuest = true, Track = HearthTrackId, Kind = ChallengeKind.StatDelta, Param = "TimeInBase",
                 Target = 120, Display = "Settle in (2 min at home)", RewardText = "A shield by the door, and arrows",
                 Hint = "Needs a roof AND a fire. Stand still indoors and it counts up.",
@@ -4634,15 +4648,6 @@ namespace ICanShowYouTheWorld.RunMode
                 // and its reward feeds the hunt directly.
                 Id = "mq-chest", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Chest",
                 Target = 1, Display = "Build a chest", RewardText = "A full quiver before the hunt",
-            },
-            new ChallengeDefinition
-            {
-                // The first step in the saga that makes you no stronger at all, on purpose. It
-                // gives the boar and deer trophies a use besides summoning Eikthyr, and turns the
-                // house into a record of the hunt that paid for it.
-                Id = "mq-trophy", MainQuest = true, Track = HearthTrackId, Kind = ChallengeKind.StatDelta, Param = "ItemStandUses",
-                Target = 1, Display = "Hang a trophy", RewardText = "Wood and resin for the hall",
-                Hint = "An item stand on the wall, then place a trophy on it.",
             },
             new ChallengeDefinition
             {
@@ -4777,6 +4782,20 @@ namespace ICanShowYouTheWorld.RunMode
                 Id = "bf-copper", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "MineHits",
                 Target = 40, Display = "Mine the Black Forest (40 hits)", RewardText = "Copper, tin, and coal to smelt it",
                 Hint = "Copper needs Eikthyr's antler pickaxe. Look for mottled rock outcrops.",
+            },
+            new ChallengeDefinition
+            {
+                // Act II, not Act I: an item stand needs bronze nails, so in the Meadows this step
+                // was IMPOSSIBLE — and because a track is a linear chain it stalled every hearth
+                // step behind it. Fishing, foraging, taming and the pen were all unreachable for a
+                // whole playthrough (owner: "I could not hang anything on my wall because the thing
+                // you hang it on cant be crafted yet").
+                //
+                // On CRAFT rather than a new Act II hearth: an act with its own "hearth" would
+                // collide with Act I's carried one and discard it. See ActDefinition.SeatingFor.
+                Id = "bf-trophy", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "ItemStandUses",
+                Target = 1, Display = "Hang a trophy", RewardText = "Wood and resin for the hall",
+                Hint = "An item stand needs bronze nails. Mount it on a wall, then place a trophy.",
             },
             new ChallengeDefinition
             {
@@ -5106,8 +5125,9 @@ namespace ICanShowYouTheWorld.RunMode
                 // The cozy steps pay in the materials the NEXT cozy step wants, so the
                 // homestead funds its own decoration rather than the hunt funding it.
                 ["mq-meal"] = new[] { ("CookedMeat", 5), ("Raspberry", 20), ("Mushroom", 10) },
+                ["mq-upgrade"] = new[] { ("Flint", 20), ("DeerHide", 10), ("Resin", 20) },
                 ["mq-comfort"] = new[] { ("DeerHide", 10), ("Resin", 20), ("Wood", 30) },
-                ["mq-trophy"] = new[] { ("Wood", 30), ("Resin", 15) },
+                ["bf-trophy"] = new[] { ("Wood", 30), ("Resin", 15) },
                 ["mq-fish"] = new[] { ("FishingBait", 100), ("Wood", 20) },
                 ["mq-fish-varied"] = new[] { ("FishingBait", 100), ("Cauldron", 1) },
                 ["mq-fish-best"] = new[] { ("FishingBait", 150), ("Honey", 20) },
