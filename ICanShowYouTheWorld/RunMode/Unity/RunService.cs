@@ -1121,6 +1121,75 @@ namespace ICanShowYouTheWorld.RunMode
             }
         }
 
+        /// <summary>
+        /// Reports the level of any skill a step asks about, as PlayerState "Skill:Name".
+        ///
+        /// Generic rather than fishing-specific because the game keeps a level for all of them and
+        /// there is nothing fishing-shaped about the question — "Woodcutting 20" or "Bows 15" would
+        /// work the same way the day someone wants them.
+        ///
+        /// Only the skills actually named by a step are read, so an unused skill costs nothing.
+        /// </summary>
+        private void ReportSkillLevels(Player player)
+        {
+            if (_challenges == null) return;
+
+            foreach (var param in _skillParams)
+            {
+                Skills.SkillType type;
+                if (!_skillTypes.TryGetValue(param, out type)) continue;
+
+                try
+                {
+                    _challenges.ReportMeasure(ChallengeKind.PlayerState,
+                        SkillParamPrefix + param, player.GetSkillLevel(type));
+                }
+                catch
+                {
+                    // A skill the build does not have simply goes unreported.
+                }
+            }
+        }
+
+        private const string SkillParamPrefix = "Skill:";
+
+        /// <summary>Skill names any step asks for, resolved once. See <see cref="ReportSkillLevels"/>.</summary>
+        private readonly List<string> _skillParams = new List<string>();
+        private readonly Dictionary<string, Skills.SkillType> _skillTypes = new Dictionary<string, Skills.SkillType>();
+
+        /// <summary>
+        /// Works out which skills the content asks about, once per run.
+        ///
+        /// A name this build has no skill for is reported LOUDLY rather than silently skipped —
+        /// that is the failure mode this mode keeps rediscovering, most recently with a step that
+        /// was valid, measurable and impossible.
+        /// </summary>
+        private void ResolveSkillParams()
+        {
+            _skillParams.Clear();
+            _skillTypes.Clear();
+
+            foreach (var def in AllChallengeDefinitions())
+            {
+                if (def.Kind != ChallengeKind.PlayerState || string.IsNullOrEmpty(def.Param)) continue;
+                if (!def.Param.StartsWith(SkillParamPrefix)) continue;
+
+                string name = def.Param.Substring(SkillParamPrefix.Length);
+                if (_skillTypes.ContainsKey(name)) continue;
+
+                try
+                {
+                    _skillTypes[name] = (Skills.SkillType)Enum.Parse(typeof(Skills.SkillType), name, true);
+                    _skillParams.Add(name);
+                }
+                catch
+                {
+                    Debug.LogError($"[ICanShowYouTheWorld] '{def.Display}' names skill '{name}', which this " +
+                                   "build of Valheim does not have — the step can never complete.");
+                }
+            }
+        }
+
         /// <summary>What the player is carrying, fish-wise. One scan, four questions.</summary>
         private struct FishCatch
         {
@@ -1309,6 +1378,8 @@ namespace ICanShowYouTheWorld.RunMode
                 _challenges.ReportMeasure(ChallengeKind.PlayerState, "FishSpecies", fish.Species);
                 _challenges.ReportMeasure(ChallengeKind.PlayerState, "CookedFishHeld", fish.Cooked);
                 _challenges.ReportMeasure(ChallengeKind.PlayerState, "HeaviestFish", fish.Heaviest);
+
+                ReportSkillLevels(player);
 
                 PollHearthRecords(player);
             }
@@ -2599,6 +2670,7 @@ namespace ICanShowYouTheWorld.RunMode
                                      "registries were ready; some names were not checked this run.");
 
                 ValidateActs();
+                ResolveSkillParams();
             }
             catch (Exception e)
             {
@@ -4655,9 +4727,9 @@ namespace ICanShowYouTheWorld.RunMode
                 // vanilla source — spawns in the Black Forest, and Act I is not supposed to need
                 // that trip yet. See the Act I design spec.
                 Id = "mq-fish", MainQuest = true, Track = HearthTrackId, Kind = ChallengeKind.PlayerState,
-                Param = "FishHeld", Target = 3, Display = "Cast a line (3 fish)",
+                Param = "FishHeld", Target = 1, Display = "Catch your first fish",
                 RewardText = "A cauldron's worth of bait",
-                Hint = "Bait the rod, cast into deep water, and reel when it dips.",
+                Hint = "Equip the rod, hold to cast, hold right-click to reel — then WALK OVER and pick it up.",
             },
             new ChallengeDefinition
             {
@@ -4687,6 +4759,16 @@ namespace ICanShowYouTheWorld.RunMode
                 Id = "mq-tame", MainQuest = true, Track = HearthTrackId, Kind = ChallengeKind.StatDelta, Param = "CreatureTamed",
                 Target = 1, Display = "Tame a boar", RewardText = "Food enough to keep it, and a friend for it",
                 Hint = "Pen it, drop food, and stay out of sight until it calms.",
+            },
+            new ChallengeDefinition
+            {
+                // Skill rather than count: fishing levels quickly at first, so this asks you to
+                // actually spend an evening at the water rather than land three and leave. Measured
+                // through the generic Skill: reading, so "Woodcutting 20" would work the same way.
+                Id = "mq-fish-skill", MainQuest = true, Track = HearthTrackId, Kind = ChallengeKind.PlayerState,
+                Param = "Skill:Fishing", Target = 10, Display = "Fishing skill 10",
+                RewardText = "Bait, and a fisherman's supper",
+                Hint = "Every fish landed raises it. Deeper water pays better.",
             },
             new ChallengeDefinition
             {
@@ -5130,6 +5212,7 @@ namespace ICanShowYouTheWorld.RunMode
                 ["bf-trophy"] = new[] { ("Wood", 30), ("Resin", 15) },
                 ["mq-fish"] = new[] { ("FishingBait", 100), ("Wood", 20) },
                 ["mq-fish-varied"] = new[] { ("FishingBait", 100), ("Cauldron", 1) },
+                ["mq-fish-skill"] = new[] { ("FishingBait", 150), ("CookedMeat", 10) },
                 ["mq-fish-best"] = new[] { ("FishingBait", 150), ("Honey", 20) },
                 ["mq-forage"] = new[] { ("CarrotSeeds", 10), ("Honey", 10) },
                 ["mq-pen"] = new[] { ("Carrot", 20), ("Raspberry", 30) },
