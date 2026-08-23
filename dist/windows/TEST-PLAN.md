@@ -1,6 +1,6 @@
-# Test plan — alpha38
+# Test plan — alpha39
 
-Covers everything shipped since the last real play session (alpha33). Five builds
+Covers everything shipped since the last real play session (alpha33). Six builds
 went out in that window, so this is ordered by **what catches the most for the
 least play**, not by build number.
 
@@ -14,8 +14,12 @@ Install, then work down. Anything marked **BUG** is worth stopping to report.
 The installer prints the version it installed; the popup must match. If it doesn't,
 the install didn't take and nothing below means anything.
 
-**2. Exactly ONE boss pin on the map, not five.**
-Only the current act's altar should be pinned now. Five pins = alpha37 didn't take.
+**2. NO boss pin on the map at all.**
+Since alpha39 an altar is pinned only when the questline asks you to find it — in
+Act I, after the Herald falls. Any boss pin at run start = the gate didn't take.
+
+(The vanilla rune stone near spawn still works if you read it. That's you choosing
+to skip the mystery, and it's left alone on purpose.)
 
 **3. The log grep.** Start a run, then:
 
@@ -76,11 +80,20 @@ Suspend and resume — contents must survive.
 
 ## The Herald (the one I most want checked)
 
-When its step comes up it spawns **150–250m away** and announces a direction. Under
-the step you should see a live `Tracks lead north-east, 140m` that updates as you
-move.
+**alpha38 was broken here** — the Herald was spawning outside the loaded area, so
+the game kept culling it and the mod kept spawning replacements at new random
+spots, once a second. There were dozens; none where the bearing pointed.
 
-- Bearing never updating, or pointing somewhere wrong → **BUG**
+alpha39 remembers a PLACE instead. What should happen now:
+
+- **The bearing is on the always-on strip** under the timer — *"The Herald's tracks
+  lead north-east, 140m"* — visible without opening the run window, updating as you
+  walk.
+- Walk it. The distance should count DOWN steadily. **It must not jump somewhere
+  new.**
+- The Herald appears when you get within ~60m of where it's been pointing.
+- **Exactly one.** If you ever see two, the respawn loop is still alive.
+- It survives a save/resume in the same place.
 - **Killing an ordinary deer must NOT complete the Herald step.** If it does, that
   is the most important bug on this page.
 
@@ -93,7 +106,8 @@ Find Eikthyr's altar → the discovery step completes → kill him. Then:
 1. **ACT II — THE BLACK FOREST** banner
 2. HUNT and CRAFT reseat with Black Forest steps
 3. **A Homeward charge** is granted — Keypad 9 returns you to your bed
-4. **The Elder's altar pin appears** (and Eikthyr's is done with)
+4. The Elder's altar pin should **NOT** appear yet — not until Act II's own
+   discovery step comes up, after the troll
 
 Any of those four missing → **BUG**.
 
