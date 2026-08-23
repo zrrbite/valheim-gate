@@ -1079,6 +1079,42 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
+        /// Fish in the player's inventory, counted by PREFAB name rather than by localisation
+        /// token.
+        ///
+        /// There is no fish stat and no trade stat, so this is the only honest measure. Matching
+        /// the prefab covers every species and both raw and cooked without naming asset data the
+        /// assembly cannot verify — the oldest landmine in this mode. The food test is what keeps
+        /// the rod and the bait out of the count: neither is edible.
+        /// </summary>
+        private static float CountFishHeld(Player player)
+        {
+            try
+            {
+                var items = player.GetInventory()?.GetAllItems();
+                if (items == null) return 0f;
+
+                int count = 0;
+                foreach (var item in items)
+                {
+                    if (item?.m_shared == null || item.m_shared.m_food <= 0f) continue;
+
+                    var prefab = item.m_dropPrefab;
+                    if (prefab == null || prefab.name.IndexOf("Fish", StringComparison.OrdinalIgnoreCase) < 0)
+                        continue;
+
+                    count += item.m_stack;
+                }
+
+                return count;
+            }
+            catch
+            {
+                return 0f;
+            }
+        }
+
+        /// <summary>
         /// Tamed creatures penned near the player.
         ///
         /// Counted within a radius rather than world-wide because the step is "a pen of three" —
@@ -1198,6 +1234,7 @@ namespace ICanShowYouTheWorld.RunMode
                     _challenges.ReportMeasure(ChallengeKind.PlayerState, "FoodSlotsFilled", foods.Count);
 
                 _challenges.ReportMeasure(ChallengeKind.PlayerState, "TamedNearby", CountTamedNearby(player));
+                _challenges.ReportMeasure(ChallengeKind.PlayerState, "FishHeld", CountFishHeld(player));
             }
             catch
             {
@@ -1309,6 +1346,27 @@ namespace ICanShowYouTheWorld.RunMode
         private int _homewardCharges;
 
         /// <summary>
+        /// When the free Homeward comes back. Session state rather than run state on purpose:
+        /// being sent home by a reload is harmless, and persisting it would mean a save-scum
+        /// check for no gain.
+        /// </summary>
+        private float _homewardReadyAt;
+
+        /// <summary>True when the free gate is off cooldown.</summary>
+        public bool HomewardReady => Time.time >= _homewardReadyAt;
+
+        /// <summary>Seconds until the free gate returns, or zero when it is ready.</summary>
+        public float HomewardCooldown => Mathf.Max(0f, _homewardReadyAt - Time.time);
+
+        /// <summary>m:ss, for a countdown the player reads at a glance.</summary>
+        private static string FormatCountdown(float seconds)
+        {
+            if (seconds < 0f) seconds = 0f;
+            int whole = Mathf.CeilToInt(seconds);
+            return $"{whole / 60}:{whole % 60:00}";
+        }
+
+        /// <summary>
         /// Spends a Homeward charge, if there is one and there is somewhere to go.
         ///
         /// "Home" is the player's claimed bed — <c>PlayerProfile.GetCustomSpawnPoint</c>, which is
@@ -1323,9 +1381,10 @@ namespace ICanShowYouTheWorld.RunMode
         {
             if (!_active || _frozen) return;
 
-            if (_homewardCharges <= 0)
+            // Charges first, so a boss kill still buys something the cooldown does not.
+            if (_homewardCharges <= 0 && !HomewardReady)
             {
-                Message("No Homeward charge — fell a boss to earn one.");
+                Message($"Homeward returns in {FormatCountdown(_homewardReadyAt - Time.time)}.");
                 return;
             }
 
@@ -1345,9 +1404,17 @@ namespace ICanShowYouTheWorld.RunMode
                 // the terrain is how a teleport turns into a death.
                 teleport.TeleportTo(profile.GetCustomSpawnPoint() + Vector3.up * 2f);
 
-                _homewardCharges--;
-                Message($"Homeward. {_homewardCharges} charge{(_homewardCharges == 1 ? "" : "s")} left.");
-                SaveState();
+                if (_homewardCharges > 0)
+                {
+                    _homewardCharges--;
+                    Message($"Homeward. {_homewardCharges} charge{(_homewardCharges == 1 ? "" : "s")} left.");
+                    SaveState();
+                }
+                else
+                {
+                    _homewardReadyAt = Time.time + Mathf.Max(0f, _cfg.RunHomewardCooldownMinutes) * 60f;
+                    Message($"Homeward. Free again in {FormatCountdown(_homewardReadyAt - Time.time)}.");
+                }
             }
             catch (Exception ex)
             {
@@ -2126,18 +2193,6 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
-        /// Which act the run is in: the number of bosses the WORLD records as dead, clamped to the
-        /// last act.
-        ///
-        /// Derived rather than stored, deliberately. It cannot drift from the world, a resume
-        /// recomputes it instead of trusting a save, and a run started on a world that already
-        /// killed Eikthyr correctly begins in Act II rather than replaying the Meadows. It is the
-        /// same reading <see cref="RefreshMaxTier"/> already takes, for the same reasons.
-        ///
-        /// Returns the current index unchanged when the world is not loaded — a momentary null
-        /// ZoneSystem must not read as "no bosses dead" and throw the run back to Act I.
-        /// </summary>
-        /// <summary>
         /// Tells the boon engine how far the world has got, for <see cref="BoonDefinition.MinBosses"/>.
         ///
         /// Derived from the world's own keys rather than stored, exactly as the act index is, so a
@@ -2159,6 +2214,18 @@ namespace ICanShowYouTheWorld.RunMode
             _challenges != null && _challenges.Tracks.Any(t =>
                 t.Current != null && t.Current.Def.Kind == ChallengeKind.DiscoverLocation);
 
+        /// <summary>
+        /// Which act the run is in: the number of bosses the WORLD records as dead, clamped to the
+        /// last act.
+        ///
+        /// Derived rather than stored, deliberately. It cannot drift from the world, a resume
+        /// recomputes it instead of trusting a save, and a run started on a world that already
+        /// killed Eikthyr correctly begins in Act II rather than replaying the Meadows. It is the
+        /// same reading <see cref="RefreshMaxTier"/> already takes, for the same reasons.
+        ///
+        /// Returns the current index unchanged when the world is not loaded — a momentary null
+        /// ZoneSystem must not read as "no bosses dead" and throw the run back to Act I.
+        /// </summary>
         private int CurrentActIndex()
         {
             var zone = ZoneSystem.instance;
@@ -2341,6 +2408,26 @@ namespace ICanShowYouTheWorld.RunMode
                 // Checking them up front turns "find out when you beat Moder" into "find out now".
                 if (scene != null || odb != null)
                 {
+                    // Fishing is the one measure that matches a PREFAB NAME rather than a
+                    // compiled type or a stat, so it is the one that can go quietly wrong. If the
+                    // world contains no edible thing named like a fish, "Cast a line" is
+                    // impossible and would simply sit at zero forever.
+                    if (_acts.SelectMany(a => a.AllSteps).Any(c =>
+                            c.Kind == ChallengeKind.PlayerState && c.Param == "FishHeld") &&
+                        odb != null && odb.m_items != null &&
+                        !odb.m_items.Any(go =>
+                        {
+                            if (go == null || go.name.IndexOf("Fish", StringComparison.OrdinalIgnoreCase) < 0)
+                                return false;
+                            var drop = go.GetComponent<ItemDrop>();
+                            return drop != null && drop.m_itemData?.m_shared != null &&
+                                   drop.m_itemData.m_shared.m_food > 0f;
+                        }))
+                    {
+                        Debug.LogError("[ICanShowYouTheWorld] No edible 'Fish' item prefab found — the " +
+                                       "fishing step cannot be completed.");
+                    }
+
                     var rewards = QuestRewards.Values
                         .Concat(BossSpoils)
                         .SelectMany(entries => entries)
@@ -4191,6 +4278,7 @@ namespace ICanShowYouTheWorld.RunMode
 
         public const string HuntTrackId = "hunt";
         public const string CraftTrackId = "craft";
+        public const string HearthTrackId = "hearth";
 
         /// <summary>
         /// Cuts an act's steps into the two tracks, along the seam the content already had: KILLS go
@@ -4220,7 +4308,7 @@ namespace ICanShowYouTheWorld.RunMode
                     ? d.Track
                     : d.Kind == ChallengeKind.KillPrefab ? HuntTrackId : CraftTrackId;
 
-            return new List<QuestTrack>
+            var tracks = new List<QuestTrack>
             {
                 new QuestTrack
                 {
@@ -4232,7 +4320,17 @@ namespace ICanShowYouTheWorld.RunMode
                     Id = CraftTrackId, Label = "CRAFT",
                     Chain = steps.Where(d => TrackOf(d) == CraftTrackId).ToList(),
                 },
+                new QuestTrack
+                {
+                    Id = HearthTrackId, Label = "HEARTH",
+                    Chain = steps.Where(d => TrackOf(d) == HearthTrackId).ToList(),
+                },
             };
+
+            // Only Act I keeps a hearth, so the other four would carry an empty column — which
+            // reads as a bug rather than as an absence. HUNT stays first either way, so track 0
+            // remains MainQuestSlot and the historical slot addressing keeps its meaning.
+            return tracks.Where(t => t.Chain.Count > 0).ToList();
         }
 
         /// <summary>Every act's steps, for the name validator — Act V's names are worth checking in Act I.</summary>
@@ -4319,7 +4417,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // CAN do it and the moment it is worth learning: three foods at once is roughly
                 // triple the health of one, and most people eat a single thing and then wonder
                 // why the Black Forest kills them.
-                Id = "mq-meal", MainQuest = true, Kind = ChallengeKind.PlayerState, Param = "FoodSlotsFilled",
+                Id = "mq-meal", MainQuest = true, Track = HearthTrackId, Kind = ChallengeKind.PlayerState, Param = "FoodSlotsFilled",
                 Target = 3, Display = "Sit down to a proper meal", RewardText = "A stocked larder",
                 Hint = "Three different foods at once — cooked meat, berries, mushrooms.",
             },
@@ -4351,13 +4449,13 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
-                Id = "mq-home", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "TimeInBase",
+                Id = "mq-home", MainQuest = true, Track = HearthTrackId, Kind = ChallengeKind.StatDelta, Param = "TimeInBase",
                 Target = 120, Display = "Settle in (2 min at home)", RewardText = "A shield by the door, and arrows",
                 Hint = "Needs a roof AND a fire. Stand still indoors and it counts up.",
             },
             new ChallengeDefinition
             {
-                Id = "mq-rest", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "Sleep",
+                Id = "mq-rest", MainQuest = true, Track = HearthTrackId, Kind = ChallengeKind.StatDelta, Param = "Sleep",
                 Target = 1, Display = "Sleep through the night", RewardText = "A hot meal and arrows",
                 Hint = "A bed you have claimed, and nothing hostile nearby.",
             },
@@ -4367,7 +4465,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // already built by now, so this asks for the furniture: a chair, a table, a
                 // banner, each adding one under a roof. Valheim never quests on comfort, so the
                 // system usually goes unnoticed until someone reads a wiki.
-                Id = "mq-comfort", MainQuest = true, Kind = ChallengeKind.PlayerState, Param = "Comfort",
+                Id = "mq-comfort", MainQuest = true, Track = HearthTrackId, Kind = ChallengeKind.PlayerState, Param = "Comfort",
                 Target = 5, Display = "Make it comfortable (comfort 5)",
                 RewardText = "Hide and resin to furnish it",
                 Hint = "A chair and a table, under the roof, near the fire. Rested lasts longer for each.",
@@ -4385,9 +4483,28 @@ namespace ICanShowYouTheWorld.RunMode
                 // The first step in the saga that makes you no stronger at all, on purpose. It
                 // gives the boar and deer trophies a use besides summoning Eikthyr, and turns the
                 // house into a record of the hunt that paid for it.
-                Id = "mq-trophy", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "ItemStandUses",
-                Target = 1, Display = "Hang a trophy", RewardText = "Wood and resin for the hall",
+                Id = "mq-trophy", MainQuest = true, Track = HearthTrackId, Kind = ChallengeKind.StatDelta, Param = "ItemStandUses",
+                Target = 1, Display = "Hang a trophy", RewardText = "A fishing rod, and bait",
                 Hint = "An item stand on the wall, then place a trophy on it.",
+            },
+            new ChallengeDefinition
+            {
+                // The rod comes from the previous step's reward, because Haldor — the only
+                // vanilla source — spawns in the Black Forest, and Act I is not supposed to need
+                // that trip yet. See the Act I design spec.
+                Id = "mq-fish", MainQuest = true, Track = HearthTrackId, Kind = ChallengeKind.PlayerState,
+                Param = "FishHeld", Target = 3, Display = "Cast a line (3 fish)",
+                RewardText = "A cauldron's worth of bait",
+                Hint = "Bait the rod, cast into deep water, and reel when it dips.",
+            },
+            new ChallengeDefinition
+            {
+                // Pure pottering, and the cheapest step in the act on purpose: something to do
+                // while the boar breed and the food cooks.
+                Id = "mq-forage", MainQuest = true, Track = HearthTrackId, Kind = ChallengeKind.StatDelta,
+                Param = "ItemsPickedUp", Target = 50, Display = "Forage the meadows (50 finds)",
+                RewardText = "Seeds and a full larder",
+                Hint = "Berries, mushrooms, flint by the water, anything on the ground.",
             },
             new ChallengeDefinition
             {
@@ -4395,7 +4512,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // the planting until the obvious was pointed out: boar are a MEADOWS animal, so
                 // asking for one in the Black Forest either sends you back or completes itself on
                 // arrival — neither of which is a quest.
-                Id = "mq-tame", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "CreatureTamed",
+                Id = "mq-tame", MainQuest = true, Track = HearthTrackId, Kind = ChallengeKind.StatDelta, Param = "CreatureTamed",
                 Target = 1, Display = "Tame a boar", RewardText = "Food enough to keep it, and a friend for it",
                 Hint = "Pen it, drop food, and stay out of sight until it calms.",
             },
@@ -4404,7 +4521,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // Last on the track by design: boar breed on their own schedule, and this is the
                 // one homestead step that can take real time. The hunt track runs in parallel, so
                 // a slow pen delays nothing on the way to Eikthyr.
-                Id = "mq-pen", MainQuest = true, Kind = ChallengeKind.PlayerState, Param = "TamedNearby",
+                Id = "mq-pen", MainQuest = true, Track = HearthTrackId, Kind = ChallengeKind.PlayerState, Param = "TamedNearby",
                 Target = 3, Display = "A pen of three", RewardText = "Feed enough for a herd",
                 Hint = "Two tamed boar in a pen, fed and left alone, will raise a third.",
             },
@@ -4810,7 +4927,9 @@ namespace ICanShowYouTheWorld.RunMode
                 // homestead funds its own decoration rather than the hunt funding it.
                 ["mq-meal"] = new[] { ("CookedMeat", 5), ("Raspberry", 20), ("Mushroom", 10) },
                 ["mq-comfort"] = new[] { ("DeerHide", 10), ("Resin", 20), ("Wood", 30) },
-                ["mq-trophy"] = new[] { ("Wood", 30), ("Resin", 15) },
+                ["mq-trophy"] = new[] { ("FishingRod", 1), ("FishingBait", 50) },
+                ["mq-fish"] = new[] { ("FishingBait", 100), ("Wood", 20) },
+                ["mq-forage"] = new[] { ("CarrotSeeds", 10), ("Honey", 10) },
                 ["mq-pen"] = new[] { ("Carrot", 20), ("Raspberry", 30) },
                 ["mq-rest"] = new[] { ("CookedMeat", 10), ("ArrowFlint", 20) },
                 // Eikthyr's altar wants two deer trophies, and a trophy is a drop the player can

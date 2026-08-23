@@ -810,7 +810,7 @@ namespace ICanShowYouTheWorld.RunMode
             // Heat's counterweight, shown beside it: every completion raises both, and seeing only
             // the cost would make the trade look worse than it is. Hidden until earned rather than
             // sitting at +0, so it reads as something the run gave you.
-            if (run.EarnedHealth > 0f || run.HomewardCharges > 0)
+            if (run.EarnedHealth > 0f || run.HomewardCharges > 0 || run.HomewardReady || run.HomewardCooldown > 0f)
             {
                 GUILayout.BeginHorizontal();
 
@@ -823,12 +823,26 @@ namespace ICanShowYouTheWorld.RunMode
 
                 GUILayout.FlexibleSpace();
 
+                // Charges when held, otherwise the free gate's state. Always one line, because a
+                // way home you have to open a window to check is not a safety net.
                 if (run.HomewardCharges > 0)
                 {
                     GUI.contentColor = RunTheme.AccentGold;
                     GUILayout.Label($"Homeward x{run.HomewardCharges}  [9]", RunTheme.Small);
-                    GUI.contentColor = Color.white;
                 }
+                else if (run.HomewardReady)
+                {
+                    GUI.contentColor = RunTheme.AccentGold;
+                    GUILayout.Label("Homeward ready  [9]", RunTheme.Small);
+                }
+                else
+                {
+                    GUI.contentColor = RunTheme.TextMuted;
+                    int secs = Mathf.CeilToInt(run.HomewardCooldown);
+                    GUILayout.Label($"Homeward {secs / 60}:{secs % 60:00}", RunTheme.Small);
+                }
+
+                GUI.contentColor = Color.white;
 
                 GUILayout.EndHorizontal();
             }

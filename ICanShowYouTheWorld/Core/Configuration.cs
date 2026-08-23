@@ -60,6 +60,7 @@ namespace ICanShowYouTheWorld.Core
         float RunDeerStarChance { get; set; }
         int RunDeerStarLevel { get; set; }
         float RunDeerGreylingChance { get; set; }
+        float RunHomewardCooldownMinutes { get; set; }
         int RunDeerGreylingMin { get; set; }
         int RunDeerGreylingMax { get; set; }
         int RunDeerGreylingLevel { get; set; }
@@ -183,6 +184,9 @@ namespace ICanShowYouTheWorld.Core
         // A pack, not a straggler: one greyling wandering up to the carcass reads as an
         // accident rather than the forest noticing. Starred to match — same convention as
         // runDeerStarLevel, where 2 is one star.
+        // Long enough to plan around, short enough never to strand anyone. Boss charges are
+        // spent first, so a boss kill still buys something this does not.
+        [SerializeField] private float runHomewardCooldownMinutes = 10f;
         [SerializeField] private int runDeerGreylingMin = 3;
         [SerializeField] private int runDeerGreylingMax = 5;
         [SerializeField] private int runDeerGreylingLevel = 2;
@@ -249,6 +253,7 @@ namespace ICanShowYouTheWorld.Core
         public float RunDeerStarChance { get => runDeerStarChance; set => runDeerStarChance = value; }
         public int RunDeerStarLevel { get => runDeerStarLevel; set => runDeerStarLevel = value; }
         public float RunDeerGreylingChance { get => runDeerGreylingChance; set => runDeerGreylingChance = value; }
+        public float RunHomewardCooldownMinutes { get => runHomewardCooldownMinutes; set => runHomewardCooldownMinutes = value; }
         public int RunDeerGreylingMin { get => runDeerGreylingMin; set => runDeerGreylingMin = value; }
         public int RunDeerGreylingMax { get => runDeerGreylingMax; set => runDeerGreylingMax = value; }
         public int RunDeerGreylingLevel { get => runDeerGreylingLevel; set => runDeerGreylingLevel = value; }

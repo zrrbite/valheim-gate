@@ -43,6 +43,8 @@ namespace ICanShowYouTheWorld.Services
 
         /// <summary>Unspent Homeward charges — one per boss felled, spent with Keypad 9.</summary>
         int HomewardCharges { get; }
+        bool HomewardReady { get; }
+        float HomewardCooldown { get; }
 
         /// <summary>
         /// Where Eikthyr's Herald is ("north-east, 180m") while its questline step is in play;
