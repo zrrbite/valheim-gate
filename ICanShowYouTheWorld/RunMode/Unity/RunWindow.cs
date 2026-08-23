@@ -438,7 +438,7 @@ namespace ICanShowYouTheWorld.RunMode
             // some resolutions and UI scales (owner, alpha40: "they block health and food"). The
             // margin is config for the same reason the HUD's menu offset is — the right number
             // depends on the screen, so it cannot be a constant that is right for everyone.
-            float panelX = _config?.RunSidePanelX ?? 190f;
+            float panelX = _config?.RunSidePanelX ?? 30f;
 
             _trackerRect = new Rect(panelX, Mathf.Max(10f, viewHeight - TrackerHeight - 10f),
                 TrackerWidth, TrackerHeight);
@@ -1011,15 +1011,17 @@ namespace ICanShowYouTheWorld.RunMode
             GUI.contentColor = track.Blocked
                 ? RunTheme.TextMuted
                 : Color.Lerp(RunTheme.TextParchment, RunTheme.AccentGold, flash);
-            // Step and progress on ONE line. The bar below it was a third of the quest section's
-            // height for information the "3/10" already carries.
-            GUILayout.BeginHorizontal();
-            GUILayout.Label($"  {track.Label}", RunTheme.Small, GUILayout.Width(52f));
-            GUILayout.Label(quest.Def.Display, RunTheme.Body);
-            GUILayout.FlexibleSpace();
-            if (!track.Blocked && quest.Def.Target > 1f)
-                GUILayout.Label($"{quest.Progress:0}/{quest.Def.Target:0}", RunTheme.Small, GUILayout.Width(42f));
-            GUILayout.EndHorizontal();
+            // ONE label, not a horizontal group. Splitting it across fixed-width cells let IMGUI
+            // squeeze the middle one until "Build a chest" rendered as "Build a" — a step name is
+            // the single thing on this panel that must never be clipped.
+            //
+            // The progress bar this replaced was a third of the quest section's height carrying
+            // information the "3/10" already gives.
+            string count = !track.Blocked && quest.Def.Target > 1f
+                ? $"   {quest.Progress:0}/{quest.Def.Target:0}"
+                : string.Empty;
+
+            GUILayout.Label($"  {track.Label}   {quest.Def.Display}{count}", RunTheme.Body);
             GUI.contentColor = Color.white;
 
             if (track.Blocked)
