@@ -4613,7 +4613,7 @@ namespace ICanShowYouTheWorld.RunMode
             new ChallengeDefinition
             {
                 Id = "mq-rest", MainQuest = true, Track = HearthTrackId, Kind = ChallengeKind.StatDelta, Param = "Sleep",
-                Target = 1, Display = "Sleep through the night", RewardText = "A hot meal and arrows",
+                Target = 1, Display = "Sleep through the night", RewardText = "A hot meal, arrows, and a fishing rod",
                 Hint = "A bed you have claimed, and nothing hostile nearby.",
             },
             new ChallengeDefinition
@@ -4715,7 +4715,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // matching on "Deer" would let any deer finish this. The host reports this name only
                 // when that specific creature dies, matched by ZDOID. See DeerHerd.
                 Id = "mq-herald", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = DeerHerd.HeraldKillName,
-                Target = 1, Display = "Hunt Eikthyr's Herald", RewardText = "A hunter's bow, the last trophies, and a fishing rod",
+                Target = 1, Display = "Hunt Eikthyr's Herald", RewardText = "A hunter's bow, and the last trophies",
             },
             new ChallengeDefinition
             {
@@ -5113,17 +5113,19 @@ namespace ICanShowYouTheWorld.RunMode
                 ["mq-fish-best"] = new[] { ("FishingBait", 150), ("Honey", 20) },
                 ["mq-forage"] = new[] { ("CarrotSeeds", 10), ("Honey", 10) },
                 ["mq-pen"] = new[] { ("Carrot", 20), ("Raspberry", 30) },
-                ["mq-rest"] = new[] { ("CookedMeat", 10), ("ArrowFlint", 20) },
+                // The rod comes from the HOMESTEAD, not the hunt — waking in your own bed is
+                // the moment the house starts giving something back, and it reads better than a
+                // dead stag handing you fishing tackle.
+                //
+                // Safe on this track since alpha47: an unfinished hearth now carries into Act II,
+                // so a rod earned here can no longer be cut off by the boss falling early. That
+                // was the only reason it ever sat on the hunt track.
+                ["mq-rest"] = new[] { ("CookedMeat", 10), ("ArrowFlint", 20), ("FishingRod", 1), ("FishingBait", 50) },
                 // Eikthyr's altar wants two deer trophies, and a trophy is a drop the player can
                 // hunt for an hour without seeing. Handing them over is the point of this step:
                 // the run gates on the FIGHT, never on drop luck.
                 ["mq-deer"] = new[] { ("TrophyDeer", 2), ("DeerHide", 5) },
-                // The rod rides the HUNT track on purpose: it used to be the trophy step's reward,
-                // which meant fishing was gated behind hearth progress that the boss can cut short.
-                // Here it lands before the altar is even found, so there is room to sit by the
-                // water before the god is called (owner: "so we can chill and fish before the
-                // final boss").
-                ["mq-herald"] = new[] { ("BowFineWood", 1), ("TrophyDeer", 2), ("ArrowFlint", 40), ("FishingRod", 1), ("FishingBait", 50) },
+                ["mq-herald"] = new[] { ("BowFineWood", 1), ("TrophyDeer", 2), ("ArrowFlint", 40) },
 
                 // The discovery steps. Each pays what its boss fight actually WANTS, which is the
                 // point of putting a step between finding the altar and fighting what stands on it:

@@ -54,7 +54,8 @@ HEARTH. None of them is a craft; they were there because CRAFT meant
 No fish stat and no trade stat exist, and the rod is Haldor-only in vanilla —
 Haldor spawns in the **Black Forest**, outside the act.
 
-**The saga grants the rod**, as the reward of the `Herald` step. The mode already
+**The saga grants the rod**, as the reward of `Sleep through the night` — the first
+night in your own bed is when the house starts giving something back. The mode already
 hands over bows, armour and seeds; a rod is nothing new, and it means fishing
 arrives when the questline wants it rather than when the map cooperates.
 Stumbling on Haldor becomes an Act II step, where the Black Forest is where
@@ -126,9 +127,9 @@ owner's call: it is earmarked for **Bonemass**, whose fight is decided by
 whether you brewed the poison resistance mead, and which is therefore the one
 boss worth gating on its own preparation. Do not delete it as dead code.
 
-The fishing rod moved from the trophy step to the **Herald**, so it arrives on
-the hunt track and never depends on hearth progress: there is room to sit by
-the water before the god is called.
+The fishing rod sits on the **hearth** track, at `Sleep through the night`. It
+spent a version on the hunt track because hearth progress could be cut short by
+the boss — carry-over removed that reason, so it went back where it belongs.
 
 ## What is deliberately not here
 
