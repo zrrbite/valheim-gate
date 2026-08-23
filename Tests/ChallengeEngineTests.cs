@@ -140,6 +140,24 @@ static class ChallengeEngineTests
         e2.ReportMeasure(ChallengeKind.CollectItem, "Fire", 1f);
         Check.That(e2.Active[0].Progress == 0f, "a CollectItem report never credits a BuildPiece challenge");
 
+        // Counting: a BuildPiece objective may ask for a QUANTITY, which is what makes "plant ten
+        // seeds" a crop rather than a gesture. The host reports how many it can see; the engine
+        // just measures.
+        var counted = new ChallengeEngine(
+            new List<ChallengeDefinition>
+            {
+                new ChallengeDefinition { Id="crop", Kind=ChallengeKind.BuildPiece, Param="Plant", Target=10, Display="Plant a crop" },
+            },
+            new Random(24), 120f);
+        counted.Tick(0.1f);
+        counted.ReportMeasure(ChallengeKind.BuildPiece, "Plant", 4f);
+        Check.That(counted.Active[0].Progress == 4f && !counted.Active[0].Done, "a partial count is partial progress");
+        counted.ReportMeasure(ChallengeKind.BuildPiece, "Plant", 10f);
+        Check.That(counted.Active[0].Done, "reaching the count finishes it");
+        // Harvesting the field drops the live count; max-semantics must not take the step back.
+        counted.ReportMeasure(ChallengeKind.BuildPiece, "Plant", 1f);
+        Check.That(counted.Active[0].Progress == 10f, "harvesting a finished crop does not un-earn it");
+
         // Latching: the host stops seeing the piece (reports 0) once the player walks away, and
         // ReportMeasure's max-semantics must hold the completed progress rather than undo it.
         var e3 = new ChallengeEngine(pool.Where(d => d.Id == "chest").ToList(), new Random(9), 120f);

@@ -1296,6 +1296,11 @@ namespace ICanShowYouTheWorld.RunMode
                 ["Fermenter"] = p => p.GetComponentInChildren<Fermenter>(true) != null,
                 ["Windmill"] = p => p.GetComponentInChildren<Windmill>(true) != null,
                 ["Ship"] = p => p.GetComponentInChildren<Ship>(true) != null,
+                // Farming (alpha41). Plant is a compiled class, so a growing crop is detectable
+                // exactly as a campfire is — no asset names. This is the category that made
+                // BuildPiece learn to count: "plant a seed" is thin, "plant ten" is a crop.
+                ["Plant"] = p => p.GetComponentInChildren<Plant>(true) != null,
+                ["Beehive"] = p => p.GetComponentInChildren<Beehive>(true) != null,
             };
 
         /// <summary>
@@ -1317,14 +1322,34 @@ namespace ICanShowYouTheWorld.RunMode
         /// makes this "you built it" rather than "you are standing near one": it excludes every
         /// world-generated ruin, and in a shared world it excludes other players' houses too.
         /// </summary>
+        /// <summary>How many pieces of each category were seen near the player on the last scan.</summary>
+        private readonly Dictionary<string, int> _builtCounts = new Dictionary<string, int>();
+
         private void PollBuiltPieces()
         {
             if (_challenges == null) return;
 
-            if (_builtSeen.Count < PieceCategories.Count) ScanForBuiltPieces();
+            // Keep scanning while anything wants a COUNT, not just while categories remain unseen.
+            // The old early-out stopped once every category had been seen once, which was right
+            // when every objective was "have you built one" and wrong the moment "plant 10 seeds"
+            // existed.
+            bool wantsCount = MeasuredChallenges().Any(a =>
+                a.Def.Kind == ChallengeKind.BuildPiece && a.Def.Target > 1f);
 
-            foreach (var category in _builtSeen)
-                _challenges.ReportMeasure(ChallengeKind.BuildPiece, category, 1f);
+            if (_builtSeen.Count < PieceCategories.Count || wantsCount) ScanForBuiltPieces();
+
+            foreach (var category in PieceCategories.Keys)
+            {
+                _builtCounts.TryGetValue(category, out int live);
+
+                // The larger of what is standing here NOW and "you have built one at some point".
+                // The live count is what makes a crop field measurable; the latch is what stops a
+                // finished "build a fire" un-finishing when the player walks away from it. The
+                // engine's max-semantics keeps whichever was higher, so a harvested field does not
+                // take back the step it completed.
+                float value = Math.Max(live, _builtSeen.Contains(category) ? 1 : 0);
+                if (value > 0f) _challenges.ReportMeasure(ChallengeKind.BuildPiece, category, value);
+            }
         }
 
         /// <summary>
@@ -1349,17 +1374,21 @@ namespace ICanShowYouTheWorld.RunMode
                 return;
             }
 
+            _builtCounts.Clear();
+
             foreach (var piece in _pieceBuffer)
             {
-                // Everything found — the rest of a base's several hundred pieces are wasted work.
-                if (_builtSeen.Count >= PieceCategories.Count) break;
-
                 if (piece == null || !piece.IsCreator()) continue;
 
+                // Every category every time, rather than stopping at the first unseen one: the scan
+                // now produces COUNTS, and a count is only correct if nothing was skipped.
                 foreach (var entry in PieceCategories)
                 {
-                    if (_builtSeen.Contains(entry.Key)) continue;
-                    if (entry.Value(piece)) _builtSeen.Add(entry.Key);
+                    if (!entry.Value(piece)) continue;
+
+                    _builtCounts.TryGetValue(entry.Key, out int n);
+                    _builtCounts[entry.Key] = n + 1;
+                    _builtSeen.Add(entry.Key);
                 }
             }
 
@@ -4147,6 +4176,33 @@ namespace ICanShowYouTheWorld.RunMode
                 Target = 1, Display = "Build a portal", RewardText = "Fine wood and cores for its twin",
                 Hint = "Fine wood, greydwarf eyes and surtling cores. Build two.",
             },
+            // --- Farming (alpha41) ---
+            //
+            // Owner, on reaching the Black Forest: "here you start getting seeds. There should be
+            // some FARMING quests. Plant seeds, tame boar." Placed where seeds actually start, and
+            // after the portal — infrastructure first, then settling in.
+            //
+            // All three ride mechanisms that already exist: Plant and Beehive are compiled classes
+            // (so a crop is detectable exactly as a campfire is), and CreatureTamed is a real
+            // PlayerStatType. Nothing here names an asset.
+            new ChallengeDefinition
+            {
+                Id = "bf-plant", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Plant",
+                Target = 10, Display = "Plant a crop (10 seeds)", RewardText = "More seeds, and a queen for a hive",
+                Hint = "Seeds from the forest floor, and a cultivator to break the ground. Keep them together.",
+            },
+            new ChallengeDefinition
+            {
+                Id = "bf-tame", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "CreatureTamed",
+                Target = 1, Display = "Tame a boar", RewardText = "Food enough to keep it, and a friend for it",
+                Hint = "Pen it, drop food, and stay out of sight until it calms.",
+            },
+            new ChallengeDefinition
+            {
+                Id = "bf-bees", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Beehive",
+                Target = 1, Display = "Build a beehive", RewardText = "Honey, and mead to come",
+                Hint = "Needs a queen bee — one came with your seeds. Hive it under a roof, outdoors.",
+            },
             new ChallengeDefinition
             {
                 Id = "bf-greydwarf", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Greydwarf",
@@ -4413,6 +4469,11 @@ namespace ICanShowYouTheWorld.RunMode
                 // seeds — the run gates on the FIGHT, never on a scavenger hunt.
                 ["bf-copper"] = new[] { ("CopperOre", 20), ("TinOre", 10), ("Coal", 20), ("SurtlingCore", 8) },
                 ["bf-portal"] = new[] { ("FineWood", 20), ("SurtlingCore", 4), ("GreydwarfEye", 10) },
+                // The plant step pays the QUEEN BEE the hive step needs, so the beehive is
+                // buildable when asked — the same lesson the smelter's surtling cores taught.
+                ["bf-plant"] = new[] { ("CarrotSeeds", 20), ("QueenBee", 1) },
+                ["bf-tame"] = new[] { ("Carrot", 20), ("RawMeat", 10) },
+                ["bf-bees"] = new[] { ("Honey", 20) },
                 ["bf-smelter"] = new[] { ("CopperOre", 30), ("TinOre", 15), ("Coal", 30) },
                 ["bf-bronze"] = new[] { ("Bronze", 10), ("ArrowBronze", 40) },
                 ["bf-greydwarf"] = new[] { ("ShieldBronzeBuckler", 1), ("ArrowBronze", 40) },

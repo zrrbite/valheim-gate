@@ -1486,3 +1486,40 @@ should read `… → Hunt the Herald → Find Eikthyr's altar → Defeat Eikthyr
 ### RESULTS (Windows side appends here)
 
 *(pending)*
+
+---
+
+## 2026-08-23 — TASK: alpha41 — farming in the Black Forest
+
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha41**.
+
+Your note: *"when entering black forest you start getting seeds. There should be
+some FARMING quests. Plant seeds, tame boar."*
+
+I guessed wrong when you asked — I thought planting would have no honest measure.
+`Plant` turns out to be a compiled class, so a growing crop is detectable exactly
+as a campfire is. No asset names anywhere in this.
+
+**Act II's CRAFT track gains three steps**, after the portal — infrastructure
+first, then settling in:
+
+```
+… → Build a portal → Plant a crop (10 seeds) → Tame a boar → Build a beehive
+```
+
+The plant step pays a **queen bee**, so the hive is buildable when it's asked for
+— same lesson the smelter's surtling cores taught.
+
+**The interesting bit:** "plant 10 seeds" needed the build detector to learn to
+COUNT rather than just answer "have you built one". It counts what's near you
+(20m), so **keep the crop in one plot** — a field spread across two bases would
+never read as ten at once. Harvesting a finished crop doesn't take the step back.
+
+**What to check:**
+- Does the plant counter climb as you plant? `0/10 → 10/10`
+- Does taming a boar tick immediately when it finishes calming?
+- New item names to watch in the log grep: `CarrotSeeds`, `QueenBee`, `Carrot`.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
