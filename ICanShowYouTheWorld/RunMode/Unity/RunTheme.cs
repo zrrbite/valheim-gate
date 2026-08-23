@@ -153,14 +153,14 @@ namespace ICanShowYouTheWorld.RunMode
             _headerStyle = new GUIStyle(GUI.skin.label)
             {
                 fontStyle = FontStyle.Bold,
-                fontSize = 15,
+                fontSize = 13,
                 normal = { textColor = AccentGold },
             };
             if (font != null) _headerStyle.font = font;
 
             _bodyStyle = new GUIStyle(GUI.skin.label)
             {
-                fontSize = 13,
+                fontSize = 12,
                 normal = { textColor = TextParchment },
                 wordWrap = true,
             };
@@ -168,7 +168,7 @@ namespace ICanShowYouTheWorld.RunMode
 
             _smallStyle = new GUIStyle(GUI.skin.label)
             {
-                fontSize = 11,
+                fontSize = 10,
                 normal = { textColor = TextMuted },
                 wordWrap = true,
             };
@@ -177,7 +177,7 @@ namespace ICanShowYouTheWorld.RunMode
             _readyStyle = new GUIStyle(GUI.skin.label)
             {
                 fontStyle = FontStyle.Bold,
-                fontSize = 13,
+                fontSize = 12,
                 normal = { textColor = AccentGold },
             };
             if (font != null) _readyStyle.font = font;

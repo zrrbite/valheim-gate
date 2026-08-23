@@ -848,14 +848,14 @@ namespace ICanShowYouTheWorld.RunMode
                 GUILayout.EndHorizontal();
             }
 
-            GUILayout.Space(6f);
+            GUILayout.Space(4f);
 
             // --- Main questline: pinned above the scroll, like the timer. It is the one thing on
             //     this HUD that says where the run is GOING, so it must never scroll out of view
             //     behind a long splits list. ---
             DrawQuestSection(run);
 
-            GUILayout.Space(6f);
+            GUILayout.Space(4f);
 
             // The window height is fixed, so the body — which grows with splits, challenges and
             // held boons — scrolls. Without this it would overflow and clip the Abandon button
@@ -1011,7 +1011,15 @@ namespace ICanShowYouTheWorld.RunMode
             GUI.contentColor = track.Blocked
                 ? RunTheme.TextMuted
                 : Color.Lerp(RunTheme.TextParchment, RunTheme.AccentGold, flash);
-            GUILayout.Label($"  {track.Label}   {quest.Def.Display}", RunTheme.Body);
+            // Step and progress on ONE line. The bar below it was a third of the quest section's
+            // height for information the "3/10" already carries.
+            GUILayout.BeginHorizontal();
+            GUILayout.Label($"  {track.Label}", RunTheme.Small, GUILayout.Width(52f));
+            GUILayout.Label(quest.Def.Display, RunTheme.Body);
+            GUILayout.FlexibleSpace();
+            if (!track.Blocked && quest.Def.Target > 1f)
+                GUILayout.Label($"{quest.Progress:0}/{quest.Def.Target:0}", RunTheme.Small, GUILayout.Width(42f));
+            GUILayout.EndHorizontal();
             GUI.contentColor = Color.white;
 
             if (track.Blocked)
@@ -1022,22 +1030,18 @@ namespace ICanShowYouTheWorld.RunMode
                 return;
             }
 
-            GUILayout.BeginHorizontal();
-            GUILayout.Space(8f);
-            var barRect = GUILayoutUtility.GetRect(140f, 12f, GUILayout.Width(140f), GUILayout.Height(12f));
-            float frac = quest.Def.Target > 0f ? quest.Progress / quest.Def.Target : 0f;
-            RunTheme.Bar(barRect, frac, quest.Done ? RunTheme.CompleteGreen : RunTheme.AccentGold);
-            GUILayout.Label($"{quest.Progress:0}/{quest.Def.Target:0}", RunTheme.Small, GUILayout.Width(46f));
-            GUILayout.FlexibleSpace();
-            GUILayout.EndHorizontal();
 
             // What the step actually NEEDS, for the steps where that is not obvious. Written after
             // two play sessions lost time to exactly this — a smelter wanting surtling cores, a
             // home wanting a fire — so it sits above the reward, which is the thing you read when
             // you already know what to do.
-            if (!string.IsNullOrEmpty(quest.Def.Hint))
+            // Only before you have started. A hint you have already acted on is a line of clutter
+            // on a panel that now carries three tracks instead of one.
+            if (!string.IsNullOrEmpty(quest.Def.Hint) && quest.Progress <= 0f)
             {
+                GUI.contentColor = RunTheme.TextMuted;
                 GUILayout.Label("  " + quest.Def.Hint, RunTheme.Small);
+                GUI.contentColor = Color.white;
             }
 
             // Live direction to whatever this step wants found — the Herald, or the biome an act
@@ -1059,7 +1063,7 @@ namespace ICanShowYouTheWorld.RunMode
             if (!string.IsNullOrEmpty(quest.Def.RewardText))
             {
                 GUI.contentColor = RunTheme.AccentGold;
-                GUILayout.Label("  Reward: " + quest.Def.RewardText, RunTheme.Small);
+                GUILayout.Label("  \u2192 " + quest.Def.RewardText, RunTheme.Small);
                 GUI.contentColor = Color.white;
             }
         }
@@ -1079,7 +1083,7 @@ namespace ICanShowYouTheWorld.RunMode
                 foreach (var split in splits) GUILayout.Label("  " + split, RunTheme.Small);
             }
 
-            GUILayout.Space(6f);
+            GUILayout.Space(4f);
 
             // --- Homestead (splits measure the run against the clock; these measure it against
             //     itself). Hidden entirely until something has actually happened, so a fresh run
@@ -1101,7 +1105,7 @@ namespace ICanShowYouTheWorld.RunMode
                     GUILayout.EndHorizontal();
                 }
 
-                GUILayout.Space(6f);
+                GUILayout.Space(4f);
             }
 
             // --- Tasks (the three random, rerollable slots — the questline is drawn above) ---
@@ -1177,7 +1181,7 @@ namespace ICanShowYouTheWorld.RunMode
                 if (!frozen && cost > 0f) GUILayout.Label($"  reroll costs {cost:0.#} heat", RunTheme.Small);
             }
 
-            GUILayout.Space(6f);
+            GUILayout.Space(4f);
 
             // --- Boons ---
             GUILayout.Label("BOONS", RunTheme.Header);
@@ -1374,11 +1378,11 @@ namespace ICanShowYouTheWorld.RunMode
                 GUILayout.Label("That world keeps Run Mode's rates.", RunTheme.Small);
             }
 
-            GUILayout.Space(8f);
+            GUILayout.Space(5f);
             // Deferred: starting a run here would change the window set mid-pass.
             if (GUILayout.Button("Begin the saga")) _pendingStart = true;
 
-            GUILayout.Space(6f);
+            GUILayout.Space(4f);
             GUILayout.Label("GM mode is disabled while a run is live.", RunTheme.Small);
 
             // No kill-hook warning here by design: KillHookAvailable is unconditionally true
