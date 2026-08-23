@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, at `0.221.12-run.alpha37`. This is the "pick it back up
+Written 2026-08-23, at `0.221.12-run.alpha38`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -19,9 +19,9 @@ Everything below is what that file tells it.
 
 ## Where things stand
 
-- Branch **`feature/run-mode`**, 91 commits ahead of `main`. **Not merged**,
+- Branch **`feature/run-mode`**, 92 commits ahead of `main`. **Not merged**,
   deliberately — the mode is still being tuned in play.
-- Latest tag **`0.221.12-run.alpha37`**, pushed. The Mac has it deployed.
+- Latest tag **`0.221.12-run.alpha38`**, pushed. The Mac has it deployed.
 - Game version 0.221.12, Unity 6000.0.61. Windows is the play machine, the Mac
   is the test/build machine, the Deck travels (and is **stale** — it still has
   an older patched assembly and needs a re-patch before use).
@@ -55,7 +55,27 @@ must read the tag you just pushed. **The version popup is the whole point of
 tagging every alpha** — it is the only way to be certain which build is being
 played.
 
-## What the mode is, as of alpha37
+## What the mode is, as of alpha38
+
+> **IDENTITY, decided 2026-08-23 (owner):** *"In a way this is developing into less
+> of a speed-run-mod and more of a more complete Valheim experience."* — *"yeah
+> let's lean into the saga mode."*
+>
+> **This is a guided Valheim campaign with escalating stakes, not a speedrun.** The
+> scoring already agreed before anyone said it out loud: score is
+> `100 × par/(par+time) × (1 + heat×0.1)`, so heat MULTIPLIES while time only
+> divides — a 3-hour thorough saga scores roughly double a 1-hour thin one. The
+> presentation was changed in alpha38 to match the arithmetic: the ACT is the HUD's
+> headline, the clock is one number on a strip, and the score is called "Saga
+> score".
+>
+> Player-facing strings say "saga"; config keys, save files, class names and the
+> branch deliberately still say "run" — renaming those would touch the config file
+> and the save file names for zero player benefit.
+>
+> **Do not re-add speedrun pressure without a decision to reverse this.** If it ever
+> comes up again, the levers are `runParTimeMinutes` (240) and
+> `runHeatScoreWeight` (0.1), both config.
 
 **Five acts**, one per boss. All five are written: I The Meadows (16 steps) →
 Eikthyr, II The Black Forest (10) → The Elder, III The Swamp (8) → Bonemass,

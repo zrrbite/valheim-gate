@@ -70,7 +70,7 @@ namespace ICanShowYouTheWorld.RunMode
         private const string RespawnNotice = "Run paused — waiting for respawn.";
         private const string WrongWorldNotice = "Run paused — this is not the world the run started in.";
         private const string AbandonWrongWorldNotice = "Load the run's world to abandon it.";
-        private const string MultiplayerNotice = "Run Mode v1 supports local/hosted worlds only.";
+        private const string MultiplayerNotice = "The saga supports local/hosted worlds only.";
         private const string CorruptSaveNotice =
             "Run save could not be read — file kept as .corrupt; run cannot be resumed.";
 
@@ -401,14 +401,14 @@ namespace ICanShowYouTheWorld.RunMode
                 if (player == null)
                 {
                     // ShowMessage routes through the local player, so it would go nowhere here.
-                    Announce("Run Mode needs a spawned character.");
+                    Announce("The saga needs a spawned character.");
                     return;
                 }
 
                 var zone = ZoneSystem.instance;
                 if (zone == null)
                 {
-                    Announce("Run Mode could not reach the world (ZoneSystem missing).");
+                    Announce("The saga could not reach the world (ZoneSystem missing).");
                     return;
                 }
 
@@ -424,7 +424,7 @@ namespace ICanShowYouTheWorld.RunMode
 
                 if (preDefeated.Contains(finalBossKey))
                 {
-                    Message("The final boss is already dead on this world — start Run Mode on a fresh one.");
+                    Message("The final boss is already dead on this world — begin the saga on a fresh one.");
                     return;
                 }
 
@@ -522,12 +522,12 @@ namespace ICanShowYouTheWorld.RunMode
 
                 Debug.Log($"[ICanShowYouTheWorld] Run Mode started (seed={_rngSeed}, world={_worldId}, " +
                           $"pre-defeated={_accountedBossKeys.Count}).");
-                Message("Run Mode started. Good luck.");
+                Message("The saga begins. Good luck.");
             }
             catch (Exception ex)
             {
                 LogOnce("start-run", ex);
-                Announce("Run Mode failed to start — see the log.");
+                Announce("The saga failed to start — see the log.");
             }
         }
 

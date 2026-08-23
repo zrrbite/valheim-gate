@@ -620,16 +620,32 @@ namespace ICanShowYouTheWorld.RunMode
             var run = Service;
             if (run == null) return;
 
-            // --- Header: stays out of the scroll view, so time/heat/score are always on screen. ---
-            GUILayout.Label("RUN", RunTheme.Header);
-            GUILayout.Label(FormatTime(run.ElapsedSeconds), _timerStyle);
+            // --- Header: stays out of the scroll view, so the act and the numbers are always on
+            //     screen.
+            //
+            //     The ACT is the headline, not the clock (owner, alpha38: "this is developing into
+            //     less of a speed-run-mod and more of a more complete Valheim experience"). It used
+            //     to read "RUN" over a large timer, which made the first thing your eye landed on a
+            //     stopwatch — and the scoring had already stopped rewarding speed: heat multiplies
+            //     the score while time only divides it, so a slow thorough saga outscores a fast
+            //     thin one by a wide margin. The presentation now matches the arithmetic.
+            //
+            //     This is also where the act line lives now; DrawQuestSection no longer repeats it.
+            var act = run.CurrentAct;
+            GUILayout.Label(act == null ? "SAGA" : $"SAGA — ACT {act.Numeral}", RunTheme.Header);
+            GUILayout.Label(act == null ? "" : act.Title.ToUpperInvariant(), _timerStyle);
 
             GUILayout.BeginHorizontal();
+            GUILayout.Label(FormatTime(run.ElapsedSeconds), _stripStyle);
+            GUILayout.FlexibleSpace();
             GUI.contentColor = HeatDisplayColor();
             GUILayout.Label($"Heat {run.Heat:0.#}", _stripStyle);
             GUI.contentColor = Color.white;
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label($"Saga score {run.CurrentScore:0.##}", RunTheme.Header);
             GUILayout.FlexibleSpace();
-            GUILayout.Label($"Score {run.CurrentScore:0.##}", RunTheme.Header);
             GUILayout.EndHorizontal();
 
             // Heat's counterweight, shown beside it: every completion raises both, and seeing only
@@ -684,7 +700,7 @@ namespace ICanShowYouTheWorld.RunMode
             //     the scroll view, so it is always reachable however long the body gets. ---
             bool armed = Time.realtimeSinceStartup - _lastAbandonPress <= AbandonConfirmSeconds;
             GUI.contentColor = armed ? RunTheme.HeatRed : Color.white;
-            if (GUILayout.Button(armed ? "Abandon run — click again" : "Abandon run"))
+            if (GUILayout.Button(armed ? "Abandon the saga — click again" : "Abandon the saga"))
             {
                 if (armed)
                 {
@@ -783,11 +799,9 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         private void DrawQuestSection(IRunService run)
         {
-            // The act is the header, so the questlines always say WHERE in the saga they are rather
-            // than just what the next steps happen to be. Falls back to the bare word when no act
-            // is seated — a run resumed from a save written before acts existed.
-            var act = run.CurrentAct;
-            GUILayout.Label(act == null ? "QUEST" : act.Banner, RunTheme.Header);
+            // No act line here: since alpha38 the act IS the HUD's headline, drawn above by
+            // DrawHudBody. Repeating it would be the third time the same words appear on one panel.
+            GUILayout.Label("QUESTS", RunTheme.Header);
 
             var tracks = run.Challenges?.Tracks;
             if (tracks == null || tracks.Count == 0)
@@ -1145,7 +1159,7 @@ namespace ICanShowYouTheWorld.RunMode
 
             GUILayout.Space(8f);
             // Deferred: starting a run here would change the window set mid-pass.
-            if (GUILayout.Button("Start Run")) _pendingStart = true;
+            if (GUILayout.Button("Begin the saga")) _pendingStart = true;
 
             GUILayout.Space(6f);
             GUILayout.Label("GM mode is disabled while a run is live.", RunTheme.Small);

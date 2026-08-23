@@ -1368,3 +1368,45 @@ boss falls, the next act's altar should appear within a second or so.
 ### RESULTS (Windows side appends here)
 
 *(pending)*
+
+---
+
+## 2026-08-23 — TASK: alpha38 — it's a saga, and now it says so
+
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha38**.
+
+Your call: *"less of a speed-run-mod and more of a more complete Valheim
+experience… let's lean into the saga mode."*
+
+Worth knowing the scoring already agreed with you before either of us said it:
+score is `par/(par+time) × (1 + heat×0.1)`, so heat MULTIPLIES and time only
+divides. A 3-hour thorough saga scores about double a 1-hour thin one. The mode
+stopped rewarding speed a while back; only the presentation still said otherwise.
+
+**1. The HUD leads with the ACT, not the clock:**
+
+```
+SAGA — ACT I
+THE MEADOWS
+  2:14:07              Heat 8.5
+  Saga score 310
+  +40 health earned    Homeward x2 [9]
+  QUESTS
+    HUNT   …
+    CRAFT  …
+```
+
+The act line also used to appear twice; now once.
+
+**2. "Begin the saga" / "Abandon the saga"**, and the messages say saga too.
+
+**3. Nothing about balance changed** — same formula, same numbers. This is
+presentation catching up with what the mode already was, so there's nothing new to
+play-test beyond "does it read right".
+
+**What I want your eye on:** with the timer demoted, does the HUD still tell you
+what you need at a glance mid-fight? The clock is now the same size as heat.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
