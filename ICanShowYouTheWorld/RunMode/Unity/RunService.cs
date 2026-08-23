@@ -1103,11 +1103,17 @@ namespace ICanShowYouTheWorld.RunMode
                 _records.Report(HearthRecords.NightsSlept, ReadPlayerStat("Sleep") ?? 0f);
                 _records.Report(HearthRecords.Foraged, ReadPlayerStat("ItemsPickedUp") ?? 0f);
 
-                ReportHeaviestFish(player);
+                var caught = FishHeld(player);
+                if (caught.Heaviest > 0f)
+                    _records.Report(HearthRecords.HeaviestFish, caught.Heaviest, caught.HeaviestName);
 
                 // Marked here rather than at run end, so the star appears the moment the record
                 // is beaten — which is when it means something.
                 _records.MarkPersonalBests(PermanentRecord.GetRecordBests(player));
+
+                var best = _records.Get(HearthRecords.HeaviestFish);
+                _challenges.ReportMeasure(ChallengeKind.PlayerState, "FishBeatsBest",
+                    best != null && best.IsPersonalBest ? 1f : 0f);
             }
             catch
             {
@@ -1115,52 +1121,37 @@ namespace ICanShowYouTheWorld.RunMode
             }
         }
 
-        /// <summary>
-        /// The biggest fish the player is carrying, by item weight.
-        ///
-        /// Weight is the only size the game exposes, and it happens to line up with the species
-        /// ladder — a perch weighs less than a pike weighs less than a tuna — so "heaviest" reads
-        /// exactly as an angler would mean it. Named through Localization, because the prefabs are
-        /// called things like "Fish2".
-        /// </summary>
-        private void ReportHeaviestFish(Player player)
+        /// <summary>What the player is carrying, fish-wise. One scan, four questions.</summary>
+        private struct FishCatch
         {
-            var items = player.GetInventory()?.GetAllItems();
-            if (items == null) return;
-
-            foreach (var item in items)
-            {
-                if (item?.m_shared == null || item.m_shared.m_food <= 0f) continue;
-
-                var prefab = item.m_dropPrefab;
-                if (prefab == null || prefab.name.IndexOf("Fish", StringComparison.OrdinalIgnoreCase) < 0)
-                    continue;
-
-                string name;
-                try { name = Localization.instance.Localize(item.m_shared.m_name); }
-                catch { name = prefab.name; }
-
-                _records.Report(HearthRecords.HeaviestFish, item.m_shared.m_weight, name);
-            }
+            public int Total;
+            public int Species;
+            public int Cooked;
+            public float Heaviest;
+            public string HeaviestName;
         }
 
         /// <summary>
-        /// Fish in the player's inventory, counted by PREFAB name rather than by localisation
-        /// token.
+        /// Reads the inventory for everything the fishing steps ask about.
         ///
-        /// There is no fish stat and no trade stat, so this is the only honest measure. Matching
-        /// the prefab covers every species and both raw and cooked without naming asset data the
-        /// assembly cannot verify — the oldest landmine in this mode. The food test is what keeps
-        /// the rod and the bait out of the count: neither is edible.
+        /// There is no fish stat and no trade stat, so matching the PREFAB name is the only honest
+        /// measure. It covers every species and both raw and cooked without naming asset data the
+        /// assembly cannot verify — the oldest landmine in this mode. The food test keeps the rod
+        /// and the bait out: neither is edible.
+        ///
+        /// Species are counted by distinct prefab, because that is what a species IS here.
         /// </summary>
-        private static float CountFishHeld(Player player)
+        private static FishCatch FishHeld(Player player)
         {
+            var catch_ = new FishCatch { HeaviestName = string.Empty };
+
             try
             {
                 var items = player.GetInventory()?.GetAllItems();
-                if (items == null) return 0f;
+                if (items == null) return catch_;
 
-                int count = 0;
+                var species = new HashSet<string>();
+
                 foreach (var item in items)
                 {
                     if (item?.m_shared == null || item.m_shared.m_food <= 0f) continue;
@@ -1169,15 +1160,28 @@ namespace ICanShowYouTheWorld.RunMode
                     if (prefab == null || prefab.name.IndexOf("Fish", StringComparison.OrdinalIgnoreCase) < 0)
                         continue;
 
-                    count += item.m_stack;
+                    catch_.Total += item.m_stack;
+                    species.Add(prefab.name);
+
+                    if (prefab.name.IndexOf("Cooked", StringComparison.OrdinalIgnoreCase) >= 0)
+                        catch_.Cooked += item.m_stack;
+
+                    if (item.m_shared.m_weight > catch_.Heaviest)
+                    {
+                        catch_.Heaviest = item.m_shared.m_weight;
+                        try { catch_.HeaviestName = Localization.instance.Localize(item.m_shared.m_name); }
+                        catch { catch_.HeaviestName = prefab.name; }
+                    }
                 }
 
-                return count;
+                catch_.Species = species.Count;
             }
             catch
             {
-                return 0f;
+                // A poll that cannot read the inventory reports nothing, not a wrong number.
             }
+
+            return catch_;
         }
 
         /// <summary>
@@ -1300,7 +1304,11 @@ namespace ICanShowYouTheWorld.RunMode
                     _challenges.ReportMeasure(ChallengeKind.PlayerState, "FoodSlotsFilled", foods.Count);
 
                 _challenges.ReportMeasure(ChallengeKind.PlayerState, "TamedNearby", CountTamedNearby(player));
-                _challenges.ReportMeasure(ChallengeKind.PlayerState, "FishHeld", CountFishHeld(player));
+                var fish = FishHeld(player);
+                _challenges.ReportMeasure(ChallengeKind.PlayerState, "FishHeld", fish.Total);
+                _challenges.ReportMeasure(ChallengeKind.PlayerState, "FishSpecies", fish.Species);
+                _challenges.ReportMeasure(ChallengeKind.PlayerState, "CookedFishHeld", fish.Cooked);
+                _challenges.ReportMeasure(ChallengeKind.PlayerState, "HeaviestFish", fish.Heaviest);
 
                 PollHearthRecords(player);
             }
@@ -2190,6 +2198,15 @@ namespace ICanShowYouTheWorld.RunMode
         /// asserted against the REAL table at runtime, where a content edit that breaks one shows up
         /// on the next launch instead of in a run hours later.
         /// </summary>
+        /// <summary>
+        /// Every challenge definition this build ships: the random pool and all five acts' tracks.
+        ///
+        /// Validation needs both. A threshold that is impossible is just as broken in a pool
+        /// bounty as in a questline step, and the pool is where the fishing bounties live.
+        /// </summary>
+        private IEnumerable<ChallengeDefinition> AllChallengeDefinitions() =>
+            BuildFullPool().Concat(_acts.SelectMany(a => a.AllSteps));
+
         private void ValidateActs()
         {
             // Duplicate step ids are the dangerous one, and with tracks the hazard is now
@@ -2513,24 +2530,50 @@ namespace ICanShowYouTheWorld.RunMode
                 // Checking them up front turns "find out when you beat Moder" into "find out now".
                 if (scene != null || odb != null)
                 {
-                    // Fishing is the one measure that matches a PREFAB NAME rather than a
-                    // compiled type or a stat, so it is the one that can go quietly wrong. If the
-                    // world contains no edible thing named like a fish, "Cast a line" is
-                    // impossible and would simply sit at zero forever.
-                    if (_acts.SelectMany(a => a.AllSteps).Any(c =>
-                            c.Kind == ChallengeKind.PlayerState && c.Param == "FishHeld") &&
-                        odb != null && odb.m_items != null &&
-                        !odb.m_items.Any(go =>
-                        {
-                            if (go == null || go.name.IndexOf("Fish", StringComparison.OrdinalIgnoreCase) < 0)
-                                return false;
-                            var drop = go.GetComponent<ItemDrop>();
-                            return drop != null && drop.m_itemData?.m_shared != null &&
-                                   drop.m_itemData.m_shared.m_food > 0f;
-                        }))
+                    // Fishing is the one family of measures keyed to a PREFAB NAME rather than a
+                    // compiled type or a stat, and two of its steps carry NUMBERS this assembly
+                    // cannot check: how many species exist, and how heavy the heaviest gets.
+                    // Weights and species lists are asset data.
+                    //
+                    // So the world is asked at run start and the answer is LOGGED. A threshold set
+                    // from a guess is a step that sits at zero forever with nothing to explain it;
+                    // a threshold set from this line is a one-word edit.
+                    if (odb != null && odb.m_items != null)
                     {
-                        Debug.LogError("[ICanShowYouTheWorld] No edible 'Fish' item prefab found — the " +
-                                       "fishing step cannot be completed.");
+                        var fishes = odb.m_items
+                            .Where(go => go != null &&
+                                         go.name.IndexOf("Fish", StringComparison.OrdinalIgnoreCase) >= 0)
+                            .Select(go => new { go.name, drop = go.GetComponent<ItemDrop>() })
+                            .Where(x => x.drop != null && x.drop.m_itemData?.m_shared != null &&
+                                        x.drop.m_itemData.m_shared.m_food > 0f)
+                            .Select(x => new { x.name, weight = x.drop.m_itemData.m_shared.m_weight })
+                            .ToList();
+
+                        if (fishes.Count == 0)
+                        {
+                            Debug.LogError("[ICanShowYouTheWorld] No edible 'Fish' item prefab found — every " +
+                                           "fishing step is impossible.");
+                        }
+                        else
+                        {
+                            Debug.Log("[ICanShowYouTheWorld] Fish available: " + string.Join(", ",
+                                fishes.Select(f => $"{f.name}({f.weight:0.##})").ToArray()));
+
+                            float heaviest = fishes.Max(f => f.weight);
+                            int species = fishes.Select(f => f.name).Distinct().Count();
+
+                            foreach (var step in AllChallengeDefinitions()
+                                         .Where(c => c.Kind == ChallengeKind.PlayerState))
+                            {
+                                if (step.Param == "HeaviestFish" && step.Target > heaviest)
+                                    Debug.LogError($"[ICanShowYouTheWorld] '{step.Display}' wants {step.Target}, " +
+                                                   $"but the heaviest fish in this world weighs {heaviest:0.##}.");
+
+                                if (step.Param == "FishSpecies" && step.Target > species)
+                                    Debug.LogError($"[ICanShowYouTheWorld] '{step.Display}' wants {step.Target} " +
+                                                   $"species, but only {species} edible fish prefabs exist.");
+                            }
+                        }
                     }
 
                     var rewards = QuestRewards.Values
@@ -4130,6 +4173,10 @@ namespace ICanShowYouTheWorld.RunMode
             new ChallengeDefinition { Id = "alt-90",      Tier = 1, Kind = ChallengeKind.ReachAltitude, Param = "", Target = 90,  HeatReward = 1, Display = "Climb to 90m altitude" },
             new ChallengeDefinition { Id = "c-wood",      Tier = 0, Kind = ChallengeKind.CollectItem, Param = "$item_wood",  Target = 25, HeatReward = 1, Display = "Hold 25 Wood" },
             new ChallengeDefinition { Id = "c-stone",     Tier = 0, Kind = ChallengeKind.CollectItem, Param = "$item_stone", Target = 25, HeatReward = 1, Display = "Hold 25 Stone" },
+            // Fishing bounties live in the POOL rather than the questline: they are the kind of
+            // thing you take on when you fancy it, and the pool is where optional heat is bought.
+            new ChallengeDefinition { Id = "c-fishbig",  Tier = 1, Kind = ChallengeKind.PlayerState, Param = "HeaviestFish",   Target = 4, HeatReward = 2, Display = "Land a big one (4.0+)" },
+            new ChallengeDefinition { Id = "c-fishcook", Tier = 1, Kind = ChallengeKind.PlayerState, Param = "CookedFishHeld", Target = 3, HeatReward = 2, Display = "Fish supper (3 cooked)" },
             new ChallengeDefinition { Id = "c-food",      Tier = 0, Kind = ChallengeKind.CollectFood, Param = "", Target = 10, HeatReward = 1, Display = "Hold 10 food items" },
             new ChallengeDefinition { Id = "naked-5",     Tier = 0, Kind = ChallengeKind.NoArmorMinutes, Param = "", Target = 3, HeatReward = 3, Display = "Wear no armor for 3 minutes" },
 
@@ -4618,6 +4665,16 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
+                // Spaced away from "Cast a line" on purpose. The hearth is a linear chain, so
+                // stacking every fishing step together would turn the homestead act into a
+                // fishing act for ten minutes.
+                Id = "mq-fish-varied", MainQuest = true, Track = HearthTrackId, Kind = ChallengeKind.PlayerState,
+                Param = "FishSpecies", Target = 3, Display = "A varied catch (3 species)",
+                RewardText = "Bait, and a cauldron for the catch",
+                Hint = "Different water holds different fish. Try the shallows, then somewhere deeper.",
+            },
+            new ChallengeDefinition
+            {
                 // Husbandry belongs to the homestead, not to the forest. It lived in Act II with
                 // the planting until the obvious was pointed out: boar are a MEADOWS animal, so
                 // asking for one in the Black Forest either sends you back or completes itself on
@@ -4625,6 +4682,17 @@ namespace ICanShowYouTheWorld.RunMode
                 Id = "mq-tame", MainQuest = true, Track = HearthTrackId, Kind = ChallengeKind.StatDelta, Param = "CreatureTamed",
                 Target = 1, Display = "Tame a boar", RewardText = "Food enough to keep it, and a friend for it",
                 Hint = "Pen it, drop food, and stay out of sight until it calms.",
+            },
+            new ChallengeDefinition
+            {
+                // Self-calibrating, so it can never be unreachable: on a first saga any fish
+                // completes it, and afterwards it asks for a genuinely better one. The quest and
+                // the HOMESTEAD record are the same object — finishing this puts the star on the
+                // panel in the same instant.
+                Id = "mq-fish-best", MainQuest = true, Track = HearthTrackId, Kind = ChallengeKind.PlayerState,
+                Param = "FishBeatsBest", Target = 1, Display = "The one that got away",
+                RewardText = "A feast from the water",
+                Hint = "Land a fish heavier than any you have caught before.",
             },
             new ChallengeDefinition
             {
@@ -5040,6 +5108,8 @@ namespace ICanShowYouTheWorld.RunMode
                 ["mq-comfort"] = new[] { ("DeerHide", 10), ("Resin", 20), ("Wood", 30) },
                 ["mq-trophy"] = new[] { ("Wood", 30), ("Resin", 15) },
                 ["mq-fish"] = new[] { ("FishingBait", 100), ("Wood", 20) },
+                ["mq-fish-varied"] = new[] { ("FishingBait", 100), ("Cauldron", 1) },
+                ["mq-fish-best"] = new[] { ("FishingBait", 150), ("Honey", 20) },
                 ["mq-forage"] = new[] { ("CarrotSeeds", 10), ("Honey", 10) },
                 ["mq-pen"] = new[] { ("Carrot", 20), ("Raspberry", 30) },
                 ["mq-rest"] = new[] { ("CookedMeat", 10), ("ArrowFlint", 20) },
