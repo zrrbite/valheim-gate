@@ -324,6 +324,7 @@
     <Compile Include="RunMode\Unity\RunStorage.cs" />
     <Compile Include="RunMode\Unity\WorldModifiers.cs" />
     <Compile Include="RunMode\Unity\DeerHerd.cs" />
+    <Compile Include="RunMode\Unity\BiomeCompass.cs" />
     <Compile Include="RunMode\Unity\RunService.cs" />
     <Compile Include="RunMode\Unity\RunTheme.cs" />
     <Compile Include="RunMode\Unity\RunWindow.cs" />

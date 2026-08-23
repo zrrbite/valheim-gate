@@ -48,7 +48,7 @@ namespace ICanShowYouTheWorld.Services
         /// Where Eikthyr's Herald is ("north-east, 180m") while its questline step is in play;
         /// null otherwise.
         /// </summary>
-        string HeraldBearing { get; }
+        string QuestBearing { get; }
 
         /// <summary>Max health lent by completions so far this run.</summary>
         float EarnedHealth { get; }

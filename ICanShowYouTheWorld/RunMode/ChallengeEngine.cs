@@ -43,8 +43,15 @@ namespace ICanShowYouTheWorld.RunMode
     /// simply appeared and the altar was wherever it happened to be. The world generator guarantees
     /// one instance per boss, which is what makes it safe in a linear chain — unlike a rune stone,
     /// which is scattered by luck and could never be found.
+    ///
+    /// PlayerState is a plain FACT about the player that the game keeps but does not count — Param
+    /// names one ("SpawnPointSet"), and the host answers yes or no.
+    ///
+    /// It exists because "claim a bed" is not a build, not a kill, and not a statistic: the game
+    /// records it as a spawn point and nothing increments. Latched by max-semantics like the other
+    /// host-reported measures, so a fact that stops being true does not un-earn the step.
     /// </summary>
-    public enum ChallengeKind { KillPrefab, ReachAltitude, BuildHeight, CollectItem, NoArmorMinutes, CollectFood, StatDelta, BuildPiece, ReachBiome, DiscoverLocation }
+    public enum ChallengeKind { KillPrefab, ReachAltitude, BuildHeight, CollectItem, NoArmorMinutes, CollectFood, StatDelta, BuildPiece, ReachBiome, DiscoverLocation, PlayerState }
 
     public class ChallengeDefinition
     {
@@ -560,7 +567,7 @@ namespace ICanShowYouTheWorld.RunMode
             // entirely.
             if ((kind == ChallengeKind.CollectItem || kind == ChallengeKind.StatDelta ||
                  kind == ChallengeKind.BuildPiece || kind == ChallengeKind.ReachBiome ||
-                 kind == ChallengeKind.DiscoverLocation) &&
+                 kind == ChallengeKind.DiscoverLocation || kind == ChallengeKind.PlayerState) &&
                 a.Def.Param != param) return;
 
             a.Progress = Math.Max(a.Progress, value);

@@ -298,23 +298,117 @@ namespace ICanShowYouTheWorld.RunMode
         public BoonEngine Boons => _active ? _boons : null;
 
         /// <summary>
-        /// Where the Herald is, while its step is the one in play; null otherwise. The HUD shows it
-        /// under the step — a named creature somewhere in a 250m radius with no direction is a
-        /// search rather than a hunt.
+        /// A finished sentence pointing at whatever the questline currently wants found, or null
+        /// when it wants nothing findable. The HUD prints it verbatim under the strip.
+        ///
+        /// Two things qualify. The Herald — a named creature somewhere in a 250m radius with no
+        /// direction is a search rather than a hunt. And the biome an act opens on: "Reach the
+        /// Black Forest" was the last step in the saga that told you WHAT to find and nothing
+        /// about WHERE, which on a world where the forest happens to lie behind you is a step
+        /// that gets solved by walking in circles.
+        ///
+        /// The Herald wins when both apply: it moves, it expires with the act, and it is the
+        /// only one of the two you can lose.
         /// </summary>
-        public string HeraldBearing
+        public string QuestBearing
         {
             get
             {
-                if (!_active || _deer == null || !ActIsMeadows) return null;
+                if (!_active) return null;
 
-                bool wanted = _challenges != null && _challenges.Tracks.Any(t =>
-                    t.Current != null &&
-                    t.Current.Def.Kind == ChallengeKind.KillPrefab &&
-                    t.Current.Def.Param == DeerHerd.HeraldKillName);
+                var player = Player.m_localPlayer;
+                if (player == null) return null;
 
-                return wanted ? _deer.HeraldBearing(Player.m_localPlayer) : null;
+                if (_deer != null && ActIsMeadows && HeraldWanted)
+                {
+                    string herald = _deer.HeraldBearing(player);
+                    if (!string.IsNullOrEmpty(herald)) return $"The Herald\u2019s tracks lead {herald}";
+                }
+
+                return BiomeBearing(player);
             }
+        }
+
+        private bool HeraldWanted =>
+            _challenges != null && _challenges.Tracks.Any(t =>
+                t.Current != null &&
+                t.Current.Def.Kind == ChallengeKind.KillPrefab &&
+                t.Current.Def.Param == DeerHerd.HeraldKillName);
+
+        /// <summary>Cache for the biome search; see <see cref="NearestBiome"/>.</summary>
+        private Heightmap.Biome _bearingBiome = (Heightmap.Biome)(-1);
+        private Vector3 _bearingFrom;
+        private float _bearingAt = float.NegativeInfinity;
+        private Vector3? _bearingResult;
+        private const float BearingRefreshSeconds = 5f;
+        private const float BearingMoveThreshold = 40f;
+
+        /// <summary>Direction and distance to the biome an open ReachBiome step names.</summary>
+        private string BiomeBearing(Player player)
+        {
+            if (_challenges == null) return null;
+
+            var step = _challenges.Tracks
+                .Select(t => t.Current)
+                .FirstOrDefault(c => c != null && c.Def.Kind == ChallengeKind.ReachBiome);
+            if (step == null) return null;
+
+            Heightmap.Biome target;
+            if (!Enum.TryParse(step.Def.Param, out target)) return null;
+
+            Vector3 here = player.transform.position;
+
+            try
+            {
+                // Standing in it already: the step is about to tick over on its own, and
+                // "The Black Forest lies north, 60m" while surrounded by black forest reads as a bug.
+                if (WorldGenerator.instance != null && WorldGenerator.instance.GetBiome(here) == target)
+                    return null;
+            }
+            catch
+            {
+                return null;
+            }
+
+            var found = NearestBiome(here, target);
+            if (found == null) return null;
+
+            Vector3 delta = found.Value - here;
+            delta.y = 0f;
+
+            float distance = delta.magnitude;
+            if (distance < 1f) return null;
+
+            return $"{BiomeCompass.FriendlyName(target)} lies {BiomeCompass.Compass(delta)}, " +
+                   $"{Mathf.Round(distance / 10f) * 10f:0}m";
+        }
+
+        /// <summary>
+        /// The cached nearest-biome search.
+        ///
+        /// The search costs a couple of thousand noise lookups and this is read from OnGUI, so it
+        /// must not run per frame. What it caches is a PLACE, not a direction — the place stays
+        /// true while you walk toward it, and the bearing recomputes from it every frame for
+        /// free. That is the same fix the Herald needed: a remembered target is stable, whereas
+        /// re-deciding where to point every few seconds is what makes a bearing jump.
+        /// </summary>
+        private Vector3? NearestBiome(Vector3 from, Heightmap.Biome target)
+        {
+            bool stale = target != _bearingBiome
+                || Time.time - _bearingAt > BearingRefreshSeconds
+                || (from - _bearingFrom).sqrMagnitude > BearingMoveThreshold * BearingMoveThreshold;
+
+            if (stale)
+            {
+                _bearingBiome = target;
+                _bearingAt = Time.time;
+                _bearingFrom = from;
+
+                try { _bearingResult = BiomeCompass.Nearest(from, target); }
+                catch { _bearingResult = null; }
+            }
+
+            return _bearingResult;
         }
 
         public int HomewardCharges => _active ? _homewardCharges : 0;
@@ -975,7 +1069,30 @@ namespace ICanShowYouTheWorld.RunMode
             PollReachedBiomes();
             PollDeerHerd();
             PollDiscoveries();
+            PollPlayerState();
             RefreshActPin();
+        }
+
+        /// <summary>
+        /// Reports plain facts about the player that the game keeps but never counts.
+        ///
+        /// Only "have you claimed a bed" so far, which is what makes a bed YOURS — building one and
+        /// claiming one are different acts, and the questline was only ever checking the first.
+        /// </summary>
+        private void PollPlayerState()
+        {
+            if (_challenges == null) return;
+
+            try
+            {
+                var profile = Game.instance?.GetPlayerProfile();
+                if (profile != null && profile.HaveCustomSpawnPoint())
+                    _challenges.ReportMeasure(ChallengeKind.PlayerState, "SpawnPointSet", 1f);
+            }
+            catch
+            {
+                // Cosmetic to miss a poll; the next one will catch it.
+            }
         }
 
         /// <summary>
@@ -4071,8 +4188,12 @@ namespace ICanShowYouTheWorld.RunMode
             // daylight.
             new ChallengeDefinition
             {
-                Id = "mq-bed", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Bed",
-                Target = 1, Display = "Build a bed", RewardText = "Timber and resin for the rest of the house",
+                // Claiming, not just building — that is what makes a bed yours, and what "sleep
+                // through the night" and Homeward both actually depend on. The step used to check
+                // only that one had been placed (owner: "a quest to claim the bed").
+                Id = "mq-bed", MainQuest = true, Kind = ChallengeKind.PlayerState, Param = "SpawnPointSet",
+                Target = 1, Display = "Build a bed and claim it", RewardText = "Timber and resin for the rest of the house",
+                Hint = "Place it under a roof, then interact to claim it as your spawn.",
             },
             new ChallengeDefinition
             {
@@ -4093,6 +4214,16 @@ namespace ICanShowYouTheWorld.RunMode
                 // and its reward feeds the hunt directly.
                 Id = "mq-chest", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Chest",
                 Target = 1, Display = "Build a chest", RewardText = "A full quiver before the hunt",
+            },
+            new ChallengeDefinition
+            {
+                // Husbandry belongs to the homestead, not to the forest. It lived in Act II with
+                // the planting until the obvious was pointed out: boar are a MEADOWS animal, so
+                // asking for one in the Black Forest either sends you back or completes itself on
+                // arrival — neither of which is a quest.
+                Id = "mq-tame", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "CreatureTamed",
+                Target = 1, Display = "Tame a boar", RewardText = "Food enough to keep it, and a friend for it",
+                Hint = "Pen it, drop food, and stay out of sight until it calms.",
             },
             new ChallengeDefinition
             {
@@ -4139,6 +4270,19 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         internal static List<ChallengeDefinition> BlackForestChain() => new List<ChallengeDefinition>
         {
+            new ChallengeDefinition
+            {
+                // Each act opens by collecting on the last one. The trophy sat in the inventory
+                // unused for the whole saga because nothing ever asked for it, and a boss power
+                // you never turned on is a reward you never received (owner: "there should be a
+                // quest to deliver Eikthyr\u2019s trophy and activate its power").
+                //
+                // Measured on the stat the game keeps for setting that power, so it is the ACT of
+                // claiming that counts, not carrying the trophy around.
+                Id = "bf-power", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "SetPowerEikthyr",
+                Target = 1, Display = "Claim Eikthyr\u2019s power",
+                RewardText = "Provisions for the road", Hint = "His trophy on the sacrificial stones. Stag-like stride: press the power key and run.",
+            },
             new ChallengeDefinition
             {
                 // Every act opens on arrival. ReachBiome asks for the DESTINATION and says nothing
@@ -4189,13 +4333,7 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 Id = "bf-plant", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Plant",
                 Target = 10, Display = "Plant a crop (10 seeds)", RewardText = "More seeds, and a queen for a hive",
-                Hint = "Seeds from the forest floor, and a cultivator to break the ground. Keep them together.",
-            },
-            new ChallengeDefinition
-            {
-                Id = "bf-tame", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "CreatureTamed",
-                Target = 1, Display = "Tame a boar", RewardText = "Food enough to keep it, and a friend for it",
-                Hint = "Pen it, drop food, and stay out of sight until it calms.",
+                Hint = "Seeds from the forest floor, and a cultivator to break the ground. Sow at whichever homestead you keep — the first one, or a new one out here.",
             },
             new ChallengeDefinition
             {
@@ -4247,6 +4385,19 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         internal static List<ChallengeDefinition> SwampChain() => new List<ChallengeDefinition>
         {
+            new ChallengeDefinition
+            {
+                // Each act opens by collecting on the last one. The trophy sat in the inventory
+                // unused for the whole saga because nothing ever asked for it, and a boss power
+                // you never turned on is a reward you never received (owner: "there should be a
+                // quest to deliver Eikthyr\u2019s trophy and activate its power").
+                //
+                // Measured on the stat the game keeps for setting that power, so it is the ACT of
+                // claiming that counts, not carrying the trophy around.
+                Id = "sw-power", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "SetPowerElder",
+                Target = 1, Display = "Claim the Elder\u2019s power",
+                RewardText = "Provisions for the road", Hint = "Hang his trophy where you hung Eikthyr\u2019s. Faster felling, for the iron ahead.",
+            },
             new ChallengeDefinition
             {
                 Id = "sw-arrive", MainQuest = true, Kind = ChallengeKind.ReachBiome, Param = "Swamp",
@@ -4308,6 +4459,19 @@ namespace ICanShowYouTheWorld.RunMode
         {
             new ChallengeDefinition
             {
+                // Each act opens by collecting on the last one. The trophy sat in the inventory
+                // unused for the whole saga because nothing ever asked for it, and a boss power
+                // you never turned on is a reward you never received (owner: "there should be a
+                // quest to deliver Eikthyr\u2019s trophy and activate its power").
+                //
+                // Measured on the stat the game keeps for setting that power, so it is the ACT of
+                // claiming that counts, not carrying the trophy around.
+                Id = "mt-power", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "SetPowerBonemass",
+                Target = 1, Display = "Claim Bonemass\u2019 power",
+                RewardText = "Provisions for the road", Hint = "Same stones. Blunt, slash and pierce resistance \u2014 the mountains will ask for it.",
+            },
+            new ChallengeDefinition
+            {
                 Id = "mt-arrive", MainQuest = true, Kind = ChallengeKind.ReachBiome, Param = "Mountain",
                 Target = 1, Display = "Reach the Mountains", RewardText = "Frost resistance mead and warm hide",
                 Hint = "Above the snowline. Frost will kill you without mead or wolf armour.",
@@ -4353,6 +4517,19 @@ namespace ICanShowYouTheWorld.RunMode
 
         internal static List<ChallengeDefinition> PlainsChain() => new List<ChallengeDefinition>
         {
+            new ChallengeDefinition
+            {
+                // Each act opens by collecting on the last one. The trophy sat in the inventory
+                // unused for the whole saga because nothing ever asked for it, and a boss power
+                // you never turned on is a reward you never received (owner: "there should be a
+                // quest to deliver Eikthyr\u2019s trophy and activate its power").
+                //
+                // Measured on the stat the game keeps for setting that power, so it is the ACT of
+                // claiming that counts, not carrying the trophy around.
+                Id = "pl-power", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "SetPowerModer",
+                Target = 1, Display = "Claim Moder\u2019s power",
+                RewardText = "Provisions for the road", Hint = "Same stones. A following wind, whichever way you sail.",
+            },
             new ChallengeDefinition
             {
                 Id = "pl-arrive", MainQuest = true, Kind = ChallengeKind.ReachBiome, Param = "Plains",
@@ -4420,6 +4597,12 @@ namespace ICanShowYouTheWorld.RunMode
                 // while the x3 resource rate was silently inert (see WorldModifiers.SetRate), so
                 // they were compensating for a bug rather than balancing a reward.
                 ["mq-hammer"] = new[] { ("Wood", 40), ("Stone", 15) },
+                // The power-claim step that opens each act pays in food, like the boss kill it
+                // follows — see the boss-spoils note. Enough to set out on, not a head start.
+                ["bf-power"] = new[] { ("CookedMeat", 5), ("Honey", 5) },
+                ["sw-power"] = new[] { ("Sausages", 5), ("CarrotSoup", 3) },
+                ["mt-power"] = new[] { ("TurnipStew", 3), ("Sausages", 5) },
+                ["pl-power"] = new[] { ("WolfMeatSkewer", 5), ("OnionSoup", 3) },
                 // Armor arrives a piece at a time across the Meadows steps rather than as one
                 // handout, so each fight in the starter zone pays for itself (owner, alpha18:
                 // "a few more steps in the starter zone, like kill boars, with armor and arrow
@@ -4472,7 +4655,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // The plant step pays the QUEEN BEE the hive step needs, so the beehive is
                 // buildable when asked — the same lesson the smelter's surtling cores taught.
                 ["bf-plant"] = new[] { ("CarrotSeeds", 20), ("QueenBee", 1) },
-                ["bf-tame"] = new[] { ("Carrot", 20), ("RawMeat", 10) },
+                ["mq-tame"] = new[] { ("Carrot", 20), ("RawMeat", 10) },
                 ["bf-bees"] = new[] { ("Honey", 20) },
                 ["bf-smelter"] = new[] { ("CopperOre", 30), ("TinOre", 15), ("Coal", 30) },
                 ["bf-bronze"] = new[] { ("Bronze", 10), ("ArrowBronze", 40) },

@@ -307,7 +307,7 @@ namespace ICanShowYouTheWorld.RunMode
             float distance = delta.magnitude;
             if (distance < 1f) return null;
 
-            return $"{Compass(delta)}, {Mathf.Round(distance / 10f) * 10f:0}m";
+            return $"{BiomeCompass.Compass(delta)}, {Mathf.Round(distance / 10f) * 10f:0}m";
         }
 
         /// <summary>Where the live Herald is, or null when none is loaded.</summary>
@@ -327,20 +327,6 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>Eight-point compass name for a world-space direction. Valheim's north is +Z.</summary>
-        private static string Compass(Vector3 delta)
-        {
-            // atan2(x, z) so that 0 is north (+Z) and the angle grows clockwise, which is what a
-            // compass reads; the usual atan2(y, x) would put 0 at east and run anticlockwise.
-            float degrees = Mathf.Atan2(delta.x, delta.z) * Mathf.Rad2Deg;
-            if (degrees < 0f) degrees += 360f;
-
-            string[] points = { "north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west" };
-
-            // +22.5 so each name owns the 45 degrees CENTRED on its direction rather than starting
-            // at it — without it, due north would read as north-east.
-            int index = (int)((degrees + 22.5f) / 45f) % points.Length;
-            return points[index];
-        }
 
         private bool IsHerald(Character c)
         {

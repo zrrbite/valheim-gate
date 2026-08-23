@@ -206,6 +206,48 @@ static class ChallengeEngineTests
         ReachBiomeTests();
         QuestTrackTests();
         DiscoverLocationTests();
+        PlayerStateTests();
+    }
+
+    /// <summary>
+    /// PlayerState: a plain fact the game keeps but never counts. Param-scoped and latching, like
+    /// every other measure whose host reports only what it can currently see.
+    ///
+    /// "Claim a bed" is the reason it exists — building one and claiming one are different acts,
+    /// and the questline was only ever checking the first.
+    /// </summary>
+    static void PlayerStateTests()
+    {
+        var step = new ChallengeDefinition
+        {
+            Id = "bed", MainQuest = true, Kind = ChallengeKind.PlayerState, Param = "SpawnPointSet",
+            Target = 1, Display = "Build a bed and claim it",
+        };
+
+        // Param-scoped: some OTHER fact being true is not this fact being true.
+        var e = new ChallengeEngine(Pool(), new Random(61), 120f);
+        e.SetMainChain(new List<ChallengeDefinition> { step });
+        e.ReportMeasure(ChallengeKind.PlayerState, "SomethingElse", 1f);
+        e.Tick(0.1f);
+        Check.That(e.CurrentMainQuest.Progress == 0f, "an unrelated player fact does not advance the step");
+
+        e.ReportMeasure(ChallengeKind.PlayerState, "SpawnPointSet", 1f);
+        e.Tick(0.1f);
+        Check.That(e.CurrentMainQuest == null, "claiming a bed completes the step");
+
+        // Latching: the host polls, so a fact that momentarily reads false must not un-earn it.
+        var e2 = new ChallengeEngine(Pool(), new Random(62), 120f);
+        e2.SetMainChain(new List<ChallengeDefinition> { step });
+        e2.ReportMeasure(ChallengeKind.PlayerState, "SpawnPointSet", 1f);
+        e2.ReportMeasure(ChallengeKind.PlayerState, "SpawnPointSet", 0f);
+        Check.That(e2.CurrentMainQuest.Progress == 1f, "a fact reading false again does not un-earn the step");
+
+        // Wrong kind, right param.
+        var e3 = new ChallengeEngine(Pool(), new Random(63), 120f);
+        e3.SetMainChain(new List<ChallengeDefinition> { step });
+        e3.ReportMeasure(ChallengeKind.StatDelta, "SpawnPointSet", 1f);
+        e3.Tick(0.1f);
+        Check.That(e3.CurrentMainQuest.Progress == 0f, "the same name under a different kind does not count");
     }
 
     /// <summary>

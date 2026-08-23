@@ -735,12 +735,12 @@ namespace ICanShowYouTheWorld.RunMode
             // two labels sharing one rect render on top of each other.
             float lineY = rect.yMax + 2f;
 
-            string bearing = run.HeraldBearing;
+            string bearing = run.QuestBearing;
             if (!string.IsNullOrEmpty(bearing))
             {
                 GUI.contentColor = RunTheme.AccentGold;
                 GUI.Label(new Rect(rect.x - 100f, lineY, StripWidth + 200f, 20f),
-                    $"The Herald's tracks lead {bearing}", _noticeStyle);
+                    bearing, _noticeStyle);
                 GUI.contentColor = Color.white;
                 lineY += 20f;
             }
@@ -1013,15 +1013,18 @@ namespace ICanShowYouTheWorld.RunMode
                 GUILayout.Label("  " + quest.Def.Hint, RunTheme.Small);
             }
 
-            // Live direction to the Herald while its step is in play. Not part of the definition
-            // because it moves.
-            if (quest.Def.Kind == ChallengeKind.KillPrefab && quest.Def.Param == DeerHerd.HeraldKillName)
+            // Live direction to whatever this step wants found — the Herald, or the biome an act
+            // opens on. Not part of the definition because it depends on where you are standing.
+            bool pointable =
+                (quest.Def.Kind == ChallengeKind.KillPrefab && quest.Def.Param == DeerHerd.HeraldKillName)
+                || quest.Def.Kind == ChallengeKind.ReachBiome;
+            if (pointable)
             {
-                string bearing = Service?.HeraldBearing;
+                string bearing = Service?.QuestBearing;
                 if (!string.IsNullOrEmpty(bearing))
                 {
                     GUI.contentColor = RunTheme.AccentGold;
-                    GUILayout.Label($"  Tracks lead {bearing}", RunTheme.Small);
+                    GUILayout.Label("  " + bearing, RunTheme.Small);
                     GUI.contentColor = Color.white;
                 }
             }
