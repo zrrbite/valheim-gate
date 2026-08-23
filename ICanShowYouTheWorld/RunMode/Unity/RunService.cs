@@ -4636,6 +4636,19 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
+                // Beside the bench it upgrades, on CRAFT. It spent a version on HEARTH and read as
+                // homestead work; it is crafting work, and CRAFT was the shorter track anyway.
+                //
+                // The two the Meadows can actually build: a chopping block and a tanning rack.
+                // Wood, flint and hide — no bronze, which is the check the trophy step failed
+                // (owner: "we have two upgrades for the workbench, we should have those in HEARTH").
+                Id = "mq-upgrade", MainQuest = true, Kind = ChallengeKind.BuildPiece,
+                Param = "StationUpgrade", Target = 2, Display = "Upgrade the workbench (2)",
+                RewardText = "Flint, hide and resin",
+                Hint = "A chopping block and a tanning rack, both inside the bench's circle.",
+            },
+            new ChallengeDefinition
+            {
                 Id = "mq-shelter", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "Builds",
                 Target = 6, Display = "Raise a roof (6 pieces)", RewardText = "Timber and stone to finish it",
                 Hint = "Roof pieces overhead — walls alone are not shelter.",
@@ -4700,16 +4713,6 @@ namespace ICanShowYouTheWorld.RunMode
                 Id = "mq-bed", MainQuest = true, Kind = ChallengeKind.PlayerState, Param = "SpawnPointSet",
                 Target = 1, Display = "Build a bed and claim it", RewardText = "Timber and resin for the rest of the house",
                 Hint = "Place it under a roof, then interact to claim it as your spawn.",
-            },
-            new ChallengeDefinition
-            {
-                // The two the Meadows can actually build: a chopping block and a tanning rack.
-                // Wood, flint and hide — no bronze, which is the check the trophy step failed
-                // (owner: "we have two upgrades for the workbench, we should have those in HEARTH").
-                Id = "mq-upgrade", MainQuest = true, Track = HearthTrackId, Kind = ChallengeKind.BuildPiece,
-                Param = "StationUpgrade", Target = 2, Display = "Upgrade the workbench (2)",
-                RewardText = "Flint, hide and resin",
-                Hint = "A chopping block and a tanning rack, both inside the bench's circle.",
             },
             new ChallengeDefinition
             {

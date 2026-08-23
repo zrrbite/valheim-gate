@@ -1024,6 +1024,20 @@ namespace ICanShowYouTheWorld.RunMode
             GUILayout.Label($"  {track.Label}   {quest.Def.Display}{count}", RunTheme.Body);
             GUI.contentColor = Color.white;
 
+            // The bar, back — as an UNDERLINE beneath the step name rather than the row of its own
+            // it used to have. alpha50.1 dropped it for height and the "3/10" alone turned out to
+            // read as nothing at a glance (owner: "the x/y seems lackluster"). Drawn inside the
+            // label's own rect, so it is free: a filling line under the words, at no extra height.
+            //
+            // Repaint only — GetLastRect is meaningless during Layout.
+            if (Event.current != null && Event.current.type == EventType.Repaint && quest.Def.Target > 0f)
+            {
+                var row = GUILayoutUtility.GetLastRect();
+                var bar = new Rect(row.x + 8f, row.yMax - 3f, Mathf.Min(row.width - 16f, 170f), 2f);
+                RunTheme.Bar(bar, Mathf.Clamp01(quest.Progress / quest.Def.Target),
+                    quest.Done ? RunTheme.CompleteGreen : RunTheme.AccentGold);
+            }
+
             if (track.Blocked)
             {
                 GUI.contentColor = RunTheme.AccentGold;
