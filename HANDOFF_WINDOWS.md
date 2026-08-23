@@ -1343,3 +1343,28 @@ rather you see it than have me trim it blind. If it crowds the timer, say so.
 ### RESULTS (Windows side appends here)
 
 *(pending)*
+
+---
+
+## 2026-08-23 — TASK: alpha37 — the altar pins, corrected
+
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha37**.
+
+You asked: *"will the altar be visible on the map though?"* It was — **all five**,
+pinned at run start, since long before discovery steps existed. Which made
+alpha36's discovery step a walk to a dot you were handed in minute one, i.e.
+exactly the "handed without any work" it was meant to fix.
+
+**Now only the current act's altar is pinned**, appearing as that act begins. Kill
+Eikthyr and the Elder's altar shows up with the ACT II banner.
+
+Pinning nothing at all was the other option and I rejected it: vanilla hands out
+Vegvisirs precisely because searching a biome blind is miserable, and a Plains
+altar can be a very long way from where its act starts.
+
+**What to check:** at run start you should see ONE boss pin, not five. After each
+boss falls, the next act's altar should appear within a second or so.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*

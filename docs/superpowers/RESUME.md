@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, at `0.221.12-run.alpha36`. This is the "pick it back up
+Written 2026-08-23, at `0.221.12-run.alpha37`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -19,9 +19,9 @@ Everything below is what that file tells it.
 
 ## Where things stand
 
-- Branch **`feature/run-mode`**, 90 commits ahead of `main`. **Not merged**,
+- Branch **`feature/run-mode`**, 91 commits ahead of `main`. **Not merged**,
   deliberately — the mode is still being tuned in play.
-- Latest tag **`0.221.12-run.alpha36`**, pushed. The Mac has it deployed.
+- Latest tag **`0.221.12-run.alpha37`**, pushed. The Mac has it deployed.
 - Game version 0.221.12, Unity 6000.0.61. Windows is the play machine, the Mac
   is the test/build machine, the Deck travels (and is **stale** — it still has
   an older patched assembly and needs a re-patch before use).
@@ -55,7 +55,7 @@ must read the tag you just pushed. **The version popup is the whole point of
 tagging every alpha** — it is the only way to be certain which build is being
 played.
 
-## What the mode is, as of alpha36
+## What the mode is, as of alpha37
 
 **Five acts**, one per boss. All five are written: I The Meadows (16 steps) →
 Eikthyr, II The Black Forest (10) → The Elder, III The Swamp (8) → Bonemass,
@@ -67,6 +67,12 @@ over. The altar was chosen over a rune stone because the world generator
 guarantees one per boss and a linear chain must never be unfinishable — the same
 reasoning as the boat steps. Waystone legitimately skips it. See
 [the design](specs/2026-08-23-discovery-and-hints-design.md).
+
+**Only the CURRENT act's altar is pinned (alpha37).** All five used to be pinned at
+run start, which handed the player the whole saga in minute one and made the
+discovery step a walk to a known dot. Each now appears as its act begins. Pinning
+nothing was rejected for the same reason rune stones were — vanilla hands out
+Vegvisirs precisely because searching a biome blind is miserable.
 
 **Steps carry a HINT line** where the requirement is not self-evident (18 of
 them). Written after two play sessions lost time to "I didn't know what this

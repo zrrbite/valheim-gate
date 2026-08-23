@@ -39,6 +39,29 @@ to skip travel is the player's business.
 Latched, like built pieces and biomes — the poll sees only what is nearby, and a
 set that could shrink would un-find an altar the moment you walked away.
 
+### The pin, and what "discovery" actually means (alpha37)
+
+Owner, immediately after alpha36: *"Will the altar be visible on the map though?"*
+
+It was — and that mattered. `RevealBosses` had been pinning **all five** altars at
+`StartRun` since long before discovery steps existed, which made the new step a
+*travel* step to a place handed over in the first minute. That is fairly precisely
+the "handed without any work" the whole feature was answering.
+
+**Now only the current act's altar is pinned**, appearing as the act begins. The
+goal you are working towards stays legible; the four after it do not. Discovery is
+then a real journey to a known place, which is most of a Valheim boss run anyway.
+
+Pinning nothing at all was considered and rejected for the same reason rune stones
+were: vanilla hands out Vegvisirs precisely because searching a biome blind is the
+least fun thing a run can ask for, and a Plains altar can be a very long way from
+where its act starts.
+
+The pin is driven from the 1 Hz poll rather than the act transition, so one path
+covers every way an act can become current — fresh run, resume, boss falling — and
+a player not yet loaded at seating time still gets it a second later. A failure
+leaves it unpinned rather than marked done, so the next poll retries.
+
 Each discovery step pays what its boss fight actually wants: summoning items and
 the relevant mead. Arriving at the altar is the right moment to be handed the thing
 you would otherwise have gone home for.

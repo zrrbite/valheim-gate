@@ -469,8 +469,6 @@ namespace ICanShowYouTheWorld.RunMode
                 foreach (var key in preDefeated) _accountedBossKeys.Add(key);
                 LastScore = 0f;
 
-                RevealBosses(player);
-
                 _visitedBiomes = (int)Heightmap.Biome.Meadows;
                 try { if (Player.m_localPlayer != null) _visitedBiomes |= (int)Player.m_localPlayer.GetCurrentBiome(); } catch { }
 
@@ -491,6 +489,7 @@ namespace ICanShowYouTheWorld.RunMode
                 _taskHealthReward = 0f;
                 _homewardCharges = 0;
                 _discovered.Clear();
+                _pinnedActIndex = -1;
                 _worldModifiers.ApplyBaseline(_cfg);
                 // Free melee/tool stamina is baseline empowerment: the early game's stamina tax
                 // is tedium, not difficulty. Re-run on the poll tick for newly crafted gear.
@@ -976,6 +975,7 @@ namespace ICanShowYouTheWorld.RunMode
             PollReachedBiomes();
             PollDeerHerd();
             PollDiscoveries();
+            RefreshActPin();
         }
 
         /// <summary>
@@ -2066,24 +2066,49 @@ namespace ICanShowYouTheWorld.RunMode
             return pool.Where(d => d.Kind != ChallengeKind.KillPrefab).ToList();
         }
 
-        private void RevealBosses(Player player)
-        {
-            var game = Game.instance;
-            if (game == null) return;
+        /// <summary>The act whose altar is currently pinned, or -1 for none. Not persisted — a pin lives in the world save.</summary>
+        private int _pinnedActIndex = -1;
 
-            foreach (var boss in Bosses)
+        /// <summary>
+        /// Pins THIS act's boss altar on the map, and only this act's.
+        ///
+        /// Every altar used to be pinned at StartRun, which handed the player the whole saga in the
+        /// first minute — and once the discovery steps arrived that made them travel steps to a
+        /// place already known rather than anything found (owner, alpha36: "will the altar be
+        /// visible on the map though?"). Now each appears as its act begins: the goal you are
+        /// working towards is always legible, the four after it are not.
+        ///
+        /// Driven from the poll rather than the act transition so that one path covers every way an
+        /// act can become current — a fresh run, a resume, a boss falling — and so a player who is
+        /// not loaded yet at seating time still gets the pin a second later.
+        /// </summary>
+        private void RefreshActPin()
+        {
+            if (_pinnedActIndex == _actIndex) return;
+            if (_actIndex < 0 || _actIndex >= _acts.Count) return;
+
+            var game = Game.instance;
+            var player = Player.m_localPlayer;
+            if (game == null || player == null) return;
+
+            string key = _acts[_actIndex].BossDefeatKey;
+            var boss = Bosses.FirstOrDefault(b => b.defeatKey == key);
+            if (boss.locName == null) return;
+
+            try
             {
-                try
-                {
-                    // showMap:false — five discoveries in a row should not fling the map open five times.
-                    game.DiscoverClosestLocation(
-                        boss.locName, player.transform.position, boss.display,
-                        (int)Minimap.PinType.Boss, false);
-                }
-                catch (Exception ex)
-                {
-                    LogOnce("discover-" + boss.locName, ex);
-                }
+                // showMap:false — the banner already says the act changed; throwing the map open on
+                // top of that is one interruption too many.
+                game.DiscoverClosestLocation(
+                    boss.locName, player.transform.position, boss.display,
+                    (int)Minimap.PinType.Boss, false);
+
+                _pinnedActIndex = _actIndex;
+            }
+            catch (Exception ex)
+            {
+                // Left unpinned rather than marked done, so the next poll tries again.
+                LogOnce("discover-" + boss.locName, ex);
             }
         }
 
