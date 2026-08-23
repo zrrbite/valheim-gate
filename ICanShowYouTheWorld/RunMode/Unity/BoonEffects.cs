@@ -129,77 +129,76 @@ namespace ICanShowYouTheWorld.RunMode
         private bool _fleetSnapshotTaken;
 
         /// <summary>
-        /// mule/hearty/enduring: one plain float field on Player each, so they share a single
-        /// snapshot-add-restore mechanism instead of three copies of fleet's code.
+        /// One plain float field on Player that a boon can lend against — carry weight, base health,
+        /// the stamina numbers. All are read live by the game every frame (GetMaxCarryWeight reads
+        /// m_maxCarryWeight, GetTotalFoodValue reads m_baseHP/m_baseStamina, both verified against
+        /// the IL), so raising the field IS the effect. All are plain instance fields on Player, not
+        /// shared or prefab state, which is what makes a loan honest: it is per-character and dies
+        /// with the run.
         ///
-        /// All three fields are read live by the game every frame — GetMaxCarryWeight() reads
-        /// m_maxCarryWeight, GetTotalFoodValue() reads m_baseHP/m_baseStamina (both verified
-        /// against assembly_valheim's IL) — so raising the field is the whole effect. They are
-        /// also plain instance fields on Player, NOT shared/prefab state, which is what makes a
-        /// snapshot honest: the loan is per-character and dies with the run.
+        /// The pristine value is NOT held here. It lives once per FIELD in <see cref="_loans"/>,
+        /// because more than one boon can lend against the same field — Hearty and Glass Cannon both
+        /// move base health, and the per-completion reward makes three. Snapshotting per boon, which
+        /// is what this did before alpha35, let the second lender record the first one's boosted
+        /// value as "original" and leave the player permanently altered after the run. See
+        /// <see cref="LoanLedger"/>.
         /// </summary>
-        private sealed class FieldBoost
+        private sealed class FieldLoan
         {
-            public string Id;
+            public string BoonId;
+            public string Field;
             public float Amount;
-            public Func<Player, float> Get;
-            public Action<Player, float> Set;
-
-            /// <summary>The player the snapshot was taken FROM. Guards against double-applying to one player, and against restoring into a different one.</summary>
-            public Player Owner;
-            public float Original;
-            public bool Taken;
         }
 
-        private readonly List<FieldBoost> _fieldBoosts = new List<FieldBoost>
-        {
-            new FieldBoost
+        /// <summary>Which Player field each <see cref="FieldLoan.Field"/> key reads and writes.</summary>
+        private static readonly Dictionary<string, (Func<Player, float> Get, Action<Player, float> Set)> FieldAccess =
+            new Dictionary<string, (Func<Player, float>, Action<Player, float>)>
             {
-                Id = "mule", Amount = MuleCarryWeightBonus,
-                Get = p => p.m_maxCarryWeight, Set = (p, v) => p.m_maxCarryWeight = v
-            },
-            new FieldBoost
-            {
-                Id = "hearty", Amount = HeartyBaseHpBonus,
-                Get = p => p.m_baseHP, Set = (p, v) => p.m_baseHP = v
-            },
-            // Tireless (alpha34) is FOUR rows sharing one id — the merge of what used to be
-            // Enduring, Vigorous, Cat's Breath and Acrobat. Five stamina boons competed for slots
-            // against a problem the run's baseline already solves (move stamina x0.5, regen x2.5,
-            // costs x0.75), so they became one boon worth picking. Marathoner's run-drain cut was
-            // dropped outright rather than folded in: baseline move stamina x0.5 IS that boon.
-            //
-            // Multiple rows per id is why ApplyFieldBoost works on every match rather than the first.
-            new FieldBoost
-            {
-                Id = "tireless", Amount = EnduringBaseStaminaBonus,
-                Get = p => p.m_baseStamina, Set = (p, v) => p.m_baseStamina = v
-            },
-            new FieldBoost
-            {
-                Id = "tireless", Amount = 3f,      // m_staminaRegen vanilla ~6/s -> ~9/s
-                Get = p => p.m_staminaRegen, Set = (p, v) => p.m_staminaRegen = v
-            },
-            new FieldBoost
-            {
-                Id = "tireless", Amount = -0.5f,   // m_staminaRegenDelay vanilla ~1s -> 0.5s
-                Get = p => p.m_staminaRegenDelay, Set = (p, v) => p.m_staminaRegenDelay = v
-            },
-            new FieldBoost
-            {
-                Id = "tireless", Amount = -5f,     // m_dodgeStaminaUsage vanilla ~10 -> ~5
-                Get = p => p.m_dodgeStaminaUsage, Set = (p, v) => p.m_dodgeStaminaUsage = v
-            },
+                ["MaxCarryWeight"]    = (p => p.m_maxCarryWeight,    (p, v) => p.m_maxCarryWeight = v),
+                ["BaseHp"]            = (p => p.m_baseHP,            (p, v) => p.m_baseHP = v),
+                ["BaseStamina"]       = (p => p.m_baseStamina,       (p, v) => p.m_baseStamina = v),
+                ["StaminaRegen"]      = (p => p.m_staminaRegen,      (p, v) => p.m_staminaRegen = v),
+                ["StaminaRegenDelay"] = (p => p.m_staminaRegenDelay, (p, v) => p.m_staminaRegenDelay = v),
+                ["DodgeStamina"]      = (p => p.m_dodgeStaminaUsage, (p, v) => p.m_dodgeStaminaUsage = v),
+            };
 
-            // Glass Cannon's cost. Hearty's mechanism pointed the other way: -30% of vanilla base
-            // HP, as a flat subtraction so it cannot interact with food or with Hearty itself in
-            // ways neither was written for.
-            new FieldBoost
-            {
-                Id = "glasscannon", Amount = -GlassCannonBaseHpPenalty,
-                Get = p => p.m_baseHP, Set = (p, v) => p.m_baseHP = v
-            },
+        /// <summary>
+        /// What each boon lends. Several rows may share a boon id (Tireless lends four fields) and
+        /// several may share a FIELD (Hearty and Glass Cannon both move base health) — the ledger
+        /// handles both, which the previous design could not.
+        /// </summary>
+        private static readonly List<FieldLoan> FieldLoans = new List<FieldLoan>
+        {
+            new FieldLoan { BoonId = "mule",   Field = "MaxCarryWeight", Amount = MuleCarryWeightBonus },
+            new FieldLoan { BoonId = "hearty", Field = "BaseHp",         Amount = HeartyBaseHpBonus },
+
+            // Tireless (alpha34): the merge of what used to be Enduring, Vigorous, Cat's Breath and
+            // Acrobat. Five stamina boons competed for slots against a problem the run's baseline
+            // already solves; Marathoner's run-drain cut was dropped outright rather than folded in,
+            // since baseline move stamina x0.5 IS that boon.
+            new FieldLoan { BoonId = "tireless", Field = "BaseStamina",       Amount = EnduringBaseStaminaBonus },
+            new FieldLoan { BoonId = "tireless", Field = "StaminaRegen",      Amount = 3f },    // vanilla ~6/s -> ~9/s
+            new FieldLoan { BoonId = "tireless", Field = "StaminaRegenDelay", Amount = -0.5f }, // vanilla ~1s -> 0.5s
+            new FieldLoan { BoonId = "tireless", Field = "DodgeStamina",      Amount = -5f },   // vanilla ~10 -> ~5
+
+            // Glass Cannon's cost, on the same field Hearty raises — the pair the ledger exists for.
+            new FieldLoan { BoonId = "glasscannon", Field = "BaseHp", Amount = -GlassCannonBaseHpPenalty },
         };
+
+        /// <summary>
+        /// The run's outstanding loans against Player fields, and the player they were taken from.
+        /// A respawn hands back a Player with vanilla fields, so a new player means the ledger is
+        /// forgotten and rebuilt rather than restored into someone else's numbers.
+        /// </summary>
+        private readonly LoanLedger _loans = new LoanLedger();
+        private Player _loanOwner;
+
+        /// <summary>
+        /// The lender id used by the per-completion health reward. Not a boon — it is the run itself
+        /// lending — but it shares the mechanism, and sharing it is the point: three claimants on
+        /// base health now compose instead of corrupting each other.
+        /// </summary>
+        internal const string TaskRewardLender = "taskreward";
 
         // sharp: keyed by the SHARED damage block (ItemDrop.ItemData.m_shared), not the ItemData
         // instance. m_shared is per-PREFAB, not per-instance — a fresh ItemData handed out after
@@ -432,6 +431,9 @@ namespace ICanShowYouTheWorld.RunMode
                 // unwinds above should have cleared it; this makes sure.
                 SafeInvoke(UnapplyWeaponMultipliers);
                 SafeInvoke(UnapplyAllDamageModifiers);
+                // And every borrowed Player field, including the per-completion health reward,
+                // which is not a boon and so is not reached by the held-boon loop above.
+                SafeInvoke(RepayAllFieldLoans);
             }
         }
 
@@ -494,53 +496,117 @@ namespace ICanShowYouTheWorld.RunMode
         // --- mule / hearty / enduring (single-field passives) ---
 
         /// <summary>
-        /// Snapshots and raises this boon's Player field, if the id names one.
+        /// Records this boon's loans against the player's fields and writes the new values.
         ///
-        /// Re-applying against the SAME player is a no-op rather than a second addition: unlike
-        /// fleet, this path is reachable twice for one player, because RunService's respawn
-        /// detector re-applies every held passive on a Player reference change, and a stale
-        /// _trackedPlayer would otherwise stack the bonus and (worse) snapshot the already-boosted
-        /// value as "original". Against a NEW player it re-snapshots and re-applies, which is the
-        /// whole point of the respawn path — death hands back a Player with vanilla fields.
+        /// Re-applying against the SAME player is harmless: <see cref="LoanLedger.Lend"/> replaces
+        /// rather than adds, and the value is recomputed from the pristine original either way. That
+        /// matters because RunService's respawn detector re-applies every held passive whenever the
+        /// Player reference changes.
         /// </summary>
         private void ApplyFieldBoost(string boonId)
         {
             var player = Player.m_localPlayer;
             if (player == null) return;
 
+            SyncLoanOwner(player);
+
             // EVERY row with this id, not just the first: a boon may lend more than one field, and
             // Tireless lends four. A first-match lookup would silently apply a quarter of it.
-            foreach (var boost in _fieldBoosts.Where(b => b.Id == boonId))
+            foreach (var loan in FieldLoans.Where(l => l.BoonId == boonId))
             {
-                if (boost.Taken && ReferenceEquals(boost.Owner, player)) continue;
+                LendField(player, loan.Field, boonId, loan.Amount);
+            }
+        }
 
-                boost.Owner = player;
-                boost.Original = boost.Get(player);
-                boost.Taken = true;
-                boost.Set(player, boost.Original + boost.Amount);
+        /// <summary>Withdraws every loan this boon made and rewrites the affected fields.</summary>
+        private void UnapplyFieldBoost(string boonId) => RepayLender(boonId);
+
+        /// <summary>
+        /// Points the ledger at the current player, forgetting it wholesale if that is a DIFFERENT
+        /// player than the loans were taken from.
+        ///
+        /// Death hands back a Player with vanilla fields, so the old originals describe someone who
+        /// no longer exists — keeping them would mean restoring one character's numbers onto
+        /// another's, handing out or confiscating a permanent bonus.
+        /// </summary>
+        private void SyncLoanOwner(Player player)
+        {
+            if (ReferenceEquals(_loanOwner, player)) return;
+
+            _loans.Clear();
+            _loanOwner = player;
+        }
+
+        /// <summary>Records one loan and writes the field's recomputed value.</summary>
+        private void LendField(Player player, string field, string lender, float amount)
+        {
+            if (!FieldAccess.TryGetValue(field, out var access)) return;
+
+            _loans.SetOriginal(field, access.Get(player));   // first lender only; ignored thereafter
+            _loans.Lend(field, lender, amount);
+            access.Set(player, _loans.Value(field));
+        }
+
+        /// <summary>
+        /// Withdraws every loan a lender made, rewriting each affected field from its original plus
+        /// whatever OTHER lenders still have outstanding — which is the whole reason the ledger
+        /// exists. Repaying Hearty must not take Glass Cannon's contribution with it.
+        /// </summary>
+        private void RepayLender(string lender)
+        {
+            var fields = _loans.FieldsLentBy(lender).ToList();
+            if (fields.Count == 0) return;
+
+            var owner = _loanOwner;
+            foreach (var field in fields) _loans.Repay(field, lender);
+
+            // Unity's == (not ReferenceEquals): a destroyed player must read as null, since writing
+            // fields on it is pointless and a fresh one already has vanilla values.
+            if (owner == null) return;
+
+            foreach (var field in fields)
+            {
+                if (FieldAccess.TryGetValue(field, out var access)) access.Set(owner, _loans.Value(field));
             }
         }
 
         /// <summary>
-        /// Puts the snapshotted value back, but only into the player it was taken from — restoring
-        /// one character's number onto another's fields would hand out (or confiscate) a permanent
-        /// bonus. When that player is gone the snapshot is simply dropped: its fields went with it.
+        /// Hands every borrowed field back at once. The run is over; nothing is owed.
+        ///
+        /// Assigning the pristine original directly rather than repaying lender by lender: at this
+        /// point the correct end state is known exactly, and it cannot be got wrong by a lender the
+        /// loop happens to miss.
         /// </summary>
-        private void UnapplyFieldBoost(string boonId)
+        internal void RepayAllFieldLoans()
         {
-            foreach (var boost in _fieldBoosts.Where(b => b.Id == boonId && b.Taken))
+            var owner = _loanOwner;
+            _loanOwner = null;
+
+            if (owner != null)
             {
-                var owner = boost.Owner;
-                boost.Taken = false;
-                boost.Owner = null;
-
-                // Unity's == (not ReferenceEquals) is what's wanted here: a destroyed player must
-                // read as null, since writing fields on it is pointless and a fresh one has vanilla
-                // values.
-                if (owner == null) continue;
-
-                boost.Set(owner, boost.Original);
+                foreach (var field in _loans.Fields.ToList())
+                {
+                    if (FieldAccess.TryGetValue(field, out var access)) access.Set(owner, _loans.Original(field));
+                }
             }
+
+            _loans.Clear();
+        }
+
+        /// <summary>
+        /// Sets the run's accumulated per-completion health reward. Called by the host with the
+        /// running total, not an increment — re-lending replaces, so this cannot compound however
+        /// often it is called.
+        /// </summary>
+        public void SetTaskHealthReward(float total)
+        {
+            var player = Player.m_localPlayer;
+            if (player == null) return;
+
+            SyncLoanOwner(player);
+
+            if (total <= 0f) RepayLender(TaskRewardLender);
+            else LendField(player, "BaseHp", TaskRewardLender, total);
         }
 
         // --- sharp ---

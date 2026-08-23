@@ -41,6 +41,12 @@ namespace ICanShowYouTheWorld.Services
         /// </summary>
         IReadOnlyList<ICanShowYouTheWorld.RunMode.StashEntry> StashEntries { get; }
 
+        /// <summary>Unspent Homeward charges — one per boss felled, spent with Keypad 9.</summary>
+        int HomewardCharges { get; }
+
+        /// <summary>Max health lent by completions so far this run.</summary>
+        float EarnedHealth { get; }
+
         /// <summary>Moves every unequipped material into the stash; returns how many items moved.</summary>
         int DepositMaterials();
 

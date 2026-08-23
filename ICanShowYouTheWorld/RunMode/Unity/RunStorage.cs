@@ -139,6 +139,18 @@ namespace ICanShowYouTheWorld.RunMode
         ///
         /// Null on a pre-alpha30 save; RunStash.Restore tolerates any short or absent list.
         /// </summary>
+        /// <summary>
+        /// Max health lent by completions so far (alpha35). Re-applied on resume; 0 on an older
+        /// save, which reads as "nothing lent yet" and simply starts the accumulation from there.
+        /// </summary>
+        public float taskHealthReward;
+
+        /// <summary>
+        /// Unspent Homeward charges (alpha35) — one granted per boss felled, each teleporting the
+        /// player to their claimed bed. Persisted so a suspend cannot quietly spend them.
+        /// </summary>
+        public int homewardCharges;
+
         public List<string> stashPrefabs;
         public List<int> stashCounts;
         public List<int> stashQualities;

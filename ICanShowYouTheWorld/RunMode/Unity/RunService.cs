@@ -297,6 +297,9 @@ namespace ICanShowYouTheWorld.RunMode
         public ChallengeEngine Challenges => _active ? _challenges : null;
         public BoonEngine Boons => _active ? _boons : null;
 
+        public int HomewardCharges => _active ? _homewardCharges : 0;
+        public float EarnedHealth => _active ? _taskHealthReward : 0f;
+
         public ActDefinition CurrentAct =>
             _active && _actIndex >= 0 && _actIndex < _acts.Count ? _acts[_actIndex] : null;
 
@@ -465,6 +468,8 @@ namespace ICanShowYouTheWorld.RunMode
                 _deer.Reset();
                 _unbaselinedSeen.Clear();
                 _warnedUnbaselined.Clear();
+                _taskHealthReward = 0f;
+                _homewardCharges = 0;
                 _worldModifiers.ApplyBaseline(_cfg);
                 // Free melee/tool stamina is baseline empowerment: the early game's stamina tax
                 // is tedium, not difficulty. Re-run on the poll tick for newly crafted gear.
@@ -770,6 +775,9 @@ namespace ICanShowYouTheWorld.RunMode
             else if (Input.GetKeyDown(KeyCode.Keypad6)) TryActivateHeldBoon("way");
             else if (Input.GetKeyDown(KeyCode.Keypad7)) TryActivateHeldBoon("brother");
             else if (Input.GetKeyDown(KeyCode.Keypad8)) TryActivateHeldBoon("windfall");
+            // Keypad 9 is not a boon: Homeward is a run mechanic earned from bosses, so it sits
+            // beside the boon keys rather than among them.
+            else if (Input.GetKeyDown(KeyCode.Keypad9)) TryHomeward();
         }
 
         private void TryActivateHeldBoon(string boonId)
@@ -808,6 +816,11 @@ namespace ICanShowYouTheWorld.RunMode
             if (!isRespawn || player == null) return;
 
             ReapplyPassiveBoonEffects();
+
+            // The per-completion health is a loan too, and NOT a boon, so the passive loop above
+            // does not reach it. A respawn hands back a Player with vanilla fields, so without this
+            // every point of health the run had earned would quietly vanish on death.
+            ApplyTaskHealthReward();
 
             // Valheim applies skill LOSS on death (Skills.OnDeath → LowerAllSkills), which this
             // mode accepts as vanilla rather than suppressing — but the LOAN is not the player's
@@ -854,6 +867,10 @@ namespace ICanShowYouTheWorld.RunMode
                 Message($"{boss.display} down — {FormatTime(_elapsed)}");
                 GrantBossSpoils();
                 RechargeWaystone();
+
+                // The way back. Waystone's charge got you here; this one gets you home.
+                _homewardCharges++;
+                Message($"Homeward charge earned — Keypad 9 to return to your bed. ({_homewardCharges} held)");
 
                 if (boss.defeatKey == _finalBossKey) finished = true;
             }
@@ -944,6 +961,108 @@ namespace ICanShowYouTheWorld.RunMode
 
         /// <summary>Slow Burn's discount on heat GAINED. Losses are untouched — it slows the rise, not the fall.</summary>
         private const float SlowBurnGainMultiplier = 0.75f;
+
+        /// <summary>
+        /// Max health lent for every completion — questline step or random task alike.
+        ///
+        /// Owner, alpha34 play: "maybe we should reward the player with a tiny bit of armor and
+        /// health for every quest/task completed since heat is also increased. The boons are the
+        /// real increases, but each completion should grant SOMETHING." Heat is what a completion
+        /// costs you, so health is what it should pay: enemies hit harder, you have more to spend.
+        ///
+        /// Armor is not part of it because armor is not reachable as a small increment — the game
+        /// computes it from equipped items and its only damage-modifier steps are far too coarse.
+        ///
+        /// Act I is 15 questline steps plus whatever tasks get done, so Eikthyr is met around +40:
+        /// real, and well short of a second health bar. Like every other power the mode grants, it
+        /// is LOANED — see BoonEffects.SetTaskHealthReward and the loan ledger behind it.
+        /// </summary>
+        private const float HealthPerCompletion = 2f;
+
+        /// <summary>Total health lent by completions so far this run. Persisted; given back at run end.</summary>
+        private float _taskHealthReward;
+
+        /// <summary>
+        /// Unspent Homeward charges — one per boss felled, each a trip back to your claimed bed.
+        ///
+        /// Owner, alpha34 play: "when a boss is downed, the player should get 1 Gate to home (since
+        /// thats where we built our house and crafting stuff)". Waystone already carries you TO the
+        /// next altar on the same charge-per-boss rule; this is the return leg, which was the one
+        /// pinch point left after the stash removed the cargo problem.
+        ///
+        /// Deliberately NOT a boon. A boon competes with 21 others for three offer slots, so most
+        /// runs would not have it in the act where they most wanted it — and "the trip home is
+        /// solved" has to be true every run or it is not solved at all.
+        ///
+        /// Charges accumulate, so skipping one boss's gate means two available later.
+        /// </summary>
+        private int _homewardCharges;
+
+        /// <summary>
+        /// Spends a Homeward charge, if there is one and there is somewhere to go.
+        ///
+        /// "Home" is the player's claimed bed — <c>PlayerProfile.GetCustomSpawnPoint</c>, which is
+        /// exactly the "where we built our house and crafting stuff" the request meant, and is set
+        /// by the very bed the Act I questline makes you build.
+        ///
+        /// With no bed claimed the charge is NOT spent and the player is told why. Dumping them at
+        /// the world spawn instead would be a worse outcome than refusing: they would lose the
+        /// charge and end up somewhere they never chose.
+        /// </summary>
+        private void TryHomeward()
+        {
+            if (!_active || _frozen) return;
+
+            if (_homewardCharges <= 0)
+            {
+                Message("No Homeward charge — fell a boss to earn one.");
+                return;
+            }
+
+            try
+            {
+                var profile = Game.instance?.GetPlayerProfile();
+                if (profile == null || !profile.HaveCustomSpawnPoint())
+                {
+                    Message("Homeward has nowhere to go — claim a bed first.");
+                    return;
+                }
+
+                var teleport = ModBootstrap.GetService<ITeleportService>();
+                if (teleport == null) return;
+
+                // Lifted clear of the ground for the same reason Waystone does it: arriving inside
+                // the terrain is how a teleport turns into a death.
+                teleport.TeleportTo(profile.GetCustomSpawnPoint() + Vector3.up * 2f);
+
+                _homewardCharges--;
+                Message($"Homeward. {_homewardCharges} charge{(_homewardCharges == 1 ? "" : "s")} left.");
+                SaveState();
+            }
+            catch (Exception ex)
+            {
+                LogOnce("homeward", ex);
+            }
+        }
+
+        /// <summary>
+        /// Pays a completion's health, and re-applies the running total.
+        ///
+        /// Passes the TOTAL rather than the increment, because the loan ledger replaces a lender's
+        /// contribution rather than adding to it — which is exactly what makes a growing loan safe
+        /// to re-apply as often as we like without compounding.
+        /// </summary>
+        private void GrantCompletionHealth()
+        {
+            _taskHealthReward += HealthPerCompletion;
+            ApplyTaskHealthReward();
+        }
+
+        private void ApplyTaskHealthReward()
+        {
+            try { _boonEffects.SetTaskHealthReward(_taskHealthReward); }
+            catch (Exception ex) { LogOnce("task-health-reward", ex); }
+        }
 
         /// <summary>
         /// Raises heat, after Slow Burn's discount, and tells everything that cares.
@@ -1994,6 +2113,11 @@ namespace ICanShowYouTheWorld.RunMode
                 // design: a task hands you a boon offer, a quest step hands you gear. Offering a
                 // boon here as well would make the questline strictly better than everything else
                 // and drown the player in choices at the same moment they gain four items.
+                // Every completion pays health, whichever kind it was. Heat is what finishing
+                // something COSTS you — the world gets harder — so something has to come back, and
+                // this is the part that does regardless of which track or table you were on.
+                GrantCompletionHealth();
+
                 if (def.MainQuest)
                 {
                     AddHeat(MainQuestHeatReward);
@@ -2006,7 +2130,8 @@ namespace ICanShowYouTheWorld.RunMode
                 AddHeat(def.HeatReward);
                 _boons?.CreateOffer();
 
-                Message($"Challenge complete: {def.Display}  (+{def.HeatReward:0.#} heat)");
+                Message($"Challenge complete: {def.Display}  " +
+                        $"(+{def.HeatReward:0.#} heat, +{HealthPerCompletion:0.#} health)");
             }
             catch (Exception ex)
             {
@@ -2831,6 +2956,11 @@ namespace ICanShowYouTheWorld.RunMode
 
             _stash.Restore(s.stashPrefabs, s.stashCounts, s.stashQualities, s.stashVariants);
 
+            // Re-lend what completions had already paid, so a resumed run keeps the health it
+            // earned. 0 on a pre-alpha35 save, which simply starts the accumulation from there.
+            _taskHealthReward = Math.Max(0f, s.taskHealthReward);
+            _homewardCharges = Math.Max(0, s.homewardCharges);
+
             _rng = new Random(_rngSeed);
             _deer = new DeerHerd(_cfg, _rng);
 
@@ -3067,6 +3197,8 @@ namespace ICanShowYouTheWorld.RunMode
                 rngSeed = _rngSeed,
                 visitedBiomes = _visitedBiomes,
                 builtCategories = _builtSeen.ToList(),
+                taskHealthReward = _taskHealthReward,
+                homewardCharges = _homewardCharges,
                 stashPrefabs = _stash.Entries.Select(e => e.Prefab).ToList(),
                 stashCounts = _stash.Entries.Select(e => e.Count).ToList(),
                 stashQualities = _stash.Entries.Select(e => e.Quality).ToList(),
@@ -3717,13 +3849,13 @@ namespace ICanShowYouTheWorld.RunMode
             // daylight.
             new ChallengeDefinition
             {
-                Id = "mq-home", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "TimeInBase",
-                Target = 120, Display = "Settle in (2 min at home)", RewardText = "A shield by the door, and arrows",
+                Id = "mq-bed", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Bed",
+                Target = 1, Display = "Build a bed", RewardText = "Timber and resin for the rest of the house",
             },
             new ChallengeDefinition
             {
-                Id = "mq-bed", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Bed",
-                Target = 1, Display = "Build a bed", RewardText = "Timber and resin for the rest of the house",
+                Id = "mq-home", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "TimeInBase",
+                Target = 120, Display = "Settle in (2 min at home)", RewardText = "A shield by the door, and arrows",
             },
             new ChallengeDefinition
             {
@@ -4028,7 +4160,11 @@ namespace ICanShowYouTheWorld.RunMode
                 // a reason to exist, bf-smelter pays raw again to feed it, and bf-bronze pays
                 // finished bronze so the armour is a decision rather than another smelting trip.
                 ["bf-arrive"] = new[] { ("Torch", 1), ("ArrowFlint", 40) },
-                ["bf-copper"] = new[] { ("CopperOre", 20), ("TinOre", 10), ("Coal", 20) },
+                // Surtling cores here, NOT at the portal step two links later: a smelter needs
+                // them and they come from burial chambers, so without this the step quietly
+                // sends the player crypt-hunting. Same rule as the deer trophies and ancient
+                // seeds — the run gates on the FIGHT, never on a scavenger hunt.
+                ["bf-copper"] = new[] { ("CopperOre", 20), ("TinOre", 10), ("Coal", 20), ("SurtlingCore", 8) },
                 ["bf-portal"] = new[] { ("FineWood", 20), ("SurtlingCore", 4), ("GreydwarfEye", 10) },
                 ["bf-smelter"] = new[] { ("CopperOre", 30), ("TinOre", 15), ("Coal", 30) },
                 ["bf-bronze"] = new[] { ("Bronze", 10), ("ArrowBronze", 40) },

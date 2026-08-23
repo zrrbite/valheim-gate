@@ -1241,3 +1241,53 @@ before; that was a quiet flaw found while making three damage boons coexist.
 ### RESULTS (Windows side appends here)
 
 *(pending)*
+
+---
+
+## 2026-08-23 — TASK: alpha35 — your four Act I/II notes, and a bug they surfaced
+
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha35**.
+(The installer now prints the version it actually installed, so that line is
+always right from here on.)
+
+All four of your notes, plus something they exposed.
+
+**1. Bed before "settle in".** You were right — the CRAFT track really did ask you
+to settle into a home you had no bed for. Now `…fire → cook → bed → settle in →
+sleep → chest`.
+
+**2. Homeward.** Every boss kill grants a charge; **Keypad 9** returns you to your
+claimed bed. Charges accumulate and persist. Waystone (Keypad 6) got you *to* the
+altar; this is the leg home, which was the one gap left after the stash removed
+the hauling. If you have no bed claimed it refuses and says so rather than
+spending the charge — **tell me if it ever strands you somewhere unexpected.**
+
+**3. The smelter was worse than "too soon".** It needs **surtling cores**, which
+come from burial chambers, and the chain didn't hand any over until the *portal*
+step — two steps later. So it was quietly sending you crypt-hunting. The mining
+step before it now pays 8 cores, so the smelter is buildable the moment it's
+asked for.
+
+**4. Every completion now pays +2 max health**, quest step or random task alike,
+shown in the HUD as "+N health earned". Act I should reach Eikthyr around +40.
+It's a loan like everything else — it goes away when the run ends.
+
+**Armor isn't in it, and can't be:** Valheim computes armor from equipped items,
+and the only damage-modifier steps it has are far too coarse for "a tiny bit". So
+you got the health half, done properly, rather than a fudge.
+
+**5. What your request surfaced:** `Hearty` (+15 health) and `Glass Cannon`
+(−7.5 health) **both** write the same field, and the old mechanism gave each its
+own idea of "the original". Hold both and the second records the first's boosted
+value as pristine — then whichever ends first restores a number that was never
+original, leaving you permanently altered *after the run*. That shipped in
+alpha34. Adding a third claimant would have made it worse, so it's rebuilt: one
+pristine value per field, everything recomputed from it. Third time today I've
+had to make that same correction, so it's now a tested class of its own.
+
+**Worth checking in play:** take Hearty and Glass Cannon together, finish a run,
+and confirm your health is back to normal afterwards.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*

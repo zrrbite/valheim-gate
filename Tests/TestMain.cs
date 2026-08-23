@@ -24,6 +24,7 @@ static class TestMain
         NameManifestTests.Run();
         ActDefinitionTests.Run();
         RunStashTests.Run();
+        LoanLedgerTests.Run();
         Console.WriteLine(Check.Failures == 0 ? "ALL PASS" : $"{Check.Failures} FAILURES");
         return Check.Failures == 0 ? 0 : 1;
     }

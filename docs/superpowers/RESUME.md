@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-22, at `0.221.12-run.alpha34`. This is the "pick it back up
+Written 2026-08-23, at `0.221.12-run.alpha35`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -19,13 +19,13 @@ Everything below is what that file tells it.
 
 ## Where things stand
 
-- Branch **`feature/run-mode`**, 87 commits ahead of `main`. **Not merged**,
+- Branch **`feature/run-mode`**, 88 commits ahead of `main`. **Not merged**,
   deliberately — the mode is still being tuned in play.
-- Latest tag **`0.221.12-run.alpha34`**, pushed. The Mac has it deployed.
+- Latest tag **`0.221.12-run.alpha35`**, pushed. The Mac has it deployed.
 - Game version 0.221.12, Unity 6000.0.61. Windows is the play machine, the Mac
   is the test/build machine, the Deck travels (and is **stale** — it still has
   an older patched assembly and needs a re-patch before use).
-- Engine tests: `Tests/run_tests.sh`, 384 assertions, all passing.
+- Engine tests: `Tests/run_tests.sh`, 405 assertions, all passing.
 
 ## The loop
 
@@ -55,7 +55,7 @@ must read the tag you just pushed. **The version popup is the whole point of
 tagging every alpha** — it is the only way to be certain which build is being
 played.
 
-## What the mode is, as of alpha34
+## What the mode is, as of alpha35
 
 **Five acts**, one per boss. All five are written: I The Meadows (15 steps) →
 Eikthyr, II The Black Forest (9) → The Elder, III The Swamp (7) → Bonemass,
@@ -104,8 +104,8 @@ by the Plains before any random task, and far steeper than anything played.
 
 **Act I**, 15 steps, all of it doable without leaving the Meadows: craft an axe
 → craft a hammer → build a workbench → hunt 5 boar → raise a roof (6 pieces) →
-**build a fire** → **build a cooking station** → kill 6 greylings → settle in
-(2 min at home) → **build a bed** → sleep through the night → **build a chest**
+**build a fire** → **build a cooking station** → kill 6 greylings → **build a
+bed** → settle in (2 min at home) → sleep through the night → **build a chest**
 → hunt 3 deer (pays Eikthyr's summoning trophies) → **hunt Eikthyr's Herald** →
 defeat Eikthyr.
 
@@ -173,7 +173,18 @@ merge deleted `"enduring"`.
 > then pressing it is the obvious exploit, chosen knowingly over a materials-only
 > version. If play says it is too much, it is one word in `ActivateWindfall`.
 
-**Boss kills** pay food for the tier just cleared and refill Waystone.
+**Boss kills** pay food for the tier just cleared, refill Waystone, and grant a
+**Homeward** charge (Keypad 9) — a trip back to your claimed bed. Homeward is a run
+mechanic rather than a boon on purpose: a boon competes with 21 others for three
+slots, and "the trip home is solved" has to be true every run or it is not solved.
+Waystone carries you TO the next altar; Homeward is the leg back.
+
+**Every completion pays +2 max health** (alpha35), questline step or random task
+alike, accumulating and loaned like everything else — Act I reaches Eikthyr around
++40. Heat is what a completion costs; health is what it pays back. Armor is NOT
+part of it and cannot be: the game computes armor from equipped items, and its
+damage-modifier steps are far too coarse for a small increment. See
+[the design](specs/2026-08-23-completion-rewards-design.md).
 
 > **Design ruling, kept (owner, alpha25):** boss spoils are FOOD, not gear or
 > materials, and that is the point — they hand over the health and stamina pool
@@ -254,6 +265,13 @@ The five that have each cost a build:
   pipeline that actually runs.
 - **Unity's destroyed-object equality.** A destroyed object compares `== null`.
   Cached Unity references need `ReferenceEquals`.
+- **Two lenders on one value will corrupt each other** unless the pristine value is
+  held ONCE PER VALUE and everything is recomputed from it. Hearty and Glass Cannon
+  both write `m_baseHP`, and per-lender snapshots let the second record the first's
+  boosted value as "original" — leaving the player permanently altered after the
+  run. The same correction was needed three times in one day (weapon damage, damage
+  modifiers, player fields), so the arithmetic now lives in the tested
+  `LoanLedger`. If a new effect shares a value with an existing one, use it.
 - **Anything a run grants must be given back**, and given back *correctly* —
   skills return what was LENT (subtract the loan), not the pre-run level, or the
   run confiscates what the player earned.

@@ -632,6 +632,32 @@ namespace ICanShowYouTheWorld.RunMode
             GUILayout.Label($"Score {run.CurrentScore:0.##}", RunTheme.Header);
             GUILayout.EndHorizontal();
 
+            // Heat's counterweight, shown beside it: every completion raises both, and seeing only
+            // the cost would make the trade look worse than it is. Hidden until earned rather than
+            // sitting at +0, so it reads as something the run gave you.
+            if (run.EarnedHealth > 0f || run.HomewardCharges > 0)
+            {
+                GUILayout.BeginHorizontal();
+
+                if (run.EarnedHealth > 0f)
+                {
+                    GUI.contentColor = RunTheme.CompleteGreen;
+                    GUILayout.Label($"+{run.EarnedHealth:0} health earned", RunTheme.Small);
+                    GUI.contentColor = Color.white;
+                }
+
+                GUILayout.FlexibleSpace();
+
+                if (run.HomewardCharges > 0)
+                {
+                    GUI.contentColor = RunTheme.AccentGold;
+                    GUILayout.Label($"Homeward x{run.HomewardCharges}  [9]", RunTheme.Small);
+                    GUI.contentColor = Color.white;
+                }
+
+                GUILayout.EndHorizontal();
+            }
+
             GUILayout.Space(6f);
 
             // --- Main questline: pinned above the scroll, like the timer. It is the one thing on
