@@ -4704,6 +4704,20 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
+                // FIRST on the hearth track. It arrived sixth and by then the foraging was long
+                // done — ItemsPickedUp is measured from when the step APPEARS, so a late one
+                // asks for fifty more berries at the point berries stopped being interesting
+                // (owner: "it arrives a little late, so there's not much incentive").
+                //
+                // Here it feeds the step directly after it: three different foods at once is
+                // berries, mushrooms and something cooked.
+                Id = "mq-forage", MainQuest = true, Track = HearthTrackId, Kind = ChallengeKind.StatDelta,
+                Param = "ItemsPickedUp", Target = 50, Display = "Forage the meadows (50 finds)",
+                RewardText = "Seeds and a full larder",
+                Hint = "Berries, mushrooms, flint by the water, anything on the ground.",
+            },
+            new ChallengeDefinition
+            {
                 // Placed right after the cooking station, because that is the moment the player
                 // CAN do it and the moment it is worth learning: three foods at once is roughly
                 // triple the health of one, and most people eat a single thing and then wonder
@@ -4793,15 +4807,6 @@ namespace ICanShowYouTheWorld.RunMode
                 Param = "FishHeld", Target = 1, Display = "Catch your first fish",
                 RewardText = "A cauldron's worth of bait",
                 Hint = "Equip the rod, hold to cast, hold right-click to reel — then WALK OVER and pick it up.",
-            },
-            new ChallengeDefinition
-            {
-                // Pure pottering, and the cheapest step in the act on purpose: something to do
-                // while the boar breed and the food cooks.
-                Id = "mq-forage", MainQuest = true, Track = HearthTrackId, Kind = ChallengeKind.StatDelta,
-                Param = "ItemsPickedUp", Target = 50, Display = "Forage the meadows (50 finds)",
-                RewardText = "Seeds and a full larder",
-                Hint = "Berries, mushrooms, flint by the water, anything on the ground.",
             },
             new ChallengeDefinition
             {
