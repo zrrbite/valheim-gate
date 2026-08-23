@@ -121,10 +121,10 @@ This restores full agency. Rush the boss if you want; the cozy work follows
 you into the Black Forest.
 
 The `RequiresTrackComplete` mechanism stays in the engine, tested and guarded
-by `ValidateActs`, but **nothing uses it**. It is kept because gating a later
-act's boss on its own preparation is a plausible want (Bonemass without the
-poison mead), and it is the kind of thing that is easier to keep than to
-rebuild. If it is still unused when Act II is next touched, delete it.
+by `ValidateActs`, and **nothing uses it yet**. Kept deliberately, at the
+owner's call: it is earmarked for **Bonemass**, whose fight is decided by
+whether you brewed the poison resistance mead, and which is therefore the one
+boss worth gating on its own preparation. Do not delete it as dead code.
 
 The fishing rod moved from the trophy step to the **Herald**, so it arrives on
 the hunt track and never depends on hearth progress: there is room to sit by
