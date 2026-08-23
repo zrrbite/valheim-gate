@@ -4899,7 +4899,7 @@ namespace ICanShowYouTheWorld.RunMode
                 //
                 // Measured on the stat the game keeps for setting that power, so it is the ACT of
                 // claiming that counts, not carrying the trophy around.
-                Id = "bf-power", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "SetPowerEikthyr",
+                Id = "bf-power", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "SetGuardianPower",
                 Target = 1, Display = "Claim Eikthyr\u2019s power",
                 RewardText = "Provisions for the road", Hint = "His trophy on the sacrificial stones. Stag-like stride: press the power key and run.",
             },
@@ -5029,7 +5029,7 @@ namespace ICanShowYouTheWorld.RunMode
                 //
                 // Measured on the stat the game keeps for setting that power, so it is the ACT of
                 // claiming that counts, not carrying the trophy around.
-                Id = "sw-power", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "SetPowerElder",
+                Id = "sw-power", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "SetGuardianPower",
                 Target = 1, Display = "Claim the Elder\u2019s power",
                 RewardText = "Provisions for the road", Hint = "Hang his trophy where you hung Eikthyr\u2019s. Faster felling, for the iron ahead.",
             },
@@ -5101,7 +5101,7 @@ namespace ICanShowYouTheWorld.RunMode
                 //
                 // Measured on the stat the game keeps for setting that power, so it is the ACT of
                 // claiming that counts, not carrying the trophy around.
-                Id = "mt-power", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "SetPowerBonemass",
+                Id = "mt-power", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "SetGuardianPower",
                 Target = 1, Display = "Claim Bonemass\u2019 power",
                 RewardText = "Provisions for the road", Hint = "Same stones. Blunt, slash and pierce resistance \u2014 the mountains will ask for it.",
             },
@@ -5161,7 +5161,7 @@ namespace ICanShowYouTheWorld.RunMode
                 //
                 // Measured on the stat the game keeps for setting that power, so it is the ACT of
                 // claiming that counts, not carrying the trophy around.
-                Id = "pl-power", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "SetPowerModer",
+                Id = "pl-power", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "SetGuardianPower",
                 Target = 1, Display = "Claim Moder\u2019s power",
                 RewardText = "Provisions for the road", Hint = "Same stones. A following wind, whichever way you sail.",
             },
