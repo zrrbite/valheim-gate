@@ -29,6 +29,39 @@ Select-String -Path "$env:USERPROFILE\AppData\LocalLow\IronGate\Valheim\Player.l
 
 ---
 
+## The fish check (alpha49 and later)
+
+Two fishing steps carry numbers that depend on the game's own data — how heavy
+fish get, and how many kinds there are. The mod cannot read that from the code,
+so it **asks the world and prints the answer**:
+
+```powershell
+Select-String -Path "$env:USERPROFILE\AppData\LocalLow\IronGate\Valheim\Player.log" -Pattern "Fish available"
+```
+
+You should get one line listing every edible fish and its weight, e.g.
+
+```
+[ICanShowYouTheWorld] Fish available: FishRaw(1.0), FishCooked(1.0), ...
+```
+
+**Send that line.** It is what sets the "Land a big one (4.0+)" and "A varied
+catch (3 species)" thresholds — until then they are an educated guess.
+
+If one of those steps asks for more than the world has, an error prints
+alongside it saying so, in plain numbers.
+
+### Everything from a new build in one command
+
+```powershell
+Select-String -Path "$env:USERPROFILE\AppData\LocalLow\IronGate\Valheim\Player.log" -Pattern "ICanShowYouTheWorld.*(Fish available|Unknown|wants|weighs|species)"
+```
+
+Catches the fish list, any misspelled reward name, and any impossible
+threshold.
+
+---
+
 ## If something prints
 
 Each line names exactly what is broken. Paste the whole line back — every one of
