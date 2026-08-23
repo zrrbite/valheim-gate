@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using ICanShowYouTheWorld.RunMode;
@@ -166,5 +167,56 @@ static class ActDefinitionTests
         };
         Check.That(!ActDefinition.SeatingFor(acts, 2, dropped).Any(t => t.Id == "hearth"),
                    "a hearth already dropped does not come back");
+    }
+
+    /// <summary>
+    /// The carry-over CAP. Every act after the first is planned to have a third track of its own,
+    /// so without a limit a player who left each half-done would reach Act V looking at six
+    /// questlines. The two most recent are the ones still worth finishing.
+    /// </summary>
+    public static void CarryCapTests()
+    {
+        var acts = Sample();
+
+        // Give the first three acts a side track each, as the plans call for.
+        string[] sides = { "hearth", "forge", "marsh" };
+        for (int i = 0; i < sides.Length; i++)
+        {
+            acts[i].Tracks.Add(new QuestTrack
+            {
+                Id = sides[i], Label = sides[i].ToUpperInvariant(),
+                Chain = new List<ChallengeDefinition>
+                {
+                    new ChallengeDefinition { Id = sides[i] + "-1", MainQuest = true, Kind = ChallengeKind.PlayerState, Param = "Comfort", Target = 5, Display = sides[i] },
+                },
+            });
+        }
+
+        // All three still unfinished as the run enters Act IV.
+        var live = sides.Select(id => new QuestTrack
+        {
+            Id = id, Label = id, Chain = acts[Array.IndexOf(sides, id)].Tracks.First(t => t.Id == id).Chain,
+            Current = new ActiveChallenge { Def = acts[Array.IndexOf(sides, id)].Tracks.First(t => t.Id == id).Chain[0] },
+        }).ToList();
+
+        var seated = ActDefinition.SeatingFor(acts, 3, live);
+        var carriedIds = seated.Select(t => t.Id).Where(id => sides.Contains(id)).ToList();
+
+        Check.That(carriedIds.Count == ActDefinition.MaxCarriedTracks, "at most two tracks carry");
+        Check.That(carriedIds.Contains("marsh") && carriedIds.Contains("forge"),
+                   "and they are the two most recent, not the two oldest");
+        Check.That(!carriedIds.Contains("hearth"), "the oldest is dropped once two newer ones exist");
+        Check.That(carriedIds[0] == "forge" && carriedIds[1] == "marsh",
+                   "appended oldest first, so a row does not jump position as acts pass");
+
+        // Under the cap, nothing changes.
+        var justOne = new List<QuestTrack>
+        {
+            new QuestTrack { Id = "hearth", Label = "HEARTH",
+                             Chain = acts[0].Tracks.First(t => t.Id == "hearth").Chain,
+                             Current = new ActiveChallenge { Def = acts[0].Tracks.First(t => t.Id == "hearth").Chain[0] } },
+        };
+        Check.That(ActDefinition.SeatingFor(acts, 1, justOne).Any(t => t.Id == "hearth"),
+                   "one unfinished track still carries");
     }
 }

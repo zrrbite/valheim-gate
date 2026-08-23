@@ -64,7 +64,19 @@ namespace ICanShowYouTheWorld.RunMode
         /// <paramref name="live"/> is the current seating, empty at run start. Empty means "seat
         /// it and let the save decide"; a track present but exhausted, or absent entirely, has
         /// already been finished or dropped and does not come back.
+        ///
+        /// At most <see cref="MaxCarriedTracks"/> carry, MOST RECENT FIRST. Every act after the
+        /// first is planned to have a third track of its own — hearth, forge, marsh, peak,
+        /// steading — and without a cap a player who left each one half-done would reach Act V
+        /// looking at six questlines at once. The two most recent are the ones still worth
+        /// finishing; older ones are a different game ago.
+        ///
+        /// Carried tracks are appended OLDEST FIRST, so a row does not jump position when a third
+        /// act's track pushes the oldest out.
         /// </summary>
+        /// <summary>How many unfinished tracks from earlier acts may follow the run.</summary>
+        public const int MaxCarriedTracks = 2;
+
         public static List<QuestTrack> SeatingFor(
             IList<ActDefinition> acts, int actIndex, IList<QuestTrack> live)
         {
@@ -73,11 +85,15 @@ namespace ICanShowYouTheWorld.RunMode
 
             seated.AddRange(acts[actIndex].Tracks.Where(t => t != null));
 
-            for (int i = 0; i < actIndex; i++)
+            var carried = new List<QuestTrack>();
+
+            // Backwards: the nearest act's leftovers are the ones still worth finishing.
+            for (int i = actIndex - 1; i >= 0 && carried.Count < MaxCarriedTracks; i--)
             {
                 foreach (var t in acts[i].Tracks.Where(t => t != null))
                 {
-                    if (seated.Any(x => x.Id == t.Id)) continue;
+                    if (carried.Count >= MaxCarriedTracks) break;
+                    if (seated.Any(x => x.Id == t.Id) || carried.Any(x => x.Id == t.Id)) continue;
 
                     if (live != null && live.Count > 0)
                     {
@@ -85,9 +101,12 @@ namespace ICanShowYouTheWorld.RunMode
                         if (already == null || already.Current == null) continue;
                     }
 
-                    seated.Add(t);
+                    carried.Add(t);
                 }
             }
+
+            carried.Reverse();
+            seated.AddRange(carried);
 
             return seated;
         }

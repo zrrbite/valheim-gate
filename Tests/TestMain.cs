@@ -26,6 +26,7 @@ static class TestMain
         ActDefinitionTests.Run();
         HearthRecordsTests.Run();
         ActDefinitionTests.SeatingTests();
+        ActDefinitionTests.CarryCapTests();
         RunStashTests.Run();
         LoanLedgerTests.Run();
         Console.WriteLine(Check.Failures == 0 ? "ALL PASS" : $"{Check.Failures} FAILURES");
