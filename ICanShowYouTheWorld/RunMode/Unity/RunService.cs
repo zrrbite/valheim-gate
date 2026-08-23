@@ -1772,6 +1772,10 @@ namespace ICanShowYouTheWorld.RunMode
                 // them — but a forge is Act II work, so in the Meadows this can only mean the
                 // chopping block and the tanning rack.
                 ["StationUpgrade"] = p => p.GetComponentInChildren<StationExtension>(true) != null,
+                // Act II. Both are compiled classes, so neither names an asset. A cart needs
+                // bronze nails, which is what makes it Act II work rather than Act I.
+                ["Cart"] = p => p.GetComponentInChildren<Vagon>(true) != null,
+                ["SignPost"] = p => p.GetComponentInChildren<Sign>(true) != null,
             };
 
         /// <summary>
@@ -4554,6 +4558,25 @@ namespace ICanShowYouTheWorld.RunMode
         public const string HuntTrackId = "hunt";
         public const string CraftTrackId = "craft";
         public const string HearthTrackId = "hearth";
+        public const string ForgeTrackId = "forge";
+
+        /// <summary>
+        /// Every track a saga can have, in DISPLAY order, with the label each shows.
+        ///
+        /// A table rather than a hardcoded pair of buckets, because each act after the first is
+        /// planned to have a third track of its own — forge, marsh, peak, steading. Adding one is
+        /// now a row here plus a Track override on its steps.
+        ///
+        /// Order matters twice: hunt stays first so track 0 remains MainQuestSlot, and the rest
+        /// keep a stable position so a row does not move under the player between acts.
+        /// </summary>
+        private static readonly (string id, string label)[] TrackTable =
+        {
+            (HuntTrackId,   "HUNT"),
+            (CraftTrackId,  "CRAFT"),
+            (HearthTrackId, "HEARTH"),
+            (ForgeTrackId,  "FORGE"),
+        };
 
         /// <summary>
         /// Cuts an act's steps into the two tracks, along the seam the content already had: KILLS go
@@ -4583,28 +4606,21 @@ namespace ICanShowYouTheWorld.RunMode
                     ? d.Track
                     : d.Kind == ChallengeKind.KillPrefab ? HuntTrackId : CraftTrackId;
 
-            var tracks = new List<QuestTrack>
-            {
-                new QuestTrack
+            var tracks = TrackTable
+                .Select(t => new QuestTrack
                 {
-                    Id = HuntTrackId, Label = "HUNT",
-                    Chain = steps.Where(d => TrackOf(d) == HuntTrackId).ToList(),
-                },
-                new QuestTrack
-                {
-                    Id = CraftTrackId, Label = "CRAFT",
-                    Chain = steps.Where(d => TrackOf(d) == CraftTrackId).ToList(),
-                },
-                new QuestTrack
-                {
-                    Id = HearthTrackId, Label = "HEARTH",
-                    Chain = steps.Where(d => TrackOf(d) == HearthTrackId).ToList(),
-                },
-            };
+                    Id = t.id, Label = t.label,
+                    Chain = steps.Where(d => TrackOf(d) == t.id).ToList(),
+                })
+                .ToList();
 
-            // Only Act I keeps a hearth, so the other four would carry an empty column — which
-            // reads as a bug rather than as an absence. HUNT stays first either way, so track 0
-            // remains MainQuestSlot and the historical slot addressing keeps its meaning.
+            // A step naming a track the table does not have would vanish silently, which is the
+            // failure mode this mode keeps paying for.
+            var orphans = steps.Where(d => !TrackTable.Any(t => t.id == TrackOf(d))).ToList();
+            if (orphans.Count > 0)
+                Debug.LogError("[ICanShowYouTheWorld] Steps name a track that does not exist: " +
+                               string.Join(", ", orphans.Select(d => $"{d.Id}->{TrackOf(d)}").ToArray()));
+
             return tracks.Where(t => t.Chain.Count > 0).ToList();
         }
 
@@ -4899,7 +4915,7 @@ namespace ICanShowYouTheWorld.RunMode
                 //
                 // Measured on the stat the game keeps for setting that power, so it is the ACT of
                 // claiming that counts, not carrying the trophy around.
-                Id = "bf-power", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "SetGuardianPower",
+                Id = "bf-power", MainQuest = true, Track = ForgeTrackId, Kind = ChallengeKind.StatDelta, Param = "SetGuardianPower",
                 Target = 1, Display = "Claim Eikthyr\u2019s power",
                 RewardText = "Provisions for the road", Hint = "His trophy on the sacrificial stones. Stag-like stride: press the power key and run.",
             },
@@ -4929,9 +4945,39 @@ namespace ICanShowYouTheWorld.RunMode
                 //
                 // On CRAFT rather than a new Act II hearth: an act with its own "hearth" would
                 // collide with Act I's carried one and discard it. See ActDefinition.SeatingFor.
-                Id = "bf-trophy", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "ItemStandUses",
+                Id = "bf-trophy", MainQuest = true, Track = ForgeTrackId, Kind = ChallengeKind.StatDelta, Param = "ItemStandUses",
                 Target = 1, Display = "Hang a trophy", RewardText = "Wood and resin for the hall",
                 Hint = "An item stand needs bronze nails. Mount it on a wall, then place a trophy.",
+            },
+            new ChallengeDefinition
+            {
+                // A cart needs bronze nails, so it cannot be built before the smelter — which is
+                // why it sits after it rather than with the homestead work it resembles. It is the
+                // first thing in the saga that makes ORE a solvable problem rather than a series
+                // of trips.
+                Id = "bf-cart", MainQuest = true, Track = ForgeTrackId, Kind = ChallengeKind.BuildPiece,
+                Param = "Cart", Target = 1, Display = "Raise a cart",
+                RewardText = "Bronze nails, and iron to come",
+                Hint = "Wood and bronze nails, at the workbench. It hates hills.",
+            },
+            new ChallengeDefinition
+            {
+                // Wood only, and pure ceremony — the second homestead gets a name. Cheap on
+                // purpose: after the cart and the smelter, something that costs nothing.
+                Id = "bf-sign", MainQuest = true, Track = ForgeTrackId, Kind = ChallengeKind.BuildPiece,
+                Param = "SignPost", Target = 1, Display = "Name your holding",
+                RewardText = "Timber and resin",
+                Hint = "A sign at the door. Interact to write on it.",
+            },
+            new ChallengeDefinition
+            {
+                // LAST on the track deliberately. Haldor's camp is the one name here this assembly
+                // cannot verify, and a track is a linear chain — anything behind an unfindable
+                // step is unreachable, as Act I learned. Behind it there is nothing.
+                Id = "bf-haldor", MainQuest = true, Track = ForgeTrackId, Kind = ChallengeKind.DiscoverLocation,
+                Param = "Vendor_BlackForest", Target = 1, Display = "Find the trader",
+                RewardText = "Coin enough to spend",
+                Hint = "Haldor keeps a camp in the black forest. He does not move.",
             },
             new ChallengeDefinition
             {
@@ -5336,6 +5382,9 @@ namespace ICanShowYouTheWorld.RunMode
                 // thing once, prove it, and never do it again. Handing them over earlier would
                 // skip the part that gives the reward its meaning.
                 ["bf-smelter"] = new[] { ("CopperOre", 30), ("TinOre", 15), ("Coal", 30), ("SurtlingCore", 30) },
+                ["bf-cart"] = new[] { ("BronzeNails", 40), ("Wood", 40) },
+                ["bf-sign"] = new[] { ("Wood", 30), ("Resin", 20) },
+                ["bf-haldor"] = new[] { ("Coins", 300) },
                 ["bf-bronze"] = new[] { ("Bronze", 10), ("ArrowBronze", 40) },
                 ["bf-greydwarf"] = new[] { ("ShieldBronzeBuckler", 1), ("ArrowBronze", 40) },
                 ["bf-brute"] = new[] { ("ArmorRootChest", 1), ("ArmorRootLegs", 1) },
