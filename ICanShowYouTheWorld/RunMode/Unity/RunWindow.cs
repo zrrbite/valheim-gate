@@ -1005,9 +1005,21 @@ namespace ICanShowYouTheWorld.RunMode
                 return;
             }
 
-            GUI.contentColor = Color.Lerp(RunTheme.TextParchment, RunTheme.AccentGold, flash);
+            // A blocked step is shown, not hidden: the player needs to know what is waiting and
+            // why. Dimmed, because it is not something they can work on yet.
+            GUI.contentColor = track.Blocked
+                ? RunTheme.TextMuted
+                : Color.Lerp(RunTheme.TextParchment, RunTheme.AccentGold, flash);
             GUILayout.Label($"  {track.Label}   {quest.Def.Display}", RunTheme.Body);
             GUI.contentColor = Color.white;
+
+            if (track.Blocked)
+            {
+                GUI.contentColor = RunTheme.AccentGold;
+                GUILayout.Label("  " + (quest.Def.BlockedText ?? "Not yet."), RunTheme.Small);
+                GUI.contentColor = Color.white;
+                return;
+            }
 
             GUILayout.BeginHorizontal();
             GUILayout.Space(8f);

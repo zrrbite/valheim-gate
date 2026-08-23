@@ -2153,6 +2153,17 @@ namespace ICanShowYouTheWorld.RunMode
                 // boss, it had simply lost the step that was supposed to precede it, and Eikthyr's
                 // name turned up at the end of the crafting questline instead. An invariant that
                 // only looks at the last element cannot see a missing one.
+                // A gate naming a track this act does not have is VACUOUS by design, so that a
+                // dropped track cannot deadlock a boss — which means a typo in the name disables
+                // the gate silently. Since every real gate names a track in its own act, that is
+                // checkable.
+                foreach (var gated in act.AllSteps.Where(c => !string.IsNullOrEmpty(c.RequiresTrackComplete)))
+                {
+                    if (!act.Tracks.Any(t => t.Id == gated.RequiresTrackComplete))
+                        Debug.LogError($"[ICanShowYouTheWorld] {act.Label} step '{gated.Id}' waits on track " +
+                                       $"'{gated.RequiresTrackComplete}', which this act does not have — the gate does nothing.");
+                }
+
                 var discovery = act.AllSteps.FirstOrDefault(c => c.Kind == ChallengeKind.DiscoverLocation);
                 if (discovery == null)
                 {
@@ -4484,7 +4495,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // gives the boar and deer trophies a use besides summoning Eikthyr, and turns the
                 // house into a record of the hunt that paid for it.
                 Id = "mq-trophy", MainQuest = true, Track = HearthTrackId, Kind = ChallengeKind.StatDelta, Param = "ItemStandUses",
-                Target = 1, Display = "Hang a trophy", RewardText = "A fishing rod, and bait",
+                Target = 1, Display = "Hang a trophy", RewardText = "Wood and resin for the hall",
                 Hint = "An item stand on the wall, then place a trophy on it.",
             },
             new ChallengeDefinition
@@ -4537,11 +4548,13 @@ namespace ICanShowYouTheWorld.RunMode
                 // matching on "Deer" would let any deer finish this. The host reports this name only
                 // when that specific creature dies, matched by ZDOID. See DeerHerd.
                 Id = "mq-herald", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = DeerHerd.HeraldKillName,
-                Target = 1, Display = "Hunt Eikthyr's Herald", RewardText = "A hunter's bow, and the last trophies",
+                Target = 1, Display = "Hunt Eikthyr's Herald", RewardText = "A hunter's bow, the last trophies, and a fishing rod",
             },
             new ChallengeDefinition
             {
-                Id = "mq-find", MainQuest = true, Track = HuntTrackId, Kind = ChallengeKind.DiscoverLocation, Param = "Eikthyrnir",
+                Id = "mq-find", MainQuest = true, Track = HuntTrackId, Kind = ChallengeKind.DiscoverLocation,
+                RequiresTrackComplete = HearthTrackId,
+                BlockedText = "The altar sleeps. Eikthyr answers only a hunter with a home.", Param = "Eikthyrnir",
                 Target = 1, Display = "Find Eikthyr's altar", RewardText = "Eikthyr's summoning stones await",
                 Hint = "Two standing stones in the meadows, ringed with runes. Look for open ground.",
             },
@@ -4927,7 +4940,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // homestead funds its own decoration rather than the hunt funding it.
                 ["mq-meal"] = new[] { ("CookedMeat", 5), ("Raspberry", 20), ("Mushroom", 10) },
                 ["mq-comfort"] = new[] { ("DeerHide", 10), ("Resin", 20), ("Wood", 30) },
-                ["mq-trophy"] = new[] { ("FishingRod", 1), ("FishingBait", 50) },
+                ["mq-trophy"] = new[] { ("Wood", 30), ("Resin", 15) },
                 ["mq-fish"] = new[] { ("FishingBait", 100), ("Wood", 20) },
                 ["mq-forage"] = new[] { ("CarrotSeeds", 10), ("Honey", 10) },
                 ["mq-pen"] = new[] { ("Carrot", 20), ("Raspberry", 30) },
@@ -4936,7 +4949,12 @@ namespace ICanShowYouTheWorld.RunMode
                 // hunt for an hour without seeing. Handing them over is the point of this step:
                 // the run gates on the FIGHT, never on drop luck.
                 ["mq-deer"] = new[] { ("TrophyDeer", 2), ("DeerHide", 5) },
-                ["mq-herald"] = new[] { ("BowFineWood", 1), ("TrophyDeer", 2), ("ArrowFlint", 40) },
+                // The rod rides the HUNT track on purpose: it used to be the trophy step's reward,
+                // which meant fishing was gated behind hearth progress that the boss can cut short.
+                // Here it lands before the altar is even found, so there is room to sit by the
+                // water before the god is called (owner: "so we can chill and fish before the
+                // final boss").
+                ["mq-herald"] = new[] { ("BowFineWood", 1), ("TrophyDeer", 2), ("ArrowFlint", 40), ("FishingRod", 1), ("FishingBait", 50) },
 
                 // The discovery steps. Each pays what its boss fight actually WANTS, which is the
                 // point of putting a step between finding the altar and fighting what stands on it:

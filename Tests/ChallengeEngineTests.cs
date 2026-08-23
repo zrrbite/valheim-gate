@@ -208,6 +208,77 @@ static class ChallengeEngineTests
         DiscoverLocationTests();
         PlayerStateTests();
         PlayerEventTests();
+        TrackGateTests();
+    }
+
+    /// <summary>
+    /// RequiresTrackComplete: one track's step waiting on another track finishing.
+    ///
+    /// An act ends when its boss dies, and the boss lives on the hunt track — so with tracks of
+    /// unequal length, following the shortest one destroys whatever the others had left. Act I's
+    /// altar waits for the hearth for exactly that reason.
+    /// </summary>
+    static void TrackGateTests()
+    {
+        Func<ChallengeEngine> build = () =>
+        {
+            var e = new ChallengeEngine(Pool(), new Random(81), 120f);
+            e.SetTracks(new List<QuestTrack>
+            {
+                new QuestTrack { Id = "hunt", Label = "HUNT", Chain = new List<ChallengeDefinition>
+                {
+                    new ChallengeDefinition { Id = "h1", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Deer", Target = 1, Display = "Hunt a deer" },
+                    new ChallengeDefinition { Id = "altar", MainQuest = true, Kind = ChallengeKind.DiscoverLocation, Param = "Eikthyrnir", Target = 1,
+                        RequiresTrackComplete = "hearth", BlockedText = "The altar sleeps.", Display = "Find the altar" },
+                } },
+                new QuestTrack { Id = "hearth", Label = "HEARTH", Chain = new List<ChallengeDefinition>
+                {
+                    new ChallengeDefinition { Id = "cozy", MainQuest = true, Kind = ChallengeKind.PlayerState, Param = "Comfort", Target = 5, Display = "Make it comfortable" },
+                } },
+            });
+            return e;
+        };
+
+        var e1 = build();
+        e1.ReportKill("Deer");
+        e1.Tick(0.1f);
+
+        var hunt = e1.Tracks.First(t => t.Id == "hunt");
+        Check.That(hunt.Current.Def.Id == "altar", "the hunt track advances to the gated step");
+        Check.That(hunt.Blocked, "and finds it blocked while the hearth is unfinished");
+
+        // Blocked means it takes no credit at all — otherwise the gate would only delay the
+        // display while the step quietly completed behind it.
+        e1.ReportMeasure(ChallengeKind.DiscoverLocation, "Eikthyrnir", 1f);
+        e1.Tick(0.1f);
+        Check.That(e1.Tracks.First(t => t.Id == "hunt").Current?.Def.Id == "altar", "a blocked step takes no credit");
+
+        // Finishing the gating track opens it on the same tick that finished it.
+        e1.ReportMeasure(ChallengeKind.PlayerState, "Comfort", 5f);
+        e1.Tick(0.1f);
+        Check.That(e1.TrackComplete("hearth"), "the hearth is complete");
+        Check.That(!e1.Tracks.First(t => t.Id == "hunt").Blocked, "which unblocks the altar immediately");
+
+        e1.ReportMeasure(ChallengeKind.DiscoverLocation, "Eikthyrnir", 1f);
+        e1.Tick(0.1f);
+        Check.That(e1.Tracks.First(t => t.Id == "hunt").Current == null, "and the altar can then be found");
+
+        // A gate naming a track this act does not have must not deadlock it: Acts II-V drop the
+        // hearth entirely, and a dropped track would otherwise block their boss forever.
+        var e2 = new ChallengeEngine(Pool(), new Random(82), 120f);
+        e2.SetTracks(new List<QuestTrack>
+        {
+            new QuestTrack { Id = "hunt", Label = "HUNT", Chain = new List<ChallengeDefinition>
+            {
+                new ChallengeDefinition { Id = "solo", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Deer", Target = 1,
+                    RequiresTrackComplete = "hearth", Display = "Hunt a deer" },
+            } },
+        });
+        e2.Tick(0.1f);
+        Check.That(!e2.Tracks[0].Blocked, "a gate naming an absent track does not block");
+        e2.ReportKill("Deer");
+        e2.Tick(0.1f);
+        Check.That(e2.Tracks[0].Current == null, "and the step completes normally");
     }
 
     /// <summary>

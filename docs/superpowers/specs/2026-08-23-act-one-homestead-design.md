@@ -54,7 +54,7 @@ HEARTH. None of them is a craft; they were there because CRAFT meant
 No fish stat and no trade stat exist, and the rod is Haldor-only in vanilla —
 Haldor spawns in the **Black Forest**, outside the act.
 
-**The saga grants the rod**, as the reward of `Hang a trophy`. The mode already
+**The saga grants the rod**, as the reward of the `Herald` step. The mode already
 hands over bows, armour and seeds; a rod is nothing new, and it means fishing
 arrives when the questline wants it rather than when the map cooperates.
 Stumbling on Haldor becomes an Act II step, where the Black Forest is where
@@ -86,6 +86,31 @@ The cooldown is session state, not run state: being sent home by a reload is
 harmless, and persisting it would mean a save-scum check for no gain.
 
 Config: `runHomewardCooldownMinutes`, default 10.
+
+## The act ends on a kill, and that destroys tracks
+
+`RefreshAct` swaps the whole chain on a boss death, so every unfinished step on
+every track is discarded, rewards and all. HUNT is six steps and HEARTH is
+nine: following the hunt naturally destroys most of the homestead.
+
+Act I's altar step therefore carries `RequiresTrackComplete = "hearth"`. Until
+the hearth is done it stays visible but dimmed, under the saga's own reason:
+
+> *The altar sleeps. Eikthyr answers only a hunter with a home.*
+
+A blocked step takes **no credit at all**, not merely a hidden display —
+otherwise the gate would delay the label while the step quietly completed
+behind it. Blocked state is recomputed every tick rather than latched, so the
+gate opens on the very tick that finishes the hearth.
+
+**A gate naming a track the act does not have counts as satisfied**, so Acts
+II-V — which drop the hearth entirely — can never be deadlocked by one. That
+makes a typo silently vacuous, so `ValidateActs` reports a gate naming a track
+absent from its own act.
+
+The fishing rod moved from the trophy step to the **Herald**, so it arrives on
+the hunt track and never depends on hearth progress: there is room to sit by
+the water before the god is called.
 
 ## What is deliberately not here
 

@@ -150,6 +150,23 @@ namespace ICanShowYouTheWorld.RunMode
         public string Track;
 
         /// <summary>
+        /// Id of a track that must be COMPLETE before this step may be worked on. Empty for
+        /// almost every step.
+        ///
+        /// It exists because an act ends when its boss dies, and the boss lives on the hunt
+        /// track: with three tracks of unequal length, following the shortest one to the end
+        /// destroys whatever the others had left. Act I's altar therefore waits for the hearth —
+        /// the saga will not let you call the god before you have somewhere to come home to.
+        ///
+        /// A named track that does not exist counts as complete, so a gate cannot deadlock an act
+        /// that dropped the track it names.
+        /// </summary>
+        public string RequiresTrackComplete;
+
+        /// <summary>Why this step is waiting, in the saga's voice. Shown while it is blocked.</summary>
+        public string BlockedText;
+
+        /// <summary>
         /// Gate on whether this definition may be DEALT at all: the run must already have built a
         /// piece of the named category (the same vocabulary
         /// <see cref="ChallengeKind.BuildPiece"/> uses). Null or empty means no gate.
@@ -278,6 +295,16 @@ namespace ICanShowYouTheWorld.RunMode
 
         /// <summary>The step in play, or null when this track is exhausted or empty.</summary>
         public ActiveChallenge Current;
+
+        /// <summary>
+        /// True when <see cref="Current"/> exists but may not be worked on yet, because its
+        /// <see cref="ChallengeDefinition.RequiresTrackComplete"/> is unmet.
+        ///
+        /// A blocked step stays Current rather than hiding: the player needs to see what is
+        /// waiting and why, and a track showing nothing would read as finished. Recomputed every
+        /// Tick, so it clears the moment the other track does.
+        /// </summary>
+        public bool Blocked;
     }
 
     /// <summary>Keeps up to 3 distinct challenges active; each refills after its own cooldown.</summary>
@@ -470,6 +497,14 @@ namespace ICanShowYouTheWorld.RunMode
                 Completed?.Invoke(finished);
             }
 
+            // Recomputed every tick rather than latched, so a gate opens the instant the track it
+            // names finishes — including on the very tick that finished it, since the loop above
+            // has already advanced every track.
+            foreach (var track in tracks)
+                track.Blocked = track.Current != null &&
+                                !string.IsNullOrEmpty(track.Current.Def.RequiresTrackComplete) &&
+                                !TrackComplete(track.Current.Def.RequiresTrackComplete);
+
             // (1) Fire completions and vacate their slots — except a Repeatable, which keeps its
             // slot and starts over. Its progress is reset BEFORE the event fires, so a handler
             // that reads Active during the callback sees the fresh objective rather than a
@@ -539,6 +574,17 @@ namespace ICanShowYouTheWorld.RunMode
         /// read off the world. Kills are the original case; see <see cref="ChallengeKind.PlayerEvent"/>
         /// for the general one.
         /// </summary>
+        /// <summary>
+        /// Whether a track has run out of steps. A track that does not exist counts as complete,
+        /// so <see cref="ChallengeDefinition.RequiresTrackComplete"/> cannot deadlock an act that
+        /// dropped the track it names.
+        /// </summary>
+        public bool TrackComplete(string trackId)
+        {
+            var track = tracks.FirstOrDefault(t => t.Id == trackId);
+            return track == null || track.Current == null;
+        }
+
         public void ReportEvent(ChallengeKind kind, string param)
         {
             foreach (var a in active) CreditEvent(a, kind, param);
@@ -547,7 +593,7 @@ namespace ICanShowYouTheWorld.RunMode
             // outside the active list. Every track sees every report — a kill that appears in two
             // tracks' chains legitimately counts for both.
             foreach (var track in tracks)
-                if (track.Current != null) CreditEvent(track.Current, kind, param);
+                if (track.Current != null && !track.Blocked) CreditEvent(track.Current, kind, param);
         }
 
         public void ReportMeasure(ChallengeKind kind, string param, float value)
@@ -555,7 +601,7 @@ namespace ICanShowYouTheWorld.RunMode
             foreach (var a in active) CreditMeasure(a, kind, param, value);
 
             foreach (var track in tracks)
-                if (track.Current != null) CreditMeasure(track.Current, kind, param, value);
+                if (track.Current != null && !track.Blocked) CreditMeasure(track.Current, kind, param, value);
         }
 
         private static void CreditEvent(ActiveChallenge a, ChallengeKind kind, string param)
