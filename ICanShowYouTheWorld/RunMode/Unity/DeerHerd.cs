@@ -52,10 +52,17 @@ namespace ICanShowYouTheWorld.RunMode
         private const int HeraldLevel = 3;
 
         /// <summary>
-        /// How far from the player the Herald is placed. Far enough not to appear on top of them,
-        /// near enough to be findable without a search.
+        /// How far from the player the Herald is placed.
+        ///
+        /// Raised from a flat 24m in alpha36 (owner: "you just get handed every step without any
+        /// work"). At 24m you turned around and it was there — a target delivered rather than a
+        /// hunt. Out here it has to be found, which is the point.
+        ///
+        /// It only works because the direction is given: see <see cref="HeraldBearing"/>. A named
+        /// creature somewhere in a 250m radius with no hint is not a hunt, it is a search.
         /// </summary>
-        private const float HeraldSpawnDistance = 24f;
+        private const float HeraldMinDistance = 150f;
+        private const float HeraldMaxDistance = 250f;
 
         /// <summary>Candidate lightning effects, tried in order; the first that resolves is used.</summary>
         private static readonly string[] LightningPrefabs =
@@ -157,7 +164,9 @@ namespace ICanShowYouTheWorld.RunMode
             // A ring around the player rather than straight ahead, so it is not always in the same
             // place relative to where they happen to be facing.
             float angle = (float)(_rng.NextDouble() * Math.PI * 2.0);
-            Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * HeraldSpawnDistance;
+            float distance = HeraldMinDistance +
+                             (float)_rng.NextDouble() * (HeraldMaxDistance - HeraldMinDistance);
+            Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * distance;
             Vector3 pos = player.transform.position + offset;
 
             try { pos.y = ZoneSystem.instance.GetSolidHeight(pos) + 0.5f; }
@@ -206,6 +215,56 @@ namespace ICanShowYouTheWorld.RunMode
             Strike(c.transform.position);
 
             return wasHerald ? HeraldKillName : null;
+        }
+
+        /// <summary>
+        /// Where the Herald is, as a compass direction and a rough distance — "north-east, 180m" —
+        /// or null when none is out or its zone is unloaded.
+        ///
+        /// This is what makes a 250m spawn a hunt rather than a search. Deliberately COARSE: eight
+        /// compass points and a distance rounded to ten metres, so it tells you where to walk
+        /// without walking you there. The Hunter's Eye takes over at 70m.
+        ///
+        /// Returns null rather than a stale bearing when the Herald's zone has unloaded — a
+        /// direction that quietly stopped updating would be worse than none.
+        /// </summary>
+        public string HeraldBearing(Player player)
+        {
+            if (player == null || _herald == ZDOID.None) return null;
+
+            try
+            {
+                var zdo = ZDOMan.instance?.GetZDO(_herald);
+                if (zdo == null) return null;
+
+                Vector3 delta = zdo.GetPosition() - player.transform.position;
+                delta.y = 0f;
+
+                float distance = delta.magnitude;
+                if (distance < 1f) return null;
+
+                return $"{Compass(delta)}, {Mathf.Round(distance / 10f) * 10f:0}m";
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>Eight-point compass name for a world-space direction. Valheim's north is +Z.</summary>
+        private static string Compass(Vector3 delta)
+        {
+            // atan2(x, z) so that 0 is north (+Z) and the angle grows clockwise, which is what a
+            // compass reads; the usual atan2(y, x) would put 0 at east and run anticlockwise.
+            float degrees = Mathf.Atan2(delta.x, delta.z) * Mathf.Rad2Deg;
+            if (degrees < 0f) degrees += 360f;
+
+            string[] points = { "north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west" };
+
+            // +22.5 so each name owns the 45 degrees CENTRED on its direction rather than starting
+            // at it — without it, due north would read as north-east.
+            int index = (int)((degrees + 22.5f) / 45f) % points.Length;
+            return points[index];
         }
 
         private bool IsHerald(Character c)

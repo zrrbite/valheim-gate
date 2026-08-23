@@ -187,6 +187,51 @@ static class ChallengeEngineTests
         BuildPieceCompositeTests();
         ReachBiomeTests();
         QuestTrackTests();
+        DiscoverLocationTests();
+    }
+
+    /// <summary>
+    /// DiscoverLocation: "you have found this place", param-scoped and latching, like every other
+    /// measure whose host reports only what it can currently see.
+    ///
+    /// It makes an act's finale earned rather than handed over — the boss step used to simply
+    /// appear, wherever the altar happened to be.
+    /// </summary>
+    static void DiscoverLocationTests()
+    {
+        Check.That(new ChallengeDefinition().Hint == null, "Hint defaults to null — most steps need none");
+
+        var chain = new List<ChallengeDefinition>
+        {
+            new ChallengeDefinition { Id = "find", MainQuest = true, Kind = ChallengeKind.DiscoverLocation, Param = "Eikthyrnir", Target = 1, Display = "Find Eikthyr's altar" },
+            new ChallengeDefinition { Id = "kill", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Eikthyr", Target = 1, Display = "Defeat Eikthyr" },
+        };
+
+        var e = new ChallengeEngine(Pool(), new Random(51), 120f);
+        e.SetMainChain(chain);
+
+        // Param-scoped: finding a different altar is not finding this one.
+        e.ReportMeasure(ChallengeKind.DiscoverLocation, "GDKing", 1f);
+        e.Tick(0.1f);
+        Check.That(e.CurrentMainQuest.Def.Id == "find", "a different location does not advance the chain");
+
+        e.ReportMeasure(ChallengeKind.DiscoverLocation, "Eikthyrnir", 1f);
+        e.Tick(0.1f);
+        Check.That(e.CurrentMainQuest.Def.Id == "kill", "finding the named location advances to the boss");
+
+        // Latching: the host reports only what is currently in range, so walking away must not
+        // un-find a place already found.
+        var e2 = new ChallengeEngine(Pool(), new Random(52), 120f);
+        e2.SetMainChain(new List<ChallengeDefinition> { chain[0] });
+        e2.ReportMeasure(ChallengeKind.DiscoverLocation, "Eikthyrnir", 1f);
+        e2.ReportMeasure(ChallengeKind.DiscoverLocation, "Eikthyrnir", 0f);
+        Check.That(e2.CurrentMainQuest.Progress == 1f, "walking away does not un-find a location");
+
+        // Wrong kind, right param.
+        var e3 = new ChallengeEngine(Pool(), new Random(53), 120f);
+        e3.SetMainChain(new List<ChallengeDefinition> { chain[0] });
+        e3.ReportMeasure(ChallengeKind.ReachBiome, "Eikthyrnir", 1f);
+        Check.That(e3.CurrentMainQuest.Progress == 0f, "a biome report never credits a discovery step");
     }
 
     /// <summary>

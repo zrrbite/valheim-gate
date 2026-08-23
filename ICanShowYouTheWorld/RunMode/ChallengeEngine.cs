@@ -34,8 +34,17 @@ namespace ICanShowYouTheWorld.RunMode
     /// for a boat would hard-stall a chain on a world where the biome happens to be walkable — the
     /// chain is linear and has no skip — whereas "reach the Swamp" is true however you got there.
     /// Boats are a random-pool concern, where a gate can safely make them situational.
+    ///
+    /// DiscoverLocation is "you have found this place". Param names a generated LOCATION — the same
+    /// strings the boss table holds ("Eikthyrnir", "GDKing") — and the host completes it when the
+    /// player gets within a radius of the nearest instance of it.
+    ///
+    /// It exists so that an act's finale is EARNED rather than handed over: before this, a boss step
+    /// simply appeared and the altar was wherever it happened to be. The world generator guarantees
+    /// one instance per boss, which is what makes it safe in a linear chain — unlike a rune stone,
+    /// which is scattered by luck and could never be found.
     /// </summary>
-    public enum ChallengeKind { KillPrefab, ReachAltitude, BuildHeight, CollectItem, NoArmorMinutes, CollectFood, StatDelta, BuildPiece, ReachBiome }
+    public enum ChallengeKind { KillPrefab, ReachAltitude, BuildHeight, CollectItem, NoArmorMinutes, CollectFood, StatDelta, BuildPiece, ReachBiome, DiscoverLocation }
 
     public class ChallengeDefinition
     {
@@ -96,6 +105,18 @@ namespace ICanShowYouTheWorld.RunMode
         /// host-side, keyed by <see cref="Id"/>. Null/empty for anything with no reward to show.
         /// </summary>
         public string RewardText;
+
+        /// <summary>
+        /// One line saying what this step actually NEEDS, shown under it in the HUD. Null for steps
+        /// whose requirement is self-evident.
+        ///
+        /// Written for a specific failure seen twice in play: "build a smelter" needs surtling cores
+        /// from burial chambers, and "settle in" needs a fire as well as a roof — neither was
+        /// discoverable from the objective text, and both cost the player real time guessing. A hint
+        /// on "Kill 5 Boar" would be noise, so most steps have none; the test for adding one is
+        /// whether a player could reasonably not know what to do.
+        /// </summary>
+        public string Hint;
 
         /// <summary>
         /// Gate on whether this definition may be DEALT at all: the run must already have built a
@@ -523,7 +544,8 @@ namespace ICanShowYouTheWorld.RunMode
             // no-armor minutes, CollectFood) is a single world-wide quantity and ignores param
             // entirely.
             if ((kind == ChallengeKind.CollectItem || kind == ChallengeKind.StatDelta ||
-                 kind == ChallengeKind.BuildPiece || kind == ChallengeKind.ReachBiome) &&
+                 kind == ChallengeKind.BuildPiece || kind == ChallengeKind.ReachBiome ||
+                 kind == ChallengeKind.DiscoverLocation) &&
                 a.Def.Param != param) return;
 
             a.Progress = Math.Max(a.Progress, value);

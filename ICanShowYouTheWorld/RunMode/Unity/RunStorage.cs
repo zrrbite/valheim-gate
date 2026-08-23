@@ -128,18 +128,6 @@ namespace ICanShowYouTheWorld.RunMode
         public List<string> builtCategories;
 
         /// <summary>
-        /// The run's stash, as four parallel lists — prefab, count, quality, variant — in the same
-        /// style as every other collection here, because Unity's JsonUtility cannot serialise a
-        /// list of objects nested in a plain class without a wrapper per element.
-        ///
-        /// Quality and variant are stored because they are part of an item's IDENTITY: a level-3
-        /// axe and a level-1 axe are different objects, and collapsing them would hand back two of
-        /// whichever was written last. Durability is deliberately NOT stored — a withdrawn tool
-        /// returns at full, which is a small gift rather than a loss.
-        ///
-        /// Null on a pre-alpha30 save; RunStash.Restore tolerates any short or absent list.
-        /// </summary>
-        /// <summary>
         /// Max health lent by completions so far (alpha35). Re-applied on resume; 0 on an older
         /// save, which reads as "nothing lent yet" and simply starts the accumulation from there.
         /// </summary>
@@ -151,6 +139,25 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         public int homewardCharges;
 
+        /// <summary>
+        /// Boss altars this run has found (alpha36) — the latch behind the questline's discovery
+        /// steps. Persisted so a resume does not ask the player to walk back to somewhere they have
+        /// already been. Null on an older save, which reads as "nothing found yet".
+        /// </summary>
+        public List<string> discoveredLocations;
+
+        /// <summary>
+        /// The run's stash, as four parallel lists — prefab, count, quality, variant — in the same
+        /// style as every other collection here, because Unity's JsonUtility cannot serialise a
+        /// list of objects nested in a plain class without a wrapper per element.
+        ///
+        /// Quality and variant are stored because they are part of an item's IDENTITY: a level-3
+        /// axe and a level-1 axe are different objects, and collapsing them would hand back two of
+        /// whichever was written last. Durability is deliberately NOT stored — a withdrawn tool
+        /// returns at full, which is a small gift rather than a loss.
+        ///
+        /// Null on a pre-alpha30 save; RunStash.Restore tolerates any short or absent list.
+        /// </summary>
         public List<string> stashPrefabs;
         public List<int> stashCounts;
         public List<int> stashQualities;

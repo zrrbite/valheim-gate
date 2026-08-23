@@ -1291,3 +1291,55 @@ and confirm your health is back to normal afterwards.
 ### RESULTS (Windows side appends here)
 
 *(pending)*
+
+---
+
+## 2026-08-23 — TASK: alpha36 — acts have to be earned now
+
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha36**.
+
+Your note: *"you just get handed every step without any work. Is it possible to
+add a discovery step before a mini boss and boss?"*
+
+**1. Every act now ends: … → FIND THE ALTAR → kill the boss.** You have to
+actually reach the boss's altar (within 30m) before the kill step appears. The
+world always generates one, so it can never be unfindable — but you do have to go
+looking.
+
+Two things worth knowing:
+   - **Waystone skips it.** It teleports you to the next undefeated altar, which
+     completes the discovery. That's deliberate; spending a boon to skip travel
+     was your own call.
+   - Each discovery step pays that boss's summoning items and the right mead, so
+     arriving is when you get handed what the fight needs.
+
+**2. The Herald is a real hunt now.** It used to spawn 24m away — you turned round
+and it was there. Now it's **150–250m out**, and you get a direction: announced on
+spawn, and a live "Tracks lead north-east, 140m" line under the step. Hunter's Eye
+picks it up at 70m for the last stretch.
+
+**If the bearing ever stops updating or points somewhere wrong, that's a bug** —
+it should go null rather than go stale.
+
+**3. Quest hints.** Steps whose requirements aren't obvious now carry a line saying
+what they need — 18 of them. Both times you lost time in play were "I didn't know
+what this needed", so:
+
+```
+Build a smelter
+  ▓▓░░░░  0/1
+  Stone, and surtling cores from the burial chambers.
+  Reward: More ore than it can hold
+```
+
+**Tell me if any hint is wrong.** I wrote them from knowledge of the game, not
+from anything the assembly could confirm — a wrong hint is worse than none.
+
+**4. The quest panel is getting tall** — two tracks, each up to five lines. I'd
+rather you see it than have me trim it blind. If it crowds the timer, say so.
+
+**5. Heat is 50 across the saga now** (was 45).
+
+### RESULTS (Windows side appends here)
+
+*(pending)*

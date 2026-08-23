@@ -297,6 +297,26 @@ namespace ICanShowYouTheWorld.RunMode
         public ChallengeEngine Challenges => _active ? _challenges : null;
         public BoonEngine Boons => _active ? _boons : null;
 
+        /// <summary>
+        /// Where the Herald is, while its step is the one in play; null otherwise. The HUD shows it
+        /// under the step — a named creature somewhere in a 250m radius with no direction is a
+        /// search rather than a hunt.
+        /// </summary>
+        public string HeraldBearing
+        {
+            get
+            {
+                if (!_active || _deer == null || !ActIsMeadows) return null;
+
+                bool wanted = _challenges != null && _challenges.Tracks.Any(t =>
+                    t.Current != null &&
+                    t.Current.Def.Kind == ChallengeKind.KillPrefab &&
+                    t.Current.Def.Param == DeerHerd.HeraldKillName);
+
+                return wanted ? _deer.HeraldBearing(Player.m_localPlayer) : null;
+            }
+        }
+
         public int HomewardCharges => _active ? _homewardCharges : 0;
         public float EarnedHealth => _active ? _taskHealthReward : 0f;
 
@@ -470,6 +490,7 @@ namespace ICanShowYouTheWorld.RunMode
                 _warnedUnbaselined.Clear();
                 _taskHealthReward = 0f;
                 _homewardCharges = 0;
+                _discovered.Clear();
                 _worldModifiers.ApplyBaseline(_cfg);
                 // Free melee/tool stamina is baseline empowerment: the early game's stamina tax
                 // is tedium, not difficulty. Re-run on the poll tick for newly crafted gear.
@@ -954,7 +975,69 @@ namespace ICanShowYouTheWorld.RunMode
             PollBuiltPieces();
             PollReachedBiomes();
             PollDeerHerd();
+            PollDiscoveries();
         }
+
+        /// <summary>
+        /// Locations this run has found — the latch behind <see cref="ChallengeKind.DiscoverLocation"/>.
+        /// Latched for the same reason the built-piece set is: the poll can only see what is near
+        /// the player right now, and a set that could shrink would un-find an altar the moment they
+        /// walked away from it.
+        /// </summary>
+        private readonly HashSet<string> _discovered = new HashSet<string>();
+
+        /// <summary>
+        /// Completes discovery steps when the player reaches the place they name.
+        ///
+        /// Only looks for locations something is actually ASKING for, because
+        /// <see cref="ZoneSystem.FindClosestLocation"/> is a search over generated locations and
+        /// there is no reason to run five of them a second for objectives nobody holds.
+        ///
+        /// Re-reports everything already found, on the same reasoning as the build scanner: a step
+        /// dealt AFTER the player walked past the altar must still complete, and the engine starts
+        /// each chain step at zero.
+        /// </summary>
+        private void PollDiscoveries()
+        {
+            if (_challenges == null) return;
+
+            var player = Player.m_localPlayer;
+            var zone = ZoneSystem.instance;
+            if (player == null || zone == null) return;
+
+            Vector3 position = player.transform.position;
+            float radius = Mathf.Max(1f, _cfg.RunDiscoverRadius);
+
+            foreach (var wanted in WantedLocations())
+            {
+                if (_discovered.Contains(wanted)) continue;
+
+                try
+                {
+                    if (!zone.FindClosestLocation(wanted, position, out ZoneSystem.LocationInstance loc)) continue;
+                    if (Vector3.Distance(position, loc.m_position) > radius) continue;
+                }
+                catch { continue; }
+
+                _discovered.Add(wanted);
+
+                string display = Bosses.FirstOrDefault(b => b.locName == wanted).display ?? wanted;
+                Message($"Found it — {display}'s altar.");
+            }
+
+            foreach (var found in _discovered)
+                _challenges.ReportMeasure(ChallengeKind.DiscoverLocation, found, 1f);
+        }
+
+        /// <summary>Location names any live questline step is currently asking to be found.</summary>
+        private IEnumerable<string> WantedLocations() =>
+            _challenges.Tracks
+                .Select(t => t.Current)
+                .Where(c => c != null && c.Def.Kind == ChallengeKind.DiscoverLocation)
+                .Select(c => c.Def.Param)
+                .Where(p => !string.IsNullOrEmpty(p))
+                .Distinct()
+                .ToList();
 
         /// <summary>True while the run is in Act I — the only act the herd applies to.</summary>
         private bool ActIsMeadows => _actIndex == 0;
@@ -1131,7 +1214,12 @@ namespace ICanShowYouTheWorld.RunMode
                 t.Current.Def.Param == DeerHerd.HeraldKillName);
 
             if (heraldWanted && _deer.TrySpawnHerald(player))
-                Message($"{DeerHerd.HeraldName} is abroad in the meadows.");
+            {
+                string bearing = _deer.HeraldBearing(player);
+                Message(bearing == null
+                    ? $"{DeerHerd.HeraldName} is abroad in the meadows."
+                    : $"{DeerHerd.HeraldName} is abroad — {bearing} of here.");
+            }
         }
 
         /// <summary>
@@ -1915,6 +2003,20 @@ namespace ICanShowYouTheWorld.RunMode
                 if (badBiomes.Count > 0)
                     Debug.LogError("[ICanShowYouTheWorld] Unknown BIOME names — their arrival steps can never " +
                                    $"complete: {string.Join(", ", badBiomes.ToArray())}");
+
+                // Location names cannot be resolved against the game: ZoneSystem's lookup returns
+                // false both for "no such location" and for "you are simply far away", so a typo is
+                // indistinguishable from a long walk. Checking them against the boss table they come
+                // from is the only honest verification available — and it does catch the mistake
+                // that actually happens, which is using a boss's CREATURE name where its LOCATION
+                // name belongs ("Eikthyr" vs "Eikthyrnir", "gd_king" vs "GDKing").
+                var badLocations = manifest.Locations
+                    .Where(l => !Bosses.Any(b => b.locName == l))
+                    .ToList();
+
+                if (badLocations.Count > 0)
+                    Debug.LogError("[ICanShowYouTheWorld] Unknown LOCATION names — their discovery steps can " +
+                                   $"never complete: {string.Join(", ", badLocations.ToArray())}");
 
                 // Reward prefabs already log at grant time, but that only fires when someone
                 // actually reaches the step — which for the later boss spoils is hours in, if ever.
@@ -2956,6 +3058,11 @@ namespace ICanShowYouTheWorld.RunMode
 
             _stash.Restore(s.stashPrefabs, s.stashCounts, s.stashQualities, s.stashVariants);
 
+            _discovered.Clear();
+            if (s.discoveredLocations != null)
+                foreach (var loc in s.discoveredLocations)
+                    if (!string.IsNullOrEmpty(loc)) _discovered.Add(loc);
+
             // Re-lend what completions had already paid, so a resumed run keeps the health it
             // earned. 0 on a pre-alpha35 save, which simply starts the accumulation from there.
             _taskHealthReward = Math.Max(0f, s.taskHealthReward);
@@ -3197,6 +3304,7 @@ namespace ICanShowYouTheWorld.RunMode
                 rngSeed = _rngSeed,
                 visitedBiomes = _visitedBiomes,
                 builtCategories = _builtSeen.ToList(),
+                discoveredLocations = _discovered.ToList(),
                 taskHealthReward = _taskHealthReward,
                 homewardCharges = _homewardCharges,
                 stashPrefabs = _stash.Entries.Select(e => e.Prefab).ToList(),
@@ -3796,6 +3904,7 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 Id = "mq-bench", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "Builds",
                 Target = 1, Display = "Build a workbench", RewardText = "A leather tunic",
+                Hint = "Ten wood, and stand close to it while you craft.",
             },
             new ChallengeDefinition
             {
@@ -3806,6 +3915,7 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 Id = "mq-shelter", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "Builds",
                 Target = 6, Display = "Raise a roof (6 pieces)", RewardText = "Timber and stone to finish it",
+                Hint = "Roof pieces overhead — walls alone are not shelter.",
             },
             // The homestead steps (alpha26). Each one lands immediately before the step that
             // already, silently, required it: TimeInBase only accrues while Player.IsSafeInHome,
@@ -3821,6 +3931,7 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 Id = "mq-fire", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Fire",
                 Target = 1, Display = "Build a fire", RewardText = "Hide for a bed, flint for arrowheads",
+                Hint = "A campfire. Not under a wooden floor, or it burns.",
             },
             new ChallengeDefinition
             {
@@ -3829,6 +3940,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // stamina as something the player had to know about from outside the run.
                 Id = "mq-cook", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Cooking",
                 Target = 1, Display = "Build a cooking station", RewardText = "Meat to cook on it",
+                Hint = "A cooking station goes ON a fire, not beside it.",
             },
             new ChallengeDefinition
             {
@@ -3856,11 +3968,13 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 Id = "mq-home", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "TimeInBase",
                 Target = 120, Display = "Settle in (2 min at home)", RewardText = "A shield by the door, and arrows",
+                Hint = "Needs a roof AND a fire. Stand still indoors and it counts up.",
             },
             new ChallengeDefinition
             {
                 Id = "mq-rest", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "Sleep",
                 Target = 1, Display = "Sleep through the night", RewardText = "A hot meal and arrows",
+                Hint = "A bed you have claimed, and nothing hostile nearby.",
             },
             new ChallengeDefinition
             {
@@ -3883,6 +3997,12 @@ namespace ICanShowYouTheWorld.RunMode
                 // when that specific creature dies, matched by ZDOID. See DeerHerd.
                 Id = "mq-herald", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = DeerHerd.HeraldKillName,
                 Target = 1, Display = "Hunt Eikthyr's Herald", RewardText = "A hunter's bow, and the last trophies",
+            },
+            new ChallengeDefinition
+            {
+                Id = "mq-find", MainQuest = true, Kind = ChallengeKind.DiscoverLocation, Param = "Eikthyrnir",
+                Target = 1, Display = "Find Eikthyr's altar", RewardText = "Eikthyr's summoning stones await",
+                Hint = "Two standing stones in the meadows, ringed with runes. Look for open ground.",
             },
             new ChallengeDefinition
             {
@@ -3916,22 +4036,26 @@ namespace ICanShowYouTheWorld.RunMode
                 // since a boat step would stall on a world where the biome is walkable.
                 Id = "bf-arrive", MainQuest = true, Kind = ChallengeKind.ReachBiome, Param = "BlackForest",
                 Target = 1, Display = "Reach the Black Forest", RewardText = "A torch, and arrows for the dark",
+                Hint = "Dark pines and rock. Head away from the meadows.",
             },
             new ChallengeDefinition
             {
                 // Eikthyr's antler pickaxe is what opens this act, so the act opens by using it.
                 Id = "bf-copper", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "MineHits",
                 Target = 40, Display = "Mine the Black Forest (40 hits)", RewardText = "Copper, tin, and coal to smelt it",
+                Hint = "Copper needs Eikthyr's antler pickaxe. Look for mottled rock outcrops.",
             },
             new ChallengeDefinition
             {
                 Id = "bf-smelter", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Smelter",
                 Target = 1, Display = "Build a smelter", RewardText = "More ore than it can hold",
+                Hint = "Stone, and surtling cores from the burial chambers.",
             },
             new ChallengeDefinition
             {
                 Id = "bf-bronze", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "CraftsOrUpgrades",
                 Target = 3, Display = "Forge three things in bronze", RewardText = "Bronze for armour",
+                Hint = "Copper and tin smelted together, then forged at a workbench.",
             },
             new ChallengeDefinition
             {
@@ -3940,6 +4064,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // a portal carries you.
                 Id = "bf-portal", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Portal",
                 Target = 1, Display = "Build a portal", RewardText = "Fine wood and cores for its twin",
+                Hint = "Fine wood, greydwarf eyes and surtling cores. Build two.",
             },
             new ChallengeDefinition
             {
@@ -3955,6 +4080,12 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 Id = "bf-troll", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Troll",
                 Target = 1, Display = "Kill a Troll", RewardText = "Troll hide, and the seeds the Elder wants",
+            },
+            new ChallengeDefinition
+            {
+                Id = "bf-find", MainQuest = true, Kind = ChallengeKind.DiscoverLocation, Param = "GDKing",
+                Target = 1, Display = "Find the Elder's altar", RewardText = "The Elder's altar, and what it wants",
+                Hint = "A ring of stone in the deep forest, guarded. Follow the oldest trees.",
             },
             new ChallengeDefinition
             {
@@ -3983,6 +4114,7 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 Id = "sw-arrive", MainQuest = true, Kind = ChallengeKind.ReachBiome, Param = "Swamp",
                 Target = 1, Display = "Reach the Swamp", RewardText = "Poison resistance mead to survive it",
+                Hint = "Flat, flooded, and grey. Bring the poison mead.",
             },
             new ChallengeDefinition
             {
@@ -3994,6 +4126,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // The mead this makes IS the Bonemass fight. Building it here is the hint.
                 Id = "sw-fermenter", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Fermenter",
                 Target = 1, Display = "Build a fermenter", RewardText = "Honey and herbs for the mead",
+                Hint = "Honey from a beehive, and thistle from the forest floor.",
             },
             new ChallengeDefinition
             {
@@ -4004,11 +4137,18 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 Id = "sw-iron", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "MineHits",
                 Target = 60, Display = "Dig up the crypts (60 mining hits)", RewardText = "Iron, already smelted",
+                Hint = "Iron is scrap in the crypts, not ore in the ground. Bring a key.",
             },
             new ChallengeDefinition
             {
                 Id = "sw-leech", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Leech",
                 Target = 3, Display = "Kill 3 Leeches", RewardText = "An iron mace — blunt beats bone",
+            },
+            new ChallengeDefinition
+            {
+                Id = "sw-find", MainQuest = true, Kind = ChallengeKind.DiscoverLocation, Param = "Bonemass",
+                Target = 1, Display = "Find Bonemass's altar", RewardText = "Blunt weapons, and a way in",
+                Hint = "A skull on a mound, deep in the mire. Watch the water — it hides the path.",
             },
             new ChallengeDefinition
             {
@@ -4033,6 +4173,7 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 Id = "mt-arrive", MainQuest = true, Kind = ChallengeKind.ReachBiome, Param = "Mountain",
                 Target = 1, Display = "Reach the Mountains", RewardText = "Frost resistance mead and warm hide",
+                Hint = "Above the snowline. Frost will kill you without mead or wolf armour.",
             },
             new ChallengeDefinition
             {
@@ -4048,6 +4189,7 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 Id = "mt-silver", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "MineHits",
                 Target = 60, Display = "Mine silver (60 hits)", RewardText = "Silver, already smelted",
+                Hint = "Silver hides underground — the wishbone finds it.",
             },
             new ChallengeDefinition
             {
@@ -4058,6 +4200,12 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 Id = "mt-fenring", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Fenring",
                 Target = 3, Display = "Kill 3 Fenrings", RewardText = "Dragon eggs — Moder's summons",
+            },
+            new ChallengeDefinition
+            {
+                Id = "mt-find", MainQuest = true, Kind = ChallengeKind.DiscoverLocation, Param = "Dragonqueen",
+                Target = 1, Display = "Find Moder's altar", RewardText = "Frost mead for the summit",
+                Hint = "The highest bone-ringed peak. Cold enough to kill without a mead.",
             },
             new ChallengeDefinition
             {
@@ -4072,6 +4220,7 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 Id = "pl-arrive", MainQuest = true, Kind = ChallengeKind.ReachBiome, Param = "Plains",
                 Target = 1, Display = "Reach the Plains", RewardText = "Padded armour — deathsquitos are quick",
+                Hint = "Tall golden grass. Deathsquitos hit hard and come fast.",
             },
             new ChallengeDefinition
             {
@@ -4082,6 +4231,7 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 Id = "pl-windmill", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Windmill",
                 Target = 1, Display = "Build a windmill", RewardText = "Barley and flour for the last feast",
+                Hint = "Stone and wood, on flat open ground. It grinds barley into flour.",
             },
             new ChallengeDefinition
             {
@@ -4097,6 +4247,12 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 Id = "pl-berserker", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "GoblinBrute",
                 Target = 2, Display = "Kill 2 Fuling Berserkers", RewardText = "Yagluth's summons",
+            },
+            new ChallengeDefinition
+            {
+                Id = "pl-find", MainQuest = true, Kind = ChallengeKind.DiscoverLocation, Param = "GoblinKing",
+                Target = 1, Display = "Find Yagluth's altar", RewardText = "The last of the run's provisions",
+                Hint = "A ruin of stone hands in the tall grass. Fulings camp near it.",
             },
             new ChallengeDefinition
             {
@@ -4153,6 +4309,16 @@ namespace ICanShowYouTheWorld.RunMode
                 // the run gates on the FIGHT, never on drop luck.
                 ["mq-deer"] = new[] { ("TrophyDeer", 2), ("DeerHide", 5) },
                 ["mq-herald"] = new[] { ("BowFineWood", 1), ("TrophyDeer", 2), ("ArrowFlint", 40) },
+
+                // The discovery steps. Each pays what its boss fight actually WANTS, which is the
+                // point of putting a step between finding the altar and fighting what stands on it:
+                // arriving is the moment to be handed the thing you would otherwise have gone home
+                // for.
+                ["mq-find"] = new[] { ("TrophyDeer", 2), ("ArrowFlint", 40) },
+                ["bf-find"] = new[] { ("AncientSeed", 3), ("ArrowBronze", 40) },
+                ["sw-find"] = new[] { ("WitheredBone", 3), ("MeadPoisonResist", 5) },
+                ["mt-find"] = new[] { ("DragonEgg", 3), ("MeadFrostResist", 5) },
+                ["pl-find"] = new[] { ("GoblinTotem", 5), ("MeadHealthMedium", 5) },
                 ["mq-eikthyr"] = new[] { ("PickaxeAntler", 1) },
 
                 // Act II. Ore rather than ingots where the act is about learning to smelt, ingots

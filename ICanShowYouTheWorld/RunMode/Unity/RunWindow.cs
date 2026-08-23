@@ -831,6 +831,28 @@ namespace ICanShowYouTheWorld.RunMode
             GUILayout.FlexibleSpace();
             GUILayout.EndHorizontal();
 
+            // What the step actually NEEDS, for the steps where that is not obvious. Written after
+            // two play sessions lost time to exactly this — a smelter wanting surtling cores, a
+            // home wanting a fire — so it sits above the reward, which is the thing you read when
+            // you already know what to do.
+            if (!string.IsNullOrEmpty(quest.Def.Hint))
+            {
+                GUILayout.Label("  " + quest.Def.Hint, RunTheme.Small);
+            }
+
+            // Live direction to the Herald while its step is in play. Not part of the definition
+            // because it moves.
+            if (quest.Def.Kind == ChallengeKind.KillPrefab && quest.Def.Param == DeerHerd.HeraldKillName)
+            {
+                string bearing = Service?.HeraldBearing;
+                if (!string.IsNullOrEmpty(bearing))
+                {
+                    GUI.contentColor = RunTheme.AccentGold;
+                    GUILayout.Label($"  Tracks lead {bearing}", RunTheme.Small);
+                    GUI.contentColor = Color.white;
+                }
+            }
+
             if (!string.IsNullOrEmpty(quest.Def.RewardText))
             {
                 GUI.contentColor = RunTheme.AccentGold;

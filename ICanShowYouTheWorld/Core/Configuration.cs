@@ -55,6 +55,7 @@ namespace ICanShowYouTheWorld.Core
         float RunStaminaRate { get; set; }
         float RunHudMenuOffset { get; set; }
         float RunBuildScanRadius { get; set; }
+        float RunDiscoverRadius { get; set; }
         float RunDeerStarChance { get; set; }
         int RunDeerStarLevel { get; set; }
         float RunDeerGreylingChance { get; set; }
@@ -153,6 +154,11 @@ namespace ICanShowYouTheWorld.Core
         // stays cheap; the scan stops altogether once all four have been found.
         [SerializeField] private float runBuildScanRadius = 20f;
 
+        // How close counts as having FOUND a boss altar, for the questline's discovery steps.
+        // Generous enough that arriving at the location registers without hunting for its exact
+        // centre, tight enough that passing a mile away does not.
+        [SerializeField] private float runDiscoverRadius = 30f;
+
         // --- Eikthyr's Herd: the deer of Act I ---
         //
         // Eikthyr is the stag god, so his act's deer are his. None of this makes deer AGGRESSIVE —
@@ -220,6 +226,7 @@ namespace ICanShowYouTheWorld.Core
         public float RunStaminaRate { get => runStaminaRate; set => runStaminaRate = value; }
         public float RunHudMenuOffset { get => runHudMenuOffset; set => runHudMenuOffset = value; }
         public float RunBuildScanRadius { get => runBuildScanRadius; set => runBuildScanRadius = value; }
+        public float RunDiscoverRadius { get => runDiscoverRadius; set => runDiscoverRadius = value; }
         public float RunDeerStarChance { get => runDeerStarChance; set => runDeerStarChance = value; }
         public int RunDeerStarLevel { get => runDeerStarLevel; set => runDeerStarLevel = value; }
         public float RunDeerGreylingChance { get => runDeerGreylingChance; set => runDeerGreylingChance = value; }

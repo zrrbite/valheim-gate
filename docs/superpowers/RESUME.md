@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, at `0.221.12-run.alpha35`. This is the "pick it back up
+Written 2026-08-23, at `0.221.12-run.alpha36`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -19,13 +19,13 @@ Everything below is what that file tells it.
 
 ## Where things stand
 
-- Branch **`feature/run-mode`**, 88 commits ahead of `main`. **Not merged**,
+- Branch **`feature/run-mode`**, 90 commits ahead of `main`. **Not merged**,
   deliberately — the mode is still being tuned in play.
-- Latest tag **`0.221.12-run.alpha35`**, pushed. The Mac has it deployed.
+- Latest tag **`0.221.12-run.alpha36`**, pushed. The Mac has it deployed.
 - Game version 0.221.12, Unity 6000.0.61. Windows is the play machine, the Mac
   is the test/build machine, the Deck travels (and is **stale** — it still has
   an older patched assembly and needs a re-patch before use).
-- Engine tests: `Tests/run_tests.sh`, 405 assertions, all passing.
+- Engine tests: `Tests/run_tests.sh`, 410 assertions, all passing.
 
 ## The loop
 
@@ -55,11 +55,23 @@ must read the tag you just pushed. **The version popup is the whole point of
 tagging every alpha** — it is the only way to be certain which build is being
 played.
 
-## What the mode is, as of alpha35
+## What the mode is, as of alpha36
 
-**Five acts**, one per boss. All five are written: I The Meadows (15 steps) →
-Eikthyr, II The Black Forest (9) → The Elder, III The Swamp (7) → Bonemass,
-IV The Mountains (7) → Moder, V The Plains (7) → Yagluth.
+**Five acts**, one per boss. All five are written: I The Meadows (16 steps) →
+Eikthyr, II The Black Forest (10) → The Elder, III The Swamp (8) → Bonemass,
+IV The Mountains (8) → Moder, V The Plains (8) → Yagluth.
+
+**Every act ends `… → find the altar → kill the boss` (alpha36).** A
+`ChallengeKind.DiscoverLocation` step makes the finale earned rather than handed
+over. The altar was chosen over a rune stone because the world generator
+guarantees one per boss and a linear chain must never be unfinishable — the same
+reasoning as the boat steps. Waystone legitimately skips it. See
+[the design](specs/2026-08-23-discovery-and-hints-design.md).
+
+**Steps carry a HINT line** where the requirement is not self-evident (18 of
+them). Written after two play sessions lost time to "I didn't know what this
+needed" — the smelter's surtling cores, and a home needing a fire. A hint on
+"Kill 5 Boar" would be noise, so most steps have none.
 
 **Each act runs TWO questlines side by side (alpha32)** — a HUNT track of its
 kills and a CRAFT track of everything else, advancing independently, both shown in
@@ -99,7 +111,7 @@ Two rules the content follows, both learned the hard way:
   therefore have **no** build step — no distinctively mountain-built piece has a
   compiled class, and filler would be worse than an extra fight.
 
-Questline heat across the saga is **45** (15+9+7+7+7) — roughly ×3.2 enemy damage
+Questline heat across the saga is **50** (16+10+8+8+8) — roughly ×3.2 enemy damage
 by the Plains before any random task, and far steeper than anything played.
 
 **Act I**, 15 steps, all of it doable without leaving the Meadows: craft an axe

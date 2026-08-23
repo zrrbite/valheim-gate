@@ -44,6 +44,17 @@ namespace ICanShowYouTheWorld.RunMode
         public List<string> Biomes = new List<string>();
 
         /// <summary>
+        /// Location names from DiscoverLocation challenges — checked host-side against the boss
+        /// table they come from.
+        ///
+        /// Not resolvable against the game the way a creature or item is: ZoneSystem's lookup
+        /// returns false both for "no such location" and for "you are simply far away", so a typo is
+        /// indistinguishable from a long walk. Checking against the table that supplies the names is
+        /// the only honest verification available, which is why it is worth doing at all.
+        /// </summary>
+        public List<string> Locations = new List<string>();
+
+        /// <summary>
         /// Walks every definition — its own Kind/Param and each of its Subs — and buckets the names
         /// it depends on. Null-safe throughout and de-duplicated; order is the order first seen, so
         /// the validator's output reads in pool order rather than at random.
@@ -79,6 +90,7 @@ namespace ICanShowYouTheWorld.RunMode
                 case ChallengeKind.CollectItem: AddTo(ItemNames, param); break;
                 case ChallengeKind.BuildPiece: AddTo(PieceCategories, param); break;
                 case ChallengeKind.ReachBiome: AddTo(Biomes, param); break;
+                case ChallengeKind.DiscoverLocation: AddTo(Locations, param); break;
             }
         }
 
