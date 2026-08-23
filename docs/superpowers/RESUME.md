@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, at `0.221.12-run.alpha43`. This is the "pick it back up
+Written 2026-08-23, at `0.221.12-run.alpha56.1`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -21,7 +21,10 @@ Everything below is what that file tells it.
 
 - Branch **`feature/run-mode`**, 96 commits ahead of `main`. **Not merged**,
   deliberately — the mode is still being tuned in play.
-- Latest tag **`0.221.12-run.alpha43`**, pushed. The Mac has it deployed.
+- Latest tag **`0.221.12-run.alpha56.1`**, pushed. The Mac has it deployed.
+- **Act I is the focus.** Three tracks, 26 steps, playable end to end. Design in
+  `specs/2026-08-23-act-one-homestead-design.md`; Acts II-V are PLANNED but not
+  built, in `specs/2026-08-23-act-questline-plans.md`.
 - Game version 0.221.12, Unity 6000.0.61. Windows is the play machine, the Mac
   is the test/build machine, the Deck travels (and is **stale** — it still has
   an older patched assembly and needs a re-patch before use).
