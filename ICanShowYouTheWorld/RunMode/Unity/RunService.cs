@@ -4712,7 +4712,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // Here it feeds the step directly after it: three different foods at once is
                 // berries, mushrooms and something cooked.
                 Id = "mq-forage", MainQuest = true, Track = HearthTrackId, Kind = ChallengeKind.StatDelta,
-                Param = "ItemsPickedUp", Target = 50, Display = "Forage the meadows (50 finds)",
+                Param = "ItemsPickedUp", Target = 30, Display = "Forage the meadows (30 finds)",
                 RewardText = "Seeds and a full larder",
                 Hint = "Berries, mushrooms, flint by the water, anything on the ground.",
             },
