@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, at `0.221.12-run.alpha42.2`. This is the "pick it back up
+Written 2026-08-23, at `0.221.12-run.alpha43`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -21,7 +21,7 @@ Everything below is what that file tells it.
 
 - Branch **`feature/run-mode`**, 96 commits ahead of `main`. **Not merged**,
   deliberately — the mode is still being tuned in play.
-- Latest tag **`0.221.12-run.alpha42.2`**, pushed. The Mac has it deployed.
+- Latest tag **`0.221.12-run.alpha43`**, pushed. The Mac has it deployed.
 - Game version 0.221.12, Unity 6000.0.61. Windows is the play machine, the Mac
   is the test/build machine, the Deck travels (and is **stale** — it still has
   an older patched assembly and needs a re-patch before use).
@@ -58,7 +58,7 @@ must read the tag you just pushed. **The version popup is the whole point of
 tagging every alpha** — it is the only way to be certain which build is being
 played.
 
-## What the mode is, as of alpha42
+## What the mode is, as of alpha43
 
 > **IDENTITY, decided 2026-08-23 (owner):** *"In a way this is developing into less
 > of a speed-run-mod and more of a more complete Valheim experience."* — *"yeah
@@ -235,9 +235,31 @@ damage-modifier steps are far too coarse for a small increment. See
 > so the spoils are a strong opening for the next biome rather than a permanent
 > bump that compounds across a long run.
 
+## Pointing at things (alpha43)
+
+Two steps in the saga name something you have to FIND rather than do, and both
+now put a bearing on the always-on strip through one property,
+`IRunService.QuestBearing`, which returns a finished sentence or null.
+
+- **The Herald** (`DeerHerd`) — a named deer, Act I's climax.
+- **The biome an act opens on** (`BiomeCompass`) — rings outward through
+  `WorldGenerator.GetBiome` for the nearest ground of the target biome, nearest
+  first, so the answer is its closest EDGE rather than its middle.
+
+Both cache a **place, not a direction**. That is the whole lesson of the
+alpha38 Herald bug: a target re-decided every few seconds produces a bearing
+that jumps, and a bearing that jumps is worse than none. The biome search costs
+~2,000 noise lookups and is read from `OnGUI`, so it recomputes only every 5s
+or after 40m of movement — and never while you are already standing in the
+biome, where it would read as a bug.
+
 ## Waiting on a human
 
 None of these are blocked on code — they are blocked on someone playing.
+
+> **Closed 2026-08-23:** the Herald hunt is **confirmed working in play** on
+> alpha42.2 — one Herald, bearing counting down the whole approach. The
+> target-position fix holds.
 
 1. **Repair the other worlds.** Builds before alpha17 wrote world-modifier
    rates as bare multipliers into keys Valheim reads as percentages, and
