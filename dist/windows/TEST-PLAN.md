@@ -10,7 +10,7 @@ Install, then work down. Anything marked **BUG** is worth stopping to report.
 
 ## Minute one — three checks, before you do anything else
 
-**1. Version popup reads `v0.221.12-run.alpha42.1`.**
+**1. Version popup reads `v0.221.12-run.alpha42.2`.**
 The installer prints the version it installed; the popup must match. If it doesn't,
 the install didn't take and nothing below means anything.
 

@@ -13,6 +13,6 @@ namespace ICanShowYouTheWorld
         // What does NOT change: every deployed build gets a UNIQUE version. The popup is
         // the only way to be certain which build is being played, so "small change, leave
         // the version alone" is never the answer — bump the build instead.
-        public const string VERSION = "0.221.12-run.alpha42.1";
+        public const string VERSION = "0.221.12-run.alpha42.2";
     }
 }

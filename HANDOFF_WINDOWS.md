@@ -1558,3 +1558,31 @@ it's still not right, and both windows are draggable.
 ### RESULTS (Windows side appends here)
 
 *(pending)*
+
+---
+
+## 2026-08-23 — BUILD: alpha42.2 — the version, in-game
+
+`git pull` → `.\Install-Mod.ps1 -ModOnly` → the installer prints the version; the
+popup and the places below should all agree.
+
+**First build using the new numbering.** `alpha<N>.<BUILD>` — N for a mechanic or
+content change worth a brief, BUILD for a fix or a nudge. Every deployed build
+still gets a unique version, because the popup is the only proof of what you're
+running; "small change, skip the bump" is never the answer.
+
+**The version now shows in three places you'd actually look:**
+- the lobby header, beside **VALHEIM: THE SAGA**
+- the run HUD header, beside the act
+- under the loading-screen title card
+
+It used to exist only in the Credits popup at activation, which is exactly when
+you're not wondering — whereas mid-run, after four builds in an afternoon, is.
+
+Also caught while adding the numbering: the installer's version regex would have
+matched `alpha42` out of `alpha42.1` and printed a version that doesn't exist.
+Fixed and verified against the real DLL.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*

@@ -640,6 +640,8 @@ namespace ICanShowYouTheWorld.RunMode
             var act = run.CurrentAct;
             if (act != null)
                 GUI.Label(new Rect(0f, y + 56f, viewWidth, 30f), act.Label, _subtitleStyle);
+
+            GUI.Label(new Rect(0f, y + 88f, viewWidth, 24f), $"v{ModVersion.VERSION}", _subtitleStyle);
         }
 
         /// <summary>
@@ -779,7 +781,17 @@ namespace ICanShowYouTheWorld.RunMode
             //
             //     This is also where the act line lives now; DrawQuestSection no longer repeats it.
             var act = run.CurrentAct;
+
+            // The build, small and beside the act. It used to exist only in the Credits popup at
+            // activation — which is precisely the moment you are not wondering, whereas mid-run,
+            // after four builds in an afternoon, is (owner: "we should be able to see which version
+            // we're playing from inside the game itself").
+            GUILayout.BeginHorizontal();
             GUILayout.Label(act == null ? "SAGA" : $"SAGA — ACT {act.Numeral}", RunTheme.Header);
+            GUILayout.FlexibleSpace();
+            GUILayout.Label($"v{ModVersion.VERSION}", RunTheme.Small);
+            GUILayout.EndHorizontal();
+
             GUILayout.Label(act == null ? "" : act.Title.ToUpperInvariant(), _timerStyle);
 
             GUILayout.BeginHorizontal();
@@ -1250,7 +1262,12 @@ namespace ICanShowYouTheWorld.RunMode
             var run = Service;
             if (run == null) return;
 
-            GUILayout.Label("RUN MODE", RunTheme.Header);
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("VALHEIM: THE SAGA", RunTheme.Header);
+            GUILayout.FlexibleSpace();
+            GUILayout.Label($"v{ModVersion.VERSION}", RunTheme.Small);
+            GUILayout.EndHorizontal();
+
             GUILayout.Label(run.LobbySummary(), RunTheme.Body);
 
             var cfg = Config;
