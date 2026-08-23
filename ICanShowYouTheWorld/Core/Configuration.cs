@@ -61,6 +61,7 @@ namespace ICanShowYouTheWorld.Core
         int RunDeerStarLevel { get; set; }
         float RunDeerGreylingChance { get; set; }
         float RunHomewardCooldownMinutes { get; set; }
+        bool RunShowHomestead { get; set; }
         int RunDeerGreylingMin { get; set; }
         int RunDeerGreylingMax { get; set; }
         int RunDeerGreylingLevel { get; set; }
@@ -187,6 +188,10 @@ namespace ICanShowYouTheWorld.Core
         // Long enough to plan around, short enough never to strand anyone. Boss charges are
         // spent first, so a boss kill still buys something this does not.
         [SerializeField] private float runHomewardCooldownMinutes = 10f;
+        // The HOMESTEAD records panel. Off by default: it competed for room with the three
+        // quest tracks. The records are still kept either way, so switching this on shows the
+        // full history rather than starting from nothing.
+        [SerializeField] private bool runShowHomestead = false;
         [SerializeField] private int runDeerGreylingMin = 3;
         [SerializeField] private int runDeerGreylingMax = 5;
         [SerializeField] private int runDeerGreylingLevel = 2;
@@ -254,6 +259,7 @@ namespace ICanShowYouTheWorld.Core
         public int RunDeerStarLevel { get => runDeerStarLevel; set => runDeerStarLevel = value; }
         public float RunDeerGreylingChance { get => runDeerGreylingChance; set => runDeerGreylingChance = value; }
         public float RunHomewardCooldownMinutes { get => runHomewardCooldownMinutes; set => runHomewardCooldownMinutes = value; }
+        public bool RunShowHomestead { get => runShowHomestead; set => runShowHomestead = value; }
         public int RunDeerGreylingMin { get => runDeerGreylingMin; set => runDeerGreylingMin = value; }
         public int RunDeerGreylingMax { get => runDeerGreylingMax; set => runDeerGreylingMax = value; }
         public int RunDeerGreylingLevel { get => runDeerGreylingLevel; set => runDeerGreylingLevel = value; }

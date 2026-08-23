@@ -1024,18 +1024,19 @@ namespace ICanShowYouTheWorld.RunMode
             GUILayout.Label($"  {track.Label}   {quest.Def.Display}{count}", RunTheme.Body);
             GUI.contentColor = Color.white;
 
-            // The bar, back — as an UNDERLINE beneath the step name rather than the row of its own
-            // it used to have. alpha50.1 dropped it for height and the "3/10" alone turned out to
-            // read as nothing at a glance (owner: "the x/y seems lackluster"). Drawn inside the
-            // label's own rect, so it is free: a filling line under the words, at no extra height.
-            //
-            // Repaint only — GetLastRect is meaningless during Layout.
-            if (Event.current != null && Event.current.type == EventType.Repaint && quest.Def.Target > 0f)
+            // A PROPER bar, on its own row. It has now been wrong twice in both directions: gone
+            // entirely (alpha50.1, "the x/y seems lackluster"), then a 2px underline that "almost
+            // can't be seen". Progress is the thing this panel exists to show, so it gets the
+            // height it needs and the tighter spacing elsewhere pays for it.
+            if (quest.Def.Target > 0f)
             {
-                var row = GUILayoutUtility.GetLastRect();
-                var bar = new Rect(row.x + 8f, row.yMax - 3f, Mathf.Min(row.width - 16f, 170f), 2f);
-                RunTheme.Bar(bar, Mathf.Clamp01(quest.Progress / quest.Def.Target),
+                GUILayout.BeginHorizontal();
+                GUILayout.Space(10f);
+                var barRect = GUILayoutUtility.GetRect(160f, 10f, GUILayout.Width(160f), GUILayout.Height(10f));
+                RunTheme.Bar(barRect, Mathf.Clamp01(quest.Progress / quest.Def.Target),
                     quest.Done ? RunTheme.CompleteGreen : RunTheme.AccentGold);
+                GUILayout.FlexibleSpace();
+                GUILayout.EndHorizontal();
             }
 
             if (track.Blocked)
@@ -1104,7 +1105,11 @@ namespace ICanShowYouTheWorld.RunMode
             // --- Homestead (splits measure the run against the clock; these measure it against
             //     itself). Hidden entirely until something has actually happened, so a fresh run
             //     is not headed by six empty rows. ---
-            var records = run.Records;
+            // Off by default since alpha55, at the owner's request — the panel was competing for
+            // room with the three quest tracks, which are what the window is FOR. The records are
+            // still kept and still written to the permanent record, so turning this back on shows
+            // a full history rather than starting from nothing.
+            var records = (_config?.RunShowHomestead ?? false) ? run.Records : null;
             if (records != null && records.Achieved.Any())
             {
                 GUILayout.Label("HOMESTEAD", RunTheme.Header);

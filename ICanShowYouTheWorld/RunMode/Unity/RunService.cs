@@ -1191,6 +1191,15 @@ namespace ICanShowYouTheWorld.RunMode
             }
         }
 
+        /// <summary>
+        /// Things whose prefab name contains "Fish" but which are not a catch: the rod, the bait,
+        /// and a trophy if one ever exists.
+        /// </summary>
+        private static bool IsFishingGear(string prefabName) =>
+            prefabName.IndexOf("Rod", StringComparison.OrdinalIgnoreCase) >= 0 ||
+            prefabName.IndexOf("Bait", StringComparison.OrdinalIgnoreCase) >= 0 ||
+            prefabName.IndexOf("Trophy", StringComparison.OrdinalIgnoreCase) >= 0;
+
         /// <summary>What the player is carrying, fish-wise. One scan, four questions.</summary>
         private struct FishCatch
         {
@@ -1224,11 +1233,18 @@ namespace ICanShowYouTheWorld.RunMode
 
                 foreach (var item in items)
                 {
-                    if (item?.m_shared == null || item.m_shared.m_food <= 0f) continue;
+                    if (item?.m_shared == null) continue;
 
                     var prefab = item.m_dropPrefab;
                     if (prefab == null || prefab.name.IndexOf("Fish", StringComparison.OrdinalIgnoreCase) < 0)
                         continue;
+
+                    // NOT filtered on m_food, which is what broke this: raw fish cannot be eaten in
+                    // Valheim, so every fish actually caught scored zero and only cooked ones ever
+                    // counted (owner: "catching a fish didn't register"). The food test was there to
+                    // exclude the rod and the bait; excluding them by name is what it should always
+                    // have done, since neither is a fish.
+                    if (IsFishingGear(prefab.name)) continue;
 
                     catch_.Total += item.m_stack;
                     species.Add(prefab.name);
@@ -2625,13 +2641,13 @@ namespace ICanShowYouTheWorld.RunMode
                                          go.name.IndexOf("Fish", StringComparison.OrdinalIgnoreCase) >= 0)
                             .Select(go => new { go.name, drop = go.GetComponent<ItemDrop>() })
                             .Where(x => x.drop != null && x.drop.m_itemData?.m_shared != null &&
-                                        x.drop.m_itemData.m_shared.m_food > 0f)
+                                        !IsFishingGear(x.name))
                             .Select(x => new { x.name, weight = x.drop.m_itemData.m_shared.m_weight })
                             .ToList();
 
                         if (fishes.Count == 0)
                         {
-                            Debug.LogError("[ICanShowYouTheWorld] No edible 'Fish' item prefab found — every " +
+                            Debug.LogError("[ICanShowYouTheWorld] No 'Fish' item prefab found — every " +
                                            "fishing step is impossible.");
                         }
                         else
