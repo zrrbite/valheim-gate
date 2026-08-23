@@ -1410,3 +1410,47 @@ what you need at a glance mid-fight? The clock is now the same size as heat.
 ### RESULTS (Windows side appends here)
 
 *(pending)*
+
+---
+
+## 2026-08-23 — TASK: alpha39 — the Herald was never where the bearing said
+
+`git pull` → full `.\Install-Mod.ps1` → popup **v0.221.12-run.alpha39**.
+
+You weren't failing to find it. **There were dozens of them.**
+
+alpha36 moved the Herald's spawn to 150–250m, which put it outside the loaded area
+— so the game culled it and released its (non-persistent) record, which made the
+mod think none was standing, which made it **spawn another one, once a second, at
+a new random spot.** The bearing only appeared in the instants where a freshly
+spawned one still existed. That's your "sometimes I get hints".
+
+**Three fixes:**
+
+**1. The run now remembers a PLACE, not a creature.** When the hunt begins it picks
+a spot 150–250m out and keeps it. The Herald only materialises when you get within
+60m of that spot. No respawn loop, and the ground never moves under you — including
+across a save and resume.
+
+**2. The bearing is on the always-on strip now**, not just inside the run window —
+*"The Herald's tracks lead north-east, 140m"*, updating as you walk. Previously it
+only drew inside the quest panel, so while actually playing there was nothing to
+follow. That's the "more frequent hints" you asked for, as a standing line rather
+than a message every thirty seconds.
+
+**3. The boss marker is gated on the hunt.** Your request: no Eikthyr pin until the
+Herald is dead. Generalised — **an act's altar is pinned when its discovery step
+becomes current**, so the map is never ahead of the questline. At run start there
+should now be **no boss pin at all**.
+
+The vanilla rune stone near spawn still works if you read it. That's you choosing
+to skip the mystery, and I left it alone deliberately — destroying a world object
+is the one thing this mode can't give back.
+
+**What to check:** start the Herald step, walk the bearing, and confirm you find
+exactly ONE Herald where it said. If you ever see two, or the bearing jumps
+somewhere new, the fix didn't take.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*

@@ -1841,6 +1841,11 @@ namespace ICanShowYouTheWorld.RunMode
             _boons.DefeatedBosses = Bosses.Count(b => SafeGetGlobalKey(zone, b.defeatKey));
         }
 
+        /// <summary>True when a questline track is currently asking the player to find a location.</summary>
+        private bool DiscoveryStepIsCurrent() =>
+            _challenges != null && _challenges.Tracks.Any(t =>
+                t.Current != null && t.Current.Def.Kind == ChallengeKind.DiscoverLocation);
+
         private int CurrentActIndex()
         {
             var zone = ZoneSystem.instance;
@@ -2086,6 +2091,16 @@ namespace ICanShowYouTheWorld.RunMode
         {
             if (_pinnedActIndex == _actIndex) return;
             if (_actIndex < 0 || _actIndex >= _acts.Count) return;
+
+            // The pin arrives when the questline ASKS you to find the altar, not when the act
+            // begins (owner, alpha38: "let the marker only appear once you kill the herald").
+            // In Act I that is after the Herald falls; in every act it is the moment the discovery
+            // step becomes current. The map is therefore never ahead of the questline.
+            //
+            // The vanilla Vegvisir near spawn still works — reading it is the player choosing to
+            // skip the mystery, which is their business. Removing it would be a permanent change to
+            // a world this mode otherwise leaves exactly as it found it.
+            if (!DiscoveryStepIsCurrent()) return;
 
             var game = Game.instance;
             var player = Player.m_localPlayer;
@@ -3088,6 +3103,12 @@ namespace ICanShowYouTheWorld.RunMode
                 foreach (var loc in s.discoveredLocations)
                     if (!string.IsNullOrEmpty(loc)) _discovered.Add(loc);
 
+            // Same hunt, same ground. Re-rolling on resume would move the Herald after the player
+            // had already walked most of the way to where the bearing had been pointing.
+            _deer.HeraldTarget = s.heraldTargetSet
+                ? new Vector3(s.heraldTargetX, s.heraldTargetY, s.heraldTargetZ)
+                : (Vector3?)null;
+
             // Re-lend what completions had already paid, so a resumed run keeps the health it
             // earned. 0 on a pre-alpha35 save, which simply starts the accumulation from there.
             _taskHealthReward = Math.Max(0f, s.taskHealthReward);
@@ -3330,6 +3351,10 @@ namespace ICanShowYouTheWorld.RunMode
                 visitedBiomes = _visitedBiomes,
                 builtCategories = _builtSeen.ToList(),
                 discoveredLocations = _discovered.ToList(),
+                heraldTargetSet = _deer?.HeraldTarget != null,
+                heraldTargetX = _deer?.HeraldTarget?.x ?? 0f,
+                heraldTargetY = _deer?.HeraldTarget?.y ?? 0f,
+                heraldTargetZ = _deer?.HeraldTarget?.z ?? 0f,
                 taskHealthReward = _taskHealthReward,
                 homewardCharges = _homewardCharges,
                 stashPrefabs = _stash.Entries.Select(e => e.Prefab).ToList(),

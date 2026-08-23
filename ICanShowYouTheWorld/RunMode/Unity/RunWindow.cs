@@ -596,10 +596,31 @@ namespace ICanShowYouTheWorld.RunMode
 
             DrawAbilityBar(run, rect);
 
+            // The Herald's direction, under the strip and therefore ALWAYS visible — the run window
+            // does not have to be open (owner, alpha39: "it would be nice to have more frequent
+            // hints about the Herald's whereabouts"). It was only ever drawn inside the quest panel,
+            // so while actually playing there was nothing to follow.
+            //
+            // A standing line rather than repeated messages: the direction changes as you walk, and
+            // something you can glance at beats something that interrupts you every thirty seconds.
+            // Stacked, not overlaid: the notice line already lives immediately under the strip, and
+            // two labels sharing one rect render on top of each other.
+            float lineY = rect.yMax + 2f;
+
+            string bearing = run.HeraldBearing;
+            if (!string.IsNullOrEmpty(bearing))
+            {
+                GUI.contentColor = RunTheme.AccentGold;
+                GUI.Label(new Rect(rect.x - 100f, lineY, StripWidth + 200f, 20f),
+                    $"The Herald's tracks lead {bearing}", _noticeStyle);
+                GUI.contentColor = Color.white;
+                lineY += 20f;
+            }
+
             string notice = _concrete?.HudNotice;
             if (!string.IsNullOrEmpty(notice))
             {
-                GUI.Label(new Rect(rect.x - 100f, rect.yMax + 2f, StripWidth + 200f, 20f), notice, _noticeStyle);
+                GUI.Label(new Rect(rect.x - 100f, lineY, StripWidth + 200f, 20f), notice, _noticeStyle);
             }
         }
 

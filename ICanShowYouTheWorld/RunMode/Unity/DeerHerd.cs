@@ -52,17 +52,29 @@ namespace ICanShowYouTheWorld.RunMode
         private const int HeraldLevel = 3;
 
         /// <summary>
-        /// How far from the player the Herald is placed.
+        /// How far from the player the Herald's ground is chosen.
         ///
         /// Raised from a flat 24m in alpha36 (owner: "you just get handed every step without any
         /// work"). At 24m you turned around and it was there — a target delivered rather than a
-        /// hunt. Out here it has to be found, which is the point.
-        ///
-        /// It only works because the direction is given: see <see cref="HeraldBearing"/>. A named
-        /// creature somewhere in a 250m radius with no hint is not a hunt, it is a search.
+        /// hunt.
         /// </summary>
         private const float HeraldMinDistance = 150f;
         private const float HeraldMaxDistance = 250f;
+
+        /// <summary>
+        /// How close the player must get before the Herald is actually SPAWNED.
+        ///
+        /// This is the whole fix for alpha38's "I cannot find the Herald". Spawning a creature
+        /// 150-250m away put it outside the loaded area, so its object was culled and its
+        /// non-persistent ZDO released — which made HeraldAlive false, which made the poll spawn
+        /// ANOTHER one at a new random spot, once a second. The player was not failing to find it;
+        /// there were dozens, none where the last bearing pointed.
+        ///
+        /// So the run now remembers a PLACE rather than tracking a creature that may not exist. The
+        /// bearing points at the place, always. The Herald materialises when the player arrives
+        /// somewhere it can actually live.
+        /// </summary>
+        private const float HeraldSpawnRange = 60f;
 
         /// <summary>Candidate lightning effects, tried in order; the first that resolves is used.</summary>
         private static readonly string[] LightningPrefabs =
@@ -74,6 +86,15 @@ namespace ICanShowYouTheWorld.RunMode
 
         /// <summary>The live Herald, by ZDOID. Empty when none is out.</summary>
         private ZDOID _herald = ZDOID.None;
+
+        /// <summary>
+        /// Where the Herald's ground is. Chosen once when the hunt begins and then FIXED — the hunt
+        /// is toward a place, not toward whatever the last spawn attempt produced.
+        ///
+        /// Persisted with the run, so a resume continues the same hunt rather than sending the
+        /// player somewhere new.
+        /// </summary>
+        private Vector3? _heraldTarget;
 
         /// <summary>
         /// Resolved once per run: the first lightning prefab that exists, or null when none do.
@@ -92,8 +113,16 @@ namespace ICanShowYouTheWorld.RunMode
         public void Reset()
         {
             _herald = ZDOID.None;
+            _heraldTarget = null;
             _lightning = null;
             _lightningResolved = false;
+        }
+
+        /// <summary>The remembered hunting ground, for the save. Null when no hunt is under way.</summary>
+        public Vector3? HeraldTarget
+        {
+            get => _heraldTarget;
+            set => _heraldTarget = value;
         }
 
         /// <summary>
@@ -139,8 +168,7 @@ namespace ICanShowYouTheWorld.RunMode
         /// True when the Herald is alive somewhere in the world — including in an unloaded zone,
         /// which is why this asks the ZDO rather than looking for a GameObject.
         /// </summary>
-        public bool HeraldAlive =>
-            _herald != ZDOID.None && ZDOMan.instance != null && ZDOMan.instance.GetZDO(_herald) != null;
+        public bool HeraldAlive => HeraldPosition() != null;
 
         /// <summary>
         /// Places the Herald near the player, if one is not already out. Returns true when it spawned.
@@ -153,6 +181,15 @@ namespace ICanShowYouTheWorld.RunMode
         {
             if (player == null || HeraldAlive) return false;
 
+            Vector3 target = EnsureHeraldTarget(player);
+
+            // The Herald is only CREATED once the player is close enough that it can actually live
+            // there. Spawning it at the far target put it outside the loaded area, where its object
+            // was culled and its non-persistent ZDO released — and since the poll respawns whenever
+            // nothing is standing, that produced a fresh Herald at a fresh random spot every second.
+            // Remembering the ground and materialising on approach removes the loop entirely.
+            if (Vector3.Distance(player.transform.position, target) > HeraldSpawnRange) return false;
+
             var scene = ZNetScene.instance;
             var prefab = scene == null ? null : scene.GetPrefab(DeerPrefab);
             if (prefab == null)
@@ -161,16 +198,9 @@ namespace ICanShowYouTheWorld.RunMode
                 return false;
             }
 
-            // A ring around the player rather than straight ahead, so it is not always in the same
-            // place relative to where they happen to be facing.
-            float angle = (float)(_rng.NextDouble() * Math.PI * 2.0);
-            float distance = HeraldMinDistance +
-                             (float)_rng.NextDouble() * (HeraldMaxDistance - HeraldMinDistance);
-            Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * distance;
-            Vector3 pos = player.transform.position + offset;
-
+            Vector3 pos = target;
             try { pos.y = ZoneSystem.instance.GetSolidHeight(pos) + 0.5f; }
-            catch { /* Keep the player's own height if the ground cannot be sampled. */ }
+            catch { /* Keep the sampled height if the ground cannot be read. */ }
 
             var inst = UnityEngine.Object.Instantiate(prefab, pos, Quaternion.identity);
             if (inst == null) return false;
@@ -196,6 +226,34 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
+        /// The hunting ground, chosen once and then fixed for the rest of the hunt.
+        ///
+        /// Fixed is the point: the bearing has to keep pointing at the same place, or a player
+        /// walking toward it would be redirected every time they got close. A ring around the
+        /// player rather than straight ahead, so it is not always where they happen to be facing.
+        /// </summary>
+        private Vector3 EnsureHeraldTarget(Player player)
+        {
+            if (_heraldTarget.HasValue) return _heraldTarget.Value;
+
+            float angle = (float)(_rng.NextDouble() * Math.PI * 2.0);
+            float distance = HeraldMinDistance +
+                             (float)_rng.NextDouble() * (HeraldMaxDistance - HeraldMinDistance);
+
+            Vector3 target = player.transform.position +
+                             new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * distance;
+
+            try { target.y = ZoneSystem.instance.GetSolidHeight(target) + 0.5f; }
+            catch { /* Height is refined at spawn time anyway. */ }
+
+            _heraldTarget = target;
+            return target;
+        }
+
+        /// <summary>Forgets the hunting ground. Called when the Herald dies, so a later hunt picks fresh.</summary>
+        private void ClearHeraldTarget() => _heraldTarget = null;
+
+        /// <summary>
         /// Answers what a death means to the herd.
         ///
         /// Returns the synthetic <see cref="HeraldKillName"/> when the Herald itself died — matched
@@ -207,7 +265,11 @@ namespace ICanShowYouTheWorld.RunMode
             if (c == null) return null;
 
             bool wasHerald = IsHerald(c);
-            if (wasHerald) _herald = ZDOID.None;
+            if (wasHerald)
+            {
+                _herald = ZDOID.None;
+                ClearHeraldTarget();
+            }
 
             if (PrefabNameOf(c) != DeerPrefab) return null;
 
@@ -230,20 +292,33 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         public string HeraldBearing(Player player)
         {
-            if (player == null || _herald == ZDOID.None) return null;
+            if (player == null) return null;
+
+            // The LIVE creature when one exists, the remembered ground otherwise. That fallback is
+            // the point: the Herald only exists once the player is near, so for most of the hunt
+            // there is nothing to track — and a bearing that vanished for the entire approach was
+            // exactly the "sometimes I get hints" that made this unfindable.
+            Vector3? position = HeraldPosition() ?? _heraldTarget;
+            if (position == null) return null;
+
+            Vector3 delta = position.Value - player.transform.position;
+            delta.y = 0f;
+
+            float distance = delta.magnitude;
+            if (distance < 1f) return null;
+
+            return $"{Compass(delta)}, {Mathf.Round(distance / 10f) * 10f:0}m";
+        }
+
+        /// <summary>Where the live Herald is, or null when none is loaded.</summary>
+        private Vector3? HeraldPosition()
+        {
+            if (_herald == ZDOID.None) return null;
 
             try
             {
                 var zdo = ZDOMan.instance?.GetZDO(_herald);
-                if (zdo == null) return null;
-
-                Vector3 delta = zdo.GetPosition() - player.transform.position;
-                delta.y = 0f;
-
-                float distance = delta.magnitude;
-                if (distance < 1f) return null;
-
-                return $"{Compass(delta)}, {Mathf.Round(distance / 10f) * 10f:0}m";
+                return zdo?.GetPosition();
             }
             catch
             {

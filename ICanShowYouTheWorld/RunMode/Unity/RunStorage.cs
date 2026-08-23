@@ -147,6 +147,16 @@ namespace ICanShowYouTheWorld.RunMode
         public List<string> discoveredLocations;
 
         /// <summary>
+        /// The Herald's remembered hunting ground (alpha39), and whether one is set. Persisted so a
+        /// resume continues the SAME hunt — re-rolling it would send the player somewhere new after
+        /// they had already walked halfway to the old one.
+        /// </summary>
+        public bool heraldTargetSet;
+        public float heraldTargetX;
+        public float heraldTargetY;
+        public float heraldTargetZ;
+
+        /// <summary>
         /// The run's stash, as four parallel lists — prefab, count, quality, variant — in the same
         /// style as every other collection here, because Unity's JsonUtility cannot serialise a
         /// list of objects nested in a plain class without a wrapper per element.
