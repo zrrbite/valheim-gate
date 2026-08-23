@@ -62,6 +62,12 @@ namespace ICanShowYouTheWorld.Core
         float RunDeerGreylingChance { get; set; }
         float RunHomewardCooldownMinutes { get; set; }
         bool RunShowHomestead { get; set; }
+        float RunForestNoticeChance { get; set; }
+        int RunForestNoticeChops { get; set; }
+        int RunForestNoticeCount { get; set; }
+        int RunForestNoticeLevel { get; set; }
+        float RunFenRisenChance { get; set; }
+        int RunFenRisenLevel { get; set; }
         int RunDeerGreylingMin { get; set; }
         int RunDeerGreylingMax { get; set; }
         int RunDeerGreylingLevel { get; set; }
@@ -192,6 +198,19 @@ namespace ICanShowYouTheWorld.Core
         // quest tracks. The records are still kept either way, so switching this on shows the
         // full history rather than starting from nothing.
         [SerializeField] private bool runShowHomestead = false;
+
+        // Act II: the forest notices the axe. Every N chops, a chance that the Elder's children
+        // come to look. Tuned to be occasional rather than constant — an ambush every time is a
+        // tax on chopping, which is the lesson the contested deer kills already paid for.
+        [SerializeField] private float runForestNoticeChance = 0.35f;
+        [SerializeField] private int runForestNoticeChops = 25;
+        [SerializeField] private int runForestNoticeCount = 3;
+        [SerializeField] private int runForestNoticeLevel = 1;   // 2 = one star
+
+        // Act III: the swamp does not let go of its dead. Chance that something you kill rises
+        // as bone where it fell.
+        [SerializeField] private float runFenRisenChance = 0.25f;
+        [SerializeField] private int runFenRisenLevel = 1;
         [SerializeField] private int runDeerGreylingMin = 3;
         [SerializeField] private int runDeerGreylingMax = 5;
         [SerializeField] private int runDeerGreylingLevel = 2;
@@ -260,6 +279,12 @@ namespace ICanShowYouTheWorld.Core
         public float RunDeerGreylingChance { get => runDeerGreylingChance; set => runDeerGreylingChance = value; }
         public float RunHomewardCooldownMinutes { get => runHomewardCooldownMinutes; set => runHomewardCooldownMinutes = value; }
         public bool RunShowHomestead { get => runShowHomestead; set => runShowHomestead = value; }
+        public float RunForestNoticeChance { get => runForestNoticeChance; set => runForestNoticeChance = value; }
+        public int RunForestNoticeChops { get => runForestNoticeChops; set => runForestNoticeChops = value; }
+        public int RunForestNoticeCount { get => runForestNoticeCount; set => runForestNoticeCount = value; }
+        public int RunForestNoticeLevel { get => runForestNoticeLevel; set => runForestNoticeLevel = value; }
+        public float RunFenRisenChance { get => runFenRisenChance; set => runFenRisenChance = value; }
+        public int RunFenRisenLevel { get => runFenRisenLevel; set => runFenRisenLevel = value; }
         public int RunDeerGreylingMin { get => runDeerGreylingMin; set => runDeerGreylingMin = value; }
         public int RunDeerGreylingMax { get => runDeerGreylingMax; set => runDeerGreylingMax = value; }
         public int RunDeerGreylingLevel { get => runDeerGreylingLevel; set => runDeerGreylingLevel = value; }

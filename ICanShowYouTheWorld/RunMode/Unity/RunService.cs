@@ -150,6 +150,8 @@ namespace ICanShowYouTheWorld.RunMode
 
         /// <summary>Act I's deer: stars, the Herald, and what a kill draws. See <see cref="DeerHerd"/>.</summary>
         private DeerHerd _deer;
+        private ForestWatch _forest;
+        private FenWatch _fen;
 
         /// <summary>
         /// Creature names the questline reports that are NOT Valheim prefabs, and which the name
@@ -548,6 +550,8 @@ namespace ICanShowYouTheWorld.RunMode
                 _rngSeed = Environment.TickCount;
                 _rng = new Random(_rngSeed);
                 _deer = new DeerHerd(_cfg, _rng);
+                _forest = new ForestWatch(_cfg, _rng);
+                _fen = new FenWatch(_cfg, _rng);
 
                 BuildEngines(BuildChallengePool(), freshRun: true);
 
@@ -583,6 +587,8 @@ namespace ICanShowYouTheWorld.RunMode
                 _builtSeen.Clear();
                 _stash.Clear();
                 _deer.Reset();
+                _forest?.Reset();
+                _fen?.Reset();
                 _unbaselinedSeen.Clear();
                 _warnedUnbaselined.Clear();
                 _taskHealthReward = 0f;
@@ -1081,6 +1087,7 @@ namespace ICanShowYouTheWorld.RunMode
             PollDiscoveries();
             PollPlayerState();
             PollMeals();
+            PollForest();
             RefreshActPin();
         }
 
@@ -1367,6 +1374,26 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
+        /// Act II's atmosphere: the Black Forest notices the axe.
+        ///
+        /// Driven by the lifetime chop count rising, because the mod's only injected hook is
+        /// Character.OnDeath and a tree is not a character. See <see cref="ForestWatch"/>.
+        /// </summary>
+        private void PollForest()
+        {
+            if (_forest == null || !ActIsBlackForest) return;
+
+            var player = Player.m_localPlayer;
+            if (player == null) return;
+
+            float? chops = ReadPlayerStat("TreeChops");
+            if (chops == null) return;
+
+            try { _forest.OnChopped(player, chops.Value); }
+            catch (Exception ex) { LogOnce("forest-watch", ex); }
+        }
+
+        /// <summary>
         /// Reports plain facts about the player that the game keeps but never counts.
         ///
         /// Only "have you claimed a bed" so far, which is what makes a bed YOURS — building one and
@@ -1474,6 +1501,8 @@ namespace ICanShowYouTheWorld.RunMode
 
         /// <summary>True while the run is in Act I — the only act the herd applies to.</summary>
         private bool ActIsMeadows => _actIndex == 0;
+        private bool ActIsBlackForest => _actIndex == 1;
+        private bool ActIsSwamp => _actIndex == 2;
 
         /// <summary>Slow Burn's discount on heat GAINED. Losses are untouched — it slows the rise, not the fall.</summary>
         private const float SlowBurnGainMultiplier = 0.75f;
@@ -1776,6 +1805,9 @@ namespace ICanShowYouTheWorld.RunMode
                 // bronze nails, which is what makes it Act II work rather than Act I.
                 ["Cart"] = p => p.GetComponentInChildren<Vagon>(true) != null,
                 ["SignPost"] = p => p.GetComponentInChildren<Sign>(true) != null,
+                // Act III. The cartography table is the swamp's real tool: it is the act where the
+                // map stops being scenery and starts being how you get anywhere.
+                ["MapTable"] = p => p.GetComponentInChildren<MapTable>(true) != null,
             };
 
         /// <summary>
@@ -3387,6 +3419,15 @@ namespace ICanShowYouTheWorld.RunMode
                 try { _boonEffects.OnKill(); }
                 catch (Exception ex) { LogOnce("boon-on-kill", ex); }
 
+                if (_fen != null && ActIsSwamp)
+                {
+                    try
+                    {
+                        if (_fen.OnCharacterDied(c)) Message("The swamp does not let go of its dead.");
+                    }
+                    catch (Exception ex) { LogOnce("fen-watch", ex); }
+                }
+
                 if (_deer != null && ActIsMeadows)
                 {
                     string synthetic = _deer.OnCharacterDied(c);
@@ -4559,6 +4600,7 @@ namespace ICanShowYouTheWorld.RunMode
         public const string CraftTrackId = "craft";
         public const string HearthTrackId = "hearth";
         public const string ForgeTrackId = "forge";
+        public const string MarshTrackId = "marsh";
 
         /// <summary>
         /// Every track a saga can have, in DISPLAY order, with the label each shows.
@@ -4576,6 +4618,7 @@ namespace ICanShowYouTheWorld.RunMode
             (CraftTrackId,  "CRAFT"),
             (HearthTrackId, "HEARTH"),
             (ForgeTrackId,  "FORGE"),
+            (MarshTrackId,  "MARSH"),
         };
 
         /// <summary>
@@ -5080,7 +5123,7 @@ namespace ICanShowYouTheWorld.RunMode
                 //
                 // Measured on the stat the game keeps for setting that power, so it is the ACT of
                 // claiming that counts, not carrying the trophy around.
-                Id = "sw-power", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "SetGuardianPower",
+                Id = "sw-power", MainQuest = true, Track = MarshTrackId, Kind = ChallengeKind.StatDelta, Param = "SetGuardianPower",
                 Target = 1, Display = "Claim the Elder\u2019s power",
                 RewardText = "Provisions for the road", Hint = "Hang his trophy where you hung Eikthyr\u2019s. Faster felling, for the iron ahead.",
             },
@@ -5098,9 +5141,35 @@ namespace ICanShowYouTheWorld.RunMode
             new ChallengeDefinition
             {
                 // The mead this makes IS the Bonemass fight. Building it here is the hint.
-                Id = "sw-fermenter", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Fermenter",
+                Id = "sw-fermenter", MainQuest = true, Track = MarshTrackId, Kind = ChallengeKind.BuildPiece, Param = "Fermenter",
                 Target = 1, Display = "Build a fermenter", RewardText = "Honey and herbs for the mead",
                 Hint = "Honey from a beehive, and thistle from the forest floor.",
+            },
+            new ChallengeDefinition
+            {
+                // The swamp is the first act where the map matters more than the road: crypts and
+                // the altar are scattered, and the ground between them is the part that kills you.
+                Id = "sw-chart", MainQuest = true, Track = MarshTrackId, Kind = ChallengeKind.BuildPiece,
+                Param = "MapTable", Target = 1, Display = "Chart the marshes",
+                RewardText = "Bronze and bone for the work",
+                Hint = "A cartography table. Bronze, fine wood and bone fragments.",
+            },
+            new ChallengeDefinition
+            {
+                // A karve rather than a raft: the swamp's water is a road, and the act's spoils
+                // are heavy. Ship is a compiled component, so this covers raft, karve and longship
+                // alike — the quest is "you can travel by water now".
+                Id = "sw-karve", MainQuest = true, Track = MarshTrackId, Kind = ChallengeKind.BuildPiece,
+                Param = "Ship", Target = 1, Display = "Build a boat",
+                RewardText = "Iron nails, and a hold worth filling",
+                Hint = "At the water's edge, with a workbench nearby.",
+            },
+            new ChallengeDefinition
+            {
+                Id = "sw-sail", MainQuest = true, Track = MarshTrackId, Kind = ChallengeKind.StatDelta,
+                Param = "DistanceSail", Target = 600, Display = "Sail the fens",
+                RewardText = "A full hold of provisions",
+                Hint = "Follow the water inland. Most crypts sit on a shore.",
             },
             new ChallengeDefinition
             {
@@ -5403,6 +5472,9 @@ namespace ICanShowYouTheWorld.RunMode
                 ["sw-arrive"] = new[] { ("MeadPoisonResist", 5) },
                 ["sw-draugr"] = new[] { ("ArrowIron", 40), ("ShieldIronTower", 1) },
                 ["sw-fermenter"] = new[] { ("Honey", 20), ("Thistle", 20) },
+                ["sw-chart"] = new[] { ("Bronze", 10), ("BoneFragments", 20) },
+                ["sw-karve"] = new[] { ("IronNails", 40), ("Wood", 40) },
+                ["sw-sail"] = new[] { ("Sausages", 10), ("MeadHealthMedium", 3) },
                 ["sw-blob"] = new[] { ("WitheredBone", 3), ("MeadPoisonResist", 5) },
                 ["sw-iron"] = new[] { ("Iron", 30), ("Coal", 30) },
                 ["sw-leech"] = new[] { ("MaceIron", 1) },
