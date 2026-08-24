@@ -115,12 +115,17 @@ namespace ICanShowYouTheWorld.RunMode
 
             if (_target == null)
             {
-                float angle = (float)(_rng.NextDouble() * Math.PI * 2.0);
-                float distance = MinDistance + (float)(_rng.NextDouble() * (MaxDistance - MinDistance));
-                _target = here + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * distance;
+                // On land, and only on land. A random bearing at a random distance put this in the
+                // sea once already: "the marker for the light was in the water, I had to go out to
+                // trigger it." Nothing is placed until somewhere standable is found.
+                _target = BiomeCompass.LandNear(here, MinDistance, MaxDistance, _rng);
+                if (_target == null) return false;
             }
 
-            float toTarget = Vector3.Distance(here, _target.Value);
+            // Flat distance: the target carries its own ground height, and comparing a hilltop
+            // to a valley floor in 3D would report the player as further away than they are.
+            Vector3 flat = _target.Value; flat.y = here.y;
+            float toTarget = Vector3.Distance(here, flat);
 
             if (toTarget <= SpawnRange && !Alive) Spawn(_target.Value);
 

@@ -253,12 +253,27 @@ namespace ICanShowYouTheWorld.RunMode
         {
             if (_heraldTarget.HasValue) return _heraldTarget.Value;
 
-            float angle = (float)(_rng.NextDouble() * Math.PI * 2.0);
-            float distance = HeraldMinDistance +
-                             (float)_rng.NextDouble() * (HeraldMaxDistance - HeraldMinDistance);
+            // On land. The old version took a random bearing and a random distance and trusted
+            // it, which put the pale light in the sea on a coastal start and could just as easily
+            // have put the Herald there. A deer you can only reach by swimming is not a hunt.
+            Vector3? land = BiomeCompass.LandNear(
+                player.transform.position, HeraldMinDistance, HeraldMaxDistance, _rng);
 
-            Vector3 target = player.transform.position +
-                             new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * distance;
+            // Falling back to the old behaviour rather than refusing: on a world where no land is
+            // found in range — a small island — a hunt somewhere awkward beats no hunt at all.
+            Vector3 target;
+            if (land != null)
+            {
+                target = land.Value;
+            }
+            else
+            {
+                float angle = (float)(_rng.NextDouble() * Math.PI * 2.0);
+                float distance = HeraldMinDistance +
+                                 (float)_rng.NextDouble() * (HeraldMaxDistance - HeraldMinDistance);
+                target = player.transform.position +
+                         new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * distance;
+            }
 
             try { target.y = ZoneSystem.instance.GetSolidHeight(target) + 0.5f; }
             catch { /* Height is refined at spawn time anyway. */ }

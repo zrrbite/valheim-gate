@@ -79,6 +79,56 @@ namespace ICanShowYouTheWorld.RunMode
             return null;
         }
 
+        /// <summary>Valheim's sea level. Fixed at 30 in world units; everything below it is water.</summary>
+        public const float WaterLevel = 30f;
+
+        /// <summary>
+        /// Picks a point on DRY LAND at roughly the given range, or null if it cannot find one.
+        ///
+        /// Both of this mode's named quarries used to pick a random bearing and a random distance
+        /// and simply trust it. That put the pale light in the sea — "I had to go out to trigger
+        /// it" — and could equally have put the Herald there. A spawn point nobody can stand on is
+        /// not a destination.
+        ///
+        /// The returned point carries its own ground height, so callers place things ON the
+        /// terrain rather than at whatever altitude the player happened to be.
+        /// </summary>
+        public static Vector3? LandNear(Vector3 from, float minRange, float maxRange, System.Random rng, int tries = 24)
+        {
+            var world = WorldGenerator.instance;
+            if (world == null || rng == null) return null;
+
+            for (int i = 0; i < tries; i++)
+            {
+                float angle = (float)(rng.NextDouble() * System.Math.PI * 2.0);
+                float range = minRange + (float)(rng.NextDouble() * (maxRange - minRange));
+
+                var probe = new Vector3(
+                    from.x + Mathf.Sin(angle) * range,
+                    0f,
+                    from.z + Mathf.Cos(angle) * range);
+
+                try
+                {
+                    if (world.GetBiome(probe) == Heightmap.Biome.Ocean) continue;
+
+                    // Biome alone is not enough: lakes and inlets sit inside every land biome, and
+                    // the height is what actually says whether you could stand there.
+                    float ground = world.GetHeight(probe.x, probe.z);
+                    if (ground <= WaterLevel + 1f) continue;
+
+                    probe.y = ground;
+                    return probe;
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+
+            return null;
+        }
+
         /// <summary>
         /// What to call a biome in a sentence. Valheim's enum names are compressed
         /// ("BlackForest", "AshLands") and the saga's voice is not.
