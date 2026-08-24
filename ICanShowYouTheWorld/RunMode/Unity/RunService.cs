@@ -151,6 +151,8 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>Act I's deer: stars, the Herald, and what a kill draws. See <see cref="DeerHerd"/>.</summary>
         private DeerHerd _deer;
         private SpiritChase _spirit;
+        private StolenLights _lights;
+        private TheGatherer _gatherer;
         private ForestWatch _forest;
         private FenWatch _fen;
 
@@ -401,9 +403,71 @@ namespace ICanShowYouTheWorld.RunMode
                 t.Current != null && !t.Blocked &&
                 ((t.Current.Def.Kind == ChallengeKind.PlayerState &&
                   t.Current.Def.Param == SpiritChase.FoundMeasure) ||
+                 (t.Current.Def.Kind == ChallengeKind.PlayerEvent &&
+                  t.Current.Def.Param == StolenLights.TakenEvent) ||
                  (t.Current.Def.Kind == ChallengeKind.KillPrefab &&
                   (t.Current.Def.Param == DeerHerd.NightDeerKillName ||
                    t.Current.Def.Param == DeerHerd.HeraldKillName))));
+
+        /// <summary>
+        /// Sends the Gatherer in once its step is in play.
+        ///
+        /// Unlike the Herald there is no bearing and no search: it spawns beside the player, which
+        /// also means it can never be placed somewhere unloaded — the bug that made the Herald
+        /// unfindable for two versions.
+        /// </summary>
+        private void PollGatherer()
+        {
+            if (_gatherer == null || !ActIsMeadows || _challenges == null) return;
+
+            bool wanted = _challenges.Tracks.Any(t =>
+                t.Current != null && !t.Blocked &&
+                t.Current.Def.Kind == ChallengeKind.KillPrefab &&
+                t.Current.Def.Param == TheGatherer.KillName);
+
+            if (!wanted) return;
+
+            var player = Player.m_localPlayer;
+            if (player == null) return;
+
+            try
+            {
+                if (_gatherer.TryArrive(player, _lights?.Lost ?? 0))
+                {
+                    Announce("Something heavy is coming through the trees.");
+                    Message(_lights != null && _lights.Lost > 0
+                        ? $"{TheGatherer.Name} has followed your hunt all this time — fat on {_lights.Lost} lights you let go."
+                        : $"{TheGatherer.Name} has followed your hunt all this time, and taken nothing.");
+                }
+            }
+            catch (Exception ex) { LogOnce("gatherer", ex); }
+        }
+
+        /// <summary>
+        /// The race at the carcass. Reaching a light takes it back; letting it fade gives it to
+        /// the forest, which is the whole story of the act said in one line at the moment it
+        /// stings.
+        /// </summary>
+        private void PollLights()
+        {
+            if (_lights == null || !ActIsMeadows || _challenges == null) return;
+
+            var player = Player.m_localPlayer;
+            if (player == null) return;
+
+            try
+            {
+                int lost;
+                int taken = _lights.Tick(player, out lost);
+
+                for (int i = 0; i < taken; i++)
+                    _challenges.ReportEvent(ChallengeKind.PlayerEvent, StolenLights.TakenEvent);
+
+                if (taken > 0) Message("You take the light back.");
+                if (lost > 0) Message("The forest takes it.");
+            }
+            catch (Exception ex) { LogOnce("stolen-lights", ex); }
+        }
 
         private float _whisperAt;
 
@@ -532,6 +596,10 @@ namespace ICanShowYouTheWorld.RunMode
 
             return _bearingResult;
         }
+
+        /// <summary>The light race's scoreboard, for the HUD. Null outside a run.</summary>
+        public int LightsTaken => _active && _lights != null ? _lights.Taken : 0;
+        public int LightsLost => _active && _lights != null ? _lights.Lost : 0;
 
         public HearthRecords Records => _records;
 
@@ -668,6 +736,8 @@ namespace ICanShowYouTheWorld.RunMode
                 _rng = new Random(_rngSeed);
                 _deer = new DeerHerd(_cfg, _rng);
                 _spirit = new SpiritChase(_cfg, _rng);
+                _lights = new StolenLights(_cfg);
+                _gatherer = new TheGatherer(_cfg, _rng);
                 _forest = new ForestWatch(_cfg, _rng);
                 _fen = new FenWatch(_cfg, _rng);
 
@@ -706,6 +776,8 @@ namespace ICanShowYouTheWorld.RunMode
                 _stash.Clear();
                 _deer.Reset();
                 _spirit?.Reset();
+                _lights?.Reset();
+                _gatherer?.Reset();
                 _forest?.Reset();
                 _fen?.Reset();
                 _unbaselinedSeen.Clear();
@@ -1207,6 +1279,8 @@ namespace ICanShowYouTheWorld.RunMode
             PollPlayerState();
             PollMeals();
             PollSpirit();
+            PollLights();
+            PollGatherer();
             PollWhispers();
             PollForest();
             RefreshActPin();
@@ -3533,6 +3607,19 @@ namespace ICanShowYouTheWorld.RunMode
                 string prefabName = PrefabNameOf(c);
                 _challenges?.ReportKill(prefabName);
 
+                // Eikthyr's herd is being farmed, and a deer gives up its light where it falls.
+                // Only while the hunt is on, for the same reason the pack is: this is the story of
+                // the hunt, not a thing that follows the player around the act.
+                if (_lights != null && ActIsMeadows && prefabName == DeerHerd.DeerPrefab && IsNight && DeerHuntWanted)
+                {
+                    try
+                    {
+                        _lights.Release(c.transform.position);
+                        Message("Its light rises. Take it before they do.");
+                    }
+                    catch (Exception ex) { LogOnce("release-light", ex); }
+                }
+
                 // Eikthyr spawns darkness, so his hunt happens in it. Reported IN ADDITION to the
                 // plain name, so the random pool's daytime "Hunt 3 Deer" still counts while the
                 // questline's asks for the dark.
@@ -3554,6 +3641,16 @@ namespace ICanShowYouTheWorld.RunMode
                         if (_fen.OnCharacterDied(c)) Message("The swamp does not let go of its dead.");
                     }
                     catch (Exception ex) { LogOnce("fen-watch", ex); }
+                }
+
+                if (_gatherer != null && ActIsMeadows)
+                {
+                    string felled = _gatherer.OnCharacterDied(c);
+                    if (felled != null)
+                    {
+                        _challenges?.ReportKill(felled);
+                        Message($"{TheGatherer.Name} falls, and the lights it held go free.");
+                    }
                 }
 
                 if (_deer != null && ActIsMeadows)
@@ -3980,6 +4077,7 @@ namespace ICanShowYouTheWorld.RunMode
 
             _splitLabels.Clear();
             _splitTimes.Clear();
+            _lights?.Restore(s.lightsTaken, s.lightsLost);
             _records.Restore(s.recordIds, s.recordValues, s.recordDetails);
 
             if (s.splitLabels != null) _splitLabels.AddRange(s.splitLabels);
@@ -4164,6 +4262,8 @@ namespace ICanShowYouTheWorld.RunMode
                 elapsedSeconds = _elapsed,
                 heat = _heat.Heat,
                 defeatedBossKeys = _accountedBossKeys.ToList(),
+                lightsTaken = _lights?.Taken ?? 0,
+                lightsLost = _lights?.Lost ?? 0,
                 recordIds = _records.All.Select(r => r.Id).ToList(),
                 recordValues = _records.All.Select(r => r.Value).ToList(),
                 recordDetails = _records.All.Select(r => r.Detail).ToList(),
@@ -5051,15 +5151,21 @@ namespace ICanShowYouTheWorld.RunMode
                 Id = "mq-spirit", MainQuest = true, Track = HuntTrackId, Kind = ChallengeKind.PlayerState,
                 Param = SpiritChase.FoundMeasure, Target = 1, Display = "Follow the pale light",
                 RewardText = "A torch that will not go out, and arrows",
-                Hint = "It keeps to the dark and it does not wait. Watch the horizon.",
+                Hint = "One light the forest never found. It keeps to the dark and does not wait.",
             },
             new ChallengeDefinition
             {
-                // Eikthyr spawns darkness. The whole act's hunt happens in it, which makes three
-                // deer a real ask rather than an errand — and every one of them draws the forest.
-                Id = "mq-deer", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = DeerHerd.NightDeerKillName,
-                Target = 3, Display = "Hunt 3 Deer by night", RewardText = "Deer trophies — Eikthyr's summons",
-                Hint = "Only kills after dark count. Bring a torch and something to run from.",
+                // The act's centre. Killing the deer is the easy half: every one gives up a light
+                // where it falls, the forest sends its children for it, and the light burns for
+                // half a minute. Take it back or they do.
+                //
+                // Measured on lights TAKEN rather than deer killed, so the step is the race rather
+                // than the kill — and lights only rise after dark, which keeps the whole hunt
+                // nocturnal without a second rule to explain.
+                Id = "mq-deer", MainQuest = true, Kind = ChallengeKind.PlayerEvent, Param = StolenLights.TakenEvent,
+                Target = 5, Display = "Take back their light (5)",
+                RewardText = "Deer trophies — Eikthyr's summons",
+                Hint = "Hunt after dark. When a deer falls, RUN TO THE LIGHT before it fades.",
             },
             new ChallengeDefinition
             {
@@ -5072,10 +5178,24 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
+                // The answer to "why are there always greydwarves". Everything they carried off
+                // went somewhere, and when the Herald falls it stops waiting and comes for you.
+                //
+                // No bearing and no search: it spawns beside the player, which is the opposite of
+                // the Herald on purpose — one act, two named creatures, one you must find and one
+                // that finds you. It also cannot be placed somewhere unloaded, which is the bug
+                // that made the Herald unfindable for two versions.
+                Id = "mq-gatherer", MainQuest = true, Track = HuntTrackId, Kind = ChallengeKind.KillPrefab,
+                Param = TheGatherer.KillName, Target = 1, Display = "Kill the Gatherer",
+                RewardText = "Every light it was holding, and the way to the altar",
+                Hint = "It is fat on what the forest took. It will find you.",
+            },
+            new ChallengeDefinition
+            {
                 Id = "mq-find", MainQuest = true, Track = HuntTrackId, Kind = ChallengeKind.DiscoverLocation,
                 Param = "Eikthyrnir",
                 Target = 1, Display = "Find Eikthyr's altar", RewardText = "Eikthyr's summoning stones await",
-                Hint = "Two standing stones in the meadows, ringed with runes. Look for open ground.",
+                Hint = "The freed lights drift toward it. Two standing stones, ringed with runes.",
             },
             new ChallengeDefinition
             {
@@ -5568,6 +5688,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // the run gates on the FIGHT, never on drop luck.
                 ["mq-deer"] = new[] { ("TrophyDeer", 2), ("DeerHide", 5) },
                 ["mq-spirit"] = new[] { ("Torch", 2), ("ArrowFlint", 40) },
+                ["mq-gatherer"] = new[] { ("TrophyDeer", 2), ("ArrowFlint", 60), ("CookedMeat", 10) },
                 ["mq-herald"] = new[] { ("BowFineWood", 1), ("TrophyDeer", 2), ("ArrowFlint", 40) },
 
                 // The discovery steps. Each pays what its boss fight actually WANTS, which is the

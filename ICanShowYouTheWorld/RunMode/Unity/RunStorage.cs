@@ -23,6 +23,10 @@ namespace ICanShowYouTheWorld.RunMode
         public List<float> splitTimes;
 
         // Homestead records: the run's superlatives, saved alongside the splits they sit beside.
+        // Act I's light race: what you took back, and what the forest got.
+        public int lightsTaken;
+        public int lightsLost;
+
         public List<string> recordIds;
         public List<float> recordValues;
         public List<string> recordDetails;

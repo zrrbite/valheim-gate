@@ -1047,6 +1047,17 @@ namespace ICanShowYouTheWorld.RunMode
                 return;
             }
 
+            // Act I's light race, on the step that IS the race. Both halves, because a race you
+            // cannot see the other side of is not a race — and the number the forest has is the
+            // number the Gatherer arrives with.
+            if (quest.Def.Kind == ChallengeKind.PlayerEvent && quest.Def.Param == StolenLights.TakenEvent)
+            {
+                GUI.contentColor = RunTheme.TextMuted;
+                GUILayout.Label($"     you {Service?.LightsTaken ?? 0}   \u2014   the forest {Service?.LightsLost ?? 0}",
+                    RunTheme.Small);
+                GUI.contentColor = Color.white;
+            }
+
 
             // What the step actually NEEDS, for the steps where that is not obvious. Written after
             // two play sessions lost time to exactly this — a smelter wanting surtling cores, a

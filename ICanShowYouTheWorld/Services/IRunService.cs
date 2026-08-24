@@ -26,6 +26,8 @@ namespace ICanShowYouTheWorld.Services
 
         /// <summary>Boss splits recorded this run, formatted as "Eikthyr  12:34".</summary>
         IReadOnlyList<string> Splits { get; }
+        int LightsTaken { get; }
+        int LightsLost { get; }
         HearthRecords Records { get; }
 
         /// <summary>Challenge engine for the current run; null when inactive.</summary>

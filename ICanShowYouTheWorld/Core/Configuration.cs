@@ -73,6 +73,10 @@ namespace ICanShowYouTheWorld.Core
         int RunDeerGreylingLevel { get; set; }
         float RunDeerGreydwarfChance { get; set; }
         float RunWhisperSeconds { get; set; }
+        float RunLightFadeSeconds { get; set; }
+        float RunLightReachRadius { get; set; }
+        int RunGathererLevel { get; set; }
+        float RunGathererGrowthPerLight { get; set; }
         bool RunDeerLightning { get; set; }
         float RunHeatEnemyDamageWeight { get; set; }
         float RunHeatEnemyLevelUpWeight { get; set; }
@@ -223,6 +227,16 @@ namespace ICanShowYouTheWorld.Core
         // How often the act whispers while a dark step is in play. Rare on purpose: a line
         // every few seconds stops being unsettling and becomes chatter.
         [SerializeField] private float runWhisperSeconds = 90f;
+        // How long a deer's light burns before the forest takes it, and how close you must
+        // get. Short enough that the greydwarves genuinely matter, long enough that a fight
+        // at the carcass is winnable first.
+        [SerializeField] private float runLightFadeSeconds = 30f;
+        [SerializeField] private float runLightReachRadius = 4f;
+        // The Gatherer: 3 is two stars, which is the heaviest thing Act I ever puts in front
+        // of a player. It arrives after the Herald, by which point they are armoured.
+        [SerializeField] private int runGathererLevel = 3;
+        // Extra health per light the forest got away with. The fight IS the scoreboard.
+        [SerializeField] private float runGathererGrowthPerLight = 0.15f;
         [SerializeField] private bool runDeerLightning = true;
         [SerializeField] private float runHeatEnemyDamageWeight = 0.05f;
         [SerializeField] private float runHeatEnemyLevelUpWeight = 0.05f;
@@ -299,6 +313,10 @@ namespace ICanShowYouTheWorld.Core
         public int RunDeerGreylingLevel { get => runDeerGreylingLevel; set => runDeerGreylingLevel = value; }
         public float RunDeerGreydwarfChance { get => runDeerGreydwarfChance; set => runDeerGreydwarfChance = value; }
         public float RunWhisperSeconds { get => runWhisperSeconds; set => runWhisperSeconds = value; }
+        public float RunLightFadeSeconds { get => runLightFadeSeconds; set => runLightFadeSeconds = value; }
+        public float RunLightReachRadius { get => runLightReachRadius; set => runLightReachRadius = value; }
+        public int RunGathererLevel { get => runGathererLevel; set => runGathererLevel = value; }
+        public float RunGathererGrowthPerLight { get => runGathererGrowthPerLight; set => runGathererGrowthPerLight = value; }
         public bool RunDeerLightning { get => runDeerLightning; set => runDeerLightning = value; }
         public float RunHeatEnemyDamageWeight { get => runHeatEnemyDamageWeight; set => runHeatEnemyDamageWeight = value; }
         public float RunHeatEnemyLevelUpWeight { get => runHeatEnemyLevelUpWeight; set => runHeatEnemyLevelUpWeight = value; }
