@@ -128,3 +128,20 @@ EOF
 
 green "Release built: Release/$NAME.zip"
 info "$(du -h "$OUT_DIR/$NAME.zip" | cut -f1) — hand this to a tester as-is."
+
+# ---- 4. The zip is not the only way people install --------------------------
+#
+# Staging above may have changed dist/windows/patcher/ICanShowYouTheWorld.dll. The ZIP is built
+# from the staged files so it is always correct — but the Windows box installs by `git pull`, and
+# an uncommitted staging leaves that path one release behind while this script reports success.
+#
+# That happened on alpha62: the zip was right, the repo was not, and the installer's own staleness
+# guard is what caught it. Correct is not the same as shipped.
+if [[ -n "$(git status --porcelain dist/windows)" ]]; then
+    echo
+    printf '\033[0;33m!\033[0m %s\n' "dist/windows changed and is NOT committed."
+    printf '\033[0;33m!\033[0m %s\n' "The zip is correct, but a 'git pull' install would still get the old build."
+    info "Fix with:  git add dist/windows && git commit -m 'chore: stage $TAG for windows' && git push"
+    exit 2
+fi
+green "dist/windows is committed — git-pull installs will get $TAG"
