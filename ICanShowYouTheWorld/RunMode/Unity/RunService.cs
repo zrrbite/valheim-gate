@@ -512,7 +512,15 @@ namespace ICanShowYouTheWorld.RunMode
 
         private float _whisperAt;
 
-        /// <summary>Lines for the wait, and lines for the hunt. Flavour that carries a rule.</summary>
+        /// <summary>
+        /// Lines for the wait, and lines for the hunt.
+        ///
+        /// NONE of them may contain a direction or a place. "Something moves between the trees"
+        /// sent a player looking through the trees, because that is what it says — atmosphere that
+        /// sounds like a hint is worse than no atmosphere at all. These carry mood and a rule
+        /// (wait for dark); the bearing and the bar carry position, and they are the only things
+        /// that do.
+        /// </summary>
         private static readonly string[] DaylightWhispers =
         {
             "The meadows are bright and empty. Whatever you want is asleep.",
@@ -523,11 +531,11 @@ namespace ICanShowYouTheWorld.RunMode
 
         private static readonly string[] NightWhispers =
         {
-            "Something moves between the trees.",
             "The dark is awake.",
             "You are not the only thing hunting tonight.",
-            "Antlers, somewhere out past the firelight.",
             "The forest is counting.",
+            "Something is owed, and it is being collected.",
+            "They are quicker than you in the dark.",
         };
 
         /// <summary>
@@ -542,6 +550,16 @@ namespace ICanShowYouTheWorld.RunMode
             if (Time.time < _whisperAt) return;
 
             _whisperAt = Time.time + Mathf.Max(30f, _cfg.RunWhisperSeconds);
+
+            // When a light is actually being chased, the whisper carries the distance band rather
+            // than a random mood. Atmosphere that looks like information and is not is worse than
+            // silence — it was read as a proximity hint, because that is what it sounds like.
+            if (IsNight && _spirit != null && !_spirit.Found)
+            {
+                var player = Player.m_localPlayer;
+                string rumour = player == null ? null : _spirit.Bearing(player);
+                if (!string.IsNullOrEmpty(rumour)) { Message(rumour); return; }
+            }
 
             var lines = IsNight ? NightWhispers : DaylightWhispers;
             Message(lines[_rng.Next(lines.Length)]);
@@ -641,6 +659,39 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>The light race's scoreboard, for the HUD. Null outside a run.</summary>
         public int LightsTaken => _active && _lights != null ? _lights.Taken : 0;
         public int LightsLost => _active && _lights != null ? _lights.Lost : 0;
+
+        /// <summary>
+        /// How close the pale light is, 0 (far) to 1 (on top of it), or -1 when nothing is being
+        /// chased. Drawn as a bar, because the rumour text is deliberately vague and vague prose
+        /// cannot tell warm from cold.
+        /// </summary>
+        public float SpiritCloseness
+        {
+            get
+            {
+                if (!_active || _spirit == null || !ActIsMeadows || _spirit.Found) return -1f;
+
+                var player = Player.m_localPlayer;
+                if (player == null) return -1f;
+
+                float d = _spirit.DistanceFrom(player);
+                return d < 0f ? -1f : 1f - Mathf.Clamp01(d / SpiritChase.Reach);
+            }
+        }
+
+        /// <summary>Fraction of burn time left on the most urgent light, or -1 when none burns.</summary>
+        public float LightUrgency
+        {
+            get
+            {
+                if (!_active || _lights == null || _lights.Burning == 0) return -1f;
+
+                float span = Mathf.Max(1f, _cfg.RunLightFadeSeconds);
+                return Mathf.Clamp01(_lights.Soonest / span);
+            }
+        }
+
+        public int LightsBurning => _active && _lights != null ? _lights.Burning : 0;
 
         public HearthRecords Records => _records;
 

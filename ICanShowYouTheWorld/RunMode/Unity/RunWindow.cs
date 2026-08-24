@@ -746,6 +746,42 @@ namespace ICanShowYouTheWorld.RunMode
                 lineY += 20f;
             }
 
+            // A BAR under the rumour, because the rumour is deliberately vague and vague prose
+            // cannot tell warm from cold. Owner, having chased the light: "not sure how close I
+            // was" — after reading atmosphere lines that sound like hints and carry nothing.
+            //
+            // Two things can want it, never both: the light burning down at a carcass is always
+            // the more urgent, so it wins.
+            float urgency = run.LightUrgency;
+            float closeness = run.SpiritCloseness;
+
+            if (urgency >= 0f || closeness >= 0f)
+            {
+                bool racing = urgency >= 0f;
+                float fill = racing ? urgency : closeness;
+
+                // Red as a light burns out, gold as you close on one. The colour says which
+                // question the bar is answering without a label.
+                Color tint = racing
+                    ? Color.Lerp(RunTheme.HeatRed, RunTheme.AccentGold, urgency)
+                    : Color.Lerp(RunTheme.AccentGold, RunTheme.CompleteGreen, closeness);
+
+                const float BarWidth = 160f;
+                var bar = new Rect(rect.x + (StripWidth - BarWidth) * 0.5f, lineY + 2f, BarWidth, 6f);
+                RunTheme.Bar(bar, Mathf.Clamp01(fill), tint);
+
+                lineY += 12f;
+
+                if (racing && run.LightsBurning > 1)
+                {
+                    GUI.contentColor = RunTheme.TextMuted;
+                    GUI.Label(new Rect(rect.x - 100f, lineY, StripWidth + 200f, 18f),
+                        $"{run.LightsBurning} lights burning", _noticeStyle);
+                    GUI.contentColor = Color.white;
+                    lineY += 18f;
+                }
+            }
+
             string notice = _concrete?.HudNotice;
             if (!string.IsNullOrEmpty(notice))
             {

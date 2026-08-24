@@ -52,6 +52,29 @@ namespace ICanShowYouTheWorld.RunMode
 
         public bool Found => _found;
 
+        /// <summary>
+        /// Metres to the light, or -1 when there is nothing to be far from.
+        ///
+        /// The BEARING is deliberately vague — a rumour, not a readout — but the player still has
+        /// to be able to tell warm from cold, and prose alone could not do it: "antlers somewhere
+        /// out past the firelight" reads like a hint and carries nothing. This is what the bar
+        /// draws.
+        /// </summary>
+        public float DistanceFrom(Player player)
+        {
+            if (player == null || _found) return -1f;
+
+            Vector3? at = Position() ?? _target;
+            if (at == null) return -1f;
+
+            Vector3 delta = at.Value - player.transform.position;
+            delta.y = 0f;
+            return delta.magnitude;
+        }
+
+        /// <summary>The furthest it is ever placed, so closeness has a fixed scale to fill.</summary>
+        public const float Reach = MaxDistance;
+
         public void Reset()
         {
             _target = null;
