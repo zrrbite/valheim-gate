@@ -150,6 +150,7 @@ namespace ICanShowYouTheWorld.RunMode
 
         /// <summary>Act I's deer: stars, the Herald, and what a kill draws. See <see cref="DeerHerd"/>.</summary>
         private DeerHerd _deer;
+        private SpiritChase _spirit;
         private ForestWatch _forest;
         private FenWatch _fen;
 
@@ -324,6 +325,12 @@ namespace ICanShowYouTheWorld.RunMode
                 var player = Player.m_localPlayer;
                 if (player == null) return null;
 
+                if (_spirit != null && ActIsMeadows && !_spirit.Found)
+                {
+                    string rumour = _spirit.Bearing(player);
+                    if (!string.IsNullOrEmpty(rumour)) return rumour;
+                }
+
                 if (_deer != null && ActIsMeadows && HeraldWanted)
                 {
                     string herald = _deer.HeraldBearing(player);
@@ -333,6 +340,56 @@ namespace ICanShowYouTheWorld.RunMode
                 return BiomeBearing(player);
             }
         }
+
+        /// <summary>Whether the world is in night. Static on EnvMan; false when it is not loaded.</summary>
+        private static bool IsNight
+        {
+            get
+            {
+                try { return EnvMan.IsNight(); }
+                catch { return false; }
+            }
+        }
+
+        /// <summary>
+        /// Act I's opening mystery: a light that knows where Eikthyr is.
+        ///
+        /// Ticked only while its step is the one in play, so nothing drifts about the meadows
+        /// before the saga has asked for it or after it has been found.
+        /// </summary>
+        private void PollSpirit()
+        {
+            if (_spirit == null || !ActIsMeadows || _challenges == null) return;
+
+            bool wanted = _challenges.Tracks.Any(t =>
+                t.Current != null && !t.Blocked &&
+                t.Current.Def.Kind == ChallengeKind.PlayerState &&
+                t.Current.Def.Param == SpiritChase.FoundMeasure);
+
+            if (!wanted) return;
+
+            var player = Player.m_localPlayer;
+            if (player == null) return;
+
+            try
+            {
+                if (_spirit.Tick(player))
+                    Message("The light goes out. You know where to go.");
+
+                if (_spirit.Found)
+                    _challenges.ReportMeasure(ChallengeKind.PlayerState, SpiritChase.FoundMeasure, 1f);
+            }
+            catch (Exception ex) { LogOnce("spirit-chase", ex); }
+        }
+
+        /// <summary>True while a deer-hunt step is the one in play, day or night.</summary>
+        private bool DeerHuntWanted =>
+            _challenges != null && _challenges.Tracks.Any(t =>
+                t.Current != null && !t.Blocked &&
+                t.Current.Def.Kind == ChallengeKind.KillPrefab &&
+                (t.Current.Def.Param == DeerHerd.DeerPrefab ||
+                 t.Current.Def.Param == DeerHerd.NightDeerKillName ||
+                 t.Current.Def.Param == DeerHerd.HeraldKillName));
 
         private bool HeraldWanted =>
             _challenges != null && _challenges.Tracks.Any(t =>
@@ -550,6 +607,7 @@ namespace ICanShowYouTheWorld.RunMode
                 _rngSeed = Environment.TickCount;
                 _rng = new Random(_rngSeed);
                 _deer = new DeerHerd(_cfg, _rng);
+                _spirit = new SpiritChase(_cfg, _rng);
                 _forest = new ForestWatch(_cfg, _rng);
                 _fen = new FenWatch(_cfg, _rng);
 
@@ -587,6 +645,7 @@ namespace ICanShowYouTheWorld.RunMode
                 _builtSeen.Clear();
                 _stash.Clear();
                 _deer.Reset();
+                _spirit?.Reset();
                 _forest?.Reset();
                 _fen?.Reset();
                 _unbaselinedSeen.Clear();
@@ -1087,6 +1146,7 @@ namespace ICanShowYouTheWorld.RunMode
             PollDiscoveries();
             PollPlayerState();
             PollMeals();
+            PollSpirit();
             PollForest();
             RefreshActPin();
         }
@@ -3409,7 +3469,14 @@ namespace ICanShowYouTheWorld.RunMode
 
                 if (c.IsPlayer() || c.IsTamed()) return;
 
-                _challenges?.ReportKill(PrefabNameOf(c));
+                string prefabName = PrefabNameOf(c);
+                _challenges?.ReportKill(prefabName);
+
+                // Eikthyr spawns darkness, so his hunt happens in it. Reported IN ADDITION to the
+                // plain name, so the random pool's daytime "Hunt 3 Deer" still counts while the
+                // questline's asks for the dark.
+                if (prefabName == DeerHerd.DeerPrefab && IsNight)
+                    _challenges?.ReportKill(DeerHerd.NightDeerKillName);
 
                 // The herd answers separately, and may hand back a synthetic name — the Herald's,
                 // which is matched by identity rather than by prefab so ordinary deer cannot
@@ -3430,6 +3497,12 @@ namespace ICanShowYouTheWorld.RunMode
 
                 if (_deer != null && ActIsMeadows)
                 {
+                    // Only while the hunt is the step in play. A pack every time you touch a deer
+                    // is atmosphere during the hunt and a tax on every other minute of the act —
+                    // and it is 100% now, so the gate is what keeps it from being punishing
+                    // (owner: "we should only spawn grey* IF the deer hunt quest is active").
+                    _deer.ContestEnabled = DeerHuntWanted;
+
                     string synthetic = _deer.OnCharacterDied(c);
                     if (synthetic != null)
                     {
@@ -4910,8 +4983,22 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
-                Id = "mq-deer", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Deer",
-                Target = 3, Display = "Hunt 3 Deer", RewardText = "Deer trophies — Eikthyr's summons",
+                // The act's opening mystery, before any deer. Something pale drifts at the edge of
+                // the meadows and it knows where Eikthyr is — reaching it, not killing it, is the
+                // point. The strip carries a rumour rather than a bearing: "far to the north-east"
+                // and nothing more, because a number turns a chase into a walk.
+                Id = "mq-spirit", MainQuest = true, Track = HuntTrackId, Kind = ChallengeKind.PlayerState,
+                Param = SpiritChase.FoundMeasure, Target = 1, Display = "Follow the pale light",
+                RewardText = "A torch that will not go out, and arrows",
+                Hint = "It keeps to the dark and it does not wait. Watch the horizon.",
+            },
+            new ChallengeDefinition
+            {
+                // Eikthyr spawns darkness. The whole act's hunt happens in it, which makes three
+                // deer a real ask rather than an errand — and every one of them draws the forest.
+                Id = "mq-deer", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = DeerHerd.NightDeerKillName,
+                Target = 3, Display = "Hunt 3 Deer by night", RewardText = "Deer trophies — Eikthyr's summons",
+                Hint = "Only kills after dark count. Bring a torch and something to run from.",
             },
             new ChallengeDefinition
             {
@@ -5419,6 +5506,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // hunt for an hour without seeing. Handing them over is the point of this step:
                 // the run gates on the FIGHT, never on drop luck.
                 ["mq-deer"] = new[] { ("TrophyDeer", 2), ("DeerHide", 5) },
+                ["mq-spirit"] = new[] { ("Torch", 2), ("ArrowFlint", 40) },
                 ["mq-herald"] = new[] { ("BowFineWood", 1), ("TrophyDeer", 2), ("ArrowFlint", 40) },
 
                 // The discovery steps. Each pays what its boss fight actually WANTS, which is the

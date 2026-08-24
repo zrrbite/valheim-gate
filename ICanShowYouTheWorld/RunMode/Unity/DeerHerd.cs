@@ -35,6 +35,17 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>What a deer death may summon. Meadows-appropriate: the forest, not the Black Forest.</summary>
         public const string ContestPrefab = "Greyling";
 
+        /// <summary>The heavier thing that sometimes comes with them.</summary>
+        public const string ContestElitePrefab = "Greydwarf";
+
+        /// <summary>
+        /// Reported instead of "Deer" when a deer dies AT NIGHT. Synthetic — no prefab is called
+        /// this — so a questline step can ask for something the game does not itself count.
+        ///
+        /// Eikthyr spawns darkness, so his hunt happens in it.
+        /// </summary>
+        public const string NightDeerKillName = "__night_deer";
+
         /// <summary>
         /// Reported to the challenge engine when the Herald dies, and matched by its questline step.
         ///
@@ -94,6 +105,12 @@ namespace ICanShowYouTheWorld.RunMode
         /// Persisted with the run, so a resume continues the same hunt rather than sending the
         /// player somewhere new.
         /// </summary>
+        /// <summary>
+        /// Whether a deer's death draws the forest. Set by the host each kill: the pack fires on
+        /// EVERY deer now, so it must only happen while the hunt is actually the step in play.
+        /// </summary>
+        public bool ContestEnabled = true;
+
         private Vector3? _heraldTarget;
 
         /// <summary>
@@ -346,7 +363,7 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         private void ContestTheKill(Vector3 position)
         {
-            if (_cfg.RunDeerGreylingChance <= 0f) return;
+            if (!ContestEnabled || _cfg.RunDeerGreylingChance <= 0f) return;
             if (_rng.NextDouble() > _cfg.RunDeerGreylingChance) return;
 
             var scene = ZNetScene.instance;
@@ -366,6 +383,10 @@ namespace ICanShowYouTheWorld.RunMode
             // Same convention as RunDeerStarLevel: 1 is plain, 2 is one star, 3 is two.
             int level = Mathf.Clamp(_cfg.RunDeerGreylingLevel, 1, 3);
 
+            // One in N packs is led by something worse than a greyling. The forest escalating is
+            // the point of hunting Eikthyr's deer at all.
+            bool elite = _rng.NextDouble() < _cfg.RunDeerGreydwarfChance;
+
             for (int i = 0; i < count; i++)
             {
                 float angle = (float)(_rng.NextDouble() * Math.PI * 2.0);
@@ -375,7 +396,9 @@ namespace ICanShowYouTheWorld.RunMode
                 float radius = 3f + (float)(_rng.NextDouble() * 4.0);
                 Vector3 pos = position + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
 
-                var inst = UnityEngine.Object.Instantiate(prefab, pos, Quaternion.identity);
+                var wanted = elite && i == 0 ? (scene.GetPrefab(ContestElitePrefab) ?? prefab) : prefab;
+
+                var inst = UnityEngine.Object.Instantiate(wanted, pos, Quaternion.identity);
                 if (inst == null) continue;
 
                 // Set immediately, while it is at full health: SetLevel recomputes max health from

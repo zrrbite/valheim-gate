@@ -71,6 +71,7 @@ namespace ICanShowYouTheWorld.Core
         int RunDeerGreylingMin { get; set; }
         int RunDeerGreylingMax { get; set; }
         int RunDeerGreylingLevel { get; set; }
+        float RunDeerGreydwarfChance { get; set; }
         bool RunDeerLightning { get; set; }
         float RunHeatEnemyDamageWeight { get; set; }
         float RunHeatEnemyLevelUpWeight { get; set; }
@@ -187,7 +188,9 @@ namespace ICanShowYouTheWorld.Core
         // killing one mean something.
         [SerializeField] private float runDeerStarChance = 0.5f;    // of unstarred deer met in Act I
         [SerializeField] private int runDeerStarLevel = 2;          // 2 = one star, 3 = two stars
-        [SerializeField] private float runDeerGreylingChance = 0.35f; // a kill draws the forest's attention
+        // ALWAYS, not sometimes: Eikthyr's deer are his, and killing one is noticed every
+        // time. It was a 35% chance until the hunt became the act's centrepiece.
+        [SerializeField] private float runDeerGreylingChance = 1.0f;
         // A pack, not a straggler: one greyling wandering up to the carcass reads as an
         // accident rather than the forest noticing. Starred to match — same convention as
         // runDeerStarLevel, where 2 is one star.
@@ -214,6 +217,8 @@ namespace ICanShowYouTheWorld.Core
         [SerializeField] private int runDeerGreylingMin = 3;
         [SerializeField] private int runDeerGreylingMax = 5;
         [SerializeField] private int runDeerGreylingLevel = 2;
+        // How often the pack is led by a greydwarf rather than being all greylings.
+        [SerializeField] private float runDeerGreydwarfChance = 0.35f;
         [SerializeField] private bool runDeerLightning = true;
         [SerializeField] private float runHeatEnemyDamageWeight = 0.05f;
         [SerializeField] private float runHeatEnemyLevelUpWeight = 0.05f;
@@ -288,6 +293,7 @@ namespace ICanShowYouTheWorld.Core
         public int RunDeerGreylingMin { get => runDeerGreylingMin; set => runDeerGreylingMin = value; }
         public int RunDeerGreylingMax { get => runDeerGreylingMax; set => runDeerGreylingMax = value; }
         public int RunDeerGreylingLevel { get => runDeerGreylingLevel; set => runDeerGreylingLevel = value; }
+        public float RunDeerGreydwarfChance { get => runDeerGreydwarfChance; set => runDeerGreydwarfChance = value; }
         public bool RunDeerLightning { get => runDeerLightning; set => runDeerLightning = value; }
         public float RunHeatEnemyDamageWeight { get => runHeatEnemyDamageWeight; set => runHeatEnemyDamageWeight = value; }
         public float RunHeatEnemyLevelUpWeight { get => runHeatEnemyLevelUpWeight; set => runHeatEnemyLevelUpWeight = value; }
