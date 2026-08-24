@@ -325,6 +325,12 @@ namespace ICanShowYouTheWorld.RunMode
                 var player = Player.m_localPlayer;
                 if (player == null) return null;
 
+                // Outranks every bearing: a direction is no use while the thing it points at
+                // cannot be caught, and "the hunt refuses to count" is the single most
+                // bug-looking thing this act can do.
+                if (ActIsMeadows && DarkStepWanted && !IsNight)
+                    return "Nothing you seek walks in the light. Wait for dark.";
+
                 if (_spirit != null && ActIsMeadows && !_spirit.Found)
                 {
                     string rumour = _spirit.Bearing(player);
@@ -380,6 +386,60 @@ namespace ICanShowYouTheWorld.RunMode
                     _challenges.ReportMeasure(ChallengeKind.PlayerState, SpiritChase.FoundMeasure, 1f);
             }
             catch (Exception ex) { LogOnce("spirit-chase", ex); }
+        }
+
+        /// <summary>
+        /// True while a step that only the DARK can finish is in play — the pale light, the night
+        /// hunt, the Herald.
+        ///
+        /// A player has no way to know a step is night-gated by reading it, and a hunt that
+        /// silently refuses to count is indistinguishable from a broken one. So the strip says so
+        /// outright and the whispers say it in the act's own voice.
+        /// </summary>
+        private bool DarkStepWanted =>
+            _challenges != null && _challenges.Tracks.Any(t =>
+                t.Current != null && !t.Blocked &&
+                ((t.Current.Def.Kind == ChallengeKind.PlayerState &&
+                  t.Current.Def.Param == SpiritChase.FoundMeasure) ||
+                 (t.Current.Def.Kind == ChallengeKind.KillPrefab &&
+                  (t.Current.Def.Param == DeerHerd.NightDeerKillName ||
+                   t.Current.Def.Param == DeerHerd.HeraldKillName))));
+
+        private float _whisperAt;
+
+        /// <summary>Lines for the wait, and lines for the hunt. Flavour that carries a rule.</summary>
+        private static readonly string[] DaylightWhispers =
+        {
+            "The meadows are bright and empty. Whatever you want is asleep.",
+            "Nothing answers in daylight.",
+            "The antlered one keeps his own hours.",
+            "You will find nothing until the sun is down.",
+        };
+
+        private static readonly string[] NightWhispers =
+        {
+            "Something moves between the trees.",
+            "The dark is awake.",
+            "You are not the only thing hunting tonight.",
+            "Antlers, somewhere out past the firelight.",
+            "The forest is counting.",
+        };
+
+        /// <summary>
+        /// Occasional atmosphere while a dark step is in play, day or night.
+        ///
+        /// Rare on purpose — roughly once a minute and a half. A line every few seconds stops
+        /// being unsettling and becomes chatter, and the strip is already carrying the rule.
+        /// </summary>
+        private void PollWhispers()
+        {
+            if (!ActIsMeadows || !DarkStepWanted) return;
+            if (Time.time < _whisperAt) return;
+
+            _whisperAt = Time.time + Mathf.Max(30f, _cfg.RunWhisperSeconds);
+
+            var lines = IsNight ? NightWhispers : DaylightWhispers;
+            Message(lines[_rng.Next(lines.Length)]);
         }
 
         /// <summary>True while a deer-hunt step is the one in play, day or night.</summary>
@@ -1147,6 +1207,7 @@ namespace ICanShowYouTheWorld.RunMode
             PollPlayerState();
             PollMeals();
             PollSpirit();
+            PollWhispers();
             PollForest();
             RefreshActPin();
         }

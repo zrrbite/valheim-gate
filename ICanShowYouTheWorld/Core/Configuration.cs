@@ -72,6 +72,7 @@ namespace ICanShowYouTheWorld.Core
         int RunDeerGreylingMax { get; set; }
         int RunDeerGreylingLevel { get; set; }
         float RunDeerGreydwarfChance { get; set; }
+        float RunWhisperSeconds { get; set; }
         bool RunDeerLightning { get; set; }
         float RunHeatEnemyDamageWeight { get; set; }
         float RunHeatEnemyLevelUpWeight { get; set; }
@@ -219,6 +220,9 @@ namespace ICanShowYouTheWorld.Core
         [SerializeField] private int runDeerGreylingLevel = 2;
         // How often the pack is led by a greydwarf rather than being all greylings.
         [SerializeField] private float runDeerGreydwarfChance = 0.35f;
+        // How often the act whispers while a dark step is in play. Rare on purpose: a line
+        // every few seconds stops being unsettling and becomes chatter.
+        [SerializeField] private float runWhisperSeconds = 90f;
         [SerializeField] private bool runDeerLightning = true;
         [SerializeField] private float runHeatEnemyDamageWeight = 0.05f;
         [SerializeField] private float runHeatEnemyLevelUpWeight = 0.05f;
@@ -294,6 +298,7 @@ namespace ICanShowYouTheWorld.Core
         public int RunDeerGreylingMax { get => runDeerGreylingMax; set => runDeerGreylingMax = value; }
         public int RunDeerGreylingLevel { get => runDeerGreylingLevel; set => runDeerGreylingLevel = value; }
         public float RunDeerGreydwarfChance { get => runDeerGreydwarfChance; set => runDeerGreydwarfChance = value; }
+        public float RunWhisperSeconds { get => runWhisperSeconds; set => runWhisperSeconds = value; }
         public bool RunDeerLightning { get => runDeerLightning; set => runDeerLightning = value; }
         public float RunHeatEnemyDamageWeight { get => runHeatEnemyDamageWeight; set => runHeatEnemyDamageWeight = value; }
         public float RunHeatEnemyLevelUpWeight { get => runHeatEnemyLevelUpWeight; set => runHeatEnemyLevelUpWeight = value; }
