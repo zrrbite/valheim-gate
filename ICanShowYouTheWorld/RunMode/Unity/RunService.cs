@@ -547,6 +547,29 @@ namespace ICanShowYouTheWorld.RunMode
         };
 
         /// <summary>
+        /// Builds every per-act system: the herd, the chase, the lights, the Gatherer, and the two
+        /// biome watchers.
+        ///
+        /// ONE method, called from both StartRun and the resume path. It was two lists, and the
+        /// resume one had only the herd — so a run continued after quitting had no pale light, no
+        /// deer lights, no Gatherer and no atmosphere in any act. All of them are null-guarded at
+        /// every call site, so nothing threw; the act simply went quiet, which is the worst way for
+        /// this to fail because it looks like a design choice.
+        ///
+        /// Anything added here must be reachable from a resume, or it only exists for players who
+        /// never close the game.
+        /// </summary>
+        private void BuildActSystems()
+        {
+            _deer = new DeerHerd(_cfg, _rng);
+            _spirit = new SpiritChase(_cfg, _rng);
+            _lights = new StolenLights(_cfg);
+            _gatherer = new TheGatherer(_cfg, _rng);
+            _forest = new ForestWatch(_cfg, _rng);
+            _fen = new FenWatch(_cfg, _rng);
+        }
+
+        /// <summary>
         /// Occasional atmosphere while a dark step is in play, day or night.
         ///
         /// Rare on purpose — roughly once a minute and a half. A line every few seconds stops
@@ -834,12 +857,7 @@ namespace ICanShowYouTheWorld.RunMode
 
                 _rngSeed = Environment.TickCount;
                 _rng = new Random(_rngSeed);
-                _deer = new DeerHerd(_cfg, _rng);
-                _spirit = new SpiritChase(_cfg, _rng);
-                _lights = new StolenLights(_cfg);
-                _gatherer = new TheGatherer(_cfg, _rng);
-                _forest = new ForestWatch(_cfg, _rng);
-                _fen = new FenWatch(_cfg, _rng);
+                BuildActSystems();
 
                 BuildEngines(BuildChallengePool(), freshRun: true);
 
@@ -4162,7 +4180,7 @@ namespace ICanShowYouTheWorld.RunMode
             _homewardCharges = Math.Max(0, s.homewardCharges);
 
             _rng = new Random(_rngSeed);
-            _deer = new DeerHerd(_cfg, _rng);
+            BuildActSystems();
 
             BuildEngines(BuildChallengePool(), freshRun: false);
 
