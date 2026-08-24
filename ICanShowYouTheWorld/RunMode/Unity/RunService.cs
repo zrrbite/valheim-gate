@@ -381,8 +381,16 @@ namespace ICanShowYouTheWorld.RunMode
 
             try
             {
+                bool wasVisible = _spirit.Spawned;
+
                 if (_spirit.Tick(player))
                     Message("The light goes out. You know where to go.");
+
+                // Said the moment it exists, so nobody walks into it unaware. It is placed at the
+                // edge of vision at night, which is atmospheric right up until you finish the step
+                // without ever noticing what you were walking toward.
+                if (!wasVisible && _spirit.Spawned)
+                    Announce("A pale light kindles ahead.");
 
                 if (_spirit.Found)
                     _challenges.ReportMeasure(ChallengeKind.PlayerState, SpiritChase.FoundMeasure, 1f);

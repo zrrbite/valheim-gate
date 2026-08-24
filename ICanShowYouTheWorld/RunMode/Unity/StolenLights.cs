@@ -99,6 +99,10 @@ namespace ICanShowYouTheWorld.RunMode
             var inst = UnityEngine.Object.Instantiate(prefab, at + Vector3.up * 1.2f, Quaternion.identity);
             if (inst == null) return;
 
+            // Same size bump as the chase light: these appear at night, mid-fight, with
+            // greydwarves arriving. Being findable at a glance is the whole mechanic.
+            inst.transform.localScale *= 1.6f;
+
             var view = inst.GetComponent<ZNetView>();
             var zdo = view != null && view.IsValid() ? view.GetZDO() : null;
             if (zdo == null)

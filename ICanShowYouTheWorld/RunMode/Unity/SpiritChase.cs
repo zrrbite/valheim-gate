@@ -53,6 +53,15 @@ namespace ICanShowYouTheWorld.RunMode
         public bool Found => _found;
 
         /// <summary>
+        /// True once it has actually been placed in the world, so the host can SAY so.
+        ///
+        /// "I was not sure I saw the light" is the failure this answers: a thing that appears
+        /// silently at the edge of vision, at night, is a thing you can finish the step without
+        /// ever having seen.
+        /// </summary>
+        public bool Spawned { get; private set; }
+
+        /// <summary>
         /// Metres to the light, or -1 when there is nothing to be far from.
         ///
         /// The BEARING is deliberately vague — a rumour, not a readout — but the player still has
@@ -80,6 +89,7 @@ namespace ICanShowYouTheWorld.RunMode
             _target = null;
             _spirit = ZDOID.None;
             _found = false;
+            Spawned = false;
         }
 
         /// <summary>The remembered place, so a resume does not send the player somewhere new.</summary>
@@ -192,6 +202,15 @@ namespace ICanShowYouTheWorld.RunMode
             var inst = UnityEngine.Object.Instantiate(prefab, at + Vector3.up * 1.5f, Quaternion.identity);
             if (inst == null) return;
 
+            // WHICH prefab actually got used, once. There is no wisp in this build's assembly, so
+            // the chain almost certainly lands on Ghost — and "I was not sure I saw the light"
+            // could mean it looked wrong or that it never spawned. One line separates those.
+            Debug.Log($"[ICanShowYouTheWorld] The pale light is a '{chosen}'.");
+
+            // Half again as big as whatever it is. A Ghost at night against dark meadows is easy
+            // to walk past, and the whole step is walking toward it.
+            inst.transform.localScale *= 1.6f;
+
             var view = inst.GetComponent<ZNetView>();
             var zdo = view != null && view.IsValid() ? view.GetZDO() : null;
             if (zdo == null)
@@ -217,6 +236,8 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 try { ch.SetLevel(3); } catch { }
             }
+
+            Spawned = true;
         }
 
         private void Despawn()
