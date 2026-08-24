@@ -77,6 +77,7 @@ namespace ICanShowYouTheWorld.Core
         float RunLightReachRadius { get; set; }
         int RunGathererLevel { get; set; }
         float RunGathererGrowthPerLight { get; set; }
+        int RunLightForfeitLost { get; set; }
         bool RunDeerLightning { get; set; }
         float RunHeatEnemyDamageWeight { get; set; }
         float RunHeatEnemyLevelUpWeight { get; set; }
@@ -237,6 +238,9 @@ namespace ICanShowYouTheWorld.Core
         [SerializeField] private int runGathererLevel = 3;
         // Extra health per light the forest got away with. The fight IS the scoreboard.
         [SerializeField] private float runGathererGrowthPerLight = 0.15f;
+        // How many lights the forest may take before the hunt is forfeit. Set above the
+        // step's own target, so losing takes real carelessness rather than bad luck.
+        [SerializeField] private int runLightForfeitLost = 8;
         [SerializeField] private bool runDeerLightning = true;
         [SerializeField] private float runHeatEnemyDamageWeight = 0.05f;
         [SerializeField] private float runHeatEnemyLevelUpWeight = 0.05f;
@@ -317,6 +321,7 @@ namespace ICanShowYouTheWorld.Core
         public float RunLightReachRadius { get => runLightReachRadius; set => runLightReachRadius = value; }
         public int RunGathererLevel { get => runGathererLevel; set => runGathererLevel = value; }
         public float RunGathererGrowthPerLight { get => runGathererGrowthPerLight; set => runGathererGrowthPerLight = value; }
+        public int RunLightForfeitLost { get => runLightForfeitLost; set => runLightForfeitLost = value; }
         public bool RunDeerLightning { get => runDeerLightning; set => runDeerLightning = value; }
         public float RunHeatEnemyDamageWeight { get => runHeatEnemyDamageWeight; set => runHeatEnemyDamageWeight = value; }
         public float RunHeatEnemyLevelUpWeight { get => runHeatEnemyLevelUpWeight; set => runHeatEnemyLevelUpWeight = value; }

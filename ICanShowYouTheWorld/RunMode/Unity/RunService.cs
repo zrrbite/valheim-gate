@@ -410,6 +410,47 @@ namespace ICanShowYouTheWorld.RunMode
                    t.Current.Def.Param == DeerHerd.HeraldKillName))));
 
         /// <summary>
+        /// Steps whose reward has been forfeited. Completing one still ADVANCES the track — a
+        /// blocked track is the worst thing this design can do, and losing a race should cost the
+        /// prize, not the campaign.
+        /// </summary>
+        private readonly HashSet<string> _forfeited = new HashSet<string>();
+
+        /// <summary>
+        /// Ends the light race badly, if the forest has taken enough.
+        ///
+        /// The hunt completes anyway and pays NOTHING. What is lost is deer trophies — Eikthyr's
+        /// summoning items — so the run is not stuck, it is just doing the rest the hard way. That
+        /// is the whole shape of a good failure here: expensive, visible, and survivable (owner:
+        /// "just the step then, not the whole run. Maybe you just wont get the reward").
+        /// </summary>
+        private void PollLightForfeit()
+        {
+            if (_lights == null || _challenges == null || !ActIsMeadows) return;
+            if (_lights.Lost < Mathf.Max(1, _cfg.RunLightForfeitLost)) return;
+
+            var step = _challenges.Tracks
+                .Select(t => t.Current)
+                .FirstOrDefault(c => c != null &&
+                                     c.Def.Kind == ChallengeKind.PlayerEvent &&
+                                     c.Def.Param == StolenLights.TakenEvent);
+
+            if (step == null || _forfeited.Contains(step.Def.Id)) return;
+
+            _forfeited.Add(step.Def.Id);
+
+            Announce("The forest took more than you did.");
+            Message("The lights are gone, and the trophies with them. Hunt your own.");
+
+            // Advance by reporting the remainder. The completion path is the ordinary one, so
+            // nothing downstream needs to know this was a loss — except the reward grant, which
+            // checks the forfeit set.
+            int remaining = Mathf.CeilToInt(step.Def.Target - step.Progress);
+            for (int i = 0; i < remaining; i++)
+                _challenges.ReportEvent(ChallengeKind.PlayerEvent, StolenLights.TakenEvent);
+        }
+
+        /// <summary>
         /// Sends the Gatherer in once its step is in play.
         ///
         /// Unlike the Herald there is no bearing and no search: it spawns beside the player, which
@@ -1280,6 +1321,7 @@ namespace ICanShowYouTheWorld.RunMode
             PollMeals();
             PollSpirit();
             PollLights();
+            PollLightForfeit();
             PollGatherer();
             PollWhispers();
             PollForest();
@@ -3174,6 +3216,10 @@ namespace ICanShowYouTheWorld.RunMode
             GrantQuestSkills(def);
 
             if (def.Id == null) return;
+
+            // A race you lost pays nothing. The step still completed and the track still moved;
+            // only the prize is gone.
+            if (_forfeited.Contains(def.Id)) return;
 
             string boonId;
             if (QuestBoons.TryGetValue(def.Id, out boonId) && _boons != null)
@@ -5165,7 +5211,7 @@ namespace ICanShowYouTheWorld.RunMode
                 Id = "mq-deer", MainQuest = true, Kind = ChallengeKind.PlayerEvent, Param = StolenLights.TakenEvent,
                 Target = 5, Display = "Take back their light (5)",
                 RewardText = "Deer trophies — Eikthyr's summons",
-                Hint = "Hunt after dark. When a deer falls, RUN TO THE LIGHT before it fades.",
+                Hint = "Hunt after dark. When a deer falls, RUN TO THE LIGHT before it fades. Let the forest take eight and the trophies are lost.",
             },
             new ChallengeDefinition
             {
