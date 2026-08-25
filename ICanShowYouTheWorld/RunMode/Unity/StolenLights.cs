@@ -107,7 +107,14 @@ namespace ICanShowYouTheWorld.RunMode
         /// Lifted clear of the ground and offset slightly, so it does not spawn inside the corpse
         /// or the thing that killed it.
         /// </summary>
-        public void Release(Vector3 at)
+        public void Release(Vector3 at) => Release(at, 0f);
+
+        /// <summary>
+        /// As <see cref="Release(Vector3)"/>, with a fade override for lights that are FREED
+        /// rather than contested — the Gatherer's hoard should wait to be collected, not start a
+        /// second scramble over a corpse the player just fought for.
+        /// </summary>
+        public void Release(Vector3 at, float fadeSecondsOverride)
         {
             var scene = ZNetScene.instance;
             if (scene == null) return;
@@ -163,7 +170,7 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 Id = zdo.m_uid,
                 Where = at,
-                FadesAt = Time.time + Mathf.Max(5f, _cfg.RunLightFadeSeconds),
+                FadesAt = Time.time + Mathf.Max(5f, fadeSecondsOverride > 0f ? fadeSecondsOverride : _cfg.RunLightFadeSeconds),
                 Pickup = inst.AddComponent<LightPickup>(),
             });
         }

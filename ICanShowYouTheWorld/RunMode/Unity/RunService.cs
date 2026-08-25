@@ -4051,6 +4051,24 @@ namespace ICanShowYouTheWorld.RunMode
                     {
                         _challenges?.ReportKill(felled);
                         Message($"{TheGatherer.Name} falls, and the lights it held go free.");
+
+                        // And they actually DO. The line used to be the whole event — the hoard
+                        // "went free" in a message and nothing appeared in the world (owner: "he
+                        // dropped a lot of stuff, but no spirits"). One light per light the
+                        // forest took, within reason, and on a two-minute fade rather than the
+                        // race's thirty seconds: these are freed, not contested, and the player
+                        // just fought for them.
+                        if (_lights != null)
+                        {
+                            int freed = Mathf.Clamp(_lights.Lost, 2, 6);
+                            for (int i = 0; i < freed; i++)
+                            {
+                                float angle = i * Mathf.PI * 2f / freed;
+                                _lights.Release(
+                                    c.transform.position + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 2.5f,
+                                    120f);
+                            }
+                        }
                     }
                 }
 
@@ -5613,7 +5631,7 @@ namespace ICanShowYouTheWorld.RunMode
                 Id = "mq-find", MainQuest = true, Track = HuntTrackId, Kind = ChallengeKind.DiscoverLocation,
                 Param = "Eikthyrnir",
                 Target = 1, Display = "Find Eikthyr's altar", RewardText = "Eikthyr's summoning stones await",
-                Hint = "The freed lights drift toward it. Hang the trophies his own herd paid for, and call him down.",
+                Hint = "Two standing stones, ringed with runes. Hang the trophies his own herd paid for, and call him down.",
             },
             new ChallengeDefinition
             {
