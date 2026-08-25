@@ -4932,8 +4932,13 @@ namespace ICanShowYouTheWorld.RunMode
                 // a player where they were, which they could already see, and the act table is the
                 // one place the saga gets to say what an act is ABOUT before it happens.
                 //
-                // They also run as one arc: I asks who is taking the light, II answers where it
-                // goes, and V is the harvest that bookends the farming I opens with.
+                // They also run as one arc, and the arc is LIGHT: I asks who is taking it, II
+                // answers where it goes, and the finale bookends the theft the saga opens with.
+                //
+                // The saga is SEVEN acts — the five mainland bosses plus the Queen and Fader.
+                // Only five are built. V was called "The Last Harvest" while five was the whole
+                // story and read as a finale; it is a middle, so it takes the Plains' own image
+                // instead. See the act plans spec.
                 Id = "act1", Numeral = "I", Title = "The Stolen Light",
                 BossDefeatKey = "defeated_eikthyr", Tracks = Split(MainQuestChain()),
             },
@@ -4954,7 +4959,7 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ActDefinition
             {
-                Id = "act5", Numeral = "V", Title = "The Last Harvest",
+                Id = "act5", Numeral = "V", Title = "The Golden Ruin",
                 BossDefeatKey = "defeated_goblinking", Tracks = Split(PlainsChain()),
             },
         };
