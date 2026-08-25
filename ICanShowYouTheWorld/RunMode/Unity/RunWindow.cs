@@ -1016,7 +1016,7 @@ namespace ICanShowYouTheWorld.RunMode
             if (run.DevMode)
             {
                 GUI.contentColor = RunTheme.HeatRed;
-                GUILayout.Label("DEV MODE  +complete  -time  *items  .light", RunTheme.Small);
+                GUILayout.Label("DEV MODE  +complete  -time  *items  .light  /god", RunTheme.Small);
                 GUI.contentColor = Color.white;
             }
 

@@ -1220,6 +1220,18 @@ namespace ICanShowYouTheWorld.RunMode
         };
 
         /// <summary>
+        /// The fighter's half of the dev kit. Leather-tier on purpose: god mode is what makes the
+        /// tester unkillable, so the gear only needs to LOOK right in the hand — and every name
+        /// here is already in a reward table, which is the vetting rule the kit follows.
+        /// </summary>
+        private static readonly (string prefab, int count)[] DevArmory =
+        {
+            ("ArmorLeatherChest", 1), ("ArmorLeatherLegs", 1), ("HelmetLeather", 1),
+            ("CapeDeerHide", 1), ("ShieldWood", 1), ("BowFineWood", 1),
+            ("ArrowFlint", 200), ("MeadHealthMedium", 10), ("CookedMeat", 30),
+        };
+
+        /// <summary>
         /// Testing shortcuts, behind <see cref="IConfiguration.RunDevMode"/>.
         ///
         /// Keys nothing else uses — the numeric keypad's digits are all spoken for by boon offers,
@@ -1229,6 +1241,7 @@ namespace ICanShowYouTheWorld.RunMode
         ///   Keypad -   push the clock forward two hours, for the night-gated hunt
         ///   Keypad *   a chest's worth of materials
         ///   Keypad .   drop a deer's light at your feet
+        ///   Keypad /   god mode + armory (toggle)
         ///
         /// The last one matters more than it looks: the light race is the hardest thing in the act
         /// to reach — kill a deer, at night, while a step is active — and testing the bar, the
@@ -1251,6 +1264,31 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 foreach (var entry in DevKit) GrantItem(entry.prefab, entry.count);
                 Message($"DEV: {DevKit.Length} materials granted.");
+            }
+            else if (Input.GetKeyDown(KeyCode.KeypadDivide))
+            {
+                // God mode, plus a fighter's kit. GM commands are gated off during a run
+                // (InputManager.Gate), which is correct for play and wrong for testing — so the
+                // dev key calls the service directly rather than un-gating the whole cheat
+                // window. Toggle, so it can be turned OFF to test dying too.
+                try
+                {
+                    var combat = ModBootstrap.GetService<ICombatService>();
+                    if (combat != null)
+                    {
+                        combat.SetGodMode(!combat.GodMode);
+                        if (combat.GodMode)
+                        {
+                            foreach (var entry in DevArmory) GrantItem(entry.prefab, entry.count);
+                            Message("DEV: god mode ON, armory granted.");
+                        }
+                        else
+                        {
+                            Message("DEV: god mode OFF.");
+                        }
+                    }
+                }
+                catch (Exception ex) { LogOnce("dev-god", ex); }
             }
             else if (Input.GetKeyDown(KeyCode.KeypadPeriod))
             {

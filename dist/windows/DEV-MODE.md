@@ -36,6 +36,7 @@ activations and Homeward.
 | `Keypad -` | Push the clock forward **2 game hours** (press until "it is night") |
 | `Keypad *` | Grant a chest's worth of every material Acts I–II use |
 | `Keypad .` | Drop a **deer's light** at your feet |
+| `Keypad /` | **God mode** + a fighter's kit (toggle) |
 
 Keys only work during an active run.
 
@@ -53,6 +54,11 @@ Keys only work during an active run.
   arrows, food, seeds, a fishing rod and bait, surtling cores…). Every name
   in the kit is taken from the quest-reward tables, so the run-start
   validator has already checked them all.
+- **`/` (god)** toggles the mod's god mode — normally gated off during a run —
+  and grants a leather kit, bow, arrows and healing mead the first time it
+  turns on. Leather on purpose: god mode is what makes you unkillable, the
+  gear just needs to look right in the hand. Toggle it OFF to test dying,
+  which is itself part of the design (death costs heat and a boon).
 - **`.` (light)** spawns a deer's light six metres ahead, exactly as if a
   deer had just died there — timer, bar and scoreboard all live. The race is
   otherwise the hardest moment in the act to reach (a deer, at night, while
