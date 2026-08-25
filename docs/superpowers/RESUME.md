@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, at `0.221.12-run.alpha56.1`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-08-25 at `0.221.12-run.alpha70.2`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -21,7 +21,19 @@ Everything below is what that file tells it.
 
 - Branch **`feature/run-mode`**, 96 commits ahead of `main`. **Not merged**,
   deliberately — the mode is still being tuned in play.
-- Latest tag **`0.221.12-run.alpha56.1`**, pushed. The Mac has it deployed.
+- Latest tag **`0.221.12-run.alpha70.2`**, pushed, staged for Windows.
+- **CONFIRMED IN PLAY (2026-08-25): the light race works end to end** — wisp
+  rises on a night deer kill, the pack arrives, the urgency bar goes red,
+  boss music fires, E-press takes the light, the scoreboard ticks. Owner's
+  verdict: "super difficult — very nice. It'll feel like quite an
+  achievement." That closes the alpha70.1 gate fix as verified.
+- Also confirmed in play: resume after quitting mid-run, the Gatherer fight
+  and its hoard drop, the wisp model (this build HAS a "Wisp" prefab), the
+  Herald hunt, fishing.
+- **Still unverified in play:** the act transition card (Act I -> II), the
+  full Eikthyr kill closing the arc, the Gatherer arriving FATTER after lost
+  lights, the forfeit at 8 lost, Acts II-V content, heat tuning (open since
+  alpha17).
 - **Act I is the focus.** Three tracks, 26 steps, playable end to end. Design in
   `specs/2026-08-23-act-one-homestead-design.md`; Acts II-V are PLANNED but not
   built, in `specs/2026-08-23-act-questline-plans.md`.
