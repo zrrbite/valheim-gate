@@ -166,12 +166,28 @@ namespace ICanShowYouTheWorld.RunMode
                 if (chosen == "Deer") { try { ch.SetLevel(3); } catch { } }
             }
 
+            // The wisp is an ITEM, and items auto-pickup on approach — which is why the E-press
+            // "still felt proximity based": the game grabbed the light before the prompt could
+            // matter, through our component and past it. Auto-pickup off makes E the only way,
+            // served by the game's own item interact; our component is only added where there is
+            // no ItemDrop to do that job (Ghost, the fallback deer).
+            LightPickup pickup = null;
+            var itemDrop = inst.GetComponent<ItemDrop>();
+            if (itemDrop != null)
+            {
+                try { itemDrop.m_autoPickup = false; } catch { }
+            }
+            else
+            {
+                pickup = inst.AddComponent<LightPickup>();
+            }
+
             _lights.Add(new Light
             {
                 Id = zdo.m_uid,
                 Where = at,
                 FadesAt = Time.time + Mathf.Max(5f, fadeSecondsOverride > 0f ? fadeSecondsOverride : _cfg.RunLightFadeSeconds),
-                Pickup = inst.AddComponent<LightPickup>(),
+                Pickup = pickup,
             });
         }
 
@@ -197,7 +213,10 @@ namespace ICanShowYouTheWorld.RunMode
                 // there is nothing left to press E on, and a light that became untakeable through
                 // no fault of the player's should not count against them.
                 bool claimed = !ReferenceEquals(light.Pickup, null) && light.Pickup != null && light.Pickup.Claimed;
-                bool orphanReached = live == null && Vector3.Distance(here, light.Where) <= reach;
+                // For an item-mode light, the take IS the object vanishing: the game's E-pickup
+                // destroys it, and the player must be in interact range when it does. The floor
+                // covers Valheim's ~5m interact distance regardless of config.
+                bool orphanReached = live == null && Vector3.Distance(here, light.Where) <= Mathf.Max(reach, 6f);
 
                 if (claimed || orphanReached)
                 {
