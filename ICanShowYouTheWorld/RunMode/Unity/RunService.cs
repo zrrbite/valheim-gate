@@ -646,10 +646,17 @@ namespace ICanShowYouTheWorld.RunMode
         private bool DeerHuntWanted =>
             _challenges != null && _challenges.Tracks.Any(t =>
                 t.Current != null && !t.Blocked &&
-                t.Current.Def.Kind == ChallengeKind.KillPrefab &&
-                (t.Current.Def.Param == DeerHerd.DeerPrefab ||
-                 t.Current.Def.Param == DeerHerd.NightDeerKillName ||
-                 t.Current.Def.Param == DeerHerd.HeraldKillName));
+                // The LIGHT RACE is the deer hunt — it is a PlayerEvent, not a kill, and this
+                // gate not knowing that is why the act's centrepiece went dead: no light on a
+                // deer's fall and no pack, because both are keyed here. The alpha61 edit that was
+                // meant to add this branch silently missed (a replace with no assert), so the
+                // gate said KillPrefab-only from the day the step stopped being one.
+                ((t.Current.Def.Kind == ChallengeKind.PlayerEvent &&
+                  t.Current.Def.Param == StolenLights.TakenEvent) ||
+                 (t.Current.Def.Kind == ChallengeKind.KillPrefab &&
+                  (t.Current.Def.Param == DeerHerd.DeerPrefab ||
+                   t.Current.Def.Param == DeerHerd.NightDeerKillName ||
+                   t.Current.Def.Param == DeerHerd.HeraldKillName))));
 
         /// <summary>
         /// True while the pale-light step is the one in play.
