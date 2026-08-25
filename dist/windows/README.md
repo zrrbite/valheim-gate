@@ -9,7 +9,7 @@ fallback: everything needed to install the mod locally, pulled through git.
 
 ## Testing a new build
 
-**[TEST-PLAN.md](TEST-PLAN.md)** — what to check, ordered by what catches the most
+**[TEST-PLAN.md, and DEV-MODE.md for the testing shortcut keys](TEST-PLAN.md)** — what to check, ordered by what catches the most
 for the least play. Start there after any install.
 
 ## After installing, check the log
