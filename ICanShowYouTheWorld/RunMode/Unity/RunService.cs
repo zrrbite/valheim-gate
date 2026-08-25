@@ -5477,7 +5477,7 @@ namespace ICanShowYouTheWorld.RunMode
                 Id = "mq-deer", MainQuest = true, Kind = ChallengeKind.PlayerEvent, Param = StolenLights.TakenEvent,
                 Target = 5, Display = "Take back their light (5)",
                 RewardText = "Deer trophies — Eikthyr's summons",
-                Hint = "Hunt after dark. When a deer falls, RUN TO THE LIGHT before it fades. Let the forest take eight and the trophies are lost.",
+                Hint = "His trophies are the price of an audience \u2014 hunt after dark, and when a deer falls, RUN TO THE LIGHT before it fades. What you do with their lights is between you and the forest. Let it take eight and the trophies are lost.",
             },
             new ChallengeDefinition
             {
@@ -5487,6 +5487,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // when that specific creature dies, matched by ZDOID. See DeerHerd.
                 Id = "mq-herald", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = DeerHerd.HeraldKillName,
                 Target = 1, Display = "Hunt Eikthyr's Herald", RewardText = "A hunter's bow, and the last trophies",
+                Hint = "The herd's guardian, and the last trophies you need. Its fall will be heard.",
             },
             new ChallengeDefinition
             {
@@ -5500,14 +5501,14 @@ namespace ICanShowYouTheWorld.RunMode
                 Id = "mq-gatherer", MainQuest = true, Track = HuntTrackId, Kind = ChallengeKind.KillPrefab,
                 Param = TheGatherer.KillName, Target = 1, Display = "Kill the Gatherer",
                 RewardText = "Every light it was holding, and the way to the altar",
-                Hint = "It is fat on what the forest took. It will find you.",
+                Hint = "It is fat on what the forest took. Kill it and every light it holds goes free. It will find you.",
             },
             new ChallengeDefinition
             {
                 Id = "mq-find", MainQuest = true, Track = HuntTrackId, Kind = ChallengeKind.DiscoverLocation,
                 Param = "Eikthyrnir",
                 Target = 1, Display = "Find Eikthyr's altar", RewardText = "Eikthyr's summoning stones await",
-                Hint = "The freed lights drift toward it. Two standing stones, ringed with runes.",
+                Hint = "The freed lights drift toward it. Hang the trophies his own herd paid for, and call him down.",
             },
             new ChallengeDefinition
             {
