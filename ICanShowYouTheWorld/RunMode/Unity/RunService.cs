@@ -456,6 +456,25 @@ namespace ICanShowYouTheWorld.RunMode
                 _challenges.ReportEvent(ChallengeKind.PlayerEvent, StolenLights.TakenEvent);
         }
 
+        private bool _raceMusicPlayed;
+
+        /// <summary>
+        /// Fires the race's music cue through the game's own trigger-music path.
+        ///
+        /// The name is ASSET DATA (the music table is configured in Unity, invisible to this
+        /// assembly), so run-start validation logs whether it resolves — see the probe beside the
+        /// fish and spirit checks. TriggerMusic is fire-and-forget: a wrong name plays nothing and
+        /// throws nothing, which without the probe would be indistinguishable from working.
+        /// </summary>
+        private void PlayRaceMusic()
+        {
+            string cue = _cfg.RunLightMusic;
+            if (string.IsNullOrEmpty(cue)) return;
+
+            try { MusicMan.instance?.TriggerMusic(cue); }
+            catch (Exception ex) { LogOnce("race-music", ex); }
+        }
+
         /// <summary>
         /// Sends the Gatherer in once its step is in play.
         ///
@@ -520,6 +539,19 @@ namespace ICanShowYouTheWorld.RunMode
 
             try
             {
+                // The race gets its own music. Triggered on the 0 -> some edge, so one cue per
+                // engagement rather than one per deer; trigger music ends on its own, which is
+                // why there is no stop call.
+                if (_lights.Burning > 0 && !_raceMusicPlayed)
+                {
+                    _raceMusicPlayed = true;
+                    PlayRaceMusic();
+                }
+                else if (_lights.Burning == 0)
+                {
+                    _raceMusicPlayed = false;
+                }
+
                 int lost;
                 int taken = _lights.Tick(player, out lost);
 
@@ -3318,6 +3350,24 @@ namespace ICanShowYouTheWorld.RunMode
                     foreach (var name in new[] { "Wisp", "Ghost" })
                         Debug.Log($"[ICanShowYouTheWorld] Spirit prefab '{name}': " +
                                   (scene != null && scene.GetPrefab(name) != null ? "available" : "NOT in this build"));
+
+                    // The race's music cue, same discipline: the music table is asset data, and
+                    // TriggerMusic on a wrong name plays nothing and throws nothing.
+                    if (!string.IsNullOrEmpty(_cfg.RunLightMusic))
+                    {
+                        bool found = false;
+                        try
+                        {
+                            var mm = MusicMan.instance;
+                            var find = mm == null ? null : typeof(MusicMan).GetMethod("FindMusic",
+                                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                            found = find != null && find.Invoke(mm, new object[] { _cfg.RunLightMusic }) != null;
+                        }
+                        catch { /* reflection is best-effort; the log line below still narrows it */ }
+
+                        Debug.Log($"[ICanShowYouTheWorld] Race music '{_cfg.RunLightMusic}': " +
+                                  (found ? "available" : "NOT found (or unprobeable) — the race may be silent"));
+                    }
 
                     var rewards = QuestRewards.Values
                         .Concat(BossSpoils)

@@ -79,6 +79,7 @@ namespace ICanShowYouTheWorld.Core
         float RunGathererGrowthPerLight { get; set; }
         int RunLightForfeitLost { get; set; }
         bool RunDevMode { get; set; }
+        string RunLightMusic { get; set; }
         bool RunDeerLightning { get; set; }
         float RunHeatEnemyDamageWeight { get; set; }
         float RunHeatEnemyLevelUpWeight { get; set; }
@@ -247,6 +248,10 @@ namespace ICanShowYouTheWorld.Core
         // HUD says DEV whenever it is on, because a testing aid nobody can see is a testing
         // aid somebody will forget is running.
         [SerializeField] private bool runDevMode = false;
+
+        // Music cue for the light race. A NAME from the game's music table, which is asset
+        // data — run start logs whether it resolves. Empty disables the cue.
+        [SerializeField] private string runLightMusic = "boss_eikthyr";
         [SerializeField] private bool runDeerLightning = true;
         [SerializeField] private float runHeatEnemyDamageWeight = 0.05f;
         [SerializeField] private float runHeatEnemyLevelUpWeight = 0.05f;
@@ -329,6 +334,7 @@ namespace ICanShowYouTheWorld.Core
         public float RunGathererGrowthPerLight { get => runGathererGrowthPerLight; set => runGathererGrowthPerLight = value; }
         public int RunLightForfeitLost { get => runLightForfeitLost; set => runLightForfeitLost = value; }
         public bool RunDevMode { get => runDevMode; set => runDevMode = value; }
+        public string RunLightMusic { get => runLightMusic; set => runLightMusic = value; }
         public bool RunDeerLightning { get => runDeerLightning; set => runDeerLightning = value; }
         public float RunHeatEnemyDamageWeight { get => runHeatEnemyDamageWeight; set => runHeatEnemyDamageWeight = value; }
         public float RunHeatEnemyLevelUpWeight { get => runHeatEnemyLevelUpWeight; set => runHeatEnemyLevelUpWeight = value; }
