@@ -34,7 +34,7 @@ activations and Homeward.
 |---|---|
 | `Keypad +` | Complete the current step on **every** unblocked track |
 | `Keypad -` | Push the clock forward **2 game hours** (press until "it is night") |
-| `Keypad *` | Grant a chest's worth of every material Acts I–II use |
+| `Keypad *` | A chest's worth of materials, **into the stash** |
 | `Keypad .` | Drop a **deer's light** at your feet |
 | `Keypad /` | **God mode** + a fighter's kit **+75% speed** (toggle) |
 | `Keypad Enter` | **Gate to your claimed bed**, free, no cooldown |
@@ -51,9 +51,11 @@ Keys only work during an active run.
 - **`-` (clock)** exists for the night-gated hunt. It moves the world clock
   via the network time, a fixed step per press, and tells you whether it is
   night yet after each press.
-- **`*` (materials)** grants a fixed kit (wood, stone, ores, nails, hides,
-  arrows, food, seeds, a fishing rod and bait, surtling cores…). Every name
-  is either from a reward table or fails loudly in the log.
+- **`*` (materials)** puts a fixed kit (wood, stone, ores, nails, hides,
+  arrows, food, seeds, a fishing rod and bait, surtling cores…) **into the
+  run's stash**, not your pockets — the raw materials alone are several
+  hundred weight, and granted to the inventory they left you over-encumbered
+  on the spot. Withdraw what the moment needs from the stash panel.
 - **`/` (god)** toggles the mod's god mode — normally gated off during a run —
   and grants bronze arms plus the best food the game has (serpent stew, blood
   pudding, sausages) the first time it turns on, plus +75% run/walk speed for

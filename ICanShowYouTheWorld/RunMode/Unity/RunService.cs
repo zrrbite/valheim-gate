@@ -1324,8 +1324,13 @@ namespace ICanShowYouTheWorld.RunMode
             }
             else if (Input.GetKeyDown(KeyCode.KeypadMultiply))
             {
-                foreach (var entry in DevKit) GrantItem(entry.prefab, entry.count);
-                Message($"DEV: {DevKit.Length} materials granted.");
+                // Into the STASH, not the inventory. The kit's raw materials alone are several
+                // hundred weight — granted to the pockets it left the tester over-encumbered on
+                // the spot, which is the opposite of a convenience key. The stash is also simply
+                // where a pile of materials belongs; take out what the moment needs.
+                foreach (var entry in DevKit) _stash.Deposit(entry.prefab, entry.count, 1, 0);
+                SaveState();
+                Message($"DEV: {DevKit.Length} materials in the stash.");
             }
             else if (Input.GetKeyDown(KeyCode.KeypadDivide))
             {
