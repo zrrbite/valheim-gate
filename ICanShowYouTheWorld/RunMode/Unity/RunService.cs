@@ -4928,27 +4928,33 @@ namespace ICanShowYouTheWorld.RunMode
         {
             new ActDefinition
             {
-                Id = "act1", Numeral = "I", Title = "The Meadows",
+                // Titles name the STORY, never the biome and never the boss. "The Meadows" told
+                // a player where they were, which they could already see, and the act table is the
+                // one place the saga gets to say what an act is ABOUT before it happens.
+                //
+                // They also run as one arc: I asks who is taking the light, II answers where it
+                // goes, and V is the harvest that bookends the farming I opens with.
+                Id = "act1", Numeral = "I", Title = "The Stolen Light",
                 BossDefeatKey = "defeated_eikthyr", Tracks = Split(MainQuestChain()),
             },
             new ActDefinition
             {
-                Id = "act2", Numeral = "II", Title = "The Black Forest",
+                Id = "act2", Numeral = "II", Title = "Where the Light Goes",
                 BossDefeatKey = "defeated_gdking", Tracks = Split(BlackForestChain()),
             },
             new ActDefinition
             {
-                Id = "act3", Numeral = "III", Title = "The Swamp",
+                Id = "act3", Numeral = "III", Title = "Nothing Stays Buried",
                 BossDefeatKey = "defeated_bonemass", Tracks = Split(SwampChain()),
             },
             new ActDefinition
             {
-                Id = "act4", Numeral = "IV", Title = "The Mountains",
+                Id = "act4", Numeral = "IV", Title = "The White Silence",
                 BossDefeatKey = "defeated_dragon", Tracks = Split(MountainChain()),
             },
             new ActDefinition
             {
-                Id = "act5", Numeral = "V", Title = "The Plains",
+                Id = "act5", Numeral = "V", Title = "The Last Harvest",
                 BossDefeatKey = "defeated_goblinking", Tracks = Split(PlainsChain()),
             },
         };
