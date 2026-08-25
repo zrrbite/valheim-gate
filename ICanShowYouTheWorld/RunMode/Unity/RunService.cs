@@ -5678,7 +5678,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // since a boat step would stall on a world where the biome is walkable.
                 Id = "bf-arrive", MainQuest = true, Kind = ChallengeKind.ReachBiome, Param = "BlackForest",
                 Target = 1, Display = "Reach the Black Forest", RewardText = "A torch, and arrows for the dark",
-                Hint = "The lights were carried this way. Dark pines and rock \u2014 head away from the meadows.",
+                Hint = "The Gatherer was only a hand. Everything it collected went this way, for years. Dark pines and rock \u2014 head away from the meadows.",
             },
             new ChallengeDefinition
             {
