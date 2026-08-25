@@ -479,6 +479,11 @@ namespace ICanShowYouTheWorld.RunMode
             var player = Player.m_localPlayer;
             if (player == null) return;
 
+            // The Gatherer keeps the act's rule too: it has been following the hunt, and the hunt
+            // happens in the dark. Arriving at noon would also squander the arrival — a heavy
+            // shape coming through the trees is a different event at night.
+            if (!IsNight) return;
+
             try
             {
                 if (_gatherer.TryArrive(player, _lights?.Lost ?? 0))
@@ -2181,7 +2186,11 @@ namespace ICanShowYouTheWorld.RunMode
                 t.Current.Def.Kind == ChallengeKind.KillPrefab &&
                 t.Current.Def.Param == DeerHerd.HeraldKillName);
 
-            if (heraldWanted && _deer.TrySpawnHerald(player))
+            // Only in the dark. The strip says "nothing you seek walks in the light", and until
+            // now the Herald did — it spawned the moment its step came up, noon included, flatly
+            // contradicting the act's one rule. The kill was already night-implied (the step
+            // before it counts night lights); the SPAWN is what was missed.
+            if (heraldWanted && IsNight && _deer.TrySpawnHerald(player))
             {
                 string bearing = _deer.HeraldBearing(player);
                 Message(bearing == null
