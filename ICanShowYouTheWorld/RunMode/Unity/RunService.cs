@@ -333,7 +333,7 @@ namespace ICanShowYouTheWorld.RunMode
                 if (ActIsMeadows && DarkStepWanted && !IsNight)
                     return "Nothing you seek walks in the light. Wait for dark.";
 
-                if (_spirit != null && ActIsMeadows && !_spirit.Found)
+                if (_spirit != null && ActIsMeadows && SpiritWanted)
                 {
                     string rumour = _spirit.Bearing(player);
                     if (!string.IsNullOrEmpty(rumour)) return rumour;
@@ -369,12 +369,7 @@ namespace ICanShowYouTheWorld.RunMode
         {
             if (_spirit == null || !ActIsMeadows || _challenges == null) return;
 
-            bool wanted = _challenges.Tracks.Any(t =>
-                t.Current != null && !t.Blocked &&
-                t.Current.Def.Kind == ChallengeKind.PlayerState &&
-                t.Current.Def.Param == SpiritChase.FoundMeasure);
-
-            if (!wanted) return;
+            if (!SpiritWanted) return;
 
             var player = Player.m_localPlayer;
             if (player == null) return;
@@ -590,7 +585,7 @@ namespace ICanShowYouTheWorld.RunMode
             // When a light is actually being chased, the whisper carries the distance band rather
             // than a random mood. Atmosphere that looks like information and is not is worse than
             // silence — it was read as a proximity hint, because that is what it sounds like.
-            if (IsNight && _spirit != null && !_spirit.Found)
+            if (IsNight && _spirit != null && SpiritWanted)
             {
                 var player = Player.m_localPlayer;
                 string rumour = player == null ? null : _spirit.Bearing(player);
@@ -609,6 +604,22 @@ namespace ICanShowYouTheWorld.RunMode
                 (t.Current.Def.Param == DeerHerd.DeerPrefab ||
                  t.Current.Def.Param == DeerHerd.NightDeerKillName ||
                  t.Current.Def.Param == DeerHerd.HeraldKillName));
+
+        /// <summary>
+        /// True while the pale-light step is the one in play.
+        ///
+        /// Every spirit-facing surface — the rumour, the closeness bar, the whispers — keys on
+        /// THIS, never on SpiritChase.Found. The two can disagree: a dev-skip completes the STEP
+        /// without the spirit ever being reached, and every surface keyed on Found then kept
+        /// pointing at a chase that no longer ticks. On the Herald step that shadowed the
+        /// Herald's own bearing entirely, showed "It is here. Very close." with a full bar, and
+        /// there was nothing there.
+        /// </summary>
+        private bool SpiritWanted =>
+            _challenges != null && _challenges.Tracks.Any(t =>
+                t.Current != null && !t.Blocked &&
+                t.Current.Def.Kind == ChallengeKind.PlayerState &&
+                t.Current.Def.Param == SpiritChase.FoundMeasure);
 
         private bool HeraldWanted =>
             _challenges != null && _challenges.Tracks.Any(t =>
@@ -705,7 +716,7 @@ namespace ICanShowYouTheWorld.RunMode
         {
             get
             {
-                if (!_active || _spirit == null || !ActIsMeadows || _spirit.Found) return -1f;
+                if (!_active || _spirit == null || !ActIsMeadows || !SpiritWanted) return -1f;
 
                 var player = Player.m_localPlayer;
                 if (player == null) return -1f;
