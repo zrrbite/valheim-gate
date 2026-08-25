@@ -1325,12 +1325,7 @@ namespace ICanShowYouTheWorld.RunMode
             else if (Input.GetKeyDown(KeyCode.KeypadMultiply))
             {
                 foreach (var entry in DevKit) GrantItem(entry.prefab, entry.count);
-
-                // Faster legs come with the materials: a supply key exists to cut the boring part
-                // of testing, and walking is most of it. Idempotent — a second press must not
-                // stack the multiplier.
-                DevApplySpeed(Player.m_localPlayer);
-                Message($"DEV: {DevKit.Length} materials granted, +75% speed.");
+                Message($"DEV: {DevKit.Length} materials granted.");
             }
             else if (Input.GetKeyDown(KeyCode.KeypadDivide))
             {
@@ -1347,7 +1342,12 @@ namespace ICanShowYouTheWorld.RunMode
                         if (combat.GodMode)
                         {
                             foreach (var entry in DevArmory) GrantItem(entry.prefab, entry.count);
-                            Message("DEV: god mode ON, armory granted.");
+
+                            // Faster legs belong to the god, not the quartermaster — one key for
+                            // "make me untouchable", one for "fill my pockets", and the toggle
+                            // gives the speed loan its natural way back.
+                            DevApplySpeed(Player.m_localPlayer);
+                            Message("DEV: god mode ON \u2014 armory granted, +75% speed.");
                         }
                         else
                         {

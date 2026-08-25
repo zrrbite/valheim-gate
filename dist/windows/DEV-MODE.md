@@ -34,9 +34,9 @@ activations and Homeward.
 |---|---|
 | `Keypad +` | Complete the current step on **every** unblocked track |
 | `Keypad -` | Push the clock forward **2 game hours** (press until "it is night") |
-| `Keypad *` | Grant materials **and +75% run/walk speed** |
+| `Keypad *` | Grant a chest's worth of every material Acts I–II use |
 | `Keypad .` | Drop a **deer's light** at your feet |
-| `Keypad /` | **God mode** + a fighter's kit (toggle) |
+| `Keypad /` | **God mode** + a fighter's kit **+75% speed** (toggle) |
 | `Keypad Enter` | **Gate to your claimed bed**, free, no cooldown |
 
 Keys only work during an active run.
@@ -52,15 +52,13 @@ Keys only work during an active run.
   via the network time, a fixed step per press, and tells you whether it is
   night yet after each press.
 - **`*` (materials)** grants a fixed kit (wood, stone, ores, nails, hides,
-  arrows, food, seeds, a fishing rod and bait, surtling cores…) and speeds
-  you up by 75% — walking is most of the boring part of testing. Pressing it
-  again does not stack the speed. Turning god mode OFF (`/`) restores normal
-  pace, as does the run ending.
+  arrows, food, seeds, a fishing rod and bait, surtling cores…). Every name
+  is either from a reward table or fails loudly in the log.
 - **`/` (god)** toggles the mod's god mode — normally gated off during a run —
   and grants bronze arms plus the best food the game has (serpent stew, blood
-  pudding, sausages) the first time it turns on. Top-tier food is where
-  Valheim HP actually comes from, so "more hp" means eating better, not a
-  bigger chestpiece. Toggle it OFF to test dying, which is itself part of the
+  pudding, sausages) the first time it turns on, plus +75% run/walk speed for
+  as long as it is on. Top-tier food is where Valheim HP actually comes from,
+  so "more hp" means eating better, not a bigger chestpiece. Toggle it OFF to test dying, which is itself part of the
   design (death costs heat and a boon).
 - **`Enter` (home)** teleports to your claimed bed with no charge and no
   cooldown — the real Homeward's economy is not usually the thing under test.
