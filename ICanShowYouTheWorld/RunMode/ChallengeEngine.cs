@@ -567,6 +567,23 @@ namespace ICanShowYouTheWorld.RunMode
             }
         }
 
+        /// <summary>
+        /// DEV ONLY. Completes the step in play on every unblocked track.
+        ///
+        /// Sets progress to target rather than shortcutting the advance, so completion runs the
+        /// ordinary path — rewards, events and all. A test harness that skips differently from the
+        /// real thing tests the harness.
+        ///
+        /// Gated at the call site on a config flag that ships false; nothing here checks, because
+        /// an engine has no business knowing what a dev build is.
+        /// </summary>
+        public void DevCompleteCurrent()
+        {
+            foreach (var track in tracks)
+                if (track.Current != null && !track.Blocked)
+                    track.Current.Progress = track.Current.Def.Target;
+        }
+
         public void ReportKill(string prefab) => ReportEvent(ChallengeKind.KillPrefab, prefab);
 
         /// <summary>

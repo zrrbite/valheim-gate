@@ -31,6 +31,7 @@ namespace ICanShowYouTheWorld.Services
         int LightsBurning { get; }
         int LightsTaken { get; }
         int LightsLost { get; }
+        bool DevMode { get; }
         HearthRecords Records { get; }
 
         /// <summary>Challenge engine for the current run; null when inactive.</summary>

@@ -1011,6 +1011,15 @@ namespace ICanShowYouTheWorld.RunMode
         {
             // No act line here: since alpha38 the act IS the HUD's headline, drawn above by
             // DrawHudBody. Repeating it would be the third time the same words appear on one panel.
+            // Never silently on. A testing aid nobody can see is one somebody forgets is running,
+            // and then reports its effects as bugs.
+            if (run.DevMode)
+            {
+                GUI.contentColor = RunTheme.HeatRed;
+                GUILayout.Label("DEV MODE  +complete  -time  *items  .light", RunTheme.Small);
+                GUI.contentColor = Color.white;
+            }
+
             GUILayout.Label("QUESTS", RunTheme.Header);
 
             var tracks = run.Challenges?.Tracks;

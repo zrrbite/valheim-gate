@@ -724,6 +724,9 @@ namespace ICanShowYouTheWorld.RunMode
 
         public int LightsBurning => _active && _lights != null ? _lights.Burning : 0;
 
+        /// <summary>True when testing shortcuts are live. The HUD says so; see HandleDevInput.</summary>
+        public bool DevMode => _cfg != null && _cfg.RunDevMode;
+
         public HearthRecords Records => _records;
 
         public int HomewardCharges => _active ? _homewardCharges : 0;
@@ -1146,6 +1149,7 @@ namespace ICanShowYouTheWorld.RunMode
 
             HandleBoonOfferInput();
             HandleBoonActivationInput();
+            HandleDevInput();
 
             _pollTimer += dt;
             if (_pollTimer >= BossPollIntervalSeconds)
@@ -1200,6 +1204,91 @@ namespace ICanShowYouTheWorld.RunMode
         /// Gated on there being no boon offer pending, matching the brief; the offer keys (1/2/3)
         /// don't overlap with these anyway, so this is a UX choice, not a conflict-avoidance one.
         /// </summary>
+        /// <summary>
+        /// Everything a dev kit needs and nothing a run should ever hand out. Names taken from the
+        /// reward tables, so every one has already been vetted by the run-start validator — a dev
+        /// tool that silently grants nothing wastes more time than it saves.
+        /// </summary>
+        private static readonly (string prefab, int count)[] DevKit =
+        {
+            ("Wood", 200), ("Stone", 200), ("Flint", 100), ("Resin", 100),
+            ("DeerHide", 100), ("LeatherScraps", 100), ("TrophyDeer", 5),
+            ("CopperOre", 100), ("TinOre", 100), ("Coal", 100), ("SurtlingCore", 30),
+            ("BronzeNails", 100), ("IronNails", 100),
+            ("CookedMeat", 30), ("ArrowFlint", 200), ("FishingRod", 1), ("FishingBait", 200),
+            ("CarrotSeeds", 30), ("Carrot", 30), ("Honey", 50), ("Raspberry", 50), ("Mushroom", 50),
+        };
+
+        /// <summary>
+        /// Testing shortcuts, behind <see cref="IConfiguration.RunDevMode"/>.
+        ///
+        /// Keys nothing else uses — the numeric keypad's digits are all spoken for by boon offers,
+        /// boon activations and Homeward, so these live on the operators.
+        ///
+        ///   Keypad +   complete the step in play on every track
+        ///   Keypad -   push the clock forward two hours, for the night-gated hunt
+        ///   Keypad *   a chest's worth of materials
+        ///   Keypad .   drop a deer's light at your feet
+        ///
+        /// The last one matters more than it looks: the light race is the hardest thing in the act
+        /// to reach — kill a deer, at night, while a step is active — and testing the bar, the
+        /// timer and the pickup should not require all three.
+        /// </summary>
+        private void HandleDevInput()
+        {
+            if (_cfg == null || !_cfg.RunDevMode || !_active || _frozen) return;
+
+            if (Input.GetKeyDown(KeyCode.KeypadPlus))
+            {
+                _challenges?.DevCompleteCurrent();
+                Message("DEV: current steps completed.");
+            }
+            else if (Input.GetKeyDown(KeyCode.KeypadMinus))
+            {
+                DevAdvanceClock();
+            }
+            else if (Input.GetKeyDown(KeyCode.KeypadMultiply))
+            {
+                foreach (var entry in DevKit) GrantItem(entry.prefab, entry.count);
+                Message($"DEV: {DevKit.Length} materials granted.");
+            }
+            else if (Input.GetKeyDown(KeyCode.KeypadPeriod))
+            {
+                var player = Player.m_localPlayer;
+                if (_lights != null && player != null)
+                {
+                    _lights.Release(player.transform.position + player.transform.forward * 6f);
+                    Message("DEV: a light rises.");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Pushes the world clock forward two game hours.
+        ///
+        /// A fixed step per press rather than "skip to night": the caller can see what it did and
+        /// press again, whereas a loop that hunts for nightfall depends on how EnvMan derives its
+        /// time from the network clock, which is not worth being clever about in a test aid.
+        /// </summary>
+        private void DevAdvanceClock()
+        {
+            try
+            {
+                // Valheim's day is 1800 seconds, so an in-game hour is 75 of them.
+                const double TwoHours = 150.0;
+
+                var net = ZNet.instance;
+                if (net == null) return;
+
+                net.SetNetTime(net.GetTimeSeconds() + TwoHours);
+                Message(IsNight ? "DEV: +2h — it is night." : "DEV: +2h — still light.");
+            }
+            catch (Exception ex)
+            {
+                LogOnce("dev-clock", ex);
+            }
+        }
+
         private void HandleBoonActivationInput()
         {
             if (_boons == null || _boons.CurrentOffer.Count > 0) return;
