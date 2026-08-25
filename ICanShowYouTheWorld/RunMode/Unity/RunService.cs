@@ -558,8 +558,10 @@ namespace ICanShowYouTheWorld.RunMode
                 for (int i = 0; i < taken; i++)
                     _challenges.ReportEvent(ChallengeKind.PlayerEvent, StolenLights.TakenEvent);
 
-                if (taken > 0) Message("You take the light back.");
-                if (lost > 0) Message("The forest takes it.");
+                // The counters ride IN the messages, read from the same field the scoreboard
+                // shows — a message and a counter that can disagree will, and did.
+                if (taken > 0) Message($"You take the light back. (you {_lights.Taken} \u2014 forest {_lights.Lost})");
+                if (lost > 0) Message($"The forest takes it. (you {_lights.Taken} \u2014 forest {_lights.Lost})");
             }
             catch (Exception ex) { LogOnce("stolen-lights", ex); }
         }

@@ -66,6 +66,9 @@ namespace ICanShowYouTheWorld.RunMode
             public Vector3 Where;
             public float FadesAt;
             public LightPickup Pickup;
+
+            /// <summary>When the player was last close enough to have taken it. See Tick.</summary>
+            public float NearAt = float.NegativeInfinity;
         }
 
         private readonly List<Light> _lights = new List<Light>();
@@ -208,15 +211,25 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 Vector3? live = Position(light);
 
+                // Remember every moment the player stands close to a LIVE light. An item-mode
+                // light's take destroys the object, and the only evidence left is that the player
+                // was just there — without this, an E-press followed by a sprint (dev speed made
+                // it easy) left the taken light as a zombie that later "faded", telling the
+                // player the forest took a light that was in their pocket.
+                if (live != null && Vector3.Distance(here, live.Value) <= 8f)
+                    light.NearAt = Time.time;
+
                 // Taking is an E-PRESS on the light itself, through the game's own interact
                 // prompt. Proximity remains only for a light whose object is GONE (zone unloaded):
                 // there is nothing left to press E on, and a light that became untakeable through
                 // no fault of the player's should not count against them.
                 bool claimed = !ReferenceEquals(light.Pickup, null) && light.Pickup != null && light.Pickup.Claimed;
-                // For an item-mode light, the take IS the object vanishing: the game's E-pickup
-                // destroys it, and the player must be in interact range when it does. The floor
-                // covers Valheim's ~5m interact distance regardless of config.
-                bool orphanReached = live == null && Vector3.Distance(here, light.Where) <= Mathf.Max(reach, 6f);
+                // For an item-mode light, the take IS the object vanishing. Two proofs accepted:
+                // still standing near where it stood, OR having been near it within the last few
+                // seconds — the E-then-sprint case, where the poll arrives after the player left.
+                bool orphanReached = live == null &&
+                    (Vector3.Distance(here, light.Where) <= Mathf.Max(reach, 6f) ||
+                     Time.time - light.NearAt <= 3f);
 
                 if (claimed || orphanReached)
                 {
