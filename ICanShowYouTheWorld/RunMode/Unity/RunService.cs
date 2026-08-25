@@ -1220,15 +1220,22 @@ namespace ICanShowYouTheWorld.RunMode
         };
 
         /// <summary>
-        /// The fighter's half of the dev kit. Leather-tier on purpose: god mode is what makes the
-        /// tester unkillable, so the gear only needs to LOOK right in the hand — and every name
-        /// here is already in a reward table, which is the vetting rule the kit follows.
+        /// The fighter's half of the dev kit: bronze arms, and the best food the spoils tables
+        /// know — top-tier food is where Valheim HP actually comes from, so "more hp" means
+        /// eating better, not a bigger chestpiece.
+        ///
+        /// The bronze names are the one place the kit steps outside the vetted reward tables.
+        /// That is acceptable ONLY because GrantItem fails loudly on an unknown name — a dev tool
+        /// that silently grants nothing wastes more time than it saves, but one that says so in
+        /// the log is a one-word fix.
         /// </summary>
         private static readonly (string prefab, int count)[] DevArmory =
         {
-            ("ArmorLeatherChest", 1), ("ArmorLeatherLegs", 1), ("HelmetLeather", 1),
-            ("CapeDeerHide", 1), ("ShieldWood", 1), ("BowFineWood", 1),
-            ("ArrowFlint", 200), ("MeadHealthMedium", 10), ("CookedMeat", 30),
+            ("SwordBronze", 1), ("MaceBronze", 1), ("ShieldBronzeBuckler", 1),
+            ("ArmorBronzeChest", 1), ("ArmorBronzeLegs", 1), ("HelmetBronze", 1),
+            ("CapeDeerHide", 1), ("BowFineWood", 1), ("ArrowBronze", 200),
+            ("SerpentStew", 10), ("BloodPudding", 10), ("Sausages", 10),
+            ("MeadHealthMedium", 10),
         };
 
         /// <summary>
@@ -1241,7 +1248,8 @@ namespace ICanShowYouTheWorld.RunMode
         ///   Keypad -   push the clock forward two hours, for the night-gated hunt
         ///   Keypad *   a chest's worth of materials
         ///   Keypad .   drop a deer's light at your feet
-        ///   Keypad /   god mode + armory (toggle)
+        ///   Keypad /     god mode + armory (toggle)
+        ///   Keypad Enter gate to the claimed bed, free
         ///
         /// The last one matters more than it looks: the light race is the hardest thing in the act
         /// to reach — kill a deer, at night, while a step is active — and testing the bar, the
@@ -1289,6 +1297,29 @@ namespace ICanShowYouTheWorld.RunMode
                     }
                 }
                 catch (Exception ex) { LogOnce("dev-god", ex); }
+            }
+            else if (Input.GetKeyDown(KeyCode.KeypadEnter))
+            {
+                // Homeward without the charge or the cooldown. Testing the homestead half of the
+                // act means bouncing between the house and the hunt constantly, and the real
+                // Homeward's economy is not the thing under test.
+                try
+                {
+                    var profile = Game.instance?.GetPlayerProfile();
+                    if (profile == null || !profile.HaveCustomSpawnPoint())
+                    {
+                        Message("DEV: no claimed bed to gate to.");
+                    }
+                    else
+                    {
+                        var teleport = ModBootstrap.GetService<ITeleportService>();
+                        // Lifted clear of the ground, same as the real Homeward: arriving inside
+                        // the terrain is how a teleport becomes a death.
+                        teleport?.TeleportTo(profile.GetCustomSpawnPoint() + Vector3.up * 2f);
+                        Message("DEV: home.");
+                    }
+                }
+                catch (Exception ex) { LogOnce("dev-home", ex); }
             }
             else if (Input.GetKeyDown(KeyCode.KeypadPeriod))
             {

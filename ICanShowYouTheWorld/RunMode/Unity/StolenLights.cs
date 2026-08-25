@@ -21,6 +21,35 @@ namespace ICanShowYouTheWorld.RunMode
     /// The failure line matters as much as the success one. "The forest takes it" is the story
     /// being told at the exact moment the player feels the loss.
     /// </summary>
+    /// <summary>
+    /// Makes a deer's light something you TAKE rather than something you walk near.
+    ///
+    /// "Let the user actually pick it up to make it more hands on" — and the owner is right for a
+    /// mechanical reason too: proximity fired through bushes and behind rocks, so lights were
+    /// being collected without ever being seen. An E-press proves the player found it.
+    ///
+    /// Implements the game's own Interactable/Hoverable, so the standard crosshair prompt does all
+    /// the work. Claimed is read by StolenLights.Tick, which owns the consequences.
+    /// </summary>
+    internal class LightPickup : MonoBehaviour, Interactable, Hoverable
+    {
+        public bool Claimed { get; private set; }
+
+        public bool Interact(Humanoid user, bool hold, bool alt)
+        {
+            if (hold || Claimed) return false;
+
+            Claimed = true;
+            return true;
+        }
+
+        public bool UseItem(Humanoid user, ItemDrop.ItemData item) => false;
+
+        public string GetHoverText() => "A deer's light\n[<color=yellow><b>$KEY_Use</b></color>] Take it back";
+
+        public string GetHoverName() => "A deer's light";
+    }
+
     internal class StolenLights
     {
         private readonly IConfiguration _cfg;
@@ -36,6 +65,7 @@ namespace ICanShowYouTheWorld.RunMode
             public ZDOID Id;
             public Vector3 Where;
             public float FadesAt;
+            public LightPickup Pickup;
         }
 
         private readonly List<Light> _lights = new List<Light>();
@@ -96,7 +126,9 @@ namespace ICanShowYouTheWorld.RunMode
                 return;
             }
 
-            var inst = UnityEngine.Object.Instantiate(prefab, at + Vector3.up * 1.2f, Quaternion.identity);
+            // Head height rather than waist height: at 1.2 up, a light could sit INSIDE a bush
+            // and fire its old proximity pickup without ever being seen.
+            var inst = UnityEngine.Object.Instantiate(prefab, at + Vector3.up * 2.2f, Quaternion.identity);
             if (inst == null) return;
 
             // Same size bump as the chase light: these appear at night, mid-fight, with
@@ -130,6 +162,7 @@ namespace ICanShowYouTheWorld.RunMode
                 Id = zdo.m_uid,
                 Where = at,
                 FadesAt = Time.time + Mathf.Max(5f, _cfg.RunLightFadeSeconds),
+                Pickup = inst.AddComponent<LightPickup>(),
             });
         }
 
@@ -148,11 +181,16 @@ namespace ICanShowYouTheWorld.RunMode
 
             foreach (var light in _lights.ToList())
             {
-                // The live position where the object still exists, the remembered place otherwise:
-                // a light whose zone unloaded should still be reachable rather than silently gone.
-                Vector3 at = Position(light) ?? light.Where;
+                Vector3? live = Position(light);
 
-                if (Vector3.Distance(here, at) <= reach)
+                // Taking is an E-PRESS on the light itself, through the game's own interact
+                // prompt. Proximity remains only for a light whose object is GONE (zone unloaded):
+                // there is nothing left to press E on, and a light that became untakeable through
+                // no fault of the player's should not count against them.
+                bool claimed = !ReferenceEquals(light.Pickup, null) && light.Pickup != null && light.Pickup.Claimed;
+                bool orphanReached = live == null && Vector3.Distance(here, light.Where) <= reach;
+
+                if (claimed || orphanReached)
                 {
                     taken++;
                     Taken++;

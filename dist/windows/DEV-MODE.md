@@ -37,6 +37,7 @@ activations and Homeward.
 | `Keypad *` | Grant a chest's worth of every material Acts I–II use |
 | `Keypad .` | Drop a **deer's light** at your feet |
 | `Keypad /` | **God mode** + a fighter's kit (toggle) |
+| `Keypad Enter` | **Gate to your claimed bed**, free, no cooldown |
 
 Keys only work during an active run.
 
@@ -55,10 +56,14 @@ Keys only work during an active run.
   in the kit is taken from the quest-reward tables, so the run-start
   validator has already checked them all.
 - **`/` (god)** toggles the mod's god mode — normally gated off during a run —
-  and grants a leather kit, bow, arrows and healing mead the first time it
-  turns on. Leather on purpose: god mode is what makes you unkillable, the
-  gear just needs to look right in the hand. Toggle it OFF to test dying,
-  which is itself part of the design (death costs heat and a boon).
+  and grants bronze arms plus the best food the game has (serpent stew, blood
+  pudding, sausages) the first time it turns on. Top-tier food is where
+  Valheim HP actually comes from, so "more hp" means eating better, not a
+  bigger chestpiece. Toggle it OFF to test dying, which is itself part of the
+  design (death costs heat and a boon).
+- **`Enter` (home)** teleports to your claimed bed with no charge and no
+  cooldown — the real Homeward's economy is not usually the thing under test.
+  Needs a claimed bed, and says so if there is none.
 - **`.` (light)** spawns a deer's light six metres ahead, exactly as if a
   deer had just died there — timer, bar and scoreboard all live. The race is
   otherwise the hardest moment in the act to reach (a deer, at night, while
