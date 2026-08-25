@@ -1439,6 +1439,20 @@ namespace ICanShowYouTheWorld.RunMode
             GUILayout.Label($"v{ModVersion.VERSION}", RunTheme.Small);
             GUILayout.EndHorizontal();
 
+            // What the saga IS, before any numbers. This lobby used to open with mechanical
+            // facts (rates, par, a mode-gating note) and never said what the player was signing
+            // up for — the one place with room to speak, spent on configuration.
+            GUI.contentColor = RunTheme.AccentGold;
+            GUILayout.Label("Something is stealing the light from the world.", RunTheme.Body);
+            GUI.contentColor = Color.white;
+            GUILayout.Label(
+                "A story-driven campaign across every biome: build a home worth defending, " +
+                "hunt what hunts you, and answer each of the old gods in turn. Quests on the " +
+                "left, your stash on the right. Every task raises the Heat \u2014 and the world " +
+                "rises with it.",
+                RunTheme.Small);
+
+            GUILayout.Space(4f);
             GUILayout.Label(run.LobbySummary(), RunTheme.Body);
 
             var cfg = Config;
@@ -1497,7 +1511,12 @@ namespace ICanShowYouTheWorld.RunMode
             if (GUILayout.Button("Begin the saga")) _pendingStart = true;
 
             GUILayout.Space(4f);
-            GUILayout.Label("GM mode is disabled while a run is live.", RunTheme.Small);
+            // Said in the saga's voice, not the mod's. "GM mode" is a developer's phrase for a
+            // thing the player never sees during a run anyway — what they need to know is that
+            // this mode plays fair.
+            GUI.contentColor = RunTheme.TextMuted;
+            GUILayout.Label("The saga is played without cheats. Power must be earned here.", RunTheme.Small);
+            GUI.contentColor = Color.white;
 
             // No kill-hook warning here by design: KillHookAvailable is unconditionally true
             // outside a run (the grace clock only advances while one is in progress, and the
