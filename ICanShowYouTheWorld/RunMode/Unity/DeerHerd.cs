@@ -376,6 +376,13 @@ namespace ICanShowYouTheWorld.RunMode
         /// A CHANCE rather than a certainty, on purpose: an ambush every single time stops being
         /// tension and becomes a tax on hunting at all.
         /// </summary>
+        /// <summary>
+        /// The contest, invokable by the dev harness. The `.` key used to drop a light with no
+        /// pack, which tests the race without its enemies — a harness that differs from the real
+        /// event tests the harness.
+        /// </summary>
+        public void Contest(Vector3 position) => ContestTheKill(position);
+
         private void ContestTheKill(Vector3 position)
         {
             if (!ContestEnabled || _cfg.RunDeerGreylingChance <= 0f) return;

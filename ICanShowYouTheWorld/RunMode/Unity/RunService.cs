@@ -1410,8 +1410,19 @@ namespace ICanShowYouTheWorld.RunMode
                 var player = Player.m_localPlayer;
                 if (_lights != null && player != null)
                 {
-                    _lights.Release(player.transform.position + player.transform.forward * 6f);
-                    Message("DEV: a light rises.");
+                    Vector3 at = player.transform.position + player.transform.forward * 6f;
+                    _lights.Release(at);
+
+                    // WITH the pack, exactly as a real deer kill fires it. The key exists to test
+                    // the race, and the race is light-versus-greydwarves — dropping the light
+                    // alone tested a footrace against nobody.
+                    if (_deer != null)
+                    {
+                        _deer.ContestEnabled = true;
+                        _deer.Contest(at);
+                    }
+
+                    Message("DEV: a light rises, and the forest answers.");
                 }
             }
         }
