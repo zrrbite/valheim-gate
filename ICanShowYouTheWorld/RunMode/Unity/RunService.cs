@@ -2959,6 +2959,20 @@ namespace ICanShowYouTheWorld.RunMode
                 // boss, it had simply lost the step that was supposed to precede it, and Eikthyr's
                 // name turned up at the end of the crafting questline instead. An invariant that
                 // only looks at the last element cannot see a missing one.
+                // The light race must sit on the HUNT track. It changed Kind in alpha61
+                // (KillPrefab -> PlayerEvent) and silently fell to CRAFT, because Kind is only a
+                // PROXY for track — the same trap that once filed "Kill Eikthyr" under crafting.
+                // The hunt then jumped from the spirit straight to the Herald, and the act's
+                // centrepiece was queued behind the bench upgrades.
+                foreach (var race in act.AllSteps.Where(c =>
+                             c.Kind == ChallengeKind.PlayerEvent && c.Param == StolenLights.TakenEvent))
+                {
+                    var huntTrack = act.Tracks.FirstOrDefault(t => t.Id == HuntTrackId);
+                    if (huntTrack == null || !huntTrack.Chain.Any(c => c.Id == race.Id))
+                        Debug.LogError($"[ICanShowYouTheWorld] {act.Label}: the light race '{race.Id}' is not " +
+                                       "on the hunt track — the hunt will skip its centrepiece.");
+                }
+
                 // A gate naming a track this act does not have is VACUOUS by design, so that a
                 // dropped track cannot deadlock a boss — which means a typo in the name disables
                 // the gate silently. Since every real gate names a track in its own act, that is
@@ -5597,7 +5611,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // Measured on lights TAKEN rather than deer killed, so the step is the race rather
                 // than the kill — and lights only rise after dark, which keeps the whole hunt
                 // nocturnal without a second rule to explain.
-                Id = "mq-deer", MainQuest = true, Kind = ChallengeKind.PlayerEvent, Param = StolenLights.TakenEvent,
+                Id = "mq-deer", MainQuest = true, Track = HuntTrackId, Kind = ChallengeKind.PlayerEvent, Param = StolenLights.TakenEvent,
                 Target = 5, Display = "Take back their light (5)",
                 RewardText = "Deer trophies — Eikthyr's summons",
                 Hint = "His trophies are the price of an audience \u2014 hunt after dark, and when a deer falls, RUN TO THE LIGHT before it fades. What you do with their lights is between you and the forest. Let it take eight and the trophies are lost.",
