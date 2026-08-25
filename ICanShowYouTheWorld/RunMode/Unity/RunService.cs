@@ -419,6 +419,9 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         private readonly HashSet<string> _forfeited = new HashSet<string>();
 
+        /// <summary>Whether the Gatherer's coming has been announced this appearance of its step.</summary>
+        private bool _gathererForetold;
+
         /// <summary>
         /// Ends the light race badly, if the forest has taken enough.
         ///
@@ -469,7 +472,18 @@ namespace ICanShowYouTheWorld.RunMode
                 t.Current.Def.Kind == ChallengeKind.KillPrefab &&
                 t.Current.Def.Param == TheGatherer.KillName);
 
-            if (!wanted) return;
+            if (!wanted) { _gathererForetold = false; return; }
+
+            // Foretold ONCE, the moment its step opens — even by day, when it will not come yet.
+            // The Herald's fall and the arrival can be hours apart, and a named enemy nobody has
+            // heard of arriving unannounced reads as a random spawn rather than a reckoning
+            // (owner: "there was no intro message for the harvester").
+            if (!_gathererForetold)
+            {
+                _gathererForetold = true;
+                Announce($"{TheGatherer.Name} knows what you have taken.");
+                Message("It gathers only in the dark. Be ready when night falls.");
+            }
 
             var player = Player.m_localPlayer;
             if (player == null) return;
@@ -747,6 +761,11 @@ namespace ICanShowYouTheWorld.RunMode
 
         public int HomewardCharges => _active ? _homewardCharges : 0;
         public float EarnedHealth => _active ? _taskHealthReward : 0f;
+
+        /// <summary>The transition card: the window draws it large for a few seconds. See RefreshAct.</summary>
+        public string ActCardTitle { get; private set; }
+        public string ActCardEpigraph { get; private set; }
+        public float ActCardShownAt { get; private set; } = float.NegativeInfinity;
 
         public ActDefinition CurrentAct =>
             _active && _actIndex >= 0 && _actIndex < _acts.Count ? _acts[_actIndex] : null;
@@ -3061,10 +3080,19 @@ namespace ICanShowYouTheWorld.RunMode
 
             if (!announce || !changed) return;
 
-            string banner = _acts[_actIndex].Banner;
-            Announce(banner);
-            Message(banner);
-            Debug.Log($"[ICanShowYouTheWorld] Act transition → {_acts[_actIndex].Label}");
+            var act = _acts[_actIndex];
+            Announce(act.Banner);
+            Message(act.Banner);
+
+            // The CARD is the real announcement. The center-screen text and the chat line were
+            // both missable in the chaos right after a boss kill — which is exactly when an act
+            // changes — and a transition the player does not notice is a transition that did not
+            // happen for them (owner: "I missed act 2 starting").
+            ActCardTitle = act.Banner;
+            ActCardEpigraph = act.Epigraph;
+            ActCardShownAt = Time.time;
+
+            Debug.Log($"[ICanShowYouTheWorld] Act transition → {act.Label}");
         }
 
         /// <summary>
@@ -3256,6 +3284,15 @@ namespace ICanShowYouTheWorld.RunMode
                             }
                         }
                     }
+
+                    // Which body the pale lights will wear. The chain prefers a Mistlands wisp
+                    // ("Wisp"), falls back to Ghost, then a starred deer — and which one THIS
+                    // build resolves is asset data, so it is asked and logged rather than assumed.
+                    // One line, and the answer decides whether "could it be a wisp model?" is
+                    // already true or needs a different prefab name.
+                    foreach (var name in new[] { "Wisp", "Ghost" })
+                        Debug.Log($"[ICanShowYouTheWorld] Spirit prefab '{name}': " +
+                                  (scene != null && scene.GetPrefab(name) != null ? "available" : "NOT in this build"));
 
                     var rewards = QuestRewards.Values
                         .Concat(BossSpoils)
@@ -5170,26 +5207,31 @@ namespace ICanShowYouTheWorld.RunMode
                 // story and read as a finale; it is a middle, so it takes the Plains' own image
                 // instead. See the act plans spec.
                 Id = "act1", Numeral = "I", Title = "The Stolen Light",
+                Epigraph = "Something is taking the light from the meadows. Take it back.",
                 BossDefeatKey = "defeated_eikthyr", Tracks = Split(MainQuestChain()),
             },
             new ActDefinition
             {
                 Id = "act2", Numeral = "II", Title = "Where the Light Goes",
+                Epigraph = "The forest has been fed for years. Meet what did the feeding.",
                 BossDefeatKey = "defeated_gdking", Tracks = Split(BlackForestChain()),
             },
             new ActDefinition
             {
                 Id = "act3", Numeral = "III", Title = "Nothing Stays Buried",
+                Epigraph = "What the marsh takes, it keeps.",
                 BossDefeatKey = "defeated_bonemass", Tracks = Split(SwampChain()),
             },
             new ActDefinition
             {
                 Id = "act4", Numeral = "IV", Title = "The White Silence",
+                Epigraph = "Above the treeline, even light freezes.",
                 BossDefeatKey = "defeated_dragon", Tracks = Split(MountainChain()),
             },
             new ActDefinition
             {
                 Id = "act5", Numeral = "V", Title = "The Golden Ruin",
+                Epigraph = "They harvested a god's herd before you. See how it ended.",
                 BossDefeatKey = "defeated_goblinking", Tracks = Split(PlainsChain()),
             },
         };

@@ -324,6 +324,11 @@ namespace ICanShowYouTheWorld.RunMode
                 // which is false on the main menu (there is no Hud there at all).
                 DrawSagaTitle(run, viewWidth, viewHeight);
 
+                // The act-transition card: the same big type as the loading title, in-world, for
+                // ten seconds after a boss falls. Faded in and out so it reads as an event rather
+                // than a popup. Drawn before the strip so nothing sits on top of it.
+                DrawActCard(run, viewWidth, viewHeight);
+
                 // Nothing Run Mode draws belongs on the main menu — not the strip, not the HUD,
                 // not the offer, and not the lobby (whose Start/Discard buttons act on a world
                 // that isn't there). Suspending an active run already clears the in-world case;
@@ -625,6 +630,37 @@ namespace ICanShowYouTheWorld.RunMode
         /// a vanilla save looks exactly like vanilla, which is the same rule the rest of the mode
         /// keeps: it changes the game while it is running the mode, and not otherwise.
         /// </summary>
+        private const float ActCardSeconds = 10f;
+
+        /// <summary>
+        /// ACT II — WHERE THE LIGHT GOES, large, centre-upper screen, with the act's epigraph
+        /// under it. The chat line and the game's own center message were both missable in the
+        /// chaos right after a boss kill, which is exactly when an act changes.
+        /// </summary>
+        private void DrawActCard(IRunService run, float viewWidth, float viewHeight)
+        {
+            float age = Time.time - run.ActCardShownAt;
+            if (age < 0f || age > ActCardSeconds || string.IsNullOrEmpty(run.ActCardTitle)) return;
+
+            // One second in, one second out.
+            float alpha = Mathf.Clamp01(age) * Mathf.Clamp01(ActCardSeconds - age);
+
+            var prev = GUI.color;
+            GUI.color = new Color(1f, 1f, 1f, alpha);
+
+            float y = viewHeight * 0.24f;
+            GUI.Label(new Rect(0f, y, viewWidth, 60f), run.ActCardTitle, _titleStyle);
+
+            if (!string.IsNullOrEmpty(run.ActCardEpigraph))
+            {
+                GUI.contentColor = RunTheme.AccentGold;
+                GUI.Label(new Rect(0f, y + 58f, viewWidth, 30f), run.ActCardEpigraph, _subtitleStyle);
+                GUI.contentColor = Color.white;
+            }
+
+            GUI.color = prev;
+        }
+
         private void DrawSagaTitle(IRunService run, float viewWidth, float viewHeight)
         {
             if (!LoadingScreenUp()) return;

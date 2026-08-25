@@ -214,7 +214,9 @@ namespace ICanShowYouTheWorld.RunMode
 
             // Half again as big as whatever it is. A Ghost at night against dark meadows is easy
             // to walk past, and the whole step is walking toward it.
-            inst.transform.localScale *= 1.6f;
+            // A wisp is a small mote where a Ghost is person-sized; the same landmark job
+            // needs a very different bump.
+            inst.transform.localScale *= chosen == "Wisp" ? 3f : 1.6f;
 
             var view = inst.GetComponent<ZNetView>();
             var zdo = view != null && view.IsValid() ? view.GetZDO() : null;

@@ -31,6 +31,9 @@ namespace ICanShowYouTheWorld.Services
         int LightsBurning { get; }
         int LightsTaken { get; }
         int LightsLost { get; }
+        string ActCardTitle { get; }
+        string ActCardEpigraph { get; }
+        float ActCardShownAt { get; }
         bool DevMode { get; }
         HearthRecords Records { get; }
 

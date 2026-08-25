@@ -27,6 +27,12 @@ namespace ICanShowYouTheWorld.RunMode
         public string Title;
 
         /// <summary>
+        /// One line under the title on the transition card — the act telling you what it wants
+        /// before you know its steps. Style: an instruction or a warning, never a summary.
+        /// </summary>
+        public string Epigraph;
+
+        /// <summary>
         /// The global key set when this act's boss dies — the same string the boss table holds.
         /// This is what makes an act's END observable: the act is over precisely when the world
         /// says this key is set.
