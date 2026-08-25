@@ -34,7 +34,7 @@ activations and Homeward.
 |---|---|
 | `Keypad +` | Complete the current step on **every** unblocked track |
 | `Keypad -` | Push the clock forward **2 game hours** (press until "it is night") |
-| `Keypad *` | Grant a chest's worth of every material Acts I–II use |
+| `Keypad *` | Grant materials **and +75% run/walk speed** |
 | `Keypad .` | Drop a **deer's light** at your feet |
 | `Keypad /` | **God mode** + a fighter's kit (toggle) |
 | `Keypad Enter` | **Gate to your claimed bed**, free, no cooldown |
@@ -52,9 +52,10 @@ Keys only work during an active run.
   via the network time, a fixed step per press, and tells you whether it is
   night yet after each press.
 - **`*` (materials)** grants a fixed kit (wood, stone, ores, nails, hides,
-  arrows, food, seeds, a fishing rod and bait, surtling cores…). Every name
-  in the kit is taken from the quest-reward tables, so the run-start
-  validator has already checked them all.
+  arrows, food, seeds, a fishing rod and bait, surtling cores…) and speeds
+  you up by 75% — walking is most of the boring part of testing. Pressing it
+  again does not stack the speed. Turning god mode OFF (`/`) restores normal
+  pace, as does the run ending.
 - **`/` (god)** toggles the mod's god mode — normally gated off during a run —
   and grants bronze arms plus the best food the game has (serpent stew, blood
   pudding, sausages) the first time it turns on. Top-tier food is where

@@ -1271,6 +1271,44 @@ namespace ICanShowYouTheWorld.RunMode
         /// to reach — kill a deer, at night, while a step is active — and testing the bar, the
         /// timer and the pickup should not require all three.
         /// </summary>
+        /// <summary>
+        /// The dev speed boost: originals captured once, restored on demand.
+        ///
+        /// A loan like everything else this mode lends, just a hand-rolled one — the fields
+        /// re-initialise from the prefab on relog, so even a leaked loan self-heals, but restoring
+        /// properly is what keeps a dev session honest with itself. NOT the legacy SetSpeed, which
+        /// writes absolute values over walk, run and jump with no way back.
+        /// </summary>
+        private bool _devSpeedOn;
+        private float _devRunSpeed, _devWalkSpeed;
+
+        private const float DevSpeedFactor = 1.75f;
+
+        private void DevApplySpeed(Player player)
+        {
+            if (_devSpeedOn || player == null) return;
+
+            _devRunSpeed = player.m_runSpeed;
+            _devWalkSpeed = player.m_walkSpeed;
+            player.m_runSpeed *= DevSpeedFactor;
+            player.m_walkSpeed *= DevSpeedFactor;
+            _devSpeedOn = true;
+        }
+
+        private void DevRestoreSpeed()
+        {
+            if (!_devSpeedOn) return;
+
+            var player = Player.m_localPlayer;
+            if (player != null)
+            {
+                player.m_runSpeed = _devRunSpeed;
+                player.m_walkSpeed = _devWalkSpeed;
+            }
+
+            _devSpeedOn = false;
+        }
+
         private void HandleDevInput()
         {
             if (_cfg == null || !_cfg.RunDevMode || !_active || _frozen) return;
@@ -1287,7 +1325,12 @@ namespace ICanShowYouTheWorld.RunMode
             else if (Input.GetKeyDown(KeyCode.KeypadMultiply))
             {
                 foreach (var entry in DevKit) GrantItem(entry.prefab, entry.count);
-                Message($"DEV: {DevKit.Length} materials granted.");
+
+                // Faster legs come with the materials: a supply key exists to cut the boring part
+                // of testing, and walking is most of it. Idempotent — a second press must not
+                // stack the multiplier.
+                DevApplySpeed(Player.m_localPlayer);
+                Message($"DEV: {DevKit.Length} materials granted, +75% speed.");
             }
             else if (Input.GetKeyDown(KeyCode.KeypadDivide))
             {
@@ -1308,7 +1351,8 @@ namespace ICanShowYouTheWorld.RunMode
                         }
                         else
                         {
-                            Message("DEV: god mode OFF.");
+                            DevRestoreSpeed();
+                            Message("DEV: god mode OFF, speed restored.");
                         }
                     }
                 }
@@ -2712,6 +2756,9 @@ namespace ICanShowYouTheWorld.RunMode
         private void EndRun()
         {
             _active = false;
+
+            // The dev speed boost is a loan, and the run ending is the last chance to repay it.
+            DevRestoreSpeed();
 
             if (_challenges != null) _challenges.Completed -= OnChallengeCompleted;
             if (_boons != null)
