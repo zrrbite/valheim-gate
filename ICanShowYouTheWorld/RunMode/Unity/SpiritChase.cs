@@ -229,6 +229,17 @@ namespace ICanShowYouTheWorld.RunMode
             zdo.Persistent = false;
             _spirit = zdo.m_uid;
 
+            // The wisp is an item, and items vacuum into the inventory on approach — the race
+            // lights got this fix in alpha69.7 and this one was missed, so walking up to the
+            // act's opening mystery ended with a pop into the pocket instead of a moment. The
+            // chase completes by REACHING the light (12m), so there is nothing to press E on and
+            // nothing the game should be allowed to grab.
+            var drop = inst.GetComponent<ItemDrop>();
+            if (drop != null)
+            {
+                try { drop.m_autoPickup = false; } catch { }
+            }
+
             var ch = inst.GetComponent<Character>();
             if (ch != null)
             {

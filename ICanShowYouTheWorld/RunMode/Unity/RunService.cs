@@ -379,7 +379,14 @@ namespace ICanShowYouTheWorld.RunMode
                 bool wasVisible = _spirit.Spawned;
 
                 if (_spirit.Tick(player))
-                    Message("The light goes out. You know where to go.");
+                {
+                    // The act's opening mystery resolves — worth a story beat, not a status line.
+                    // It also TEACHES the race that follows, at the moment the player is most
+                    // ready to hear it: they just learned lights exist by finding one.
+                    Announce("The pale light goes out.");
+                    Message("It was one of the herd's \u2014 the one the forest never found.");
+                    Message("The deer give up their light when they fall, and the forest is always collecting. Hunt after dark, and take back what you can.");
+                }
 
                 // Said the moment it exists, so nobody walks into it unaware. It is placed at the
                 // edge of vision at night, which is atmospheric right up until you finish the step
