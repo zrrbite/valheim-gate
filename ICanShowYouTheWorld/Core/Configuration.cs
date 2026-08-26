@@ -80,6 +80,7 @@ namespace ICanShowYouTheWorld.Core
         int RunLightForfeitLost { get; set; }
         bool RunDevMode { get; set; }
         string RunLightMusic { get; set; }
+        float RunLightDriftSpeed { get; set; }
         bool RunDeerLightning { get; set; }
         float RunHeatEnemyDamageWeight { get; set; }
         float RunHeatEnemyLevelUpWeight { get; set; }
@@ -252,6 +253,9 @@ namespace ICanShowYouTheWorld.Core
         // Music cue for the light race. A NAME from the game's music table, which is asset
         // data — run start logs whether it resolves. Empty disables the cue.
         [SerializeField] private string runLightMusic = "boss_eikthyr";
+        // How fast a dropped light slips away toward its collector. Walking pace: the point
+        // is an escape you can run down, with the pack as the obstacle. Zero disables drift.
+        [SerializeField] private float runLightDriftSpeed = 1.3f;
         [SerializeField] private bool runDeerLightning = true;
         [SerializeField] private float runHeatEnemyDamageWeight = 0.05f;
         [SerializeField] private float runHeatEnemyLevelUpWeight = 0.05f;
@@ -335,6 +339,7 @@ namespace ICanShowYouTheWorld.Core
         public int RunLightForfeitLost { get => runLightForfeitLost; set => runLightForfeitLost = value; }
         public bool RunDevMode { get => runDevMode; set => runDevMode = value; }
         public string RunLightMusic { get => runLightMusic; set => runLightMusic = value; }
+        public float RunLightDriftSpeed { get => runLightDriftSpeed; set => runLightDriftSpeed = value; }
         public bool RunDeerLightning { get => runDeerLightning; set => runDeerLightning = value; }
         public float RunHeatEnemyDamageWeight { get => runHeatEnemyDamageWeight; set => runHeatEnemyDamageWeight = value; }
         public float RunHeatEnemyLevelUpWeight { get => runHeatEnemyLevelUpWeight; set => runHeatEnemyLevelUpWeight = value; }

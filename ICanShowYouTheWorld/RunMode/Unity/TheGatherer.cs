@@ -45,6 +45,22 @@ namespace ICanShowYouTheWorld.RunMode
 
         public void Reset() => _it = ZDOID.None;
 
+        /// <summary>Where it stands, or null when it is not in the world. The lights home on this.</summary>
+        public Vector3? Position()
+        {
+            if (_it == ZDOID.None) return null;
+
+            try
+            {
+                var zdo = ZDOMan.instance?.GetZDO(_it);
+                return zdo == null ? (Vector3?)null : zdo.GetPosition();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         /// <summary>Whether it is currently in the world.</summary>
         public bool Alive
         {

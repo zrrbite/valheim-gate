@@ -50,6 +50,34 @@ namespace ICanShowYouTheWorld.RunMode
         public string GetHoverName() => "A deer's light";
     }
 
+    /// <summary>
+    /// Carries a light away toward whatever is collecting it.
+    ///
+    /// The fade timer said "the forest takes it" as an expiry; this says it as MOTION — the light
+    /// visibly slips off toward the collector, and taking it back means running it down through
+    /// the pack. Same rule, told where the player is looking.
+    ///
+    /// The wisp is a physics item, so its rigidbody goes kinematic: gravity would drag the drift
+    /// into the ground, and a light that burrows is a light nobody can chase.
+    /// </summary>
+    internal class LightDrift : MonoBehaviour
+    {
+        public Vector3 Target;
+        public float Speed;
+
+        private void Start()
+        {
+            var body = GetComponent<Rigidbody>();
+            if (body != null) body.isKinematic = true;
+        }
+
+        private void Update()
+        {
+            if (Speed <= 0f) return;
+            transform.position = Vector3.MoveTowards(transform.position, Target, Speed * Time.deltaTime);
+        }
+    }
+
     internal class StolenLights
     {
         private readonly IConfiguration _cfg;
@@ -110,14 +138,21 @@ namespace ICanShowYouTheWorld.RunMode
         /// Lifted clear of the ground and offset slightly, so it does not spawn inside the corpse
         /// or the thing that killed it.
         /// </summary>
-        public void Release(Vector3 at) => Release(at, 0f);
+        public void Release(Vector3 at) => Release(at, 0f, null);
+
+        public void Release(Vector3 at, float fadeSecondsOverride) => Release(at, fadeSecondsOverride, null);
 
         /// <summary>
         /// As <see cref="Release(Vector3)"/>, with a fade override for lights that are FREED
         /// rather than contested — the Gatherer's hoard should wait to be collected, not start a
         /// second scramble over a corpse the player just fought for.
         /// </summary>
-        public void Release(Vector3 at, float fadeSecondsOverride)
+        /// <summary>
+        /// <paramref name="driftTo"/>, when set, sends the light HOMING toward the collector —
+        /// the Gatherer, the Herald's ground, or the forest itself. Null for lights that wait:
+        /// the Gatherer's freed hoard, and any race light with nothing to home on.
+        /// </summary>
+        public void Release(Vector3 at, float fadeSecondsOverride, Vector3? driftTo)
         {
             var scene = ZNetScene.instance;
             if (scene == null) return;
@@ -185,6 +220,15 @@ namespace ICanShowYouTheWorld.RunMode
                 pickup = inst.AddComponent<LightPickup>();
             }
 
+            if (driftTo != null)
+            {
+                var drift = inst.AddComponent<LightDrift>();
+                // Raised toward head height at the destination too, so the drift does not dive
+                // into the terrain as it leaves.
+                drift.Target = driftTo.Value + Vector3.up * 2.2f;
+                drift.Speed = Mathf.Max(0.1f, _cfg.RunLightDriftSpeed);
+            }
+
             _lights.Add(new Light
             {
                 Id = zdo.m_uid,
@@ -216,8 +260,15 @@ namespace ICanShowYouTheWorld.RunMode
                 // was just there — without this, an E-press followed by a sprint (dev speed made
                 // it easy) left the taken light as a zombie that later "faded", telling the
                 // player the forest took a light that was in their pocket.
-                if (live != null && Vector3.Distance(here, live.Value) <= 8f)
-                    light.NearAt = Time.time;
+                if (live != null)
+                {
+                    // A drifting light's "where" is wherever it has got to — the orphan fallback
+                    // and the fade message must chase the same thing the player is chasing.
+                    light.Where = live.Value;
+
+                    if (Vector3.Distance(here, live.Value) <= 8f)
+                        light.NearAt = Time.time;
+                }
 
                 // Taking is an E-PRESS on the light itself, through the game's own interact
                 // prompt. Proximity remains only for a light whose object is GONE (zone unloaded):
