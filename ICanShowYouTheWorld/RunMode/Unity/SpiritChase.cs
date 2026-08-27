@@ -36,13 +36,22 @@ namespace ICanShowYouTheWorld.RunMode
         private const float MinDistance = 200f;
         private const float MaxDistance = 380f;
 
-        /// <summary>How close the player must get before it is spawned, and before it counts as reached.</summary>
+        /// <summary>How close the player must get before it is spawned.</summary>
         private const float SpawnRange = 70f;
-        private const float ReachRange = 12f;
+
+        /// <summary>
+        /// TOUCH range — walk into the light and it is yours. It was 12m (a pop from a distance,
+        /// indistinguishable from auto-pickup), then an E-press whose object-destruction fought
+        /// the respawn guard and lost: every tick re-spawned what the player had just taken, an
+        /// infinite wisp fountain. Horizontal, because the light floats overhead and a 3D metre
+        /// to something two metres up is unreachable.
+        /// </summary>
+        private const float TouchRange = 1.2f;
 
         private Vector3? _target;
         private ZDOID _spirit = ZDOID.None;
         private bool _found;
+        private float _lastNearAt = float.NegativeInfinity;
 
         public SpiritChase(IConfiguration cfg, System.Random rng)
         {
@@ -90,6 +99,7 @@ namespace ICanShowYouTheWorld.RunMode
             _spirit = ZDOID.None;
             _found = false;
             Spawned = false;
+            _lastNearAt = float.NegativeInfinity;
         }
 
         /// <summary>The remembered place, so a resume does not send the player somewhere new.</summary>
@@ -127,24 +137,42 @@ namespace ICanShowYouTheWorld.RunMode
             Vector3 flat = _target.Value; flat.y = here.y;
             float toTarget = Vector3.Distance(here, flat);
 
-            if (toTarget <= SpawnRange && !Alive) Spawn(_target.Value);
-
             Vector3? live = Position();
 
-            // Found means TAKEN — the E-press on the light, which (auto-pickup being off) is the
-            // only thing that removes the object while the player stands near. Completing at 12m
-            // was the original walk-to design, and from the player's side it was indistinguishable
-            // from the auto-vacuum this mode has now killed three times: the light popped without
-            // the player doing anything. Every light in the act takes an E now.
-            if (Spawned && live == null && toTarget <= ReachRange)
+            // TOUCH: walk into the light. Checked BEFORE the respawn guard — the E-take variant
+            // died because the guard ran first, saw "nothing alive", and resurrected what the
+            // player had just taken, every tick, forever.
+            if (live != null)
             {
-                _found = true;
-                return true;
+                _lastNearAt = Vector3.Distance(here, live.Value) <= 8f ? Time.time : _lastNearAt;
+
+                Vector3 delta = live.Value - here;
+                float vertical = Mathf.Abs(delta.y);
+                delta.y = 0f;
+
+                if (delta.magnitude <= TouchRange && vertical <= 3f)
+                {
+                    _found = true;
+                    Despawn();
+                    return true;
+                }
+            }
+            else if (Spawned)
+            {
+                // The object is gone without a touch. If the player was beside it moments ago,
+                // they took it some other way (an E on the item survives all guards) — honour it.
+                // If they were far, the zone unloaded: respawn below, as the Herald does.
+                if (Time.time - _lastNearAt <= 3f)
+                {
+                    _found = true;
+                    return true;
+                }
             }
 
-            // The one walk-to case left: no prefab could be spawned at all, so there is nothing
-            // to press E on and reaching the haunted ground must count, or the step is a dead end.
-            if (!Spawned && !Alive && toTarget <= ReachRange)
+            if (toTarget <= SpawnRange && !Alive) Spawn(_target.Value);
+
+            // No prefab at all: reaching the haunted ground must count, or the step is a dead end.
+            if (!Spawned && !Alive && toTarget <= 12f)
             {
                 _found = true;
                 return true;

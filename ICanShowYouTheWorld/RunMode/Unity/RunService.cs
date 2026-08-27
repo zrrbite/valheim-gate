@@ -5676,7 +5676,7 @@ namespace ICanShowYouTheWorld.RunMode
                 Id = "mq-spirit", MainQuest = true, Track = HuntTrackId, Kind = ChallengeKind.PlayerState,
                 Param = SpiritChase.FoundMeasure, Target = 1, Display = "Follow the pale light",
                 RewardText = "A torch that will not go out, and arrows",
-                Hint = "One light the forest never found. When you reach it, TAKE it \u2014 press E.",
+                Hint = "One light the forest never found. Walk into it.",
             },
             new ChallengeDefinition
             {
