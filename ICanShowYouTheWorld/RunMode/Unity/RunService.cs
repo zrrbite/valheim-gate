@@ -624,16 +624,32 @@ namespace ICanShowYouTheWorld.RunMode
                 // same gate as the pack, and for the same reason.
                 if (DeerHuntWanted) _lights.TickConvergers();
 
-                int lost;
-                int taken = _lights.Tick(player, out lost);
+                int lost, freedGuttered;
+                int taken = _lights.Tick(player, out lost, out freedGuttered);
 
                 for (int i = 0; i < taken; i++)
                     _challenges.ReportEvent(ChallengeKind.PlayerEvent, StolenLights.TakenEvent);
 
-                // The counters ride IN the messages, read from the same field the scoreboard
-                // shows — a message and a counter that can disagree will, and did.
-                if (taken > 0) Message($"You take the light back. (you {_lights.Taken} \u2014 forest {_lights.Lost})");
-                if (lost > 0) Message($"The forest takes it. (you {_lights.Taken} \u2014 forest {_lights.Lost})");
+                // The score rides in the messages ONLY while the race step is live. It kept
+                // announcing "you N — forest N" through the Herald and Gatherer fights (owner:
+                // "it still notified me about the current score me vs forest") — a contest
+                // already decided, narrated as if it were still running.
+                bool raceLive = _challenges.Tracks.Any(t =>
+                    t.Current != null && !t.Blocked &&
+                    t.Current.Def.Kind == ChallengeKind.PlayerEvent &&
+                    t.Current.Def.Param == StolenLights.TakenEvent);
+
+                if (taken > 0)
+                    Message(raceLive
+                        ? $"You take the light back. (you {_lights.Taken} \u2014 forest {_lights.Lost})"
+                        : "You take the light back.");
+                if (lost > 0)
+                    Message(raceLive
+                        ? $"The forest takes it. (you {_lights.Taken} \u2014 forest {_lights.Lost})"
+                        : "The forest takes it.");
+
+                // A freed light guttering is cleanup, not a loss — its collector is dead.
+                if (freedGuttered > 0) Message("A freed light gutters out.");
             }
             catch (Exception ex) { LogOnce("stolen-lights", ex); }
         }

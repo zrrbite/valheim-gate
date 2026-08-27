@@ -77,6 +77,13 @@ namespace ICanShowYouTheWorld.RunMode
 
             public float NextConvergeAt;
             public int Converged;
+
+            /// <summary>
+            /// A light FREED from the Gatherer rather than raced for. Freed lights fade on a long
+            /// clock as cleanup, not as a loss — nobody is collecting them, their collector is
+            /// dead — so a guttered one must not credit "the forest" on the scoreboard.
+            /// </summary>
+            public bool Freed;
         }
 
         private readonly List<Light> _lights = new List<Light>();
@@ -211,6 +218,7 @@ namespace ICanShowYouTheWorld.RunMode
                 Obj = inst,
                 Where = at,
                 FadesAt = Time.time + Mathf.Max(5f, fadeSecondsOverride > 0f ? fadeSecondsOverride : _cfg.RunLightFadeSeconds),
+                Freed = fadeSecondsOverride > 0f,
                 Pickup = pickup,
             });
         }
@@ -219,9 +227,12 @@ namespace ICanShowYouTheWorld.RunMode
         /// Call about once a second. Returns how many lights the player reached this tick; anything
         /// that faded is reported through <paramref name="lost"/> so the host can say so.
         /// </summary>
-        public int Tick(Player player, out int lost)
+        public int Tick(Player player, out int lost) => Tick(player, out lost, out _);
+
+        public int Tick(Player player, out int lost, out int freedGuttered)
         {
             lost = 0;
+            freedGuttered = 0;
             if (player == null || _lights.Count == 0) return 0;
 
             int taken = 0;
@@ -284,8 +295,16 @@ namespace ICanShowYouTheWorld.RunMode
 
                 if (Time.time >= light.FadesAt)
                 {
-                    lost++;
-                    Lost++;
+                    if (light.Freed)
+                    {
+                        freedGuttered++;
+                    }
+                    else
+                    {
+                        lost++;
+                        Lost++;
+                    }
+
                     Destroy(light);
                     _lights.Remove(light);
                 }
