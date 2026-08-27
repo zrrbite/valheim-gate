@@ -82,14 +82,41 @@ namespace ICanShowYouTheWorld.RunMode
             Vector3 flat = Target; flat.y = transform.position.y;
             Vector3 next = Vector3.MoveTowards(transform.position, flat, Speed * Time.deltaTime);
 
+            // Ground-follow by RAYCAST, the same approach the AoE circles use (CircleVisualizer):
+            // ZoneSystem.GetGroundHeight knows only the terrain heightmap, so the light clipped
+            // through boulders and roots — the ray sees whatever is actually solid. Same filters
+            // as the circles, for the same reasons: trees and creatures are not ground, and the
+            // light must not stand on its own collider.
+            float ground = float.NegativeInfinity;
             try
             {
-                var zone = ZoneSystem.instance;
-                if (zone != null) next.y = zone.GetGroundHeight(next) + 2.2f;
+                var hits = Physics.RaycastAll(next + Vector3.up * 10f, Vector3.down, 20f);
+                foreach (var h in hits)
+                {
+                    var go = h.collider.gameObject;
+                    if (go.transform.IsChildOf(transform)) continue;
+                    if (go.GetComponentInParent<TreeBase>() != null ||
+                        go.GetComponentInParent<Character>() != null) continue;
+                    if (h.point.y > ground) ground = h.point.y;
+                }
+
+                if (float.IsNegativeInfinity(ground))
+                {
+                    var zone = ZoneSystem.instance;
+                    if (zone != null) ground = zone.GetGroundHeight(next) - 2.2f + 2.2f;
+                }
             }
             catch
             {
                 // Keep the current height rather than guessing one.
+            }
+
+            if (!float.IsNegativeInfinity(ground))
+            {
+                // Eased rather than snapped — the circles reject spikes for the same reason. A
+                // light that pops a metre when it crosses a rock reads as teleporting.
+                float wanted = ground + 2.2f;
+                next.y = Mathf.MoveTowards(transform.position.y, wanted, 4f * Time.deltaTime);
             }
 
             transform.position = next;
