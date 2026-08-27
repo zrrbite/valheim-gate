@@ -435,6 +435,11 @@ namespace ICanShowYouTheWorld.RunMode
             var player = Player.m_localPlayer;
             if (player == null) return;
 
+            // The act's one rule, kept by the thing that taught it: the light neither spawns nor
+            // can be touched by day. Without this the bar was hidden but the chase quietly
+            // completable in sunlight, which is the same lie one layer deeper.
+            if (!IsNight) return;
+
             try
             {
                 bool wasVisible = _spirit.Spawned;
@@ -445,6 +450,7 @@ namespace ICanShowYouTheWorld.RunMode
                     // It also TEACHES the race that follows, at the moment the player is most
                     // ready to hear it: they just learned lights exist by finding one.
                     Announce("The pale light goes out.");
+                    TrySpawnRaven(player.transform.position);
                     Message("It was one of the herd's \u2014 the one the forest never found.");
                     Message("The deer give up their light when they fall, and the forest is always collecting. Hunt after dark, and take back what you can.");
                 }
@@ -881,6 +887,10 @@ namespace ICanShowYouTheWorld.RunMode
         {
             get
             {
+                // Not by day. The strip says "nothing you seek walks in the light" while this
+                // bar cheerfully filled as you walked — two instruments disagreeing about
+                // whether the hunt is on (owner: "the bar moves when it's day time").
+                if (!IsNight) return -1f;
                 if (!_active || _spirit == null || !ActIsMeadows || !(SpiritWanted || _strayOut)) return -1f;
 
                 var player = Player.m_localPlayer;
@@ -2149,6 +2159,46 @@ namespace ICanShowYouTheWorld.RunMode
         /// Only "have you claimed a bed" so far, which is what makes a bed YOURS — building one and
         /// claiming one are different acts, and the questline was only ever checking the first.
         /// </summary>
+        /// <summary>Raven prefab candidates, probed at run start like the wisp's. Asset data.</summary>
+        private static readonly string[] RavenCandidates = { "Hugin", "Munin", "Raven" };
+
+        /// <summary>
+        /// A raven marks the story's beats — Odin's eyes, come to look at what you did. Spawned at
+        /// act transitions and when the pale light is found; non-persistent, and its own AI takes
+        /// it away when it is done. Pure flavour: it completes nothing and blocks nothing.
+        /// </summary>
+        private void TrySpawnRaven(Vector3 near)
+        {
+            try
+            {
+                var scene = ZNetScene.instance;
+                if (scene == null) return;
+
+                GameObject prefab = null;
+                foreach (var name in RavenCandidates)
+                {
+                    prefab = scene.GetPrefab(name);
+                    if (prefab != null) break;
+                }
+                if (prefab == null) return; // The probe already logged the absence once.
+
+                float angle = (float)(_rng.NextDouble() * Math.PI * 2.0);
+                Vector3 pos = near + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 5f;
+
+                try { pos.y = ZoneSystem.instance.GetGroundHeight(pos) + 0.5f; } catch { }
+
+                var inst = UnityEngine.Object.Instantiate(prefab, pos, Quaternion.identity);
+                if (inst == null) return;
+
+                var view = inst.GetComponent<ZNetView>();
+                var zdo = view != null && view.IsValid() ? view.GetZDO() : null;
+                if (zdo == null) { UnityEngine.Object.Destroy(inst); return; }
+
+                zdo.Persistent = false;
+            }
+            catch (Exception ex) { LogOnce("raven", ex); }
+        }
+
         /// <summary>
         /// Re-asserts dev god mode on the LIVE player, once a second, while the service says it
         /// is on.
@@ -3324,6 +3374,9 @@ namespace ICanShowYouTheWorld.RunMode
             ActCardEpigraph = act.Epigraph;
             ActCardShownAt = Time.time;
 
+            var watcher = Player.m_localPlayer;
+            if (watcher != null) TrySpawnRaven(watcher.transform.position);
+
             Debug.Log($"[ICanShowYouTheWorld] Act transition → {act.Label}");
         }
 
@@ -3522,7 +3575,7 @@ namespace ICanShowYouTheWorld.RunMode
                     // build resolves is asset data, so it is asked and logged rather than assumed.
                     // One line, and the answer decides whether "could it be a wisp model?" is
                     // already true or needs a different prefab name.
-                    foreach (var name in new[] { "Wisp", "Ghost" })
+                    foreach (var name in new[] { "Wisp", "Ghost", "Hugin", "Munin", "Raven" })
                         Debug.Log($"[ICanShowYouTheWorld] Spirit prefab '{name}': " +
                                   (scene != null && scene.GetPrefab(name) != null ? "available" : "NOT in this build"));
 
@@ -4419,8 +4472,12 @@ namespace ICanShowYouTheWorld.RunMode
                 return;
             }
 
-            GrantItem(prefab, count, quality, variant);
-            _stash.WithdrawAll(index);
+            // An armful, not the hoard: a full-stack withdrawal of several hundred stone was
+            // instant over-encumbrance, the same trap the dev kit hit. Click again for more.
+            int take = _stash.Withdraw(index, 50);
+            if (take <= 0) return;
+
+            GrantItem(prefab, take, quality, variant);
             SaveState();
         }
 
@@ -5972,6 +6029,16 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
+                // The smelter needs surtling cores and the cores are in the burial chambers — the
+                // saga now SAYS so as a step instead of leaving it to a hint. The crypt dive is
+                // Act II's first real dungeon and deserved to be on the questline, not implied.
+                Id = "bf-crypt", MainQuest = true, Kind = ChallengeKind.CollectItem, Param = "$item_surtlingcore",
+                Target = 2, Display = "Take cores from the dead (2)",
+                RewardText = "Torches for the dark below",
+                Hint = "Burial chambers under the forest hills. The dead hold what the smelter needs.",
+            },
+            new ChallengeDefinition
+            {
                 Id = "bf-smelter", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Smelter",
                 Target = 1, Display = "Build a smelter",
                 RewardText = "Ore, and surtling cores enough to never crawl a crypt again",
@@ -6025,6 +6092,17 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
+                // "Kill some greydwarf nests" was the ask, and nests are the one thing this mod
+                // cannot count: they are Destructibles, not Characters, and the only injected
+                // hook is Character.OnDeath. The tenders are countable, and the story is the
+                // same — the forest grows its children somewhere, and you are unwelcome near it.
+                Id = "bf-shaman", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Greydwarf_Shaman",
+                Target = 2, Display = "Kill 2 Shamans",
+                RewardText = "The nest-tenders' due \u2014 resin and healing mead",
+                Hint = "They keep to the nests and heal what you wound. The nests die without them.",
+            },
+            new ChallengeDefinition
+            {
                 Id = "bf-troll", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Troll",
                 Target = 1, Display = "Kill a Troll", RewardText = "Troll hide, and the seeds the Elder wants",
             },
@@ -6032,7 +6110,7 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 Id = "bf-find", MainQuest = true, Track = HuntTrackId, Kind = ChallengeKind.DiscoverLocation, Param = "GDKing",
                 Target = 1, Display = "Find the Elder's altar", RewardText = "The Elder's altar, and what it wants",
-                Hint = "A ring of stone in the deep forest, guarded. Follow the oldest trees.",
+                Hint = "Follow where the stolen light was carried \u2014 the oldest trees feed first. A ring of stone, guarded.",
             },
             new ChallengeDefinition
             {
@@ -6400,6 +6478,8 @@ namespace ICanShowYouTheWorld.RunMode
                 // COSTS, so the step still makes you crawl one burial chamber. You do the unfun
                 // thing once, prove it, and never do it again. Handing them over earlier would
                 // skip the part that gives the reward its meaning.
+                ["bf-shaman"] = new[] { ("Resin", 30), ("MeadHealthMedium", 4) },
+                ["bf-crypt"] = new[] { ("Torch", 4), ("Resin", 20) },
                 ["bf-smelter"] = new[] { ("CopperOre", 30), ("TinOre", 15), ("Coal", 30), ("SurtlingCore", 30) },
                 ["bf-cart"] = new[] { ("BronzeNails", 40), ("Wood", 40) },
                 ["bf-sign"] = new[] { ("Wood", 30), ("Resin", 20) },
@@ -6465,7 +6545,7 @@ namespace ICanShowYouTheWorld.RunMode
             new BoonDefinition { Id = "brother", Display = "Packbrother", IsPassive = false, CooldownSeconds = 240f, Description = "Summon a wolf to fight for you. Two at a time." },
             // Testable from Act I: you tame a boar on the hearth track, so this has something to
             // work on long before a boss falls.
-            new BoonDefinition { Id = "shepherd", Display = "Shepherd", IsPassive = true, Description = "Your tamed animals hit harder and hold longer. New ones too." },
+            new BoonDefinition { Id = "shepherd", Display = "Shepherd", IsPassive = true, Weight = 3, Description = "Your tamed animals are stronger, tougher and faster. New ones too." },
             // Act II onward. Skeletons in the Meadows would be a Black Forest answer to a Meadows
             // problem, and the flavour belongs with the burial chambers.
             new BoonDefinition { Id = "bonecaller", Display = "Bonecaller", IsPassive = false, CooldownSeconds = 180f, MinBosses = 1, Description = "Raise two skeletons to fight for you. [0]" },

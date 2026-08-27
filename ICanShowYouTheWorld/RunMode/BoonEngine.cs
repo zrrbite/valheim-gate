@@ -24,6 +24,14 @@ namespace ICanShowYouTheWorld.RunMode
         /// world rather than storing — the same reading the acts use.
         /// </summary>
         public int MinBosses;
+
+        /// <summary>
+        /// Draw weight in the offer roll; 1 is normal, 0 is treated as 1. Exists because a boon
+        /// with prerequisites the player worked for (Shepherd wants a tame) deserves better odds
+        /// than one that is always relevant — a uniform draw made the pet boon a rare sight in
+        /// exactly the runs that built a pen for it.
+        /// </summary>
+        public int Weight = 1;
     }
 
     public class HeldBoon
@@ -111,7 +119,19 @@ namespace ICanShowYouTheWorld.RunMode
 
             while (offer.Count < 3 && options.Count > 0)
             {
-                var pick = options[rng.Next(options.Count)];
+                // Weighted, without replacement. A linear walk over summed weights: the pool is
+                // tens of entries, not thousands, and obvious beats clever here.
+                int total = 0;
+                foreach (var o in options) total += Math.Max(1, o.Weight);
+
+                int roll = rng.Next(total);
+                BoonDefinition pick = options[options.Count - 1];
+                foreach (var o in options)
+                {
+                    roll -= Math.Max(1, o.Weight);
+                    if (roll < 0) { pick = o; break; }
+                }
+
                 options.Remove(pick);
                 offer.Add(pick);
             }

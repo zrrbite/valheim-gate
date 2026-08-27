@@ -875,10 +875,9 @@ namespace ICanShowYouTheWorld.RunMode
             GUI.contentColor = Color.white;
             GUILayout.EndHorizontal();
 
-            GUILayout.BeginHorizontal();
-            GUILayout.Label($"Saga score {run.CurrentScore:0.##}", RunTheme.Header);
-            GUILayout.FlexibleSpace();
-            GUILayout.EndHorizontal();
+            // Body type, not Header: the header style carries extra line height that made this
+            // row taller than its neighbours for no reason — the wonk was padding, not content.
+            GUILayout.Label($"Saga score {run.CurrentScore:0.##}", RunTheme.Body);
 
             // Heat's counterweight, shown beside it: every completion raises both, and seeing only
             // the cost would make the trade look worse than it is. Hidden until earned rather than

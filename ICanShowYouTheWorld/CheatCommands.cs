@@ -174,6 +174,8 @@ static class DamageHelpers
             }
         }
 
+        private const float PET_SPEED_MULT = 1.3f;
+
         public static void BuffAllPets(bool incrLevel = false)
         {
             if (!CheatCommands.RequireGodMode("Buff tamed")) return;
@@ -200,6 +202,24 @@ static class DamageHelpers
                 // HP buff
                 ch.SetMaxHealth(5000f);
                 ch.Heal(ch.GetMaxHealth(), false);
+
+                // Speed, anchored to the PREFAB's values so repeated applies cannot stack — the
+                // Shepherd boon re-runs this on a timer to catch newly tamed animals, and a
+                // multiplicative bump would compound on every tick. Prefab-anchored also means
+                // every species gets it: pigs have no weapons for the damage half to touch, and
+                // "the pigs too" is the whole point of a shepherd.
+                try
+                {
+                    var scene = ZNetScene.instance;
+                    var prefab = scene == null ? null : scene.GetPrefab(ch.gameObject.name.Replace("(Clone)", ""));
+                    var orig = prefab == null ? null : prefab.GetComponent<Character>();
+                    if (orig != null)
+                    {
+                        ch.m_runSpeed = orig.m_runSpeed * PET_SPEED_MULT;
+                        ch.m_speed = orig.m_speed * PET_SPEED_MULT;
+                    }
+                }
+                catch { /* speed is the garnish, not the meal */ }
 
                 // Only affects humanoid-style pets (skeletons, dvergr support mages, etc.)
                 Humanoid hum = ch as Humanoid;
@@ -385,6 +405,19 @@ static class DamageHelpers
                 var ch = list[i];
                 if (ch == null) continue;
                 if (!ch.IsTamed() || ch.IsPlayer()) continue;
+
+                // The speed loan comes back from the same place it was taken: the prefab.
+                try
+                {
+                    var scenePrefab = ZNetScene.instance?.GetPrefab(ch.gameObject.name.Replace("(Clone)", ""));
+                    var origCh = scenePrefab == null ? null : scenePrefab.GetComponent<Character>();
+                    if (origCh != null)
+                    {
+                        ch.m_runSpeed = origCh.m_runSpeed;
+                        ch.m_speed = origCh.m_speed;
+                    }
+                }
+                catch { }
 
                 Humanoid hum = ch as Humanoid;
                 if (hum != null)
