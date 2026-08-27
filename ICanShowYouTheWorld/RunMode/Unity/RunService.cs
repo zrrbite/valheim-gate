@@ -1438,6 +1438,7 @@ namespace ICanShowYouTheWorld.RunMode
         ///   Keypad .   drop a deer's light at your feet
         ///   Keypad /     god mode + armory (toggle)
         ///   Keypad Enter gate to the claimed bed, free
+        ///   Delete       slay everything hostile within 10m
         ///
         /// The last one matters more than it looks: the light race is the hardest thing in the act
         /// to reach — kill a deer, at night, while a step is active — and testing the bar, the
@@ -1534,6 +1535,33 @@ namespace ICanShowYouTheWorld.RunMode
                     }
                 }
                 catch (Exception ex) { LogOnce("dev-god", ex); }
+            }
+            else if (Input.GetKeyDown(KeyCode.Delete))
+            {
+                // Clears a 10m circle, through the ordinary damage path ON PURPOSE: deaths fire
+                // the kill hook, so a nuked deer still drops its light, still counts its quest,
+                // still draws the pack — the fast path tests the same machinery as the slow one.
+                // Tamed animals and the player are exempt, as in the GM version this mirrors.
+                try
+                {
+                    var player = Player.m_localPlayer;
+                    if (player != null)
+                    {
+                        var list = new List<Character>();
+                        Character.GetCharactersInRange(player.transform.position, 10f, list);
+
+                        int killed = 0;
+                        foreach (var c in list)
+                        {
+                            if (c == null || c.IsPlayer() || c.IsTamed()) continue;
+                            c.Damage(new HitData { m_damage = { m_damage = 1e10f } });
+                            killed++;
+                        }
+
+                        Message($"DEV: {killed} nearby creature{(killed == 1 ? "" : "s")} slain.");
+                    }
+                }
+                catch (Exception ex) { LogOnce("dev-slay", ex); }
             }
             else if (Input.GetKeyDown(KeyCode.KeypadEnter))
             {

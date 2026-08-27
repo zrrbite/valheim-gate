@@ -1052,7 +1052,7 @@ namespace ICanShowYouTheWorld.RunMode
             if (run.DevMode)
             {
                 GUI.contentColor = RunTheme.HeatRed;
-                GUILayout.Label("DEV MODE  +complete  -time  *items  .light  /god+speed  Ent:home", RunTheme.Small);
+                GUILayout.Label("DEV MODE  +complete  -time  *items  .light  /god+speed  Ent:home  Del:slay", RunTheme.Small);
                 GUI.contentColor = Color.white;
             }
 

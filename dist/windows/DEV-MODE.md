@@ -38,6 +38,7 @@ activations and Homeward.
 | `Keypad .` | Drop a **deer's light** at your feet |
 | `Keypad /` | **God mode** + a fighter's kit **+75% speed** (toggle) |
 | `Keypad Enter` | **Gate to your claimed bed**, free, no cooldown |
+| `Delete` | **Slay everything hostile within 10m** |
 
 Keys only work during an active run.
 
@@ -65,6 +66,10 @@ Keys only work during an active run.
 - **`Enter` (home)** teleports to your claimed bed with no charge and no
   cooldown — the real Homeward's economy is not usually the thing under test.
   Needs a claimed bed, and says so if there is none.
+- **`Delete` (slay)** kills every non-tamed creature within 10m through the
+  ordinary damage path, so deaths still count: a nuked deer drops its light,
+  fires its quest, draws its pack. The fast path tests the same machinery as
+  the slow one.
 - **`.` (light)** spawns a deer's light six metres ahead, exactly as if a
   deer had just died there — timer, bar and scoreboard all live. The race is
   otherwise the hardest moment in the act to reach (a deer, at night, while
