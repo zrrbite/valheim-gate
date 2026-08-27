@@ -333,7 +333,7 @@ namespace ICanShowYouTheWorld.RunMode
                 if (ActIsMeadows && DarkStepWanted && !IsNight)
                     return "Nothing you seek walks in the light. Wait for dark.";
 
-                if (_spirit != null && ActIsMeadows && SpiritWanted)
+                if (_spirit != null && ActIsMeadows && (SpiritWanted || _strayOut))
                 {
                     string rumour = _spirit.Bearing(player);
                     if (!string.IsNullOrEmpty(rumour)) return rumour;
@@ -365,6 +365,67 @@ namespace ICanShowYouTheWorld.RunMode
         /// Ticked only while its step is the one in play, so nothing drifts about the meadows
         /// before the saga has asked for it or after it has been found.
         /// </summary>
+        /// <summary>When the next stray light may kindle, and whether one is out. See PollStrays.</summary>
+        private float _strayReadyAt;
+        private bool _strayOut;
+
+        /// <summary>
+        /// Strays: while the race step is live, at night, another free light occasionally kindles
+        /// out in the dark — same rumour, same bar, same touch as the opening chase, and taking
+        /// one COUNTS TOWARD THE RACE. The step can be fed two ways: rip lights from the forest
+        /// at a carcass, or find the rare ones still loose in the night.
+        ///
+        /// It reuses the chase machinery by re-arming it once the scripted chase is done — the
+        /// opening stays singular ("the one the forest never found"), and the strays are the ones
+        /// the forest has not caught YET. It also gives the forfeit a mercy: a player losing the
+        /// carcass races can still make the count by wandering and finding.
+        /// </summary>
+        private void PollStrays()
+        {
+            if (_spirit == null || !ActIsMeadows || _challenges == null) return;
+            if (SpiritWanted) return;               // The scripted chase owns the machinery first.
+
+            bool raceWanted = _challenges.Tracks.Any(t =>
+                t.Current != null && !t.Blocked &&
+                t.Current.Def.Kind == ChallengeKind.PlayerEvent &&
+                t.Current.Def.Param == StolenLights.TakenEvent);
+
+            if (!raceWanted || !IsNight)
+            {
+                // A stray that outlives its welcome (dawn, step done) is quietly forgotten; the
+                // next one re-arms fresh. Nothing here should nag outside its moment.
+                if (_strayOut) { _spirit.Rearm(); _strayOut = false; }
+                return;
+            }
+
+            var player = Player.m_localPlayer;
+            if (player == null) return;
+
+            try
+            {
+                if (!_strayOut)
+                {
+                    if (Time.time < _strayReadyAt) return;
+
+                    _spirit.Rearm();
+                    _strayOut = true;
+                    Message("Somewhere out in the dark, a stray light kindles.");
+                    return;
+                }
+
+                if (_spirit.Tick(player))
+                {
+                    _strayOut = false;
+                    _strayReadyAt = Time.time + Mathf.Max(60f, _cfg.RunStrayLightMinutes * 60f);
+
+                    // A found stray IS a light taken back — the race counts it.
+                    _challenges.ReportEvent(ChallengeKind.PlayerEvent, StolenLights.TakenEvent);
+                    Message("A stray light, safe. The forest never had it.");
+                }
+            }
+            catch (Exception ex) { LogOnce("stray-lights", ex); }
+        }
+
         private void PollSpirit()
         {
             if (_spirit == null || !ActIsMeadows || _challenges == null) return;
@@ -778,7 +839,7 @@ namespace ICanShowYouTheWorld.RunMode
         {
             get
             {
-                if (!_active || _spirit == null || !ActIsMeadows || !SpiritWanted) return -1f;
+                if (!_active || _spirit == null || !ActIsMeadows || !(SpiritWanted || _strayOut)) return -1f;
 
                 var player = Player.m_localPlayer;
                 if (player == null) return -1f;
@@ -980,6 +1041,8 @@ namespace ICanShowYouTheWorld.RunMode
                 _stash.Clear();
                 _deer.Reset();
                 _spirit?.Reset();
+                _strayOut = false;
+                _strayReadyAt = Time.time + 120f;
                 _lights?.Reset();
                 _gatherer?.Reset();
                 _forest?.Reset();
@@ -1698,6 +1761,7 @@ namespace ICanShowYouTheWorld.RunMode
             PollPlayerState();
             PollMeals();
             PollSpirit();
+            PollStrays();
             PollLights();
             PollLightForfeit();
             PollGatherer();

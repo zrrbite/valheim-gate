@@ -93,6 +93,22 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>The furthest it is ever placed, so closeness has a fixed scale to fill.</summary>
         public const float Reach = MaxDistance;
 
+        /// <summary>
+        /// Re-arms the chase for a STRAY light: same rumour, same bar, same touch, new ground.
+        ///
+        /// The opening chase is scripted and singular — "the one the forest never found" — but the
+        /// machinery is too good for one use. During the race step, strays are the lights the
+        /// forest has not caught yet, found the same way the first one was.
+        /// </summary>
+        public void Rearm()
+        {
+            Despawn();
+            _target = null;
+            _found = false;
+            Spawned = false;
+            _lastNearAt = float.NegativeInfinity;
+        }
+
         public void Reset()
         {
             _target = null;
