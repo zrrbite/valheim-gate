@@ -4159,18 +4159,8 @@ namespace ICanShowYouTheWorld.RunMode
                 {
                     try
                     {
-                        // The light HOMES on whatever is collecting: the Gatherer when it walks,
-                        // the Herald's ground while the herd still has its guardian, the forest
-                        // itself otherwise. The fade timer said "the forest takes it" as an
-                        // expiry; the drift says it as motion, where the player is looking.
-                        Vector3? collector = _gatherer?.Position()
-                            ?? _deer?.HeraldTarget
-                            ?? NearestBiome(c.transform.position, Heightmap.Biome.BlackForest);
-
-                        _lights.Release(c.transform.position, 0f, collector);
-                        Message(collector != null
-                            ? "Its light rises \u2014 and begins to slip away."
-                            : "Its light rises. Take it before they do.");
+                        _lights.Release(c.transform.position);
+                        Message("Its light rises. Take it before they do \u2014 walk into it.");
                     }
                     catch (Exception ex) { LogOnce("release-light", ex); }
                 }

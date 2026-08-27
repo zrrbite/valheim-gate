@@ -50,79 +50,6 @@ namespace ICanShowYouTheWorld.RunMode
         public string GetHoverName() => "A deer's light";
     }
 
-    /// <summary>
-    /// Carries a light away toward whatever is collecting it.
-    ///
-    /// The fade timer said "the forest takes it" as an expiry; this says it as MOTION — the light
-    /// visibly slips off toward the collector, and taking it back means running it down through
-    /// the pack. Same rule, told where the player is looking.
-    ///
-    /// The wisp is a physics item, so its rigidbody goes kinematic: gravity would drag the drift
-    /// into the ground, and a light that burrows is a light nobody can chase.
-    /// </summary>
-    internal class LightDrift : MonoBehaviour
-    {
-        public Vector3 Target;
-        public float Speed;
-
-        private void Start()
-        {
-            var body = GetComponent<Rigidbody>();
-            if (body != null) body.isKinematic = true;
-        }
-
-        private void Update()
-        {
-            if (Speed <= 0f) return;
-
-            // HORIZONTAL pursuit with a ground-follow, never a straight 3D line. The homing
-            // target can carry a nonsense height (BiomeCompass.Nearest returns y = 0, far below
-            // sea level), and a 3D MoveTowards steered the light into the terrain within seconds
-            // of rising — "the light disappears immediately" was it burrowing.
-            Vector3 flat = Target; flat.y = transform.position.y;
-            Vector3 next = Vector3.MoveTowards(transform.position, flat, Speed * Time.deltaTime);
-
-            // Ground-follow by RAYCAST, the same approach the AoE circles use (CircleVisualizer):
-            // ZoneSystem.GetGroundHeight knows only the terrain heightmap, so the light clipped
-            // through boulders and roots — the ray sees whatever is actually solid. Same filters
-            // as the circles, for the same reasons: trees and creatures are not ground, and the
-            // light must not stand on its own collider.
-            float ground = float.NegativeInfinity;
-            try
-            {
-                var hits = Physics.RaycastAll(next + Vector3.up * 10f, Vector3.down, 20f);
-                foreach (var h in hits)
-                {
-                    var go = h.collider.gameObject;
-                    if (go.transform.IsChildOf(transform)) continue;
-                    if (go.GetComponentInParent<TreeBase>() != null ||
-                        go.GetComponentInParent<Character>() != null) continue;
-                    if (h.point.y > ground) ground = h.point.y;
-                }
-
-                if (float.IsNegativeInfinity(ground))
-                {
-                    var zone = ZoneSystem.instance;
-                    if (zone != null) ground = zone.GetGroundHeight(next) - 2.2f + 2.2f;
-                }
-            }
-            catch
-            {
-                // Keep the current height rather than guessing one.
-            }
-
-            if (!float.IsNegativeInfinity(ground))
-            {
-                // Eased rather than snapped — the circles reject spikes for the same reason. A
-                // light that pops a metre when it crosses a rock reads as teleporting.
-                float wanted = ground + 2.2f;
-                next.y = Mathf.MoveTowards(transform.position.y, wanted, 4f * Time.deltaTime);
-            }
-
-            transform.position = next;
-        }
-    }
-
     internal class StolenLights
     {
         private readonly IConfiguration _cfg;
@@ -183,9 +110,7 @@ namespace ICanShowYouTheWorld.RunMode
         /// Lifted clear of the ground and offset slightly, so it does not spawn inside the corpse
         /// or the thing that killed it.
         /// </summary>
-        public void Release(Vector3 at) => Release(at, 0f, null);
-
-        public void Release(Vector3 at, float fadeSecondsOverride) => Release(at, fadeSecondsOverride, null);
+        public void Release(Vector3 at) => Release(at, 0f);
 
         /// <summary>
         /// As <see cref="Release(Vector3)"/>, with a fade override for lights that are FREED
@@ -193,11 +118,12 @@ namespace ICanShowYouTheWorld.RunMode
         /// second scramble over a corpse the player just fought for.
         /// </summary>
         /// <summary>
-        /// <paramref name="driftTo"/>, when set, sends the light HOMING toward the collector —
-        /// the Gatherer, the Herald's ground, or the forest itself. Null for lights that wait:
-        /// the Gatherer's freed hoard, and any race light with nothing to home on.
+        /// Lights are STATIONARY. They drifted toward their collector for two versions and it
+        /// failed differently each time — first burrowing into terrain, then vanishing from the
+        /// player's view entirely. A light that stays where the deer fell is one the player can
+        /// always find, and the fade timer alone carries "the forest takes it".
         /// </summary>
-        public void Release(Vector3 at, float fadeSecondsOverride, Vector3? driftTo)
+        public void Release(Vector3 at, float fadeSecondsOverride)
         {
             var scene = ZNetScene.instance;
             if (scene == null) return;
@@ -265,15 +191,6 @@ namespace ICanShowYouTheWorld.RunMode
                 pickup = inst.AddComponent<LightPickup>();
             }
 
-            if (driftTo != null)
-            {
-                var drift = inst.AddComponent<LightDrift>();
-                // Raised toward head height at the destination too, so the drift does not dive
-                // into the terrain as it leaves.
-                drift.Target = driftTo.Value + Vector3.up * 2.2f;
-                drift.Speed = Mathf.Max(0.1f, _cfg.RunLightDriftSpeed);
-            }
-
             _lights.Add(new Light
             {
                 Id = zdo.m_uid,
@@ -307,12 +224,26 @@ namespace ICanShowYouTheWorld.RunMode
                 // player the forest took a light that was in their pocket.
                 if (live != null)
                 {
-                    // A drifting light's "where" is wherever it has got to — the orphan fallback
-                    // and the fade message must chase the same thing the player is chasing.
                     light.Where = live.Value;
 
                     if (Vector3.Distance(here, live.Value) <= 8f)
                         light.NearAt = Time.time;
+
+                    // The TOUCH is the take — walk into it, same metre as the chase light, and
+                    // run on if you don't want the fight. The E-take asked for a deliberate stop
+                    // mid-melee; grab-and-go is the race the owner actually wants to play.
+                    Vector3 delta = live.Value - here;
+                    float vertical = Mathf.Abs(delta.y);
+                    delta.y = 0f;
+
+                    if (delta.magnitude <= 1.2f && vertical <= 3f)
+                    {
+                        taken++;
+                        Taken++;
+                        Destroy(light);
+                        _lights.Remove(light);
+                        continue;
+                    }
                 }
 
                 // Taking is an E-PRESS on the light itself, through the game's own interact
