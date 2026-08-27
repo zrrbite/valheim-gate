@@ -682,6 +682,9 @@ namespace ICanShowYouTheWorld.RunMode
             catch (Exception ex) { LogOnce("stolen-lights", ex); }
         }
 
+        /// <summary>When the premise line is owed, or -inf. Set by the Act II transition.</summary>
+        private float _premiseWhisperAt = float.NegativeInfinity;
+
         private float _whisperAt;
 
         /// <summary>
@@ -741,6 +744,14 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         private void PollWhispers()
         {
+            // The one scripted whisper: the story bible's premise, owed since the Act II card.
+            if (!float.IsNegativeInfinity(_premiseWhisperAt) && Time.time >= _premiseWhisperAt)
+            {
+                _premiseWhisperAt = float.NegativeInfinity;
+                Message("Nothing here makes its own light. Remember that.");
+            }
+
+
             if (!ActIsMeadows || !DarkStepWanted) return;
             if (Time.time < _whisperAt) return;
 
@@ -3376,6 +3387,11 @@ namespace ICanShowYouTheWorld.RunMode
 
             var watcher = Player.m_localPlayer;
             if (watcher != null) TrySpawnRaven(watcher.transform.position);
+
+            // Act II opens on the saga's premise, said once and plainly. Delayed past the card's
+            // ten seconds so the two do not talk over each other — the card names the act, and
+            // then the world explains it.
+            if (_actIndex == 1) _premiseWhisperAt = Time.time + 12f;
 
             Debug.Log($"[ICanShowYouTheWorld] Act transition → {act.Label}");
         }
