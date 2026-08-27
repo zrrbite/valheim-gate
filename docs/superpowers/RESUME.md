@@ -27,13 +27,16 @@ Everything below is what that file tells it.
   boss music fires, E-press takes the light, the scoreboard ticks. Owner's
   verdict: "super difficult — very nice. It'll feel like quite an
   achievement." That closes the alpha70.1 gate fix as verified.
+- Confirmed 2026-08-27: THE ACT I -> II TRANSITION CHOREOGRAPHY — card,
+  raven, premise whisper, in order (owner: "I THINK", retest pending). The
+  Gatherer's arrival TIER READOUT also confirmed. Still fresh: alpha75's
+  courier race, raft step, and the Shepherd actually working are untested.
 - Also confirmed in play: resume after quitting mid-run, the Gatherer fight
   and its hoard drop, the wisp model (this build HAS a "Wisp" prefab), the
   Herald hunt, fishing.
-- **Still unverified in play:** the act transition card (Act I -> II), the
-  full Eikthyr kill closing the arc, the Gatherer arriving FATTER after lost
-  lights, the forfeit at 8 lost, Acts II-V content, heat tuning (open since
-  alpha17).
+- **Still unverified in play:** the Gatherer arriving FATTER after lost
+  lights, the forfeit at 8 lost, the courier race, Acts II-V content beyond
+  the transition, heat tuning (open since alpha17).
 - **Act I is the focus.** Three tracks, 26 steps, playable end to end. Design in
   `specs/2026-08-23-act-one-homestead-design.md`; Acts II-V are PLANNED but not
   built, in `specs/2026-08-23-act-questline-plans.md`.
