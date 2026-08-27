@@ -129,17 +129,28 @@ namespace ICanShowYouTheWorld.RunMode
 
             if (toTarget <= SpawnRange && !Alive) Spawn(_target.Value);
 
-            // Reached either the spirit itself or the place it haunts. Both count: a light you
-            // walked into is a light you found, and the alternative is a step that fails because a
-            // zone unloaded at the wrong moment.
             Vector3? live = Position();
-            float reach = live != null ? Vector3.Distance(here, live.Value) : toTarget;
 
-            if (reach > ReachRange) return false;
+            // Found means TAKEN — the E-press on the light, which (auto-pickup being off) is the
+            // only thing that removes the object while the player stands near. Completing at 12m
+            // was the original walk-to design, and from the player's side it was indistinguishable
+            // from the auto-vacuum this mode has now killed three times: the light popped without
+            // the player doing anything. Every light in the act takes an E now.
+            if (Spawned && live == null && toTarget <= ReachRange)
+            {
+                _found = true;
+                return true;
+            }
 
-            _found = true;
-            Despawn();
-            return true;
+            // The one walk-to case left: no prefab could be spawned at all, so there is nothing
+            // to press E on and reaching the haunted ground must count, or the step is a dead end.
+            if (!Spawned && !Alive && toTarget <= ReachRange)
+            {
+                _found = true;
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>

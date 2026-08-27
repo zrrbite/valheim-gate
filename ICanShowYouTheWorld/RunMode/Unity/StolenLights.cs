@@ -74,7 +74,25 @@ namespace ICanShowYouTheWorld.RunMode
         private void Update()
         {
             if (Speed <= 0f) return;
-            transform.position = Vector3.MoveTowards(transform.position, Target, Speed * Time.deltaTime);
+
+            // HORIZONTAL pursuit with a ground-follow, never a straight 3D line. The homing
+            // target can carry a nonsense height (BiomeCompass.Nearest returns y = 0, far below
+            // sea level), and a 3D MoveTowards steered the light into the terrain within seconds
+            // of rising — "the light disappears immediately" was it burrowing.
+            Vector3 flat = Target; flat.y = transform.position.y;
+            Vector3 next = Vector3.MoveTowards(transform.position, flat, Speed * Time.deltaTime);
+
+            try
+            {
+                var zone = ZoneSystem.instance;
+                if (zone != null) next.y = zone.GetGroundHeight(next) + 2.2f;
+            }
+            catch
+            {
+                // Keep the current height rather than guessing one.
+            }
+
+            transform.position = next;
         }
     }
 
