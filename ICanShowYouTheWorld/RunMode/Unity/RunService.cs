@@ -544,6 +544,22 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
+        /// What the race made of the Gatherer, in one line at its arrival. Each band is a real
+        /// difficulty tier — +15% health per light the forest took — so the words and the fight
+        /// describe the same creature.
+        /// </summary>
+        private static string GathererArrivalLine(int fed)
+        {
+            if (fed <= 0)
+                return $"{TheGatherer.Name} comes lean and furious. You left it nothing.";
+            if (fed <= 2)
+                return $"{TheGatherer.Name} has fed a little \u2014 {fed} light{(fed == 1 ? "" : "s")} you let go. It is stronger for them.";
+            if (fed <= 4)
+                return $"{TheGatherer.Name} comes swollen with stolen light \u2014 {fed} of them. This will be a hard fight.";
+            return $"{TheGatherer.Name} is glutted on {fed} lights. It can barely fit between the trees. Beware.";
+        }
+
+        /// <summary>
         /// Sends the Gatherer in once its step is in play.
         ///
         /// Unlike the Herald there is no bearing and no search: it spawns beside the player, which
@@ -585,9 +601,15 @@ namespace ICanShowYouTheWorld.RunMode
                 if (_gatherer.TryArrive(player, _lights?.Lost ?? 0))
                 {
                     Announce("Something heavy is coming through the trees.");
-                    Message(_lights != null && _lights.Lost > 0
-                        ? $"{TheGatherer.Name} has followed your hunt all this time — fat on {_lights.Lost} lights you let go."
-                        : $"{TheGatherer.Name} has followed your hunt all this time, and taken nothing.");
+
+                    // The arrival reads out the race: what the hunt ended at, and what that has
+                    // made of the thing arriving. The player has already watched both numbers —
+                    // this is the moment they find out what the numbers BOUGHT, said before the
+                    // fight rather than discovered halfway through its health bar.
+                    int kept = _lights?.Taken ?? 0;
+                    int fed = _lights?.Lost ?? 0;
+                    Message($"The hunt ended: you {kept} \u2014 forest {fed}.");
+                    Message(GathererArrivalLine(fed));
                 }
             }
             catch (Exception ex) { LogOnce("gatherer", ex); }
