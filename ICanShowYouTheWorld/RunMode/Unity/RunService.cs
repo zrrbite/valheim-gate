@@ -628,7 +628,9 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         private void PollLights()
         {
-            if (_lights == null || !ActIsMeadows || _challenges == null) return;
+            // Acts I and II both race for lights now — the deer's in the meadows, the couriers'
+            // in the forest. Everything downstream (take, fade, music, convergers) is shared.
+            if (_lights == null || !(ActIsMeadows || ActIsBlackForest) || _challenges == null) return;
 
             var player = Player.m_localPlayer;
             if (player == null) return;
@@ -650,7 +652,7 @@ namespace ICanShowYouTheWorld.RunMode
 
                 // The forest walks in on whatever burns — but only while the hunt is live, the
                 // same gate as the pack, and for the same reason.
-                if (DeerHuntWanted) _lights.TickConvergers();
+                if (DeerHuntWanted || LightRaceWanted) _lights.TickConvergers();
 
                 int lost, freedGuttered;
                 int taken = _lights.Tick(player, out lost, out freedGuttered);
@@ -772,6 +774,18 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>True while a deer-hunt step is the one in play, day or night.</summary>
+        /// <summary>The forest's porters: anything that carries harvest to the Elder.</summary>
+        private static bool IsForestCourier(string prefabName) =>
+            prefabName == "Greyling" || prefabName == "Greydwarf" ||
+            prefabName == "Greydwarf_Elite" || prefabName == "Greydwarf_Shaman";
+
+        /// <summary>True while ANY light-race step is in play, whichever act owns it.</summary>
+        private bool LightRaceWanted =>
+            _challenges != null && _challenges.Tracks.Any(t =>
+                t.Current != null && !t.Blocked &&
+                t.Current.Def.Kind == ChallengeKind.PlayerEvent &&
+                t.Current.Def.Param == StolenLights.TakenEvent);
+
         private bool DeerHuntWanted =>
             _challenges != null && _challenges.Tracks.Any(t =>
                 t.Current != null && !t.Blocked &&
@@ -2170,42 +2184,28 @@ namespace ICanShowYouTheWorld.RunMode
         /// Only "have you claimed a bed" so far, which is what makes a bed YOURS — building one and
         /// claiming one are different acts, and the questline was only ever checking the first.
         /// </summary>
-        /// <summary>Raven prefab candidates, probed at run start like the wisp's. Asset data.</summary>
-        private static readonly string[] RavenCandidates = { "Hugin", "Munin", "Raven" };
-
         /// <summary>
-        /// A raven marks the story's beats — Odin's eyes, come to look at what you did. Spawned at
-        /// act transitions and when the pale light is found; non-persistent, and its own AI takes
-        /// it away when it is done. Pure flavour: it completes nothing and blocks nothing.
+        /// A raven marks the story's beats — Odin's eyes, come to look at what you did. Pure
+        /// flavour: it completes nothing and blocks nothing.
+        ///
+        /// Sourced from Tutorial.m_ravenPrefab, its REAL home: the raven is a client-side
+        /// creature, absent from ZNetScene entirely, which is why the candidate-name probe found
+        /// nothing and the old spawn destroyed the bird for lacking a ZDO it never has. No
+        /// network view is the correct state for a thing only this player is meant to see.
         /// </summary>
         private void TrySpawnRaven(Vector3 near)
         {
             try
             {
-                var scene = ZNetScene.instance;
-                if (scene == null) return;
-
-                GameObject prefab = null;
-                foreach (var name in RavenCandidates)
-                {
-                    prefab = scene.GetPrefab(name);
-                    if (prefab != null) break;
-                }
-                if (prefab == null) return; // The probe already logged the absence once.
+                var prefab = Tutorial.instance != null ? Tutorial.instance.m_ravenPrefab : null;
+                if (prefab == null) return;
 
                 float angle = (float)(_rng.NextDouble() * Math.PI * 2.0);
                 Vector3 pos = near + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 5f;
 
                 try { pos.y = ZoneSystem.instance.GetGroundHeight(pos) + 0.5f; } catch { }
 
-                var inst = UnityEngine.Object.Instantiate(prefab, pos, Quaternion.identity);
-                if (inst == null) return;
-
-                var view = inst.GetComponent<ZNetView>();
-                var zdo = view != null && view.IsValid() ? view.GetZDO() : null;
-                if (zdo == null) { UnityEngine.Object.Destroy(inst); return; }
-
-                zdo.Persistent = false;
+                UnityEngine.Object.Instantiate(prefab, pos, Quaternion.identity);
             }
             catch (Exception ex) { LogOnce("raven", ex); }
         }
@@ -3591,7 +3591,11 @@ namespace ICanShowYouTheWorld.RunMode
                     // build resolves is asset data, so it is asked and logged rather than assumed.
                     // One line, and the answer decides whether "could it be a wisp model?" is
                     // already true or needs a different prefab name.
-                    foreach (var name in new[] { "Wisp", "Ghost", "Hugin", "Munin", "Raven" })
+                    Debug.Log("[ICanShowYouTheWorld] Raven prefab: " +
+                              (Tutorial.instance != null && Tutorial.instance.m_ravenPrefab != null
+                                  ? "available (Tutorial)" : "NOT available"));
+
+                    foreach (var name in new[] { "Wisp", "Ghost" })
                         Debug.Log($"[ICanShowYouTheWorld] Spirit prefab '{name}': " +
                                   (scene != null && scene.GetPrefab(name) != null ? "available" : "NOT in this build"));
 
@@ -4327,6 +4331,20 @@ namespace ICanShowYouTheWorld.RunMode
                         Message("Its light rises. Take it before they do \u2014 walk into it.");
                     }
                     catch (Exception ex) { LogOnce("release-light", ex); }
+                }
+
+                // Act II: a courier cut down at night gives up its cargo. Same light, same race;
+                // the pack that converges is its kin come to carry it onward. Chance rather than
+                // certainty, or every greyling would be a lantern.
+                if (_lights != null && ActIsBlackForest && IsNight && LightRaceWanted && IsForestCourier(prefabName)
+                    && _rng.NextDouble() < 0.5)
+                {
+                    try
+                    {
+                        _lights.Release(c.transform.position);
+                        Message("It was carrying a light to the Elder. Take it back \u2014 walk into it.");
+                    }
+                    catch (Exception ex) { LogOnce("courier-light", ex); }
                 }
 
                 // Eikthyr spawns darkness, so his hunt happens in it. Reported IN ADDITION to the
@@ -6026,6 +6044,18 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
+                // The Elder's altar respects no coastline — the owner crossed an ocean to reach
+                // his, with no step acknowledging the trip. A raft is cheap, buildable on any
+                // shore, and completable even on a world where the altar is walkable, which is
+                // the standard a mandatory step must meet (a boat quest on a dry route is dumb,
+                // as was said when boats were first considered).
+                Id = "bf-raft", MainQuest = true, Track = ForgeTrackId, Kind = ChallengeKind.BuildPiece,
+                Param = "Ship", Target = 1, Display = "Raise a raft",
+                RewardText = "Provisions for a crossing",
+                Hint = "The Elder does not always wait on your shore. Wood and resin, at the water.",
+            },
+            new ChallengeDefinition
+            {
                 // Wood only, and pure ceremony — the second homestead gets a name. Cheap on
                 // purpose: after the cart and the smelter, something that costs nothing.
                 Id = "bf-sign", MainQuest = true, Track = ForgeTrackId, Kind = ChallengeKind.BuildPiece,
@@ -6116,6 +6146,18 @@ namespace ICanShowYouTheWorld.RunMode
                 Target = 2, Display = "Kill 2 Shamans",
                 RewardText = "The nest-tenders' due \u2014 resin and healing mead",
                 Hint = "They keep to the nests and heal what you wound. The nests die without them.",
+            },
+            new ChallengeDefinition
+            {
+                // Act II's answer to Act I's race — "Where the Light Goes" made playable. The
+                // forest's children CARRY what they harvest, and at night a courier cut down
+                // gives up its cargo where it falls: the same light, the same burn, the same
+                // touch, and the same forest converging to take it back. Act I raced the forest
+                // for the deer's light; Act II robs the supply line outright.
+                Id = "bf-intercept", MainQuest = true, Track = HuntTrackId, Kind = ChallengeKind.PlayerEvent,
+                Param = StolenLights.TakenEvent, Target = 4, Display = "Rob the couriers (4 lights)",
+                RewardText = "What the Elder was owed",
+                Hint = "The forest's children carry their harvest at night. Cut one down and its cargo rises \u2014 walk into it.",
             },
             new ChallengeDefinition
             {
@@ -6497,6 +6539,8 @@ namespace ICanShowYouTheWorld.RunMode
                 ["bf-shaman"] = new[] { ("Resin", 30), ("MeadHealthMedium", 4) },
                 ["bf-crypt"] = new[] { ("Torch", 4), ("Resin", 20) },
                 ["bf-smelter"] = new[] { ("CopperOre", 30), ("TinOre", 15), ("Coal", 30), ("SurtlingCore", 30) },
+                ["bf-intercept"] = new[] { ("Bronze", 5), ("MeadHealthMedium", 4) },
+                ["bf-raft"] = new[] { ("Sausages", 10), ("Wood", 40) },
                 ["bf-cart"] = new[] { ("BronzeNails", 40), ("Wood", 40) },
                 ["bf-sign"] = new[] { ("Wood", 30), ("Resin", 20) },
                 ["bf-haldor"] = new[] { ("Coins", 300) },

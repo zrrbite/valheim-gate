@@ -293,7 +293,12 @@ namespace ICanShowYouTheWorld.RunMode
                     // the one that is actually ticked, and — more to the point — it is the one with
                     // a ResetPetBuffs. Power is loaned, so an effect with no way back is not an
                     // option.
-                    try { PetBuff.BuffAllPets(false); }
+                    // Through the legacy god-mode bracket, like every other effect that rides
+                    // the GM statics. Unbracketed, RequireGodMode refused in every fair run —
+                    // the boon was a SILENT NO-OP that printed a GM warning, which is how it was
+                    // finally caught: "I was choosing a boon and then it showed a message from
+                    // my gm mod."
+                    try { WithLegacyGodModeBracket(() => PetBuff.BuffAllPets(false)); }
                     catch (Exception e) { Debug.LogWarning($"[ICanShowYouTheWorld] Shepherd: {e.Message}"); }
                     break;
 
@@ -372,7 +377,7 @@ namespace ICanShowYouTheWorld.RunMode
                     break;
 
                 case "shepherd":
-                    try { PetBuff.ResetPetBuffs(); }
+                    try { WithLegacyGodModeBracket(() => PetBuff.ResetPetBuffs()); }
                     catch (Exception e) { Debug.LogWarning($"[ICanShowYouTheWorld] Shepherd reset: {e.Message}"); }
                     break;
 
@@ -847,7 +852,7 @@ namespace ICanShowYouTheWorld.RunMode
         {
             if (!held) return;
 
-            try { PetBuff.BuffAllPets(false); }
+            try { WithLegacyGodModeBracket(() => PetBuff.BuffAllPets(false)); }
             catch { /* a missed refresh is cosmetic; the next one catches it */ }
         }
 

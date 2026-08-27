@@ -148,8 +148,14 @@ cores from the dead in the burial chambers, kill the shamans that tend the
 nests (the nests themselves cannot be counted, so the story counts the
 tenders), fell the forest that answers the axe — the Elder noticing his food
 being cut — and follow where the stolen light was carried: the oldest trees
-feed first. Haldor trades at the forest's edge; a trader in a starving world
-is its own quiet mystery, unexplored yet.
+feed first. You raise a raft, because the
+Elder does not always wait on your shore. And at night you ROB THE COURIERS:
+the forest's children carry their harvest toward the Elder, and one cut down
+gives up its cargo where it falls — the same light, the same race, the pack
+that converges now its kin come to carry it onward. Act I raced the forest
+for the deer's light; Act II robs the supply line. Haldor trades at the
+forest's edge; a trader in a starving world is its own quiet mystery,
+unexplored yet.
 
 **The arc's payoff, planned:** the wisp you pocket from every race is the
 same species of thing the dvergr carry in lanterns. By Act VI the player
