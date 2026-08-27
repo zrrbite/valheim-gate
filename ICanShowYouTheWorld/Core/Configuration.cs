@@ -81,6 +81,8 @@ namespace ICanShowYouTheWorld.Core
         bool RunDevMode { get; set; }
         string RunLightMusic { get; set; }
         float RunStrayLightMinutes { get; set; }
+        float RunLightConvergeSeconds { get; set; }
+        int RunLightConvergeMax { get; set; }
         bool RunDeerLightning { get; set; }
         float RunHeatEnemyDamageWeight { get; set; }
         float RunHeatEnemyLevelUpWeight { get; set; }
@@ -256,6 +258,10 @@ namespace ICanShowYouTheWorld.Core
         // How often a stray light kindles during the race step, at night. Rare on purpose:
         // the strays are the lights the forest has not caught YET, and scarcity is the point.
         [SerializeField] private float runStrayLightMinutes = 4f;
+        // The forest converging on a burning light: one greyling walks in every N seconds,
+        // up to Max per light. Zero seconds disables. The visual clock of the race.
+        [SerializeField] private float runLightConvergeSeconds = 8f;
+        [SerializeField] private int runLightConvergeMax = 3;
         [SerializeField] private bool runDeerLightning = true;
         [SerializeField] private float runHeatEnemyDamageWeight = 0.05f;
         [SerializeField] private float runHeatEnemyLevelUpWeight = 0.05f;
@@ -340,6 +346,8 @@ namespace ICanShowYouTheWorld.Core
         public bool RunDevMode { get => runDevMode; set => runDevMode = value; }
         public string RunLightMusic { get => runLightMusic; set => runLightMusic = value; }
         public float RunStrayLightMinutes { get => runStrayLightMinutes; set => runStrayLightMinutes = value; }
+        public float RunLightConvergeSeconds { get => runLightConvergeSeconds; set => runLightConvergeSeconds = value; }
+        public int RunLightConvergeMax { get => runLightConvergeMax; set => runLightConvergeMax = value; }
         public bool RunDeerLightning { get => runDeerLightning; set => runDeerLightning = value; }
         public float RunHeatEnemyDamageWeight { get => runHeatEnemyDamageWeight; set => runHeatEnemyDamageWeight = value; }
         public float RunHeatEnemyLevelUpWeight { get => runHeatEnemyLevelUpWeight; set => runHeatEnemyLevelUpWeight = value; }

@@ -620,6 +620,10 @@ namespace ICanShowYouTheWorld.RunMode
                     _raceMusicPlayed = false;
                 }
 
+                // The forest walks in on whatever burns — but only while the hunt is live, the
+                // same gate as the pack, and for the same reason.
+                if (DeerHuntWanted) _lights.TickConvergers();
+
                 int lost;
                 int taken = _lights.Tick(player, out lost);
 

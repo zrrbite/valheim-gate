@@ -53,6 +53,7 @@ namespace ICanShowYouTheWorld.RunMode
     internal class StolenLights
     {
         private readonly IConfiguration _cfg;
+        private readonly System.Random _rng;
 
         /// <summary>Tried in order, as in <see cref="SpiritChase"/>: a real spirit if this build has one.</summary>
         private static readonly string[] Candidates = { "Wisp", "Ghost", "Deer" };
@@ -67,8 +68,15 @@ namespace ICanShowYouTheWorld.RunMode
             public float FadesAt;
             public LightPickup Pickup;
 
+            /// <summary>The live object, for the convergers to walk toward. Unity-destroyed objects
+            /// compare equal to null, so guard reads with a real null check before use.</summary>
+            public GameObject Obj;
+
             /// <summary>When the player was last close enough to have taken it. See Tick.</summary>
             public float NearAt = float.NegativeInfinity;
+
+            public float NextConvergeAt;
+            public int Converged;
         }
 
         private readonly List<Light> _lights = new List<Light>();
@@ -80,7 +88,13 @@ namespace ICanShowYouTheWorld.RunMode
         public int Taken { get; private set; }
         public int Lost { get; private set; }
 
-        public StolenLights(IConfiguration cfg) => _cfg = cfg;
+        public StolenLights(IConfiguration cfg) : this(cfg, null) { }
+
+        public StolenLights(IConfiguration cfg, System.Random rng)
+        {
+            _cfg = cfg;
+            _rng = rng ?? new System.Random();
+        }
 
         public void Reset()
         {
@@ -194,6 +208,7 @@ namespace ICanShowYouTheWorld.RunMode
             _lights.Add(new Light
             {
                 Id = zdo.m_uid,
+                Obj = inst,
                 Where = at,
                 FadesAt = Time.time + Mathf.Max(5f, fadeSecondsOverride > 0f ? fadeSecondsOverride : _cfg.RunLightFadeSeconds),
                 Pickup = pickup,
@@ -277,6 +292,76 @@ namespace ICanShowYouTheWorld.RunMode
             }
 
             return taken;
+        }
+
+        /// <summary>
+        /// The forest converges on a burning light: greylings spawn out in the dark and WALK
+        /// TOWARD IT, so the race is against bodies closing in rather than a bar draining.
+        /// SetFollowTarget pointed at the light is the whole trick — the same call that makes
+        /// Packbrother's wolves heel makes a greyling march on a wisp, and when the light goes
+        /// (taken or faded) they simply revert to being greylings where the player is.
+        ///
+        /// Only deer lights converge. The strays stay serene: they are the lights the forest
+        /// never found, and that has to stay TRUE in play, not just in the flavour text.
+        /// </summary>
+        public void TickConvergers()
+        {
+            float interval = _cfg.RunLightConvergeSeconds;
+            if (interval <= 0f || _lights.Count == 0) return;
+
+            var scene = ZNetScene.instance;
+            if (scene == null) return;
+
+            foreach (var light in _lights)
+            {
+                if (light.Converged >= Mathf.Max(1, _cfg.RunLightConvergeMax)) continue;
+                if (Time.time < light.NextConvergeAt) continue;
+
+                // The first is free and immediate would be a spawn-in-your-face; stagger from
+                // release so the pack at the carcass owns the opening seconds.
+                if (light.NextConvergeAt <= 0f)
+                {
+                    light.NextConvergeAt = Time.time + interval;
+                    continue;
+                }
+
+                light.NextConvergeAt = Time.time + interval;
+
+                var prefab = scene.GetPrefab(DeerHerd.ContestPrefab);
+                if (prefab == null) return;
+
+                float angle = (float)(_rng.NextDouble() * System.Math.PI * 2.0);
+                float range = 22f + (float)(_rng.NextDouble() * 10.0);
+                Vector3 pos = light.Where + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * range;
+
+                try
+                {
+                    var zone = ZoneSystem.instance;
+                    if (zone != null) pos.y = zone.GetGroundHeight(pos) + 0.3f;
+                }
+                catch { }
+
+                var inst = UnityEngine.Object.Instantiate(prefab, pos, Quaternion.identity);
+                if (inst == null) continue;
+
+                var view = inst.GetComponent<ZNetView>();
+                var zdo = view != null && view.IsValid() ? view.GetZDO() : null;
+                if (zdo == null)
+                {
+                    UnityEngine.Object.Destroy(inst);
+                    continue;
+                }
+
+                zdo.Persistent = false;
+
+                var ai = inst.GetComponent<MonsterAI>();
+                if (ai != null && light.Obj != null)
+                {
+                    try { ai.SetFollowTarget(light.Obj); } catch { }
+                }
+
+                light.Converged++;
+            }
         }
 
         private static Vector3? Position(Light light)
