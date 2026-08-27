@@ -215,8 +215,15 @@ static class DamageHelpers
                     var orig = prefab == null ? null : prefab.GetComponent<Character>();
                     if (orig != null)
                     {
-                        ch.m_runSpeed = orig.m_runSpeed * PET_SPEED_MULT;
-                        ch.m_speed = orig.m_speed * PET_SPEED_MULT;
+                        // MATCH THE PLAYER, never merely multiply: a boar at 1.3x boar speed
+                        // still watched its shepherd jog away. Floor at the prefab's own pace so
+                        // a naturally faster animal (a wolf) is never slowed, and prefab-anchored
+                        // still, so the periodic re-apply cannot compound.
+                        var owner = Player.m_localPlayer;
+                        float run = owner != null ? owner.m_runSpeed : orig.m_runSpeed * PET_SPEED_MULT;
+                        float walk = owner != null ? owner.m_walkSpeed : orig.m_speed * PET_SPEED_MULT;
+                        ch.m_runSpeed = Mathf.Max(orig.m_runSpeed, run);
+                        ch.m_speed = Mathf.Max(orig.m_speed, walk);
                     }
                 }
                 catch { /* speed is the garnish, not the meal */ }

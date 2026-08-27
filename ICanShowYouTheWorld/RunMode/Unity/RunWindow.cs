@@ -350,6 +350,21 @@ namespace ICanShowYouTheWorld.RunMode
                     // The map gets the whole screen to itself: nothing on the HUD is worth
                     // reading over it, and unlike the crafting window there is no interaction the
                     // player wants from Run Mode while looking at it (owner, alpha25).
+                    // The tracker and stash live OUTSIDE the End toggle: they are the panels a
+                    // player glances at constantly, and hiding them with the main window made End
+                    // an all-or-nothing choice (owner: "End should leave track window open").
+                    // Only the map claims the whole screen.
+                    if (!MapOpen())
+                    {
+                        _trackerRect = GUILayout.Window(TrackerWindowId, _trackerRect, DrawTracker,
+                            GUIContent.none, RunTheme.Panel,
+                            GUILayout.Width(TrackerWidth), GUILayout.Height(TrackerHeight));
+
+                        _stashRect = GUILayout.Window(StashWindowId, _stashRect, DrawStash,
+                            GUIContent.none, RunTheme.Panel,
+                            GUILayout.Width(StashWidth), GUILayout.Height(StashHeight));
+                    }
+
                     if ((Visible || CheatUiVisible) && !MapOpen())
                     {
                         // The crafting window is different: hiding kept it readable but put the
@@ -368,19 +383,6 @@ namespace ICanShowYouTheWorld.RunMode
                         // a menu is open doesn't permanently shunt the HUD across the screen.
                         if (offset <= 0f) _hudRect = hudRect;
 
-                        // Opposite side of the screen from the HUD: it is a glance-at panel, and
-                        // the right edge is already carrying everything else. Baseline, not a boon
-                        // (owner, alpha24: "tracking should ALWAYS be enabled").
-                        _trackerRect = GUILayout.Window(TrackerWindowId, _trackerRect, DrawTracker,
-                            GUIContent.none, RunTheme.Panel,
-                            GUILayout.Width(TrackerWidth), GUILayout.Height(TrackerHeight));
-
-                        // Beside the tracker, on the same bottom strip. Always up during a run:
-                        // every run has a stash, and a panel you have to summon is one you forget
-                        // you have.
-                        _stashRect = GUILayout.Window(StashWindowId, _stashRect, DrawStash,
-                            GUIContent.none, RunTheme.Panel,
-                            GUILayout.Width(StashWidth), GUILayout.Height(StashHeight));
                     }
 
                     var boons = run.Boons;
@@ -759,7 +761,7 @@ namespace ICanShowYouTheWorld.RunMode
             GUI.Label(rightRect, $"Heat {run.Heat:0.#}", _stripStyle);
             GUI.contentColor = Color.white;
 
-            DrawAbilityBar(run, rect);
+            float abilityHeight = DrawAbilityBar(run, rect);
 
             // The Herald's direction, under the strip and therefore ALWAYS visible — the run window
             // does not have to be open (owner, alpha39: "it would be nice to have more frequent
@@ -770,7 +772,7 @@ namespace ICanShowYouTheWorld.RunMode
             // something you can glance at beats something that interrupts you every thirty seconds.
             // Stacked, not overlaid: the notice line already lives immediately under the strip, and
             // two labels sharing one rect render on top of each other.
-            float lineY = rect.yMax + 2f;
+            float lineY = rect.yMax + 2f + abilityHeight;
 
             string bearing = run.QuestBearing;
             if (!string.IsNullOrEmpty(bearing))
@@ -1339,17 +1341,19 @@ namespace ICanShowYouTheWorld.RunMode
         /// including passives; this exists so the growing list never costs you the overview of
         /// what is actually usable right now.
         /// </summary>
-        private void DrawAbilityBar(IRunService run, Rect strip)
+        /// <summary>Returns the height it used, so the bearing stack starts below it — both
+        /// drew at strip.yMax + 2 and the direction text sat on top of the ability keys.</summary>
+        private float DrawAbilityBar(IRunService run, Rect strip)
         {
             var boons = run.Boons;
-            if (boons == null) return;
+            if (boons == null) return 0f;
 
             var actives = new List<HeldBoon>();
             foreach (var h in boons.Held)
             {
                 if (!h.Def.IsPassive) actives.Add(h);
             }
-            if (actives.Count == 0) return;
+            if (actives.Count == 0) return 0f;
 
             const float slotW = 116f;
             const float slotH = 20f;
@@ -1390,6 +1394,8 @@ namespace ICanShowYouTheWorld.RunMode
                 var style = ready ? RunTheme.Ready : RunTheme.Small;
                 GUI.Label(slot, $"{key} {h.Def.Display} {state}".TrimEnd(), style);
             }
+
+            return slotH + 4f;
         }
 
         private static string ShortActivationKey(string boonId)

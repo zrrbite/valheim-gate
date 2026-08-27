@@ -2193,6 +2193,8 @@ namespace ICanShowYouTheWorld.RunMode
         /// nothing and the old spawn destroyed the bird for lacking a ZDO it never has. No
         /// network view is the correct state for a thing only this player is meant to see.
         /// </summary>
+        private GameObject _raven;
+
         private void TrySpawnRaven(Vector3 near)
         {
             try
@@ -2200,12 +2202,18 @@ namespace ICanShowYouTheWorld.RunMode
                 var prefab = Tutorial.instance != null ? Tutorial.instance.m_ravenPrefab : null;
                 if (prefab == null) return;
 
+                // ONE raven. Odin has two, but he sends them one at a time — two beats close
+                // together (the pale light, then a transition) each spawned their own bird and
+                // both lingered ("two Hugins at same time"). Unity's == is the right null here:
+                // a despawned raven should read as gone.
+                if (_raven != null) UnityEngine.Object.Destroy(_raven);
+
                 float angle = (float)(_rng.NextDouble() * Math.PI * 2.0);
                 Vector3 pos = near + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 5f;
 
                 try { pos.y = ZoneSystem.instance.GetGroundHeight(pos) + 0.5f; } catch { }
 
-                UnityEngine.Object.Instantiate(prefab, pos, Quaternion.identity);
+                _raven = UnityEngine.Object.Instantiate(prefab, pos, Quaternion.identity);
             }
             catch (Exception ex) { LogOnce("raven", ex); }
         }
@@ -2512,6 +2520,9 @@ namespace ICanShowYouTheWorld.RunMode
             // The pen grows during a run, so the shepherd's blessing has to find the new arrivals.
             try { _boonEffects.RefreshShepherd(_boons != null && _boons.Held.Any(h => h.Def.Id == "shepherd")); }
             catch (Exception ex) { LogOnce("shepherd-refresh", ex); }
+
+            try { _boonEffects.RefreshHearthlight(_boons != null && _boons.Held.Any(h => h.Def.Id == "hearthlight")); }
+            catch (Exception ex) { LogOnce("hearthlight-refresh", ex); }
         }
 
         private bool HoldsBoon(string boonId) =>
@@ -6128,6 +6139,15 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
+                // Act I tamed one boar and penned three; Act II grows the holding. Same measure,
+                // bigger herd — husbandry scales with the biome's own farming beat.
+                Id = "bf-herd", MainQuest = true, Kind = ChallengeKind.PlayerState, Param = "TamedNearby",
+                Target = 4, Display = "Grow the herd (4 penned)",
+                RewardText = "Feed for the winter",
+                Hint = "Fed boar breed on their own. Keep them penned, keep them fed.",
+            },
+            new ChallengeDefinition
+            {
                 Id = "bf-greydwarf", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Greydwarf",
                 Target = 10, Display = "Kill 10 Greydwarves", RewardText = "A bronze buckler and arrows",
             },
@@ -6252,6 +6272,13 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
+                Id = "sw-ironbar", MainQuest = true, Track = MarshTrackId, Kind = ChallengeKind.CollectItem,
+                Param = "$item_iron", Target = 10, Display = "Iron enough to stand in (10)",
+                RewardText = "Coal for the smelting",
+                Hint = "Scrap from the crypts, smelted at home. The swamp is paid for in iron.",
+            },
+            new ChallengeDefinition
+            {
                 Id = "sw-blob", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Blob",
                 Target = 5, Display = "Kill 5 Blobs", RewardText = "Withered bone — Bonemass's summons",
             },
@@ -6265,6 +6292,14 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 Id = "sw-leech", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Leech",
                 Target = 3, Display = "Kill 3 Leeches", RewardText = "An iron mace — blunt beats bone",
+            },
+            new ChallengeDefinition
+            {
+                // The swamp's named horror, and the fight that proves the iron. Root armour is
+                // its drop, which is the swamp's own answer to the swamp.
+                Id = "sw-abom", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Abomination",
+                Target = 1, Display = "Fell an Abomination",
+                RewardText = "Mead against the marsh",
             },
             new ChallengeDefinition
             {
@@ -6529,6 +6564,7 @@ namespace ICanShowYouTheWorld.RunMode
                 ["bf-plant"] = new[] { ("CarrotSeeds", 20), ("QueenBee", 1) },
                 ["mq-tame"] = new[] { ("Carrot", 20), ("RawMeat", 10) },
                 ["bf-bees"] = new[] { ("Honey", 20) },
+                ["bf-herd"] = new[] { ("Carrot", 30), ("Raspberry", 30) },
                 // Thirty cores, which is a smelter, a kiln and eleven portals — a lifetime
                 // supply by any honest reckoning (owner: "getting surtling cores is not fun").
                 //
@@ -6558,6 +6594,8 @@ namespace ICanShowYouTheWorld.RunMode
                 ["sw-draugr"] = new[] { ("ArrowIron", 40), ("ShieldIronTower", 1) },
                 ["sw-fermenter"] = new[] { ("Honey", 20), ("Thistle", 20) },
                 ["sw-chart"] = new[] { ("Bronze", 10), ("BoneFragments", 20) },
+                ["sw-ironbar"] = new[] { ("Coal", 30) },
+                ["sw-abom"] = new[] { ("MeadHealthMedium", 4), ("Sausages", 10) },
                 ["sw-karve"] = new[] { ("IronNails", 40), ("Wood", 40) },
                 ["sw-sail"] = new[] { ("Sausages", 10), ("MeadHealthMedium", 3) },
                 ["sw-blob"] = new[] { ("WitheredBone", 3), ("MeadPoisonResist", 5) },
@@ -6605,6 +6643,7 @@ namespace ICanShowYouTheWorld.RunMode
             new BoonDefinition { Id = "brother", Display = "Packbrother", IsPassive = false, CooldownSeconds = 240f, Description = "Summon a wolf to fight for you. Two at a time." },
             // Testable from Act I: you tame a boar on the hearth track, so this has something to
             // work on long before a boss falls.
+            new BoonDefinition { Id = "hearthlight", Display = "Hearthlight", IsPassive = true, Description = "A mending warmth follows you. You and your animals heal near it." },
             new BoonDefinition { Id = "shepherd", Display = "Shepherd", IsPassive = true, Weight = 3, Description = "Your tamed animals are stronger, tougher and faster. New ones too." },
             // Act II onward. Skeletons in the Meadows would be a Black Forest answer to a Meadows
             // problem, and the flavour belongs with the burial chambers.

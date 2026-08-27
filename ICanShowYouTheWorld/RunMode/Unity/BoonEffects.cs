@@ -841,6 +841,38 @@ namespace ICanShowYouTheWorld.RunMode
         /// cannot ratchet, however many times heat changes. Capped so a pathological heat number
         /// cannot produce a silly multiplier.
         /// </summary>
+        private float _hearthlightAt;
+
+        /// <summary>
+        /// Hearthlight: a slow mending pulse around the player, reaching tamed animals too.
+        ///
+        /// Implemented directly rather than through the legacy AoE-renewal statics — those gate
+        /// on god mode and tick through PeriodicManager, and the Shepherd just demonstrated what
+        /// riding an ungated legacy toggle from a boon costs. A heal is small enough to own.
+        /// </summary>
+        public void RefreshHearthlight(bool held)
+        {
+            if (!held || Time.time < _hearthlightAt) return;
+            _hearthlightAt = Time.time + 5f;
+
+            var player = Player.m_localPlayer;
+            if (player == null) return;
+
+            try
+            {
+                player.Heal(4f);
+
+                var list = new List<Character>();
+                Character.GetCharactersInRange(player.transform.position, 15f, list);
+                foreach (var c in list)
+                {
+                    if (c == null || c.IsPlayer() || !c.IsTamed()) continue;
+                    c.Heal(8f);
+                }
+            }
+            catch { /* a missed pulse is a missed pulse */ }
+        }
+
         /// <summary>
         /// Re-applies the shepherd's blessing to anything tamed SINCE it was granted.
         ///
