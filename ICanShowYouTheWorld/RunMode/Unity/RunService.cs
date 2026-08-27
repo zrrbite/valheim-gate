@@ -3602,6 +3602,23 @@ namespace ICanShowYouTheWorld.RunMode
                     // build resolves is asset data, so it is asked and logged rather than assumed.
                     // One line, and the answer decides whether "could it be a wisp model?" is
                     // already true or needs a different prefab name.
+                    // The tameable roster, from the world rather than from memory. The game
+                    // moves past what anyone remembers ("there are some kind of bear like animal
+                    // in black forest in latest release"), and which creatures carry a Tameable
+                    // is exactly the class of fact this mode has learned never to assume. One
+                    // line, and content plans read it instead of a wiki.
+                    if (scene != null && scene.m_prefabs != null)
+                    {
+                        var tameables = scene.m_prefabs
+                            .Where(go => go != null && go.GetComponent<Tameable>() != null)
+                            .Select(go => go.name)
+                            .OrderBy(n => n)
+                            .ToList();
+
+                        Debug.Log("[ICanShowYouTheWorld] Tameable creatures in this build: " +
+                                  (tameables.Count > 0 ? string.Join(", ", tameables.ToArray()) : "none found"));
+                    }
+
                     Debug.Log("[ICanShowYouTheWorld] Raven prefab: " +
                               (Tutorial.instance != null && Tutorial.instance.m_ravenPrefab != null
                                   ? "available (Tutorial)" : "NOT available"));
