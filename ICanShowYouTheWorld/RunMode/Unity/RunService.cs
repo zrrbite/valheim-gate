@@ -1801,6 +1801,7 @@ namespace ICanShowYouTheWorld.RunMode
             PollDeerHerd();
             PollDiscoveries();
             PollPlayerState();
+            ReassertDevGod();
             PollMeals();
             PollSpirit();
             PollStrays();
@@ -2120,6 +2121,30 @@ namespace ICanShowYouTheWorld.RunMode
         /// Only "have you claimed a bed" so far, which is what makes a bed YOURS — building one and
         /// claiming one are different acts, and the questline was only ever checking the first.
         /// </summary>
+        /// <summary>
+        /// Re-asserts dev god mode on the LIVE player, once a second, while the service says it
+        /// is on.
+        ///
+        /// The real flag lives on the Player instance; the service caches a bool; nothing synced
+        /// them across a player change. Die or relog and the fresh Player spawned MORTAL while
+        /// everything reported god — and the toggle key, reading the stale true, turned god OFF
+        /// when pressed to fix it. The owner met this as "I think I died in god mode."
+        ///
+        /// Idempotent push rather than divergence detection: SetGodMode(true) on a player already
+        /// in god mode is free, and a reassertion loop cannot itself drift.
+        /// </summary>
+        private void ReassertDevGod()
+        {
+            if (_cfg == null || !_cfg.RunDevMode) return;
+
+            try
+            {
+                var combat = ModBootstrap.GetService<ICombatService>();
+                if (combat != null && combat.GodMode) combat.SetGodMode(true);
+            }
+            catch (Exception ex) { LogOnce("dev-god-reassert", ex); }
+        }
+
         private void PollPlayerState()
         {
             if (_challenges == null) return;
