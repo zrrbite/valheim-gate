@@ -1408,6 +1408,7 @@ namespace ICanShowYouTheWorld.RunMode
                 case "brother": return "[7]";
                 case "windfall": return "[8]";
                 case "bonecaller": return "[0]";
+                case "menagerie": return "[Ins]";
                 default: return "";
             }
         }

@@ -1679,6 +1679,7 @@ namespace ICanShowYouTheWorld.RunMode
             else if (Input.GetKeyDown(KeyCode.Keypad7)) TryActivateHeldBoon("brother");
             else if (Input.GetKeyDown(KeyCode.Keypad8)) TryActivateHeldBoon("windfall");
             else if (Input.GetKeyDown(KeyCode.Keypad0)) TryActivateHeldBoon("bonecaller");
+            else if (Input.GetKeyDown(KeyCode.Insert)) TryActivateHeldBoon("menagerie");
             // Keypad 9 is not a boon: Homeward is a run mechanic earned from bosses, so it sits
             // beside the boon keys rather than among them.
             else if (Input.GetKeyDown(KeyCode.Keypad9)) TryHomeward();
@@ -6660,6 +6661,7 @@ namespace ICanShowYouTheWorld.RunMode
             new BoonDefinition { Id = "brother", Display = "Packbrother", IsPassive = false, CooldownSeconds = 240f, Description = "Summon a wolf to fight for you. Two at a time." },
             // Testable from Act I: you tame a boar on the hearth track, so this has something to
             // work on long before a boss falls.
+            new BoonDefinition { Id = "menagerie", Display = "Menagerie", IsPassive = false, CooldownSeconds = 90f, Description = "Odin lends a beast \u2014 any beast. Cast again to trade it back. [Ins]" },
             new BoonDefinition { Id = "hearthlight", Display = "Hearthlight", IsPassive = true, Description = "A mending warmth follows you. You and your animals heal near it." },
             new BoonDefinition { Id = "shepherd", Display = "Shepherd", IsPassive = true, Weight = 3, Description = "Your tamed animals are stronger, tougher and faster. New ones too." },
             // Act II onward. Skeletons in the Meadows would be a Black Forest answer to a Meadows
