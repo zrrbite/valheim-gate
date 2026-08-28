@@ -4370,7 +4370,7 @@ namespace ICanShowYouTheWorld.RunMode
                 {
                     try
                     {
-                        _lights.Release(c.transform.position);
+                        _lights.Release(c.transform.position, 0f, "Stolen Light");
                         Message("It was carrying a light to the Elder. Take it back \u2014 walk into it.");
                     }
                     catch (Exception ex) { LogOnce("courier-light", ex); }

@@ -164,7 +164,9 @@ namespace ICanShowYouTheWorld.RunMode
         /// Lifted clear of the ground and offset slightly, so it does not spawn inside the corpse
         /// or the thing that killed it.
         /// </summary>
-        public void Release(Vector3 at) => Release(at, 0f);
+        public void Release(Vector3 at) => Release(at, 0f, null);
+
+        public void Release(Vector3 at, float fadeSecondsOverride) => Release(at, fadeSecondsOverride, null);
 
         /// <summary>
         /// As <see cref="Release(Vector3)"/>, with a fade override for lights that are FREED
@@ -177,7 +179,12 @@ namespace ICanShowYouTheWorld.RunMode
         /// player's view entirely. A light that stays where the deer fell is one the player can
         /// always find, and the fade timer alone carries "the forest takes it".
         /// </summary>
-        public void Release(Vector3 at, float fadeSecondsOverride)
+        /// <summary>
+        /// <paramref name="displayName"/> lets an act name what fell: the meadows drop a Deer's
+        /// Light, Act II's couriers a Stolen Light — the act's own title, on the thing you rob
+        /// back. Null takes the default.
+        /// </summary>
+        public void Release(Vector3 at, float fadeSecondsOverride, string displayName)
         {
             var scene = ZNetScene.instance;
             if (scene == null) return;
@@ -229,7 +236,7 @@ namespace ICanShowYouTheWorld.RunMode
                 if (chosen == "Deer") { try { ch.SetLevel(3); } catch { } }
             }
 
-            LightNaming.Rebrand(inst, "Deer's Light");
+            LightNaming.Rebrand(inst, displayName ?? "Deer's Light");
 
             // The wisp is an ITEM, and items auto-pickup on approach — which is why the E-press
             // "still felt proximity based": the game grabbed the light before the prompt could
