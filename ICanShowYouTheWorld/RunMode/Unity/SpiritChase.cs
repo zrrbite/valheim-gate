@@ -284,6 +284,8 @@ namespace ICanShowYouTheWorld.RunMode
             zdo.Persistent = false;
             _spirit = zdo.m_uid;
 
+            LightNaming.Rebrand(inst, "Pale Light");
+
             // The wisp is an item, and items vacuum into the inventory on approach — the race
             // lights got this fix in alpha69.7 and this one was missed, so walking up to the
             // act's opening mystery ended with a pop into the pocket instead of a moment. The

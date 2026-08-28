@@ -50,6 +50,39 @@ namespace ICanShowYouTheWorld.RunMode
         public string GetHoverName() => "A deer's light";
     }
 
+    /// <summary>
+    /// Gives a spawned light the saga's name instead of the item's — "Wisp" on the crosshair and
+    /// in the pocket was the game's word for the saga's central object.
+    ///
+    /// The display name lives in the item's SHARED data, so it is cloned per instance (a JSON
+    /// round-trip: pure data survives, Unity refs a wisp trinket does not need may not) — mutating
+    /// the original would rename every wisp in the game. Same-named lights still stack with each
+    /// other; they deliberately do NOT stack with vanilla wisps, which keeps "what the saga gave
+    /// you" its own pile.
+    /// </summary>
+    internal static class LightNaming
+    {
+        public static void Rebrand(GameObject inst, string name)
+        {
+            try
+            {
+                var drop = inst == null ? null : inst.GetComponent<ItemDrop>();
+                if (drop == null || drop.m_itemData == null || drop.m_itemData.m_shared == null) return;
+
+                var clone = JsonUtility.FromJson<ItemDrop.ItemData.SharedData>(
+                    JsonUtility.ToJson(drop.m_itemData.m_shared));
+                if (clone == null) return;
+
+                clone.m_name = name;
+                drop.m_itemData.m_shared = clone;
+            }
+            catch
+            {
+                // A light called "Wisp" is a naming bug, not a broken run.
+            }
+        }
+    }
+
     internal class StolenLights
     {
         private readonly IConfiguration _cfg;
@@ -195,6 +228,8 @@ namespace ICanShowYouTheWorld.RunMode
                 // The fallback deer must not read as another deer to hunt.
                 if (chosen == "Deer") { try { ch.SetLevel(3); } catch { } }
             }
+
+            LightNaming.Rebrand(inst, "Deer's Light");
 
             // The wisp is an ITEM, and items auto-pickup on approach — which is why the E-press
             // "still felt proximity based": the game grabbed the light before the prompt could
