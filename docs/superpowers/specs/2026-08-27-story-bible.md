@@ -150,10 +150,12 @@ tenders), fell the forest that answers the axe — the Elder noticing his food
 being cut — and follow where the stolen light was carried: the oldest trees
 feed first. You raise a raft, because the
 Elder does not always wait on your shore. And at night you ROB THE COURIERS:
-the forest's children carry their harvest toward the Elder, and one cut down
-gives up its cargo where it falls — the same light, the same race, the pack
-that converges now its kin come to carry it onward. Act I raced the forest
-for the deer's light; Act II robs the supply line. Haldor trades at the
+starred, named, visibly laden — a Courier of the Elder is a greydwarf given a
+burden and a title, and the brand IS the cargo. Cut one down and a Stolen
+Light rises where it falls: the same race, the pack that converges now its
+kin come to carry it onward. The act introduces them once, plainly, the
+moment the hunt opens: "The forest moves its harvest at night." Act I raced
+the forest for the deer's light; Act II robs the supply line. Haldor trades at the
 forest's edge; a trader in a starving world is its own quiet mystery,
 unexplored yet.
 

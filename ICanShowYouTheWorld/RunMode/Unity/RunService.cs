@@ -774,6 +774,99 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>True while a deer-hunt step is the one in play, day or night.</summary>
+        /// <summary>Whether this death was a branded courier's; forgets it either way.</summary>
+        private bool IsCourier(Character c)
+        {
+            try
+            {
+                var view = c.GetComponent<ZNetView>();
+                var zdo = view != null && view.IsValid() ? view.GetZDO() : null;
+                return zdo != null && _couriers.Remove(zdo.m_uid);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>Branded couriers, by identity. Being on this list IS carrying cargo.</summary>
+        private readonly HashSet<ZDOID> _couriers = new HashSet<ZDOID>();
+        private bool _courierForetold;
+        private float _courierBrandAt;
+
+        /// <summary>
+        /// Makes the couriers VISIBLE. The intercept began as a hidden coin-flip — any greydwarf
+        /// might drop cargo, so the player killed blindly — while the story claimed couriers
+        /// existed. Now they do: at night, while the step is live, a nearby greydwarf is
+        /// occasionally branded (a star, and a name on its health bar), and the BRAND is the
+        /// cargo — branded always drop, unbranded never. The coin-flip became a hunt for a
+        /// visible target, and the story and the world stopped disagreeing.
+        ///
+        /// Branded at full health only: SetLevel recomputes max health from the current value —
+        /// the deer-starring rule, third time it has mattered.
+        /// </summary>
+        private void PollCouriers()
+        {
+            if (!ActIsBlackForest || _challenges == null) { _courierForetold = false; return; }
+
+            bool wanted = _challenges.Tracks.Any(t =>
+                t.Current != null && !t.Blocked && t.Current.Def.Id == "bf-intercept");
+
+            if (!wanted) { _courierForetold = false; return; }
+
+            // The introduction, once, the moment the step opens — the Gatherer's foretelling
+            // pattern. Before this the step simply appeared in the tracker.
+            if (!_courierForetold)
+            {
+                _courierForetold = true;
+                Announce("The forest moves its harvest at night.");
+                Message("Watch for the couriers \u2014 starred, laden, hurrying toward the Elder. Cut one down and its cargo rises.");
+            }
+
+            if (!IsNight || Time.time < _courierBrandAt) return;
+
+            var player = Player.m_localPlayer;
+            if (player == null) return;
+
+            try
+            {
+                _courierBrandAt = Time.time + 20f;
+
+                int live = 0;
+                Character candidate = null;
+
+                var all = Character.GetAllCharacters();
+                foreach (var c in all)
+                {
+                    if (c == null || c.IsTamed() || c.IsPlayer()) continue;
+                    if (!IsForestCourier(PrefabNameOf(c))) continue;
+
+                    var view = c.GetComponent<ZNetView>();
+                    var zdo = view != null && view.IsValid() ? view.GetZDO() : null;
+                    if (zdo == null) continue;
+
+                    if (_couriers.Contains(zdo.m_uid)) { live++; continue; }
+
+                    if (candidate == null &&
+                        c.GetHealth() >= c.GetMaxHealth() &&
+                        Vector3.Distance(c.transform.position, player.transform.position) < 45f)
+                        candidate = c;
+                }
+
+                // Two at large keeps couriers an event, not a skin every greydwarf wears.
+                if (live >= 2 || candidate == null) return;
+
+                var cview = candidate.GetComponent<ZNetView>();
+                var czdo = cview != null && cview.IsValid() ? cview.GetZDO() : null;
+                if (czdo == null) return;
+
+                try { candidate.SetLevel(Mathf.Max(2, candidate.GetLevel())); } catch { }
+                candidate.m_name = "Courier of the Elder";
+                _couriers.Add(czdo.m_uid);
+            }
+            catch (Exception ex) { LogOnce("courier-brand", ex); }
+        }
+
         /// <summary>The forest's porters: anything that carries harvest to the Elder.</summary>
         private static bool IsForestCourier(string prefabName) =>
             prefabName == "Greyling" || prefabName == "Greydwarf" ||
@@ -1120,6 +1213,8 @@ namespace ICanShowYouTheWorld.RunMode
                 _spirit?.Reset();
                 _strayOut = false;
                 _strayReadyAt = Time.time + 120f;
+                _couriers.Clear();
+                _courierForetold = false;
                 _lights?.Reset();
                 _gatherer?.Reset();
                 _forest?.Reset();
@@ -1872,6 +1967,7 @@ namespace ICanShowYouTheWorld.RunMode
             PollLights();
             PollLightForfeit();
             PollGatherer();
+            PollCouriers();
             PollWhispers();
             PollForest();
             RefreshActPin();
@@ -4365,13 +4461,12 @@ namespace ICanShowYouTheWorld.RunMode
                 // Act II: a courier cut down at night gives up its cargo. Same light, same race;
                 // the pack that converges is its kin come to carry it onward. Chance rather than
                 // certainty, or every greyling would be a lantern.
-                if (_lights != null && ActIsBlackForest && IsNight && LightRaceWanted && IsForestCourier(prefabName)
-                    && _rng.NextDouble() < 0.5)
+                if (_lights != null && ActIsBlackForest && IsCourier(c))
                 {
                     try
                     {
                         _lights.Release(c.transform.position, 0f, "Stolen Light");
-                        Message("It was carrying a light to the Elder. Take it back \u2014 walk into it.");
+                        Message("The courier falls, and its cargo rises. Walk into it.");
                     }
                     catch (Exception ex) { LogOnce("courier-light", ex); }
                 }
@@ -6195,7 +6290,7 @@ namespace ICanShowYouTheWorld.RunMode
                 Id = "bf-intercept", MainQuest = true, Track = HuntTrackId, Kind = ChallengeKind.PlayerEvent,
                 Param = StolenLights.TakenEvent, Target = 4, Display = "Rob the couriers (4 lights)",
                 RewardText = "What the Elder was owed",
-                Hint = "The forest's children carry their harvest at night. Cut one down and its cargo rises \u2014 walk into it.",
+                Hint = "Starred and named, hurrying through the dark. The brand is the cargo \u2014 cut them down.",
             },
             new ChallengeDefinition
             {
