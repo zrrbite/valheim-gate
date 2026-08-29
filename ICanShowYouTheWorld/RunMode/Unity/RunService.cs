@@ -793,6 +793,7 @@ namespace ICanShowYouTheWorld.RunMode
         private readonly HashSet<ZDOID> _couriers = new HashSet<ZDOID>();
         private bool _courierForetold;
         private float _courierBrandAt;
+        private int _courierDryScans;
 
         /// <summary>
         /// Makes the couriers VISIBLE. The intercept began as a hidden coin-flip — any greydwarf
@@ -854,7 +855,16 @@ namespace ICanShowYouTheWorld.RunMode
                 }
 
                 // Two at large keeps couriers an event, not a skin every greydwarf wears.
-                if (live >= 2 || candidate == null) return;
+                if (live >= 2) return;
+
+                if (candidate == null)
+                {
+                    // Empty roads are SAID after a few dry scans — a hunt that might be broken
+                    // and a hunt with nothing on the road tonight must not look identical.
+                    if (++_courierDryScans == 3)
+                        Message("The roads are empty tonight. They will come.");
+                    return;
+                }
 
                 var cview = candidate.GetComponent<ZNetView>();
                 var czdo = cview != null && cview.IsValid() ? cview.GetZDO() : null;
@@ -863,6 +873,14 @@ namespace ICanShowYouTheWorld.RunMode
                 try { candidate.SetLevel(Mathf.Max(2, candidate.GetLevel())); } catch { }
                 candidate.m_name = "Courier of the Elder";
                 _couriers.Add(czdo.m_uid);
+                _courierDryScans = 0;
+
+                // SAY where it is. A starred greydwarf forty metres away in a night forest is a
+                // visible target with no way to find it — the brand alone was couriers that
+                // "worked" and were never seen.
+                Vector3 delta = candidate.transform.position - player.transform.position;
+                delta.y = 0f;
+                Message($"A courier moves in the dark \u2014 {BiomeCompass.Compass(delta)}, {Mathf.Round(delta.magnitude / 10f) * 10f:0}m.");
             }
             catch (Exception ex) { LogOnce("courier-brand", ex); }
         }
