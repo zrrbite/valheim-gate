@@ -476,15 +476,7 @@ namespace ICanShowYouTheWorld.RunMode
         /// outright and the whispers say it in the act's own voice.
         /// </summary>
         private bool DarkStepWanted =>
-            _challenges != null && _challenges.Tracks.Any(t =>
-                t.Current != null && !t.Blocked &&
-                ((t.Current.Def.Kind == ChallengeKind.PlayerState &&
-                  t.Current.Def.Param == SpiritChase.FoundMeasure) ||
-                 (t.Current.Def.Kind == ChallengeKind.PlayerEvent &&
-                  t.Current.Def.Param == StolenLights.TakenEvent) ||
-                 (t.Current.Def.Kind == ChallengeKind.KillPrefab &&
-                  (t.Current.Def.Param == DeerHerd.NightDeerKillName ||
-                   t.Current.Def.Param == DeerHerd.HeraldKillName))));
+            _challenges != null && StepPredicates.DarkStep(_challenges.Tracks);
 
         /// <summary>
         /// Steps whose reward has been forfeited. Completing one still ADVANCES the track — a
@@ -892,25 +884,10 @@ namespace ICanShowYouTheWorld.RunMode
 
         /// <summary>True while ANY light-race step is in play, whichever act owns it.</summary>
         private bool LightRaceWanted =>
-            _challenges != null && _challenges.Tracks.Any(t =>
-                t.Current != null && !t.Blocked &&
-                t.Current.Def.Kind == ChallengeKind.PlayerEvent &&
-                t.Current.Def.Param == StolenLights.TakenEvent);
+            _challenges != null && StepPredicates.LightRace(_challenges.Tracks);
 
         private bool DeerHuntWanted =>
-            _challenges != null && _challenges.Tracks.Any(t =>
-                t.Current != null && !t.Blocked &&
-                // The LIGHT RACE is the deer hunt — it is a PlayerEvent, not a kill, and this
-                // gate not knowing that is why the act's centrepiece went dead: no light on a
-                // deer's fall and no pack, because both are keyed here. The alpha61 edit that was
-                // meant to add this branch silently missed (a replace with no assert), so the
-                // gate said KillPrefab-only from the day the step stopped being one.
-                ((t.Current.Def.Kind == ChallengeKind.PlayerEvent &&
-                  t.Current.Def.Param == StolenLights.TakenEvent) ||
-                 (t.Current.Def.Kind == ChallengeKind.KillPrefab &&
-                  (t.Current.Def.Param == DeerHerd.DeerPrefab ||
-                   t.Current.Def.Param == DeerHerd.NightDeerKillName ||
-                   t.Current.Def.Param == DeerHerd.HeraldKillName))));
+            _challenges != null && StepPredicates.DeerHunt(_challenges.Tracks);
 
         /// <summary>
         /// True while the pale-light step is the one in play.
@@ -923,16 +900,10 @@ namespace ICanShowYouTheWorld.RunMode
         /// there was nothing there.
         /// </summary>
         private bool SpiritWanted =>
-            _challenges != null && _challenges.Tracks.Any(t =>
-                t.Current != null && !t.Blocked &&
-                t.Current.Def.Kind == ChallengeKind.PlayerState &&
-                t.Current.Def.Param == SpiritChase.FoundMeasure);
+            _challenges != null && StepPredicates.SpiritChase(_challenges.Tracks);
 
         private bool HeraldWanted =>
-            _challenges != null && _challenges.Tracks.Any(t =>
-                t.Current != null &&
-                t.Current.Def.Kind == ChallengeKind.KillPrefab &&
-                t.Current.Def.Param == DeerHerd.HeraldKillName);
+            _challenges != null && StepPredicates.Herald(_challenges.Tracks);
 
         /// <summary>Cache for the biome search; see <see cref="NearestBiome"/>.</summary>
         private Heightmap.Biome _bearingBiome = (Heightmap.Biome)(-1);

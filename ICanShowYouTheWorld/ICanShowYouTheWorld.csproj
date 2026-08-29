@@ -324,6 +324,8 @@
     <Compile Include="RunMode\RunStash.cs" />
     <Compile Include="RunMode\LoanLedger.cs" />
     <Compile Include="RunMode\HearthRecords.cs" />
+    <Compile Include="RunMode\StepPredicates.cs" />
+    <Compile Include="RunMode\SagaNames.cs" />
     <Compile Include="RunMode\Unity\BoonEffects.cs" />
     <Compile Include="RunMode\Unity\BossVigor.cs" />
     <Compile Include="RunMode\Unity\GameEvents.cs" />
