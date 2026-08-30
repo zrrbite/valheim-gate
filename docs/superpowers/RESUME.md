@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-08-30 at `0.221.12-run.alpha80`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-08-30 at `0.221.12-run.alpha80.1`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -21,8 +21,8 @@ Everything below is what that file tells it.
 
 - Branch **`feature/run-mode`**, not merged, deliberately — the mode is still
   being tuned in play.
-- Latest tag **`0.221.12-run.alpha80`**, pushed, staged for Windows.
-- Engine tests: `Tests/run_tests.sh`, 503 assertions, all passing.
+- Latest tag **`0.221.12-run.alpha80.1`**, pushed, staged for Windows.
+- Engine tests: `Tests/run_tests.sh`, 514 assertions, all passing.
 - Game version 0.221.12, Unity 6000.0.61. Windows is the play machine, the Mac
   is the test/build machine, the Deck travels (and is **stale** — it still has
   an older patched assembly and needs a re-patch before use).
@@ -50,14 +50,24 @@ Everything below is what that file tells it.
 
 Nine items, all owner-reported:
 
-1. **Combined kill lists.** An act's plain kill steps are now ONE composite
-   step counting every quarry at once — "8 Draugr, 5 Blobs, 3 Leeches" —
-   instead of a queue in which the thing in front of you did not count.
-   `mq-cull`, `bf-cull`, `sw-cull`, `mt-cull`, `pl-cull`. The scripted steps
-   (spirit, light race, Herald, Gatherer, couriers, Troll, Abomination, altar,
-   boss) stay steps of their own: those are the "clear story" the merge is
-   otherwise removing. A composite pays health and heat PER CLAUSE, so pacing
-   is unchanged.
+1. **Combined kill lists.** An act's POPULATIONS are now ONE composite step
+   counting every quarry at once — "8 Draugr, 5 Blobs, 3 Leeches" — instead of
+   a queue in which the thing in front of you did not count. `mq-cull`,
+   `bf-cull`, `sw-cull`, `mt-cull`, `pl-cull`.
+
+   **What is NOT in a list is the point** (alpha80.1, owner: "It would also be
+   a shame if we just scrunged everything into a kill list"). The heavyweights
+   are steps of their own, each because the story bible already had a reason:
+   Brutes are FED splinters, so killing one is a withdrawal; the Troll is what
+   a splinter becomes when it is never fed — the one thing in the forest that
+   breaks light instead of carrying it; the Abomination is the marsh's "never
+   let go" standing up; Golems are a watch outliving its post; Berserkers are
+   overseers keeping a quota on an empty field. Each says its line once, when
+   it becomes current, via the new `ChallengeDefinition.Opening` +
+   `StepOpenings` (pure, tested — its whole job is telling "just became
+   current" from "was already current on resume").
+
+   A composite pays health and heat PER CLAUSE, so pacing is unchanged.
 2. **One Hugin.** The game guards its own raven with `Raven.IsInstantiated()`
    in both `Tutorial.SpawnRaven` and `GuidePoint.Start`; ours did not, so two
    live Ravens shared one static text list and both flew in for the SAME line.

@@ -167,6 +167,24 @@ namespace ICanShowYouTheWorld.RunMode
         public string BlockedText;
 
         /// <summary>
+        /// One line said ONCE, the moment this step becomes the one in play. Null for almost
+        /// every step.
+        ///
+        /// It exists because combining an act's plain kills into one list made the remaining
+        /// separate kills a statement — "this one is not a population, it is a thing" — and a
+        /// statement needs saying (owner: "the bigger kills… we don't have to include them in the
+        /// list IF we can find some cool story around them"). A step pulled out of the list for
+        /// story reasons that then tells no story is just a step with a smaller number on it.
+        ///
+        /// Distinct from <see cref="Hint"/>, which is standing text under the objective saying
+        /// what it NEEDS. This is a moment: it fires once, where the player is looking, and is
+        /// gone. The story bible's rule holds — no line the world does not back.
+        ///
+        /// The engine does not read it. See RunService's StepOpenings for when it is spoken.
+        /// </summary>
+        public string Opening;
+
+        /// <summary>
         /// Gate on whether this definition may be DEALT at all: the run must already have built a
         /// piece of the named category (the same vocabulary
         /// <see cref="ChallengeKind.BuildPiece"/> uses). Null or empty means no gate.

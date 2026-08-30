@@ -730,6 +730,35 @@ namespace ICanShowYouTheWorld.RunMode
             _gatherer = new TheGatherer(_cfg, _rng);
             _forest = new ForestWatch(_cfg, _rng);
             _fen = new FenWatch(_cfg, _rng);
+
+            // Built here rather than at run start so a RESUME gets a fresh one, whose first
+            // observation is a silent baseline — otherwise continuing a run would open with the
+            // opening line of a step you have been working on for an hour.
+            _openings = new StepOpenings();
+        }
+
+        private StepOpenings _openings = new StepOpenings();
+
+        /// <summary>
+        /// Says a step's one line the moment it becomes the step in play.
+        ///
+        /// This is where the saga's remaining SEPARATE kills earn being separate. Combining an
+        /// act's plain kills into one list made every kill left standing alone a claim — the
+        /// Brutes, the Troll, the Abomination, the Golems, the Berserkers are not populations,
+        /// they are answers the world gave to the shortage — and a claim with no line attached is
+        /// just a smaller number (owner: "It would also be a shame if we just scrunged everything
+        /// into a kill list").
+        /// </summary>
+        private void PollStepOpenings()
+        {
+            if (_challenges == null) return;
+
+            try
+            {
+                foreach (var def in _openings.Observe(StepPredicates.Live(_challenges.Tracks)))
+                    Message(def.Opening);
+            }
+            catch (Exception ex) { LogOnce("step-openings", ex); }
         }
 
         /// <summary>
@@ -1998,6 +2027,7 @@ namespace ICanShowYouTheWorld.RunMode
             PollGatherer();
             PollCouriers();
             PollWhispers();
+            PollStepOpenings();
             PollForest();
             RefreshActPin();
         }
@@ -6376,14 +6406,31 @@ namespace ICanShowYouTheWorld.RunMode
                 // near it.
                 Id = "bf-cull", MainQuest = true, Kind = ChallengeKind.KillPrefab,
                 Display = "Thin the forest",
-                RewardText = "A buckler, root armour, resin and mead",
+                RewardText = "A buckler, arrows, resin and healing mead",
                 Hint = "The shamans keep to the nests and heal what you wound. The nests die without them.",
                 Subs = new List<SubObjective>
                 {
                     new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Greydwarf",        Target = 10, Label = "Kill 10 Greydwarves" },
-                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Greydwarf_Elite",  Target = 3,  Label = "Kill 3 Brutes" },
                     new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Greydwarf_Shaman", Target = 2,  Label = "Kill 2 Shamans" },
                 },
+            },
+            new ChallengeDefinition
+            {
+                // A Brute is NOT a bigger greydwarf. It is a fed one.
+                //
+                // Pulled back out of the kill list on purpose (owner: "the bigger kills, like
+                // Brutes/Trolls — we don't have to include them in the list IF we can find some
+                // cool story around them. It would also be a shame if we just scrunged everything
+                // into a kill list"). The story bible already had the reason waiting: the Elder's
+                // household is fed in order, and the oldest trees feed first. A splinter thick
+                // enough to shrug off an arrow is a splinter that has been eating stolen light for
+                // a long time — which makes killing one a WITHDRAWAL, not a cull. It is the same
+                // creature the Gatherer is, a few meals short.
+                Id = "bf-brute", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Greydwarf_Elite",
+                Target = 3, Display = "Fell 3 Brutes",
+                RewardText = "Root armour — what the forest wears against arrows",
+                Hint = "Slow, and they do not flinch. Fight them where there is room to give ground.",
+                Opening = "The big ones are not stronger. They are FED. The oldest trees feed first, and so do the oldest splinters.",
             },
             new ChallengeDefinition
             {
@@ -6399,8 +6446,17 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
+                // The one thing in the forest that BREAKS light instead of carrying it.
+                //
+                // Every other creature here converges on a light out of hunger and carries it home
+                // — that is the rule the story bible sets, and nothing may read as vandalism. The
+                // troll is the exception that proves it: too big for the Elder's table, never fed,
+                // and long past collecting. It is what a splinter becomes when the harvest never
+                // reaches it.
                 Id = "bf-troll", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Troll",
                 Target = 1, Display = "Kill a Troll", RewardText = "Troll hide, and the seeds the Elder wants",
+                Hint = "It will take your house down with it. Fight it away from anything you built.",
+                Opening = "That one was never fed. It stopped carrying light a long time ago, and started breaking it.",
             },
             new ChallengeDefinition
             {
@@ -6536,9 +6592,15 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 // The swamp's named horror, and the fight that proves the iron. Root armour is
                 // its drop, which is the swamp's own answer to the swamp.
+                //
+                // Kept out of the kill list because it is not a population: it is the act's answer
+                // to the shortage standing up and walking. The marsh's answer was NEVER LET GO,
+                // and an abomination is roots and drowned men holding on to each other.
                 Id = "sw-abom", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Abomination",
                 Target = 1, Display = "Fell an Abomination",
                 RewardText = "Mead against the marsh",
+                Hint = "Fire and blunt weapons. It is wood as much as it is meat.",
+                Opening = "Roots and drowned men, standing up together. This is what holding on looks like.",
             },
             new ChallengeDefinition
             {
@@ -6592,15 +6654,26 @@ namespace ICanShowYouTheWorld.RunMode
                 // rather than a queue.
                 Id = "mt-cull", MainQuest = true, Kind = ChallengeKind.KillPrefab,
                 Display = "Hunt the white silence",
-                RewardText = "Wolf armour, frost arrows, crystal, a silver blade and dragon eggs",
-                Hint = "Golems sleep as boulders until you are close. Fenrings only come out at night.",
+                RewardText = "Wolf armour, frost arrows and dragon eggs",
+                Hint = "Fenrings only come out at night, and they come downhill.",
                 Subs = new List<SubObjective>
                 {
-                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Wolf",       Target = 6, Label = "Kill 6 Wolves" },
-                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Hatchling",  Target = 4, Label = "Kill 4 Drakes" },
-                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "StoneGolem", Target = 2, Label = "Kill 2 Stone Golems" },
-                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Fenring",    Target = 3, Label = "Kill 3 Fenrings" },
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Wolf",      Target = 6, Label = "Kill 6 Wolves" },
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Hatchling", Target = 4, Label = "Kill 4 Drakes" },
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Fenring",   Target = 3, Label = "Kill 3 Fenrings" },
                 },
+            },
+            new ChallengeDefinition
+            {
+                // Not a population — a POST. The mountains' answer to the shortage was that
+                // theirs was already gone, and a golem is what was left standing over the place it
+                // used to be. It does not hunt. It does not follow. It waits, at the spot, for
+                // something that stopped existing before anything alive was here to see it.
+                Id = "mt-golem", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "StoneGolem",
+                Target = 2, Display = "Kill 2 Stone Golems",
+                RewardText = "Crystal, and a silver blade",
+                Hint = "They sleep as boulders. You will be standing beside one before you know it.",
+                Opening = "They were set to watch something. It has been gone a very long time. Nobody told them.",
             },
             new ChallengeDefinition
             {
@@ -6648,15 +6721,27 @@ namespace ICanShowYouTheWorld.RunMode
                 // The plains' four dangers on ONE list — see "mq-cull".
                 Id = "pl-cull", MainQuest = true, Kind = ChallengeKind.KillPrefab,
                 Display = "Break the plains",
-                RewardText = "Black metal, needle arrows, a blade, a lox cape and Yagluth's summons",
+                RewardText = "Black metal, needle arrows, a blade and a lox cape",
                 Hint = "Deathsquitos arrive before you hear them. Lox are slow and hit like a cart.",
                 Subs = new List<SubObjective>
                 {
                     new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Goblin",      Target = 10, Label = "Kill 10 Fulings" },
                     new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Deathsquito", Target = 5,  Label = "Kill 5 Deathsquitos" },
                     new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Lox",         Target = 3,  Label = "Kill 3 Lox" },
-                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "GoblinBrute", Target = 2,  Label = "Kill 2 Berserkers" },
                 },
+            },
+            new ChallengeDefinition
+            {
+                // The overseers. Yagluth's answer was to INDUSTRIALISE the harvest, and a berserker
+                // is what an industry leaves behind when it runs out of anything to take: someone
+                // still enforcing a quota on an empty field, generations after the last delivery.
+                // They are the ruin's argument in one creature, which is why they are not a line
+                // in a list.
+                Id = "pl-berserker", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "GoblinBrute",
+                Target = 2, Display = "Kill 2 Fuling Berserkers",
+                RewardText = "Yagluth's summons",
+                Hint = "Two-handed and unstoppable. Take the totem from what is left.",
+                Opening = "They are still keeping a quota. Nothing has been harvested here in an age, and nobody has told them that either.",
             },
             new ChallengeDefinition
             {
@@ -6813,7 +6898,8 @@ namespace ICanShowYouTheWorld.RunMode
                 ["bf-sign"] = new[] { ("Wood", 30), ("Resin", 20) },
                 ["bf-haldor"] = new[] { ("Coins", 300) },
                 ["bf-bronze"] = new[] { ("Bronze", 10), ("ArrowBronze", 40) },
-                ["bf-cull"] = new[] { ("ShieldBronzeBuckler", 1), ("ArrowBronze", 40), ("ArmorRootChest", 1), ("ArmorRootLegs", 1), ("Resin", 30), ("MeadHealthMedium", 4) },
+                ["bf-cull"] = new[] { ("ShieldBronzeBuckler", 1), ("ArrowBronze", 40), ("Resin", 30), ("MeadHealthMedium", 4) },
+                ["bf-brute"] = new[] { ("ArmorRootChest", 1), ("ArmorRootLegs", 1) },
                 // The seeds are the point: the Elder's altar wants three, they drop from shamans
                 // and brutes, and an act finale must never gate on drop luck (see mq-deer).
                 ["bf-troll"] = new[] { ("TrollHide", 10), ("AncientSeed", 3) },
@@ -6834,12 +6920,14 @@ namespace ICanShowYouTheWorld.RunMode
                 ["sw-bonemass"] = new[] { ("Wishbone", 1) },
 
                 ["mt-arrive"] = new[] { ("MeadFrostResist", 5), ("WolfPelt", 10) },
-                ["mt-cull"] = new[] { ("ArmorWolfChest", 1), ("ArmorWolfLegs", 1), ("ArrowFrost", 40), ("DragonTear", 2), ("Crystal", 10), ("SwordSilver", 1), ("DragonEgg", 3) },
+                ["mt-cull"] = new[] { ("ArmorWolfChest", 1), ("ArmorWolfLegs", 1), ("ArrowFrost", 40), ("DragonTear", 2), ("DragonEgg", 3) },
+                ["mt-golem"] = new[] { ("Crystal", 10), ("SwordSilver", 1) },
                 ["mt-silver"] = new[] { ("Silver", 30), ("Coal", 30) },
                 ["mt-moder"] = new[] { ("DragonTear", 5) },
 
                 ["pl-arrive"] = new[] { ("ArmorPaddedCuirass", 1), ("ArmorPaddedGreaves", 1) },
-                ["pl-cull"] = new[] { ("BlackMetal", 20), ("ArrowNeedle", 40), ("SwordBlackmetal", 1), ("LoxMeat", 10), ("CapeLox", 1), ("GoblinTotem", 5) },
+                ["pl-cull"] = new[] { ("BlackMetal", 20), ("ArrowNeedle", 40), ("SwordBlackmetal", 1), ("LoxMeat", 10), ("CapeLox", 1) },
+                ["pl-berserker"] = new[] { ("GoblinTotem", 5) },
                 ["pl-windmill"] = new[] { ("Barley", 30), ("BarleyFlour", 20) },
             };
 
