@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-08-25 at `0.221.12-run.alpha70.2`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-08-30 at `0.221.12-run.alpha80`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -19,31 +19,88 @@ Everything below is what that file tells it.
 
 ## Where things stand
 
-- Branch **`feature/run-mode`**, 96 commits ahead of `main`. **Not merged**,
-  deliberately — the mode is still being tuned in play.
-- Latest tag **`0.221.12-run.alpha70.2`**, pushed, staged for Windows.
-- **CONFIRMED IN PLAY (2026-08-25): the light race works end to end** — wisp
-  rises on a night deer kill, the pack arrives, the urgency bar goes red,
-  boss music fires, E-press takes the light, the scoreboard ticks. Owner's
-  verdict: "super difficult — very nice. It'll feel like quite an
-  achievement." That closes the alpha70.1 gate fix as verified.
-- Confirmed 2026-08-27: THE ACT I -> II TRANSITION CHOREOGRAPHY — card,
-  raven, premise whisper, in order (owner: "I THINK", retest pending). The
-  Gatherer's arrival TIER READOUT also confirmed. Still fresh: alpha75's
-  courier race, raft step, and the Shepherd actually working are untested.
-- Also confirmed in play: resume after quitting mid-run, the Gatherer fight
-  and its hoard drop, the wisp model (this build HAS a "Wisp" prefab), the
-  Herald hunt, fishing.
-- **Still unverified in play:** the Gatherer arriving FATTER after lost
-  lights, the forfeit at 8 lost, the courier race, Acts II-V content beyond
-  the transition, heat tuning (open since alpha17).
-- **Act I is the focus.** Three tracks, 26 steps, playable end to end. Design in
-  `specs/2026-08-23-act-one-homestead-design.md`; Acts II-V are PLANNED but not
-  built, in `specs/2026-08-23-act-questline-plans.md`.
+- Branch **`feature/run-mode`**, not merged, deliberately — the mode is still
+  being tuned in play.
+- Latest tag **`0.221.12-run.alpha80`**, pushed, staged for Windows.
+- Engine tests: `Tests/run_tests.sh`, 503 assertions, all passing.
 - Game version 0.221.12, Unity 6000.0.61. Windows is the play machine, the Mac
   is the test/build machine, the Deck travels (and is **stale** — it still has
   an older patched assembly and needs a re-patch before use).
-- Engine tests: `Tests/run_tests.sh`, 413 assertions, all passing.
+
+### Confirmed in play
+
+- **The light race, end to end** (alpha70) — wisp on a night deer kill, the
+  pack, the red urgency bar, boss music, the take, the scoreboard. Owner:
+  "super difficult — very nice."
+- **The Act I → II transition choreography** — card, raven, premise whisper.
+- **The Gatherer** — the fight, the hoard drop, the arrival tier readout.
+- **Act II's couriers** (alpha79) — "worked perfectly, along with the hints."
+  That closes the longest-running unverified thing in the mode.
+- Resume after quitting mid-run, the Herald hunt, fishing, the wisp model.
+
+### Still unverified in play
+
+- The Gatherer arriving FATTER after lost lights; the forfeit at 8 lost.
+- **Everything in alpha80** (below): combined kill lists, the single Hugin, the
+  Waystone's target and landing, the biome bearing, Act III's scrap-iron step.
+- Acts III–V beyond their opening beats.
+- **Heat tuning — open since alpha17**, and still the oldest thing on this list.
+
+### What alpha80 changed (from one play session's notes)
+
+Nine items, all owner-reported:
+
+1. **Combined kill lists.** An act's plain kill steps are now ONE composite
+   step counting every quarry at once — "8 Draugr, 5 Blobs, 3 Leeches" —
+   instead of a queue in which the thing in front of you did not count.
+   `mq-cull`, `bf-cull`, `sw-cull`, `mt-cull`, `pl-cull`. The scripted steps
+   (spirit, light race, Herald, Gatherer, couriers, Troll, Abomination, altar,
+   boss) stay steps of their own: those are the "clear story" the merge is
+   otherwise removing. A composite pays health and heat PER CLAUSE, so pacing
+   is unchanged.
+2. **One Hugin.** The game guards its own raven with `Raven.IsInstantiated()`
+   in both `Tutorial.SpawnRaven` and `GuidePoint.Start`; ours did not, so two
+   live Ravens shared one static text list and both flew in for the SAME line.
+   Ours now honours the guard and delivers beats as `Raven.AddTempText`, so the
+   vanilla tutorial Hugin keeps working (and keeps feeding the RavenTalk task)
+   while our beats get their own lines. Keys are scoped to the run seed —
+   `Player.m_shownTutorials` persists per CHARACTER, and the saga is replayable.
+3. **One act banner.** The centre-screen Message duplicated the transition card
+   in smaller type. Card only.
+4. **The stash left the always-on panels.** Only the tracker stays up with the
+   HUD hidden; the stash comes back with `End`.
+5. **God mode regenerates.** Valheim's god mode is NOT invulnerability —
+   `Character.ApplyDamage` takes the hit and clamps the RESULT to 1 — so a
+   god-mode player under fire sits at one hit point. A periodic tick now heals
+   ~34% of max four times a second while it is on.
+6. **The Waystone goes to the NEXT boss, not the nearest.** It picked by
+   distance and sent a player with Bonemass alive to Moder.
+7. **The Waystone lands OUTSIDE the altar** — 28m out, on the approach bearing,
+   above water. Bonemass's centre point is inside a closed skull.
+8. **The biome bearing agrees with the boss pin.** Both now resolve the same
+   altar instance, so "the swamps lie north-east" points at Bonemass's mire
+   rather than at the nearest scrap of swamp.
+9. **Act III gained a scrap-iron step** (`sw-scrap`, 20 Scrap Iron). The two
+   steps that already touched iron asked for pickaxe swings and for SMELTED
+   bars behind a boat; neither is the verb the swamp is about.
+
+Two supporting fixes that shipped with them, both worth knowing about:
+
+- `ChallengeEngine.RestoreTrack` now carries **sub-progress**, and **clamps a
+  stale index** back onto the chain when the saved step id no longer exists.
+  Without the clamp, shortening a track (which merging kill steps does) would
+  have let the first resume run off the end — and off the end reads as "this
+  questline is finished" everywhere, including for the act's boss.
+- `DevCompleteCurrent` fills the CLAUSES. A composite ignores `Progress`, so
+  the dev skip would have silently done nothing on exactly the new content.
+
+### Act structure
+
+**Act I is still the focus** and is playable end to end. Design in
+`specs/2026-08-23-act-one-homestead-design.md`; the seven-act plan in
+`specs/2026-08-23-act-questline-plans.md`; the story itself in
+`specs/2026-08-27-story-bible.md`. Acts II–V exist and open correctly; their
+middles are thinner than Act I's.
 
 ## The loop
 

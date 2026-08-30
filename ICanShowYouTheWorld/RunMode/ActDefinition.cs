@@ -33,6 +33,17 @@ namespace ICanShowYouTheWorld.RunMode
         public string Epigraph;
 
         /// <summary>
+        /// What Hugin says when he comes to look at the act you just opened.
+        ///
+        /// Separate from <see cref="Epigraph"/> on purpose: the epigraph is the SAGA's voice on
+        /// the transition card, an instruction to the player, while this is a character's — Odin's
+        /// bird, auditing. Reusing the epigraph would have the card and the raven say the same
+        /// sentence twice within a few seconds, which is the same complaint that removed the
+        /// duplicate banner.
+        /// </summary>
+        public string RavenLine;
+
+        /// <summary>
         /// The global key set when this act's boss dies — the same string the boss table holds.
         /// This is what makes an act's END observable: the act is over precisely when the world
         /// says this key is set.

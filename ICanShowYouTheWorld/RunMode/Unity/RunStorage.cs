@@ -88,6 +88,19 @@ namespace ICanShowYouTheWorld.RunMode
         public List<string> trackStepIds;
 
         /// <summary>
+        /// Per-track sub-objective progress — the seated step's SubProgress joined with ';', one
+        /// entry per track, aligned with <see cref="trackIds"/>. The empty string means the step in
+        /// play is not a composite.
+        ///
+        /// Same encoding as <see cref="activeChallengeSubProgress"/>, and written for the same
+        /// reason one level up: a questline step can be a combined kill list, and a track that
+        /// saved only its single Progress put every such list back at zero on resume.
+        /// Null on a save from before combined lists existed, which reads as "start the subs at
+        /// zero" — the pre-existing behaviour, not a regression.
+        /// </summary>
+        public List<string> trackSubProgress;
+
+        /// <summary>
         /// The player's WoodCutting skill level as it stood before the run LOANED them 100 (see
         /// RunService's skill boost — "max woodcutting from the start", with no grinding for it).
         /// Restored when the run finishes or is abandoned, so the loan is never permanent.

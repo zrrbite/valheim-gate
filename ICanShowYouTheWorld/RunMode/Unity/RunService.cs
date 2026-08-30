@@ -450,7 +450,9 @@ namespace ICanShowYouTheWorld.RunMode
                     // It also TEACHES the race that follows, at the moment the player is most
                     // ready to hear it: they just learned lights exist by finding one.
                     Announce("The pale light goes out.");
-                    TrySpawnRaven(player.transform.position);
+                    TrySpawnRaven("spirit",
+                        "So you found one still burning. There were more, once. " +
+                        "Watch what the forest does with the rest.");
                     Message("It was one of the herd's \u2014 the one the forest never found.");
                     Message("The deer give up their light when they fall, and the forest is always collecting. Hunt after dark, and take back what you can.");
                 }
@@ -974,11 +976,49 @@ namespace ICanShowYouTheWorld.RunMode
                 _bearingAt = Time.time;
                 _bearingFrom = from;
 
-                try { _bearingResult = BiomeCompass.Nearest(from, target); }
+                try { _bearingResult = BossAltarIn(target) ?? BiomeCompass.Nearest(from, target); }
                 catch { _bearingResult = null; }
             }
 
             return _bearingResult;
+        }
+
+        /// <summary>
+        /// The act's boss altar, when it happens to stand in <paramref name="biome"/> — otherwise
+        /// null, and the nearest-patch search answers instead.
+        ///
+        /// This exists because the two things the act points at were pointing at different places:
+        /// the map pin comes from DiscoverClosestLocation on the boss's LOCATION, while the strip's
+        /// bearing came from the nearest patch of the act's biome. A world can easily put a scrap
+        /// of swamp east of you and Bonemass's mire to the north, and then the marker and the words
+        /// disagree with no way for the player to tell which is lying (owner: "The boss marker for
+        /// bonemass and the directions for swamp didn't match... Maybe target the biome that the
+        /// boss is in instead").
+        ///
+        /// Both surfaces now resolve the SAME instance — FindClosestLocation and
+        /// DiscoverClosestLocation both take the closest to the player — so they cannot drift
+        /// apart. The biome test is what keeps this honest: if the altar is somehow not in the
+        /// biome the step names, sending the player there would be worse than the disagreement.
+        ///
+        /// Called only from the cached path in <see cref="NearestBiome"/>. FindClosestLocation is a
+        /// scan of every generated location in the world and the bearing is read from OnGUI.
+        /// </summary>
+        private Vector3? BossAltarIn(Heightmap.Biome biome)
+        {
+            var zone = ZoneSystem.instance;
+            var world = WorldGenerator.instance;
+            var player = Player.m_localPlayer;
+            if (zone == null || world == null || player == null) return null;
+            if (_actIndex < 0 || _actIndex >= _acts.Count) return null;
+
+            string key = _acts[_actIndex].BossDefeatKey;
+            var boss = Bosses.FirstOrDefault(b => b.defeatKey == key);
+            if (boss.locName == null) return null;
+
+            if (!zone.FindClosestLocation(boss.locName, player.transform.position, out ZoneSystem.LocationInstance loc))
+                return null;
+
+            return world.GetBiome(loc.m_position) == biome ? (Vector3?)loc.m_position : null;
         }
 
         /// <summary>The light race's scoreboard, for the HUD. Null outside a run.</summary>
@@ -2278,28 +2318,49 @@ namespace ICanShowYouTheWorld.RunMode
         /// creature, absent from ZNetScene entirely, which is why the candidate-name probe found
         /// nothing and the old spawn destroyed the bird for lacking a ZDO it never has. No
         /// network view is the correct state for a thing only this player is meant to see.
+        ///
+        /// Two rules here belong to the GAME rather than to us, and both were paid for by "there
+        /// were still 2 hugins most of the time":
+        ///
+        ///   - Raven is a singleton by CONVENTION. Awake() overwrites the static m_instance
+        ///     without destroying the previous bird, and the two places the game spawns one
+        ///     (Tutorial.SpawnRaven, GuidePoint.Start) each guard themselves with
+        ///     Raven.IsInstantiated(). Instantiating unconditionally left two live Ravens sharing
+        ///     one static text list, each running its own CheckSpawn — so both flew in for the
+        ///     same line. Destroying OUR previous bird could never have fixed that: the duplicate
+        ///     was the game's, and the guard is the whole fix.
+        ///   - Position is ignored. Awake() teleports the raven to (0, 100000, 0) and CheckSpawn
+        ///     places it near the player once a second — but only when GetBestText() has something
+        ///     for it to say. A raven summoned with nothing to say never comes down at all, which
+        ///     is why a beat is now a LINE rather than a location.
+        ///
+        /// Keys are scoped to the run's seed. Raven drops a temp text as soon as
+        /// Player.HaveSeenTutorial reports it seen, and that set persists on the character — a
+        /// fixed key would let each beat land once per CHARACTER, and the saga is meant to be
+        /// played again.
+        ///
+        /// A spoken beat also feeds the "speak with Hugin" task: Raven.Talk increments the
+        /// RavenTalk player stat, which is exactly what that challenge measures.
         /// </summary>
-        private GameObject _raven;
-
-        private void TrySpawnRaven(Vector3 near)
+        private void TrySpawnRaven(string beat, string text)
         {
             try
             {
-                var prefab = Tutorial.instance != null ? Tutorial.instance.m_ravenPrefab : null;
-                if (prefab == null) return;
+                if (!Raven.IsInstantiated())
+                {
+                    var prefab = Tutorial.instance != null ? Tutorial.instance.m_ravenPrefab : null;
+                    if (prefab == null) return;
 
-                // ONE raven. Odin has two, but he sends them one at a time — two beats close
-                // together (the pale light, then a transition) each spawned their own bird and
-                // both lingered ("two Hugins at same time"). Unity's == is the right null here:
-                // a despawned raven should read as gone.
-                if (_raven != null) UnityEngine.Object.Destroy(_raven);
+                    UnityEngine.Object.Instantiate(prefab, Vector3.zero, Quaternion.identity);
+                }
 
-                float angle = (float)(_rng.NextDouble() * Math.PI * 2.0);
-                Vector3 pos = near + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 5f;
+                if (string.IsNullOrEmpty(text)) return;
 
-                try { pos.y = ZoneSystem.instance.GetGroundHeight(pos) + 0.5f; } catch { }
-
-                _raven = UnityEngine.Object.Instantiate(prefab, pos, Quaternion.identity);
+                // munin:false — Hugin is the one who explains things, and Munin's texts are only
+                // shown by a raven whose own m_isMunin matches. label:"" keeps this to a line over
+                // the bird's head; a label opens the parchment reader on top of the moment it is
+                // commenting on.
+                Raven.AddTempText($"icsytw_{_rngSeed}_{beat}", "Hugin", text, string.Empty, false);
             }
             catch (Exception ex) { LogOnce("raven", ex); }
         }
@@ -2556,6 +2617,13 @@ namespace ICanShowYouTheWorld.RunMode
         /// contribution rather than adding to it — which is exactly what makes a growing loan safe
         /// to re-apply as often as we like without compounding.
         /// </summary>
+        /// <summary>
+        /// How many things a definition actually asked for: its sub-objectives if it is a combined
+        /// list, otherwise one. Never zero, so a malformed composite still pays like a step.
+        /// </summary>
+        private static int ObjectiveCount(ChallengeDefinition def) =>
+            def?.Subs == null || def.Subs.Count == 0 ? 1 : def.Subs.Count;
+
         private void GrantCompletionHealth()
         {
             _taskHealthReward += HealthPerCompletion;
@@ -3460,30 +3528,38 @@ namespace ICanShowYouTheWorld.RunMode
                 .Where(x => !own.Any(o => o.Id == x.Id))
                 .Select(x => live.FirstOrDefault(l => l.Id == x.Id))
                 .Where(x => x != null)
-                .Select(x => new { x.Id, x.Index, Progress = x.Current?.Progress ?? 0f, StepId = x.Current?.Def?.Id })
+                .Select(x => new
+                {
+                    x.Id,
+                    x.Index,
+                    Progress = x.Current?.Progress ?? 0f,
+                    StepId = x.Current?.Def?.Id,
+                    // Carried for the same reason Progress is: a track that crosses an act boundary
+                    // holding a half-finished kill list must keep the kills it has.
+                    Subs = x.Current?.SubProgress?.ToList(),
+                })
                 .ToList();
 
             _challenges.SetTracks(seated);
 
             foreach (var c in carried)
-                _challenges.RestoreTrack(c.Id, c.Index, c.Progress, c.StepId);
+                _challenges.RestoreTrack(c.Id, c.Index, c.Progress, c.StepId, c.Subs);
 
             if (!announce || !changed) return;
 
             var act = _acts[_actIndex];
             Announce(act.Banner);
-            Message(act.Banner);
 
-            // The CARD is the real announcement. The center-screen text and the chat line were
-            // both missable in the chaos right after a boss kill — which is exactly when an act
-            // changes — and a transition the player does not notice is a transition that did not
-            // happen for them (owner: "I missed act 2 starting").
+            // The CARD is the real announcement, and now the ONLY one on screen. The chat line
+            // above is a log, not a surface. The centre-screen Message that used to sit here said
+            // the same words a second time in smaller type, half a screen away — two banners for
+            // one event, which reads as a bug rather than as emphasis (owner: "There are two ACT 2
+            // banners, one big and one smaller. Keep the big.").
             ActCardTitle = act.Banner;
             ActCardEpigraph = act.Epigraph;
             ActCardShownAt = Time.time;
 
-            var watcher = Player.m_localPlayer;
-            if (watcher != null) TrySpawnRaven(watcher.transform.position);
+            TrySpawnRaven("act" + _actIndex, act.RavenLine);
 
             // Act II opens on the saga's premise, said once and plainly. Delayed past the card's
             // ten seconds so the two do not talk over each other — the card names the act, and
@@ -3962,11 +4038,19 @@ namespace ICanShowYouTheWorld.RunMode
                 // Every completion pays health, whichever kind it was. Heat is what finishing
                 // something COSTS you — the world gets harder — so something has to come back, and
                 // this is the part that does regardless of which track or table you were on.
-                GrantCompletionHealth();
+                //
+                // A COMBINED step pays once per objective in it. Merging an act's four kill steps
+                // into one list was a presentation change, not a difficulty one: the player still
+                // kills the same things in the same numbers, and paying a quarter of the health and
+                // heat for it would quietly halve the act's pacing. Objectives, not steps, is what
+                // the payout was always measuring.
+                int objectives = ObjectiveCount(def);
+
+                for (int i = 0; i < objectives; i++) GrantCompletionHealth();
 
                 if (def.MainQuest)
                 {
-                    AddHeat(MainQuestHeatReward);
+                    AddHeat(MainQuestHeatReward * objectives);
 
                     GrantQuestReward(def);
                     SaveState();   // the chain has advanced; don't wait for the autosave
@@ -3977,7 +4061,7 @@ namespace ICanShowYouTheWorld.RunMode
                 _boons?.CreateOffer();
 
                 Message($"Challenge complete: {def.Display}  " +
-                        $"(+{def.HeatReward:0.#} heat, +{HealthPerCompletion:0.#} health)");
+                        $"(+{def.HeatReward:0.#} heat, +{HealthPerCompletion * objectives:0.#} health)");
             }
             catch (Exception ex)
             {
@@ -4652,7 +4736,10 @@ namespace ICanShowYouTheWorld.RunMode
                         s.trackIds[i],
                         s.trackIndices != null && i < s.trackIndices.Count ? s.trackIndices[i] : 0,
                         s.trackProgress != null && i < s.trackProgress.Count ? s.trackProgress[i] : 0f,
-                        s.trackStepIds != null && i < s.trackStepIds.Count ? s.trackStepIds[i] : null);
+                        s.trackStepIds != null && i < s.trackStepIds.Count ? s.trackStepIds[i] : null,
+                        s.trackSubProgress != null && i < s.trackSubProgress.Count
+                            ? SplitSubProgress(s.trackSubProgress[i])
+                            : null);
                 }
                 return;
             }
@@ -5074,25 +5161,32 @@ namespace ICanShowYouTheWorld.RunMode
             if (s.activeChallengeSubProgress == null) return null;
 
             var result = new List<List<float>>(s.activeChallengeSubProgress.Count);
-            foreach (var raw in s.activeChallengeSubProgress)
-            {
-                if (string.IsNullOrEmpty(raw))
-                {
-                    result.Add(new List<float>());
-                    continue;
-                }
-
-                var parts = raw.Split(';');
-                var values = new List<float>(parts.Length);
-                foreach (var part in parts)
-                {
-                    values.Add(float.TryParse(part, NumberStyles.Float, CultureInfo.InvariantCulture, out float v)
-                        ? v
-                        : 0f);
-                }
-                result.Add(values);
-            }
+            foreach (var raw in s.activeChallengeSubProgress) result.Add(SplitSubProgress(raw));
             return result;
+        }
+
+        /// <summary>One slot's per-sub progress as a save string, or "" when it is not a composite.</summary>
+        private static string JoinSubProgress(List<float> subProgress) =>
+            subProgress == null
+                ? string.Empty
+                : string.Join(";", subProgress.Select(v => v.ToString(CultureInfo.InvariantCulture)));
+
+        /// <summary>
+        /// The inverse of <see cref="JoinSubProgress"/>. An empty or unparsable piece never throws —
+        /// it becomes 0f, matching every other malformed-save tolerance in this file.
+        /// </summary>
+        private static List<float> SplitSubProgress(string raw)
+        {
+            var values = new List<float>();
+            if (string.IsNullOrEmpty(raw)) return values;
+
+            foreach (var part in raw.Split(';'))
+            {
+                values.Add(float.TryParse(part, NumberStyles.Float, CultureInfo.InvariantCulture, out float v)
+                    ? v
+                    : 0f);
+            }
+            return values;
         }
 
         private static IEnumerable<KeyValuePair<string, float>> Zip(List<string> ids, List<float> values)
@@ -5136,11 +5230,7 @@ namespace ICanShowYouTheWorld.RunMode
                 activeChallengeBaselines = active
                     .Select(a => float.IsNaN(a.Baseline) ? NoBaselineSentinel : a.Baseline)
                     .ToList(),
-                activeChallengeSubProgress = active
-                    .Select(a => a.SubProgress == null
-                        ? ""
-                        : string.Join(";", a.SubProgress.Select(v => v.ToString(CultureInfo.InvariantCulture))))
-                    .ToList(),
+                activeChallengeSubProgress = active.Select(a => JoinSubProgress(a.SubProgress)).ToList(),
                 // Independent of the actives lists above: the questline lives in a reserved slot
                 // of its own, so it saves as a position + a progress value, not as a list entry.
                 // Kept written for one build's worth of backwards compatibility: a save made here
@@ -5153,6 +5243,7 @@ namespace ICanShowYouTheWorld.RunMode
                 trackIndices = _challenges?.Tracks.Select(t => t.Index).ToList(),
                 trackProgress = _challenges?.Tracks.Select(t => t.Current?.Progress ?? 0f).ToList(),
                 trackStepIds = _challenges?.Tracks.Select(t => t.Current?.Def?.Id).ToList(),
+                trackSubProgress = _challenges?.Tracks.Select(t => JoinSubProgress(t.Current?.SubProgress)).ToList(),
                 skillLoanTypes = _skillLoans.Keys.Select(k => (int)k).ToList(),
                 skillLoanOriginals = _skillLoans.Values.Select(v => v.Original).ToList(),
                 skillLoanLevels = _skillLoans.Values.Select(v => v.Level).ToList(),
@@ -5680,30 +5771,40 @@ namespace ICanShowYouTheWorld.RunMode
                 // instead. See the act plans spec.
                 Id = "act1", Numeral = "I", Title = "The Stolen Light",
                 Epigraph = "Something is taking the light from the meadows. Take it back.",
+                RavenLine = "He is counting, you know. Every antler that falls, he counts. " +
+                            "Start where the herd is thinnest.",
                 BossDefeatKey = "defeated_eikthyr", Tracks = Split(MainQuestChain()),
             },
             new ActDefinition
             {
                 Id = "act2", Numeral = "II", Title = "Where the Light Goes",
                 Epigraph = "The forest has been fed for years. Meet what did the feeding.",
+                RavenLine = "The little ones carry it somewhere. Nobody has ever followed them home. " +
+                            "Odin would like that corrected.",
                 BossDefeatKey = "defeated_gdking", Tracks = Split(BlackForestChain()),
             },
             new ActDefinition
             {
                 Id = "act3", Numeral = "III", Title = "Nothing Stays Buried",
                 Epigraph = "What the marsh takes, it keeps.",
+                RavenLine = "Men dug here before you, and iron is all they left. " +
+                            "Take the iron. Leave the rest where it lies.",
                 BossDefeatKey = "defeated_bonemass", Tracks = Split(SwampChain()),
             },
             new ActDefinition
             {
                 Id = "act4", Numeral = "IV", Title = "The White Silence",
                 Epigraph = "Above the treeline, even light freezes.",
+                RavenLine = "Nothing up here is hungry. That is worse. " +
+                            "Hunger at least wants something.",
                 BossDefeatKey = "defeated_dragon", Tracks = Split(MountainChain()),
             },
             new ActDefinition
             {
                 Id = "act5", Numeral = "V", Title = "The Golden Ruin",
                 Epigraph = "They harvested a god's herd before you. See how it ended.",
+                RavenLine = "Look at the stones before you fight anything. " +
+                            "Someone tried exactly what you are trying.",
                 BossDefeatKey = "defeated_goblinking", Tracks = Split(PlainsChain()),
             },
         };
@@ -5823,8 +5924,27 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
-                Id = "mq-boar", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Boar",
-                Target = 4, Display = "Hunt 4 Boar", RewardText = "Leather leggings + a quiver of arrows",
+                // ONE list, counted together, rather than boar and then greylings.
+                //
+                // A track holds a single step at a time, so consecutive kill steps meant the
+                // quarry you happened to meet did not count until the step before it was finished
+                // — you could clear a camp of greylings while the questline was still asking for
+                // boar and be credited with nothing (owner: "Going from one to the other might
+                // mean we don't count certain kills. It seems a bit trite to go from one to the
+                // other unless there's a clear story."). A composite counts every clause at once,
+                // which is what a hunter's list has always been.
+                //
+                // Only the PLAIN kills merge. The spirit, the light race, the Herald, the Gatherer
+                // and the boss stay steps of their own, because each of those is a scene with an
+                // order to it — the clear story the merge is otherwise removing.
+                Id = "mq-cull", MainQuest = true, Kind = ChallengeKind.KillPrefab,
+                Display = "Feed the camp, and keep it",
+                RewardText = "Leather leggings, a helmet and a cape — and arrows",
+                Subs = new List<SubObjective>
+                {
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Boar",     Target = 4, Label = "Hunt 4 Boar" },
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Greyling", Target = 4, Label = "Kill 4 Greylings" },
+                },
             },
             new ChallengeDefinition
             {
@@ -5881,15 +6001,11 @@ namespace ICanShowYouTheWorld.RunMode
                 Target = 3, Display = "Sit down to a proper meal", RewardText = "A stocked larder",
                 Hint = "Three different foods at once — cooked meat, berries, mushrooms.",
             },
-            new ChallengeDefinition
-            {
-                // Greyling, not Greydwarf: the greydwarf proper lives in the Black Forest, and
-                // every step before Eikthyr should be doable without leaving the Meadows. Greylings
-                // are the weaker meadows cousin, hence the higher count. The ID is deliberately
-                // unchanged so a run already part-way through this step keeps its progress.
-                Id = "mq-grey", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Greyling",
-                Target = 4, Display = "Kill 4 Greylings", RewardText = "Helmet + cape + more arrows",
-            },
+            // Greyling, not Greydwarf: the greydwarf proper lives in the Black Forest, and every
+            // step before Eikthyr should be doable without leaving the Meadows. Greylings are the
+            // weaker meadows cousin, hence the higher count. It is now a clause of "mq-cull"
+            // above rather than a step of its own.
+            //
             // Build it, live in it, sleep in it. All three ride stats Valheim keeps itself, so
             // none of them can silently stall the chain the way a check against a named building
             // piece would: Builds counts every piece placed (Player.PlacePiece), TimeInBase
@@ -6250,24 +6366,24 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
-                Id = "bf-greydwarf", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Greydwarf",
-                Target = 10, Display = "Kill 10 Greydwarves", RewardText = "A bronze buckler and arrows",
-            },
-            new ChallengeDefinition
-            {
-                Id = "bf-brute", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Greydwarf_Elite",
-                Target = 3, Display = "Kill 3 Greydwarf Brutes", RewardText = "Root armour against their arrows",
-            },
-            new ChallengeDefinition
-            {
-                // "Kill some greydwarf nests" was the ask, and nests are the one thing this mod
-                // cannot count: they are Destructibles, not Characters, and the only injected
-                // hook is Character.OnDeath. The tenders are countable, and the story is the
-                // same — the forest grows its children somewhere, and you are unwelcome near it.
-                Id = "bf-shaman", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Greydwarf_Shaman",
-                Target = 2, Display = "Kill 2 Shamans",
-                RewardText = "The nest-tenders' due \u2014 resin and healing mead",
-                Hint = "They keep to the nests and heal what you wound. The nests die without them.",
+                // The forest's whole household on ONE list — see "mq-cull" for why three
+                // consecutive kill steps became one.
+                //
+                // "Kill some greydwarf nests" was the original ask, and nests are the one thing
+                // this mod cannot count: they are Destructibles, not Characters, and the only
+                // injected hook is Character.OnDeath. The tenders are countable, and the story is
+                // the same — the forest grows its children somewhere, and you are unwelcome
+                // near it.
+                Id = "bf-cull", MainQuest = true, Kind = ChallengeKind.KillPrefab,
+                Display = "Thin the forest",
+                RewardText = "A buckler, root armour, resin and mead",
+                Hint = "The shamans keep to the nests and heal what you wound. The nests die without them.",
+                Subs = new List<SubObjective>
+                {
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Greydwarf",        Target = 10, Label = "Kill 10 Greydwarves" },
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Greydwarf_Elite",  Target = 3,  Label = "Kill 3 Brutes" },
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Greydwarf_Shaman", Target = 2,  Label = "Kill 2 Shamans" },
+                },
             },
             new ChallengeDefinition
             {
@@ -6336,8 +6452,18 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
-                Id = "sw-draugr", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Draugr",
-                Target = 8, Display = "Kill 8 Draugr", RewardText = "Iron arrows and a shield",
+                // The mire's three tenants on ONE list — see "mq-cull". The Abomination stays a
+                // step of its own: it is the act's named horror rather than a population.
+                Id = "sw-cull", MainQuest = true, Kind = ChallengeKind.KillPrefab,
+                Display = "Clear the mire",
+                RewardText = "Iron arrows, a tower shield, withered bone and an iron mace",
+                Hint = "Leeches in the water, blobs on the paths, draugr wherever the dead were left.",
+                Subs = new List<SubObjective>
+                {
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Draugr", Target = 8, Label = "Kill 8 Draugr" },
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Blob",   Target = 5, Label = "Kill 5 Blobs" },
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Leech",  Target = 3, Label = "Kill 3 Leeches" },
+                },
             },
             new ChallengeDefinition
             {
@@ -6379,11 +6505,7 @@ namespace ICanShowYouTheWorld.RunMode
                 RewardText = "Coal for the smelting",
                 Hint = "Scrap from the crypts, smelted at home. The swamp is paid for in iron.",
             },
-            new ChallengeDefinition
-            {
-                Id = "sw-blob", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Blob",
-                Target = 5, Display = "Kill 5 Blobs", RewardText = "Withered bone — Bonemass's summons",
-            },
+            // "Kill 5 Blobs" and "Kill 3 Leeches" are clauses of "sw-cull" above now.
             new ChallengeDefinition
             {
                 Id = "sw-iron", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "MineHits",
@@ -6392,8 +6514,23 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
-                Id = "sw-leech", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Leech",
-                Target = 3, Display = "Kill 3 Leeches", RewardText = "An iron mace — blunt beats bone",
+                // The act's actual work, asked for plainly (owner: "We need an iron gather quest
+                // for Swamp biome, act 3"). Both steps that already touched iron asked for
+                // something OTHER than gathering it: "sw-iron" counts swings of a pickaxe, and
+                // "sw-ironbar" wants ten SMELTED bars — a smelter, coal and a trip home away,
+                // sitting at the far end of the marsh track behind a boat. Neither is the verb the
+                // swamp is about.
+                //
+                // Scrap is what a crypt actually hands you, so scrap is what the questline asks
+                // for, between digging it out and smelting it down.
+                //
+                // "$item_ironscrap" is verified against the game's own string table rather than
+                // remembered: an item token is Unity data, and a wrong one is a step that can never
+                // complete and never says so.
+                Id = "sw-scrap", MainQuest = true, Kind = ChallengeKind.CollectItem, Param = "$item_ironscrap",
+                Target = 20, Display = "Haul out 20 Scrap Iron",
+                RewardText = "Coal, and nails for the hull",
+                Hint = "Muddy scrap piles inside the sunken crypts. The Elder's key opens them.",
             },
             new ChallengeDefinition
             {
@@ -6449,13 +6586,21 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
-                Id = "mt-wolf", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Wolf",
-                Target = 6, Display = "Kill 6 Wolves", RewardText = "Wolf armour against the cold",
-            },
-            new ChallengeDefinition
-            {
-                Id = "mt-drake", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Hatchling",
-                Target = 4, Display = "Kill 4 Drakes", RewardText = "Frost arrows and dragon tears",
+                // Everything that lives above the treeline, on ONE list — see "mq-cull". The
+                // Mountains have no craft steps to speak of, so their hunt track WAS the act, four
+                // kill steps deep; combining them is what makes the peaks a place to range over
+                // rather than a queue.
+                Id = "mt-cull", MainQuest = true, Kind = ChallengeKind.KillPrefab,
+                Display = "Hunt the white silence",
+                RewardText = "Wolf armour, frost arrows, crystal, a silver blade and dragon eggs",
+                Hint = "Golems sleep as boulders until you are close. Fenrings only come out at night.",
+                Subs = new List<SubObjective>
+                {
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Wolf",       Target = 6, Label = "Kill 6 Wolves" },
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Hatchling",  Target = 4, Label = "Kill 4 Drakes" },
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "StoneGolem", Target = 2, Label = "Kill 2 Stone Golems" },
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Fenring",    Target = 3, Label = "Kill 3 Fenrings" },
+                },
             },
             new ChallengeDefinition
             {
@@ -6463,16 +6608,7 @@ namespace ICanShowYouTheWorld.RunMode
                 Target = 60, Display = "Mine silver (60 hits)", RewardText = "Silver, already smelted",
                 Hint = "Silver hides underground — the wishbone finds it.",
             },
-            new ChallengeDefinition
-            {
-                Id = "mt-golem", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "StoneGolem",
-                Target = 2, Display = "Kill 2 Stone Golems", RewardText = "Crystal, and a silver blade",
-            },
-            new ChallengeDefinition
-            {
-                Id = "mt-fenring", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Fenring",
-                Target = 3, Display = "Kill 3 Fenrings", RewardText = "Dragon eggs — Moder's summons",
-            },
+            // The golems and fenrings are clauses of "mt-cull" above now.
             new ChallengeDefinition
             {
                 Id = "mt-find", MainQuest = true, Track = HuntTrackId, Kind = ChallengeKind.DiscoverLocation, Param = "Dragonqueen",
@@ -6509,8 +6645,18 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
-                Id = "pl-fuling", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Goblin",
-                Target = 10, Display = "Kill 10 Fulings", RewardText = "Black metal and needle arrows",
+                // The plains' four dangers on ONE list — see "mq-cull".
+                Id = "pl-cull", MainQuest = true, Kind = ChallengeKind.KillPrefab,
+                Display = "Break the plains",
+                RewardText = "Black metal, needle arrows, a blade, a lox cape and Yagluth's summons",
+                Hint = "Deathsquitos arrive before you hear them. Lox are slow and hit like a cart.",
+                Subs = new List<SubObjective>
+                {
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Goblin",      Target = 10, Label = "Kill 10 Fulings" },
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Deathsquito", Target = 5,  Label = "Kill 5 Deathsquitos" },
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Lox",         Target = 3,  Label = "Kill 3 Lox" },
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "GoblinBrute", Target = 2,  Label = "Kill 2 Berserkers" },
+                },
             },
             new ChallengeDefinition
             {
@@ -6518,21 +6664,7 @@ namespace ICanShowYouTheWorld.RunMode
                 Target = 1, Display = "Build a windmill", RewardText = "Barley and flour for the last feast",
                 Hint = "Stone and wood, on flat open ground. It grinds barley into flour.",
             },
-            new ChallengeDefinition
-            {
-                Id = "pl-squito", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Deathsquito",
-                Target = 5, Display = "Kill 5 Deathsquitos", RewardText = "A black metal blade",
-            },
-            new ChallengeDefinition
-            {
-                Id = "pl-lox", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Lox",
-                Target = 3, Display = "Kill 3 Lox", RewardText = "Lox meat pies, and a cape",
-            },
-            new ChallengeDefinition
-            {
-                Id = "pl-berserker", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "GoblinBrute",
-                Target = 2, Display = "Kill 2 Fuling Berserkers", RewardText = "Yagluth's summons",
-            },
+            // The deathsquitos, lox and berserkers are clauses of "pl-cull" above now.
             new ChallengeDefinition
             {
                 Id = "pl-find", MainQuest = true, Track = HuntTrackId, Kind = ChallengeKind.DiscoverLocation, Param = "GoblinKing",
@@ -6597,9 +6729,8 @@ namespace ICanShowYouTheWorld.RunMode
                 // rewards"). Arrows come with every one of them — a bow the player cannot feed
                 // is not a reward.
                 ["mq-bench"] = new[] { ("ArmorLeatherChest", 1) },
-                ["mq-boar"] = new[] { ("ArmorLeatherLegs", 1), ("ArrowWood", 50) },
+                ["mq-cull"] = new[] { ("ArmorLeatherLegs", 1), ("HelmetLeather", 1), ("CapeDeerHide", 1), ("ArrowWood", 50), ("ArrowFlint", 30) },
                 ["mq-home"] = new[] { ("ShieldWood", 1), ("ArrowFlint", 20) },
-                ["mq-grey"] = new[] { ("HelmetLeather", 1), ("CapeDeerHide", 1), ("ArrowFlint", 30) },
                 ["mq-shelter"] = new[] { ("Wood", 40), ("Stone", 20) },
                 // The homestead steps each pay for the next one. The hide matters most: a bed
                 // wants deer hide, the bed step lands at #9, and the chain does not otherwise hand
@@ -6674,7 +6805,6 @@ namespace ICanShowYouTheWorld.RunMode
                 // COSTS, so the step still makes you crawl one burial chamber. You do the unfun
                 // thing once, prove it, and never do it again. Handing them over earlier would
                 // skip the part that gives the reward its meaning.
-                ["bf-shaman"] = new[] { ("Resin", 30), ("MeadHealthMedium", 4) },
                 ["bf-crypt"] = new[] { ("Torch", 4), ("Resin", 20) },
                 ["bf-smelter"] = new[] { ("CopperOre", 30), ("TinOre", 15), ("Coal", 30), ("SurtlingCore", 30) },
                 ["bf-intercept"] = new[] { ("Bronze", 5), ("MeadHealthMedium", 4) },
@@ -6683,8 +6813,7 @@ namespace ICanShowYouTheWorld.RunMode
                 ["bf-sign"] = new[] { ("Wood", 30), ("Resin", 20) },
                 ["bf-haldor"] = new[] { ("Coins", 300) },
                 ["bf-bronze"] = new[] { ("Bronze", 10), ("ArrowBronze", 40) },
-                ["bf-greydwarf"] = new[] { ("ShieldBronzeBuckler", 1), ("ArrowBronze", 40) },
-                ["bf-brute"] = new[] { ("ArmorRootChest", 1), ("ArmorRootLegs", 1) },
+                ["bf-cull"] = new[] { ("ShieldBronzeBuckler", 1), ("ArrowBronze", 40), ("ArmorRootChest", 1), ("ArmorRootLegs", 1), ("Resin", 30), ("MeadHealthMedium", 4) },
                 // The seeds are the point: the Elder's altar wants three, they drop from shamans
                 // and brutes, and an act finale must never gate on drop luck (see mq-deer).
                 ["bf-troll"] = new[] { ("TrollHide", 10), ("AncientSeed", 3) },
@@ -6693,32 +6822,25 @@ namespace ICanShowYouTheWorld.RunMode
                 // Acts III-V, thin like their chains. Each pays the next step's tedious part and
                 // the pre-boss step pays that boss's summoning items, on the Act I pattern.
                 ["sw-arrive"] = new[] { ("MeadPoisonResist", 5) },
-                ["sw-draugr"] = new[] { ("ArrowIron", 40), ("ShieldIronTower", 1) },
+                ["sw-cull"] = new[] { ("ArrowIron", 40), ("ShieldIronTower", 1), ("WitheredBone", 3), ("MeadPoisonResist", 5), ("MaceIron", 1) },
+                ["sw-scrap"] = new[] { ("Coal", 30), ("IronNails", 40) },
                 ["sw-fermenter"] = new[] { ("Honey", 20), ("Thistle", 20) },
                 ["sw-chart"] = new[] { ("Bronze", 10), ("BoneFragments", 20) },
                 ["sw-ironbar"] = new[] { ("Coal", 30) },
                 ["sw-abom"] = new[] { ("MeadHealthMedium", 4), ("Sausages", 10) },
                 ["sw-karve"] = new[] { ("IronNails", 40), ("Wood", 40) },
                 ["sw-sail"] = new[] { ("Sausages", 10), ("MeadHealthMedium", 3) },
-                ["sw-blob"] = new[] { ("WitheredBone", 3), ("MeadPoisonResist", 5) },
                 ["sw-iron"] = new[] { ("Iron", 30), ("Coal", 30) },
-                ["sw-leech"] = new[] { ("MaceIron", 1) },
                 ["sw-bonemass"] = new[] { ("Wishbone", 1) },
 
                 ["mt-arrive"] = new[] { ("MeadFrostResist", 5), ("WolfPelt", 10) },
-                ["mt-wolf"] = new[] { ("ArmorWolfChest", 1), ("ArmorWolfLegs", 1) },
-                ["mt-drake"] = new[] { ("ArrowFrost", 40), ("DragonTear", 2) },
+                ["mt-cull"] = new[] { ("ArmorWolfChest", 1), ("ArmorWolfLegs", 1), ("ArrowFrost", 40), ("DragonTear", 2), ("Crystal", 10), ("SwordSilver", 1), ("DragonEgg", 3) },
                 ["mt-silver"] = new[] { ("Silver", 30), ("Coal", 30) },
-                ["mt-golem"] = new[] { ("Crystal", 10), ("SwordSilver", 1) },
-                ["mt-fenring"] = new[] { ("DragonEgg", 3) },
                 ["mt-moder"] = new[] { ("DragonTear", 5) },
 
                 ["pl-arrive"] = new[] { ("ArmorPaddedCuirass", 1), ("ArmorPaddedGreaves", 1) },
-                ["pl-fuling"] = new[] { ("BlackMetal", 20), ("ArrowNeedle", 40) },
+                ["pl-cull"] = new[] { ("BlackMetal", 20), ("ArrowNeedle", 40), ("SwordBlackmetal", 1), ("LoxMeat", 10), ("CapeLox", 1), ("GoblinTotem", 5) },
                 ["pl-windmill"] = new[] { ("Barley", 30), ("BarleyFlour", 20) },
-                ["pl-squito"] = new[] { ("SwordBlackmetal", 1) },
-                ["pl-lox"] = new[] { ("LoxMeat", 10), ("CapeLox", 1) },
-                ["pl-berserker"] = new[] { ("GoblinTotem", 5) },
             };
 
         /// <summary>

@@ -495,6 +495,8 @@ static class ChallengeEngineTests
         resumed.RestoreTrack("nonsense", 0, 0f, null);
         Check.That(resumed.Tracks.Count == 2, "an unknown track id changes nothing");
 
+        CombinedTrackStepTests();
+
         // The single-chain API still works: it installs one track, which is what keeps every
         // pre-track test in this file meaningful.
         var legacy = new ChallengeEngine(Pool(), new Random(47), 120f);
@@ -503,6 +505,128 @@ static class ChallengeEngineTests
         Check.That(legacy.CurrentMainQuest != null && legacy.CurrentMainQuest.Def.Id == "mq-1",
             "CurrentMainQuest still reads the first track");
     }
+
+    /// <summary>
+    /// A questline step that is a COMBINED LIST — "8 Draugr, 5 Blobs, 3 Leeches", all counting at
+    /// once — plus the resume behaviour that shipping one requires.
+    ///
+    /// Composites already worked in the three random slots. Putting one on a TRACK broke two
+    /// things that only tracks have, and each would have looked exactly like a lost run:
+    ///
+    ///   - RestoreTrack rebuilt the step from its definition and set Progress, which a composite
+    ///     does not use. Every resume put a half-cleared kill list back at zero.
+    ///   - RestoreTrack let an unmatched saved step id keep an index past the end of the chain,
+    ///     and past the end reads as "this questline is finished" everywhere. Merging four kill
+    ///     steps into one SHORTENS the hunt track, so the first resume after this change would
+    ///     have skipped the act's boss.
+    /// </summary>
+    static void CombinedTrackStepTests()
+    {
+        var e = new ChallengeEngine(Pool(), new Random(48), 120f);
+        e.SetTracks(CombinedTracks());
+
+        var step = e.Tracks[0].Current;
+        Check.That(step.Def.Id == "h-cull", "a track seats its combined step");
+        Check.That(step.SubProgress != null && step.SubProgress.Count == 2,
+            "a combined step is dealt with one progress slot per clause");
+
+        // Every clause counts from the same moment — the whole point of combining them.
+        e.ReportKill("Draugr");
+        e.ReportKill("Blob");
+        e.ReportKill("Blob");
+        Check.That(step.SubProgress[0] == 1f && step.SubProgress[1] == 2f,
+            "kills of different quarries count at the same time");
+        Check.That(!step.Done, "a combined step is not done until every clause is");
+
+        e.ReportKill("Draugr");
+        e.ReportKill("Blob");
+        Check.That(step.Done, "a combined step is done when every clause is");
+
+        var completed = new List<string>();
+        e.Completed += d => completed.Add(d.Id);
+        e.Tick(0.1f);
+        Check.That(completed.Contains("h-cull"), "finishing every clause advances the track");
+        Check.That(e.Tracks[0].Current.Def.Id == "h-boss", "and seats the next step");
+
+        // A resume keeps the clauses it had earned.
+        var resumed = new ChallengeEngine(Pool(), new Random(49), 120f);
+        resumed.SetTracks(CombinedTracks());
+        resumed.RestoreTrack("hunt", 0, 0f, "h-cull", new List<float> { 1f, 2f });
+        Check.That(resumed.Tracks[0].Current.SubProgress[0] == 1f &&
+                   resumed.Tracks[0].Current.SubProgress[1] == 2f,
+            "a resume restores each clause's own progress");
+
+        resumed.ReportKill("Draugr");
+        Check.That(resumed.Tracks[0].Current.SubProgress[0] == 2f,
+            "and counting carries on from there rather than from zero");
+
+        // A save naming a step this build no longer has is a CONTENT change, not a finished track.
+        var shortened = new ChallengeEngine(Pool(), new Random(50), 120f);
+        shortened.SetTracks(CombinedTracks());
+        shortened.RestoreTrack("hunt", 5, 3f, "h-leech-that-was-merged-away", null);
+        Check.That(shortened.Tracks[0].Current != null,
+            "an unknown saved step does not finish the track it was on");
+        Check.That(shortened.Tracks[0].Current.Def.Id == "h-boss",
+            "the stale index is clamped back onto the chain");
+        Check.That(shortened.Tracks[0].Current.Progress == 0f,
+            "and an untrusted position still drops its progress");
+
+        // The opposite case: a track that was genuinely exhausted saved a NULL step id, and must
+        // stay exhausted rather than being clamped back to its last step.
+        var finished = new ChallengeEngine(Pool(), new Random(51), 120f);
+        finished.SetTracks(CombinedTracks());
+        finished.RestoreTrack("hunt", 2, 0f, null, null);
+        Check.That(finished.Tracks[0].Current == null, "a finished track stays finished");
+
+        // Sub progress from a save that named a DIFFERENT step is not this step's to keep.
+        var mismatched = new ChallengeEngine(Pool(), new Random(52), 120f);
+        mismatched.SetTracks(CombinedTracks());
+        mismatched.RestoreTrack("hunt", 0, 0f, "no-such-step", new List<float> { 9f, 9f });
+        Check.That(mismatched.Tracks[0].Current.SubProgress[0] == 0f,
+            "an untrusted restore does not import someone else's clause progress");
+
+        // The dev skip has to fill the CLAUSES, not the unused top-level target: a combined step
+        // is done when every clause is, so filling Progress alone would make the key that exists
+        // to test content silently do nothing on the content most worth testing.
+        var skipped = new ChallengeEngine(Pool(), new Random(54), 120f);
+        skipped.SetTracks(CombinedTracks());
+        skipped.DevCompleteCurrent();
+        Check.That(skipped.Tracks[0].Current.Done, "the dev skip completes a combined step");
+        skipped.Tick(0.1f);
+        Check.That(skipped.Tracks[0].Current.Def.Id == "h-boss", "and the track advances past it");
+
+        // A short or absent saved list pads with zeros rather than throwing — the same
+        // malformed-save tolerance the rest of the restore path has.
+        var ragged = new ChallengeEngine(Pool(), new Random(53), 120f);
+        ragged.SetTracks(CombinedTracks());
+        ragged.RestoreTrack("hunt", 0, 0f, "h-cull", new List<float> { 1f });
+        Check.That(ragged.Tracks[0].Current.SubProgress.Count == 2 &&
+                   ragged.Tracks[0].Current.SubProgress[1] == 0f,
+            "a short saved list pads the uncovered clauses with zero");
+    }
+
+    /// <summary>A hunt track whose first step is a combined kill list, then its boss.</summary>
+    static List<QuestTrack> CombinedTracks() => new List<QuestTrack>
+    {
+        new QuestTrack
+        {
+            Id = "hunt", Label = "HUNT",
+            Chain = new List<ChallengeDefinition>
+            {
+                new ChallengeDefinition
+                {
+                    Id = "h-cull", MainQuest = true, Kind = ChallengeKind.KillPrefab,
+                    Display = "Clear the mire",
+                    Subs = new List<SubObjective>
+                    {
+                        new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Draugr", Target = 2, Label = "Kill 2 Draugr" },
+                        new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Blob",   Target = 3, Label = "Kill 3 Blobs" },
+                    },
+                },
+                new ChallengeDefinition { Id="h-boss", MainQuest=true, Kind=ChallengeKind.KillPrefab, Param="Bonemass", Target=1, Display="Defeat Bonemass" },
+            },
+        },
+    };
 
     /// <summary>A hunt track and a craft track, each two steps, sharing no ids.</summary>
     static List<QuestTrack> SampleTracks() => new List<QuestTrack>

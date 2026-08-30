@@ -350,23 +350,29 @@ namespace ICanShowYouTheWorld.RunMode
                     // The map gets the whole screen to itself: nothing on the HUD is worth
                     // reading over it, and unlike the crafting window there is no interaction the
                     // player wants from Run Mode while looking at it (owner, alpha25).
-                    // The tracker and stash live OUTSIDE the End toggle: they are the panels a
-                    // player glances at constantly, and hiding them with the main window made End
-                    // an all-or-nothing choice (owner: "End should leave track window open").
-                    // Only the map claims the whole screen.
+                    // The TRACKER lives outside the End toggle: it is the panel a player glances
+                    // at constantly, and hiding it with the main window made End an all-or-nothing
+                    // choice (owner: "End should leave track window open"). Only the map claims
+                    // the whole screen.
+                    //
+                    // The stash used to sit here beside it and no longer does (owner: "I think we
+                    // should also remove the stash from END"). It fails the same test the tracker
+                    // passes: nothing about it changes while you play, so a permanently open
+                    // deposit panel is a box of buttons taking up a corner. It is drawn with the
+                    // HUD below, so End brings it up along with everything else you came to press.
                     if (!MapOpen())
                     {
                         _trackerRect = GUILayout.Window(TrackerWindowId, _trackerRect, DrawTracker,
                             GUIContent.none, RunTheme.Panel,
                             GUILayout.Width(TrackerWidth), GUILayout.Height(TrackerHeight));
-
-                        _stashRect = GUILayout.Window(StashWindowId, _stashRect, DrawStash,
-                            GUIContent.none, RunTheme.Panel,
-                            GUILayout.Width(StashWidth), GUILayout.Height(StashHeight));
                     }
 
                     if ((Visible || CheatUiVisible) && !MapOpen())
                     {
+                        _stashRect = GUILayout.Window(StashWindowId, _stashRect, DrawStash,
+                            GUIContent.none, RunTheme.Panel,
+                            GUILayout.Width(StashWidth), GUILayout.Height(StashHeight));
+
                         // The crafting window is different: hiding kept it readable but put the
                         // HUD out of the mouse's reach, and its reroll and abandon buttons are the
                         // parts a player most wants while standing at a bench. So the HUD slides
@@ -1099,7 +1105,12 @@ namespace ICanShowYouTheWorld.RunMode
             //
             // The progress bar this replaced was a third of the quest section's height carrying
             // information the "3/10" already gives.
-            string count = !track.Blocked && quest.Def.Target > 1f
+            // A COMBINED step — an act's kill list — carries its count per clause below rather
+            // than at the top: its own Progress/Target are unused filler (see
+            // ChallengeDefinition.Subs), and "0/0" beside "Clear the mire" would be a lie.
+            bool composite = quest.Def.Subs != null && quest.Def.Subs.Count > 0;
+
+            string count = !track.Blocked && !composite && quest.Def.Target > 1f
                 ? $"   {quest.Progress:0}/{quest.Def.Target:0}"
                 : string.Empty;
 
@@ -1110,7 +1121,27 @@ namespace ICanShowYouTheWorld.RunMode
             // entirely (alpha50.1, "the x/y seems lackluster"), then a 2px underline that "almost
             // can't be seen". Progress is the thing this panel exists to show, so it gets the
             // height it needs and the tighter spacing elsewhere pays for it.
-            if (quest.Def.Target > 0f)
+            //
+            // A combined step's bar reads CLAUSES DONE, so the one number on the row still means
+            // "how far through this step am I" — the same thing it means everywhere else.
+            if (composite)
+            {
+                int done = 0;
+                for (int s = 0; s < quest.Def.Subs.Count; s++)
+                {
+                    float p = quest.SubProgress != null && s < quest.SubProgress.Count ? quest.SubProgress[s] : 0f;
+                    if (p >= quest.Def.Subs[s].Target) done++;
+                }
+
+                GUILayout.BeginHorizontal();
+                GUILayout.Space(10f);
+                var compositeRect = GUILayoutUtility.GetRect(160f, 10f, GUILayout.Width(160f), GUILayout.Height(10f));
+                RunTheme.Bar(compositeRect, Mathf.Clamp01((float)done / quest.Def.Subs.Count),
+                    quest.Done ? RunTheme.CompleteGreen : RunTheme.AccentGold);
+                GUILayout.FlexibleSpace();
+                GUILayout.EndHorizontal();
+            }
+            else if (quest.Def.Target > 0f)
             {
                 GUILayout.BeginHorizontal();
                 GUILayout.Space(10f);
@@ -1119,6 +1150,26 @@ namespace ICanShowYouTheWorld.RunMode
                     quest.Done ? RunTheme.CompleteGreen : RunTheme.AccentGold);
                 GUILayout.FlexibleSpace();
                 GUILayout.EndHorizontal();
+            }
+
+            // The list itself, one line per quarry, all of them counting at once. This is the
+            // whole point of the change: the player can see that the thing in front of them is on
+            // the list before they kill it (owner: "I would like a combined kill quest list").
+            // Drawn before the blocked early-return below, so a waiting step still shows what it
+            // will ask for.
+            if (composite && !track.Blocked)
+            {
+                for (int s = 0; s < quest.Def.Subs.Count; s++)
+                {
+                    var sub = quest.Def.Subs[s];
+                    float p = quest.SubProgress != null && s < quest.SubProgress.Count ? quest.SubProgress[s] : 0f;
+                    bool subDone = p >= sub.Target;
+
+                    GUI.contentColor = subDone ? RunTheme.CompleteGreen : RunTheme.TextMuted;
+                    GUILayout.Label(subDone ? $"     ✓ {sub.Label}" : $"     · {sub.Label}   {p:0}/{sub.Target:0}",
+                        RunTheme.Small);
+                    GUI.contentColor = Color.white;
+                }
             }
 
             if (track.Blocked)

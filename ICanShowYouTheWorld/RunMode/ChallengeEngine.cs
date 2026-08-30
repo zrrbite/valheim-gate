@@ -435,7 +435,19 @@ namespace ICanShowYouTheWorld.RunMode
         /// An unknown track id is ignored rather than throwing. A save written by a build with
         /// different track names must never stop a resume; that track simply starts fresh.
         /// </summary>
-        public void RestoreTrack(string trackId, int index, float progress, string stepId)
+        public void RestoreTrack(string trackId, int index, float progress, string stepId) =>
+            RestoreTrack(trackId, index, progress, stepId, null);
+
+        /// <summary>
+        /// As <see cref="RestoreTrack(string, int, float, string)"/>, additionally restoring the
+        /// seated step's <see cref="ActiveChallenge.SubProgress"/> when it is a composite.
+        ///
+        /// Needed because a questline step can now be a multi-objective list — "8 Draugr, 5 Blobs,
+        /// 3 Leeches" counted together — and a track saved only its single Progress value. Without
+        /// this, every resume put a half-cleared kill list back at zero.
+        /// </summary>
+        public void RestoreTrack(string trackId, int index, float progress, string stepId,
+            IList<float> subProgress)
         {
             var track = tracks.FirstOrDefault(t => t.Id == trackId);
             if (track == null) return;
@@ -445,6 +457,18 @@ namespace ICanShowYouTheWorld.RunMode
 
             track.Index = Math.Max(0, trusted ? byId : index);
 
+            // A save that NAMED a step this build no longer has is a CONTENT CHANGE, not a
+            // finished track: clamp the stale index back onto the chain instead of letting it run
+            // off the end. Off the end means Current == null, and every caller reads that as "this
+            // questline is done" — so shortening a chain (merging four kill steps into one list,
+            // say) would hand a resumed run its act's boss step as already complete, and end the
+            // act's hunt without a fight.
+            //
+            // A null stepId is the opposite case and must keep its index: that is exactly what an
+            // exhausted track wrote, and clamping it would resurrect a questline already finished.
+            if (!trusted && stepId != null && track.Chain.Count > 0 && track.Index >= track.Chain.Count)
+                track.Index = track.Chain.Count - 1;
+
             if (track.Index >= track.Chain.Count)
             {
                 track.Current = null;
@@ -453,6 +477,10 @@ namespace ICanShowYouTheWorld.RunMode
 
             track.Current = MakeActive(track.Chain[track.Index]);
             track.Current.Progress = trusted ? Math.Max(0f, progress) : 0f;
+
+            // Sub progress survives only a TRUSTED restore, for the same reason plain progress
+            // does: values saved against some other step's objectives mean nothing here.
+            if (trusted) track.Current.SubProgress = BuildSubProgress(track.Current.Def, subProgress);
         }
 
         /// <summary>
@@ -580,8 +608,20 @@ namespace ICanShowYouTheWorld.RunMode
         public void DevCompleteCurrent()
         {
             foreach (var track in tracks)
-                if (track.Current != null && !track.Blocked)
-                    track.Current.Progress = track.Current.Def.Target;
+            {
+                if (track.Current == null || track.Blocked) continue;
+
+                track.Current.Progress = track.Current.Def.Target;
+
+                // A COMBINED step ignores Progress entirely — it is done when every clause is —
+                // so filling only the top-level value would leave the dev skip pressing a key that
+                // does nothing on exactly the steps it is most needed for.
+                var subs = track.Current.Def.Subs;
+                if (subs == null || track.Current.SubProgress == null) continue;
+
+                for (int i = 0; i < subs.Count && i < track.Current.SubProgress.Count; i++)
+                    track.Current.SubProgress[i] = subs[i].Target;
+            }
         }
 
         public void ReportKill(string prefab) => ReportEvent(ChallengeKind.KillPrefab, prefab);

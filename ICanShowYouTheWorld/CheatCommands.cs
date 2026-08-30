@@ -1160,6 +1160,7 @@ static class DamageHelpers
             PeriodicManager.Register(60, () => { if (AOERenewalActive) AoeRegen(10f); });
             PeriodicManager.Register(150, () => { if (MelodicActive) SlowMonsters(); });
             PeriodicManager.Register(75, () => { if (CloakActive) DamageAoE(5f); }); //todo: config somewhere else
+            PeriodicManager.Register(GodRegenFrames, GodRegenTick);
 
             // Default values
             DamageCounter = 5;
@@ -1733,6 +1734,41 @@ static class DamageHelpers
 
             player.SetGodMode(enabled);
             player.SetNoPlacementCost(value: enabled);
+        }
+
+        /// <summary>
+        /// Heals the player back up while god mode is on.
+        ///
+        /// God mode in Valheim is NOT invulnerability, which is the thing worth writing down.
+        /// Character.ApplyDamage takes the hit in full and then, only if the result would be zero
+        /// or less, clamps it to 1 — so a god-mode player under sustained attack does not die, but
+        /// does sit at a single hit point with the screen red and every blow landing. That is what
+        /// "I think I died to the gatherer" was, and what "we need more hp regen in GM mode" is
+        /// asking to fix: the damage was always going to land, so what god mode owes the player is
+        /// taking it straight back.
+        ///
+        /// Deliberately not implemented through m_baseHP or a status effect. Both are player state
+        /// that would have to be reverted exactly, and this mode has already paid for one buff that
+        /// outlived its toggle; a tick that only ever heals leaves nothing behind to undo.
+        /// </summary>
+        private const int GodRegenFrames = 15;
+
+        /// <summary>Fraction of max health returned per tick — full from one hit point in under a second.</summary>
+        private const float GodRegenFraction = 0.34f;
+
+        private static void GodRegenTick()
+        {
+            if (!GodMode) return;
+
+            var p = Player.m_localPlayer;
+            if (p == null) return;
+
+            float max = p.GetMaxHealth();
+            if (p.GetHealth() >= max) return;
+
+            // showText:false — four healing numbers a second over the player's head would be
+            // worse than the red screen this replaces.
+            p.Heal(Mathf.Max(1f, max * GodRegenFraction), false);
         }
 
         /// <summary>

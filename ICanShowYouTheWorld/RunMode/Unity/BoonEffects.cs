@@ -1062,22 +1062,22 @@ namespace ICanShowYouTheWorld.RunMode
             if (zone == null || player == null) return false;
 
             Vector3 playerPos = player.transform.position;
-            Vector3? bestPos = null;
-            float bestDist = float.MaxValue;
+            Vector3? altar = null;
 
+            // The FIRST undefeated boss, not the nearest one. _undefeatedBossLocations yields in
+            // the saga's own progression order, and taking the closest instead sent a player with
+            // Bonemass still alive to Moder — "I hadn't killed bonemass but my teleport to
+            // boss-boon teleported me to mother". Distance is not the question the boon is
+            // answering: "the next boss altar" is, and next has an order.
             foreach (var locName in _undefeatedBossLocations())
             {
                 if (!zone.FindClosestLocation(locName, playerPos, out ZoneSystem.LocationInstance loc)) continue;
 
-                float dist = Vector3.Distance(playerPos, loc.m_position);
-                if (dist < bestDist)
-                {
-                    bestDist = dist;
-                    bestPos = loc.m_position;
-                }
+                altar = loc.m_position;
+                break;
             }
 
-            if (bestPos == null)
+            if (altar == null)
             {
                 LastActivationMessage = "No undefeated altar found.";
                 return false;
@@ -1086,9 +1086,72 @@ namespace ICanShowYouTheWorld.RunMode
             var teleport = Resolve<ITeleportService>();
             if (teleport == null) return false;
 
-            teleport.TeleportTo(bestPos.Value + Vector3.up * 2f);
+            teleport.TeleportTo(LandingNear(altar.Value, playerPos));
             held.Charges--;
             return true;
+        }
+
+        /// <summary>How far outside an altar to put the player down.</summary>
+        private const float WaystoneStandoff = 28f;
+
+        /// <summary>
+        /// A place to arrive at an altar: outside it, on dry land, facing in.
+        ///
+        /// Landing ON the altar was the bug — "e.g. bonemass you teleport inside his skull and
+        /// can't get out". Boss altars are BUILDINGS, and the centre point the location system
+        /// reports is inside the geometry: Bonemass's is the middle of a closed skull, and Moder's
+        /// and Yagluth's are raised platforms. Two metres of clearance is nowhere near enough to
+        /// escape any of them.
+        ///
+        /// Height comes from WorldGenerator rather than a raycast: the destination zone is by
+        /// definition not loaded yet — that is the whole point of teleporting there — so there is
+        /// no terrain collider to hit. The noise function answers anywhere.
+        ///
+        /// Directions are tried starting from the side the player is coming FROM, which is the
+        /// approach they would have walked, then around the circle; the first comfortably dry one
+        /// wins. If none is — Bonemass's mire sits barely above the waterline, so this is a real
+        /// case rather than a theoretical one — the HIGHEST of the eight is used instead, and only
+        /// a total failure falls back to the altar itself. Standing in a skull beats a boon that
+        /// spends its charge and does nothing.
+        /// </summary>
+        private static Vector3 LandingNear(Vector3 altar, Vector3 from)
+        {
+            var world = WorldGenerator.instance;
+
+            Vector3 approach = from - altar;
+            approach.y = 0f;
+            if (approach.sqrMagnitude < 1f) approach = Vector3.forward;
+            approach.Normalize();
+
+            const int Spokes = 8;
+
+            Vector3 highest = altar + Vector3.up * 2f;
+            float highestGround = float.NegativeInfinity;
+
+            for (int i = 0; i < Spokes; i++)
+            {
+                // Alternating half-turns out from the approach bearing: 0, +45, -45, +90…
+                float degrees = ((i + 1) / 2) * (360f / Spokes) * (i % 2 == 0 ? 1f : -1f);
+                Vector3 candidate = altar + Quaternion.Euler(0f, degrees, 0f) * approach * WaystoneStandoff;
+
+                if (world == null) return candidate + Vector3.up * 2f;
+
+                float ground;
+                try { ground = world.GetHeight(candidate.x, candidate.z); }
+                catch { return candidate + Vector3.up * 2f; }
+
+                candidate.y = ground + 1f;
+
+                if (ground > BiomeCompass.WaterLevel + 1.5f) return candidate;
+
+                if (ground > highestGround)
+                {
+                    highestGround = ground;
+                    highest = candidate;
+                }
+            }
+
+            return highestGround > BiomeCompass.WaterLevel ? highest : altar + Vector3.up * 2f;
         }
 
         /// <summary>
