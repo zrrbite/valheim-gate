@@ -2662,6 +2662,58 @@ namespace ICanShowYouTheWorld.RunMode
         private readonly HashSet<string> _discovered = new HashSet<string>();
 
         /// <summary>
+        /// Every location name ZoneSystem can actually resolve, as
+        /// <see cref="ZoneSystem.FindClosestLocation"/> spells them. Empty when ZoneSystem is not up
+        /// yet, which the caller reads as "cannot check" rather than "everything is wrong".
+        /// </summary>
+        private HashSet<string> KnownLocationNames()
+        {
+            var names = new HashSet<string>();
+
+            try
+            {
+                var locations = ZoneSystem.instance?.m_locations;
+                if (locations == null) return names;
+
+                foreach (var location in locations)
+                {
+                    if (location == null) continue;
+
+                    string name = null;
+                    try
+                    {
+                        // SoftReference<GameObject>.Name — the string FindClosestLocation compares.
+                        var field = location.GetType().GetField("m_prefab");
+                        var soft = field?.GetValue(location);
+                        name = soft?.GetType().GetProperty("Name")?.GetValue(soft) as string;
+                    }
+                    catch { }
+
+                    if (string.IsNullOrEmpty(name)) name = location.m_prefabName;
+                    if (!string.IsNullOrEmpty(name)) names.Add(name);
+                }
+            }
+            catch (Exception ex) { LogOnce("known-locations", ex); }
+
+            return names;
+        }
+
+        /// <summary>
+        /// Player-facing words for a discoverable place that is not a boss altar. Falls back to the
+        /// internal name, which is ugly but honest — and only reachable by adding a discovery step
+        /// without adding its name here.
+        /// </summary>
+        private static string PlaceName(string locationName)
+        {
+            switch (locationName)
+            {
+                case "Crypt2":             return "the burial chambers";
+                case "Vendor_BlackForest": return "Haldor's camp";
+                default:                   return locationName;
+            }
+        }
+
+        /// <summary>
         /// Completes discovery steps when the player reaches the place they name.
         ///
         /// Only looks for locations something is actually ASKING for, because
@@ -2696,8 +2748,15 @@ namespace ICanShowYouTheWorld.RunMode
 
                 _discovered.Add(wanted);
 
-                string display = Bosses.FirstOrDefault(b => b.locName == wanted).display ?? wanted;
-                Message($"Found it — {display}'s altar.");
+                // Not every discovery is an altar. The line used to say "'s altar" unconditionally,
+                // which for the trader read "Found it — Vendor_BlackForest's altar" — the internal
+                // name AND the wrong noun. Boss altars keep the old wording; everything else is
+                // named by the table below, which is also the only place a discoverable place gets
+                // player-facing words.
+                string boss = Bosses.FirstOrDefault(b => b.locName == wanted).display;
+                Message(boss != null
+                    ? $"Found it — {boss}'s altar."
+                    : $"Found it — {PlaceName(wanted)}.");
             }
 
             foreach (var found in _discovered)
@@ -3959,19 +4018,35 @@ namespace ICanShowYouTheWorld.RunMode
                     Debug.LogError("[ICanShowYouTheWorld] Unknown BIOME names — their arrival steps can never " +
                                    $"complete: {string.Join(", ", badBiomes.ToArray())}");
 
-                // Location names cannot be resolved against the game: ZoneSystem's lookup returns
-                // false both for "no such location" and for "you are simply far away", so a typo is
-                // indistinguishable from a long walk. Checking them against the boss table they come
-                // from is the only honest verification available — and it does catch the mistake
-                // that actually happens, which is using a boss's CREATURE name where its LOCATION
-                // name belongs ("Eikthyr" vs "Eikthyrnir", "gd_king" vs "GDKing").
-                var badLocations = manifest.Locations
-                    .Where(l => !Bosses.Any(b => b.locName == l))
-                    .ToList();
+                // Location names ARE resolvable after all — against ZoneSystem's own table, which is
+                // where FindClosestLocation ultimately reads from. The old check compared them to
+                // the BOSS table instead, on the reasoning that a lookup returning false cannot
+                // tell "no such location" from "you are simply far away". True of the lookup, but
+                // the table behind it is right there, and the boss-table version had already
+                // started lying: it flagged the trader's own Vendor_BlackForest as unknown on every
+                // single run, which is how a validator teaches people to ignore it.
+                //
+                // Matched on the SoftReference name because that is what FindClosestLocation
+                // compares — not m_prefabName, which merely tends to agree. Read reflectively so
+                // this does not drag SoftReferenceableAssets into the build for one diagnostic,
+                // with m_prefabName as the fallback if that ever stops working.
+                var knownLocations = KnownLocationNames();
+                if (knownLocations.Count > 0)
+                {
+                    var badLocations = manifest.Locations.Where(l => !knownLocations.Contains(l)).ToList();
 
-                if (badLocations.Count > 0)
-                    Debug.LogError("[ICanShowYouTheWorld] Unknown LOCATION names — their discovery steps can " +
-                                   $"never complete: {string.Join(", ", badLocations.ToArray())}");
+                    if (badLocations.Count > 0)
+                    {
+                        // The valid names go in the SAME message. A discovery step that names a
+                        // place the game does not have can never complete, and anything behind it
+                        // on its track is unreachable — so the log has to carry the fix, not just
+                        // the complaint.
+                        var sample = knownLocations.OrderBy(n => n).ToArray();
+                        Debug.LogError("[ICanShowYouTheWorld] Unknown LOCATION names — their discovery steps can " +
+                                       $"never complete: {string.Join(", ", badLocations.ToArray())}. " +
+                                       $"ZoneSystem knows {sample.Length}: {string.Join(", ", sample)}");
+                    }
+                }
 
                 // Reward prefabs already log at grant time, but that only fires when someone
                 // actually reaches the step — which for the later boss spoils is hours in, if ever.
@@ -6645,13 +6720,34 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
+                // Being TOLD where the cores are was not the same as being taken there (owner:
+                // "Build smelter just says it depends on cores, but id like to be guided into the
+                // chambers instead"). A hint is text; a discovery step is a bearing on the HUD and
+                // a line when you arrive, which is the same treatment the altars and the trader
+                // get — and the crypt is no less of a destination than they are.
+                //
+                // It also puts the act's dungeon in the right order: find the door, then go in,
+                // then build the thing it was for. The collect step below used to be all three.
+                //
+                // "Crypt2" is the burial chambers as ZoneSystem names them. A wrong name here would
+                // be an uncompletable step blocking everything behind it on this track, so the
+                // run-start validator now checks every discovery name against ZoneSystem's own
+                // table and prints the real list when one does not match.
+                Id = "bf-tomb", MainQuest = true, Kind = ChallengeKind.DiscoverLocation, Param = "Crypt2",
+                Target = 1, Display = "Find the burial chambers",
+                RewardText = "Torches for the dark below",
+                Hint = "Stone doors set into the forest hills, ringed by standing stones. The dead keep what the smelter needs.",
+                Opening = "The forest did not take every light. Some were carried down and buried, and the dead have been keeping them lit ever since.",
+            },
+            new ChallengeDefinition
+            {
                 // The smelter needs surtling cores and the cores are in the burial chambers — the
                 // saga now SAYS so as a step instead of leaving it to a hint. The crypt dive is
                 // Act II's first real dungeon and deserved to be on the questline, not implied.
                 Id = "bf-crypt", MainQuest = true, Kind = ChallengeKind.CollectItem, Param = "$item_surtlingcore",
                 Target = 2, Display = "Take cores from the dead (2)",
-                RewardText = "Torches for the dark below",
-                Hint = "Burial chambers under the forest hills. The dead hold what the smelter needs.",
+                RewardText = "Flint arrows, and coal for the smelter to come",
+                Hint = "Inside the chambers. Green fires in the walls — the cores are what burns in them.",
             },
             new ChallengeDefinition
             {
@@ -7232,7 +7328,11 @@ namespace ICanShowYouTheWorld.RunMode
                 // COSTS, so the step still makes you crawl one burial chamber. You do the unfun
                 // thing once, prove it, and never do it again. Handing them over earlier would
                 // skip the part that gives the reward its meaning.
-                ["bf-crypt"] = new[] { ("Torch", 4), ("Resin", 20) },
+                // The torches are paid on FINDING the chambers, not on leaving them: the step they
+                // are for is the one that comes next, and light handed over after the dark is a
+                // reward for a fight you have already had.
+                ["bf-tomb"] = new[] { ("Torch", 4), ("Resin", 20) },
+                ["bf-crypt"] = new[] { ("ArrowFlint", 60), ("Coal", 20) },
                 ["bf-smelter"] = new[] { ("CopperOre", 30), ("TinOre", 15), ("Coal", 30), ("SurtlingCore", 30) },
                 ["bf-intercept"] = new[] { ("Bronze", 5), ("MeadHealthMedium", 4) },
                 ["bf-raft"] = new[] { ("Sausages", 10), ("Wood", 40) },
