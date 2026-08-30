@@ -1896,6 +1896,35 @@ namespace ICanShowYouTheWorld.RunMode
                 }
                 catch (Exception ex) { LogOnce("dev-teleport", ex); }
             }
+            else if (Input.GetKeyDown(KeyCode.PageUp))
+            {
+                // Dumps what the creature in view is actually made of — renderers, materials,
+                // shader slots and their live values, plus the rig. Groundwork for giving the
+                // saga's named things a look of their own: CreatureDressing can currently shift
+                // four shader properties read out of LevelEffects, and every step beyond that
+                // depends on facts that live in Unity data, where a wrong guess is not an error
+                // but SILENCE. Cheaper to measure once than to debug an invisible texture.
+                //
+                // PageUp because it is the only key in the Home/End cluster this mode binds
+                // nowhere — Home, End, Insert and Delete are all spoken for, and PageDown belongs
+                // to a GM command that the run's input gate blocks rather than frees.
+                try
+                {
+                    var target = CreatureProbe.FindTarget();
+                    if (target == null)
+                    {
+                        Message("DEV: no creature in view to probe.");
+                    }
+                    else
+                    {
+                        string path = CreatureProbe.WriteReport(target);
+                        Message(path == null
+                            ? "DEV: probe failed — see the player log."
+                            : $"DEV: probed {CreatureProbe.Describe(target)} → ICSYTW_probe.txt");
+                    }
+                }
+                catch (Exception ex) { LogOnce("dev-probe", ex); }
+            }
             else if (Input.GetKeyDown(KeyCode.KeypadPeriod))
             {
                 var player = Player.m_localPlayer;
