@@ -980,8 +980,46 @@ namespace ICanShowYouTheWorld.RunMode
             float distance = delta.magnitude;
             if (distance < 1f) return null;
 
-            return $"{BiomeCompass.FriendlyName(target)} lies {BiomeCompass.Compass(delta)}, " +
-                   $"{Mathf.Round(distance / 10f) * 10f:0}m";
+            string line = $"{BiomeCompass.FriendlyName(target)} lies {BiomeCompass.Compass(delta)}, " +
+                          $"{Mathf.Round(distance / 10f) * 10f:0}m";
+
+            // If the act's altar is in a DIFFERENT patch of the same biome, say so rather than
+            // leaving the map and the strip to argue.
+            //
+            // This replaces alpha80's fix for "the boss marker and the directions didn't match",
+            // which pointed the bearing AT the altar. That was wrong in a way one play session
+            // found immediately: the Elder's forest can be anywhere, so it read "the Black Forest
+            // lies north, 2500m" while there was black forest twenty seconds away. It also
+            // contradicted the step it serves — ReachBiome matches the BIOME, not the instance,
+            // so any black forest completes it, and a bearing that sends you past the one that
+            // would finish the step is worse than no bearing.
+            //
+            // So the arrow goes back to the nearest patch, which is the honest answer to "where is
+            // the Black Forest", and the disagreement gets EXPLAINED instead of hidden.
+            try
+            {
+                var altar = BossAltarIn(target);
+                if (altar != null)
+                {
+                    Vector3 toAltar = altar.Value - here;
+                    toAltar.y = 0f;
+
+                    // Only when it is a genuinely different place: twice as far, and at least
+                    // half a kilometre further. Otherwise it is the same forest and the note is
+                    // noise.
+                    if (toAltar.magnitude > distance * 2f && toAltar.magnitude - distance > 500f)
+                    {
+                        string boss = Bosses.FirstOrDefault(
+                            b => b.defeatKey == _acts[_actIndex].BossDefeatKey).display;
+
+                        if (!string.IsNullOrEmpty(boss))
+                            line += $". {boss}\u2019s own lies further {BiomeCompass.Compass(toAltar)}";
+                    }
+                }
+            }
+            catch (Exception ex) { LogOnce("altar-aside", ex); }
+
+            return line;
         }
 
         /// <summary>
@@ -1005,34 +1043,55 @@ namespace ICanShowYouTheWorld.RunMode
                 _bearingAt = Time.time;
                 _bearingFrom = from;
 
-                try { _bearingResult = BossAltarIn(target) ?? BiomeCompass.Nearest(from, target); }
+                // The NEAREST patch, always. See BiomeBearing for why this stopped preferring
+                // the act's altar: any patch of the named biome completes a ReachBiome step, so a
+                // bearing aimed at a distant altar points away from the thing that would finish
+                // the step the bearing exists to serve.
+                try { _bearingResult = BiomeCompass.Nearest(from, target); }
                 catch { _bearingResult = null; }
             }
 
             return _bearingResult;
         }
 
+        private Vector3? _altarResult;
+        private float _altarAt = float.NegativeInfinity;
+        private Heightmap.Biome _altarBiome = (Heightmap.Biome)(-1);
+        private int _altarActIndex = -1;
+
         /// <summary>
-        /// The act's boss altar, when it happens to stand in <paramref name="biome"/> — otherwise
-        /// null, and the nearest-patch search answers instead.
+        /// The act's boss altar, when it stands in <paramref name="biome"/> — otherwise null.
         ///
-        /// This exists because the two things the act points at were pointing at different places:
-        /// the map pin comes from DiscoverClosestLocation on the boss's LOCATION, while the strip's
-        /// bearing came from the nearest patch of the act's biome. A world can easily put a scrap
-        /// of swamp east of you and Bonemass's mire to the north, and then the marker and the words
-        /// disagree with no way for the player to tell which is lying (owner: "The boss marker for
-        /// bonemass and the directions for swamp didn't match... Maybe target the biome that the
-        /// boss is in instead").
+        /// It resolves the SAME instance the map pin does: RefreshActPin calls
+        /// DiscoverClosestLocation and this calls FindClosestLocation, both with the boss's
+        /// LOCATION name and the player's position, so the two cannot name different altars. That
+        /// is what lets the strip talk about the pin without guessing (owner: "The boss marker for
+        /// bonemass and the directions for swamp didn't match").
         ///
-        /// Both surfaces now resolve the SAME instance — FindClosestLocation and
-        /// DiscoverClosestLocation both take the closest to the player — so they cannot drift
-        /// apart. The biome test is what keeps this honest: if the altar is somehow not in the
-        /// biome the step names, sending the player there would be worse than the disagreement.
+        /// What it must NOT do is become the bearing's target — see BiomeBearing. It is an aside,
+        /// not an arrow.
         ///
-        /// Called only from the cached path in <see cref="NearestBiome"/>. FindClosestLocation is a
-        /// scan of every generated location in the world and the bearing is read from OnGUI.
+        /// CACHED, and that is not an optimisation: FindClosestLocation scans every generated
+        /// location in the world, and this is reached from QuestBearing, which the HUD reads every
+        /// frame. Five seconds is well inside the time it takes to walk anywhere that would change
+        /// the answer.
         /// </summary>
         private Vector3? BossAltarIn(Heightmap.Biome biome)
+        {
+            bool fresh = biome == _altarBiome
+                         && _actIndex == _altarActIndex
+                         && Time.time - _altarAt <= BearingRefreshSeconds;
+
+            if (fresh) return _altarResult;
+
+            _altarBiome = biome;
+            _altarActIndex = _actIndex;
+            _altarAt = Time.time;
+            _altarResult = FindBossAltarIn(biome);
+            return _altarResult;
+        }
+
+        private Vector3? FindBossAltarIn(Heightmap.Biome biome)
         {
             var zone = ZoneSystem.instance;
             var world = WorldGenerator.instance;
@@ -1773,6 +1832,28 @@ namespace ICanShowYouTheWorld.RunMode
                     }
                 }
                 catch (Exception ex) { LogOnce("dev-home", ex); }
+            }
+            else if (Input.GetKeyDown(KeyCode.Home))
+            {
+                // The GM mod's map-cursor teleport, reachable during a run (owner: "It would be
+                // helpful to have a teleport option like i do in my original mod").
+                //
+                // Home rather than Insert, which is what the GM mod binds it to: Insert is the
+                // menagerie boon's activation key during a run. Home is the GM mod's other
+                // teleport key and does nothing in run mode, so it is both free and familiar.
+                //
+                // DEV ONLY, deliberately. Free travel is not a small change to a mode whose score
+                // divides by time and whose acts are partly about the distance between biomes —
+                // Waystone and Homeward are the in-play answers, and both cost something. This is
+                // for testing content that is 2km away, which is the problem it was asked for.
+                try
+                {
+                    var teleport = ModBootstrap.GetService<ITeleportService>();
+                    if (teleport == null) Message("DEV: no teleport service.");
+                    else if (!(_game?.IsMapOpen ?? false)) Message("DEV: open the map, then Home.");
+                    else teleport.TeleportToMapCursor();
+                }
+                catch (Exception ex) { LogOnce("dev-teleport", ex); }
             }
             else if (Input.GetKeyDown(KeyCode.KeypadPeriod))
             {

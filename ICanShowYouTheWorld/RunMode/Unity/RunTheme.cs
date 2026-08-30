@@ -22,6 +22,22 @@ namespace ICanShowYouTheWorld.RunMode
         public static readonly Color PanelFill = ParseColor("12100E", 0.80f);
         public static readonly Color PanelBorder = ParseColor("6B5F44", 0.95f);
         public static readonly Color AccentGold = ParseColor("C9A227");
+
+        /// <summary>
+        /// The gold for text drawn onto the WORLD rather than onto a panel.
+        ///
+        /// AccentGold was picked against the dark parchment panel, where it reads perfectly. The
+        /// strip's bearing line has nothing behind it at all — it sits over daylit meadows, snow,
+        /// and a lit fire — and a mid gold on a bright background is not a colour choice, it is an
+        /// invisible line (owner: "The font we use to indicate distance to biomes, etc is too
+        /// dark"). Brighter, and always drawn through <see cref="ShadowedLabel"/>, which is the
+        /// half that actually does the work: no single colour survives every backdrop, an outline
+        /// does.
+        /// </summary>
+        public static readonly Color AccentGoldBright = ParseColor("F7D65D");
+
+        /// <summary>Backing for over-world text. Near-black rather than black, to read as depth.</summary>
+        private static readonly Color TextShadow = ParseColor("000000", 0.85f);
         public static readonly Color HeatRed = ParseColor("B0433A");
         public static readonly Color CompleteGreen = ParseColor("5C9A56");
         public static readonly Color TrackFill = ParseColor("000000", 0.45f);
@@ -218,6 +234,36 @@ namespace ICanShowYouTheWorld.RunMode
         /// A filled progress bar: background track, clipped fill, 1px border. Used for challenge
         /// progress. Pure drawing — no allocation beyond the cached 1x1 textures it reuses.
         /// </summary>
+        /// <summary>
+        /// A label with a one-pixel outline, for text drawn over the world.
+        ///
+        /// IMGUI has no outline, so this is the standard trick: the string four times in shadow,
+        /// offset by a pixel on each axis, then once on top in its own colour. Five draws of a
+        /// short line, once a frame, is nothing — and it is the difference between a bearing you
+        /// can read against snow and one you cannot.
+        ///
+        /// GUI.contentColor is saved and restored rather than assumed white: every caller in this
+        /// file tints, and a helper that quietly reset the tint would break the next thing drawn.
+        /// </summary>
+        public static void ShadowedLabel(Rect rect, string text, GUIStyle style, Color color)
+        {
+            if (string.IsNullOrEmpty(text) || style == null) return;
+
+            Color previous = GUI.contentColor;
+
+            GUI.contentColor = TextShadow;
+            for (int dx = -1; dx <= 1; dx += 2)
+            {
+                for (int dy = -1; dy <= 1; dy += 2)
+                    GUI.Label(new Rect(rect.x + dx, rect.y + dy, rect.width, rect.height), text, style);
+            }
+
+            GUI.contentColor = color;
+            GUI.Label(rect, text, style);
+
+            GUI.contentColor = previous;
+        }
+
         public static void Bar(Rect r, float fill01, Color fillColor)
         {
             fill01 = Mathf.Clamp01(fill01);

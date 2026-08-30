@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-08-30 at `0.221.12-run.alpha80.3`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-08-30 at `0.221.12-run.alpha81`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -21,7 +21,7 @@ Everything below is what that file tells it.
 
 - Branch **`feature/run-mode`**, not merged, deliberately — the mode is still
   being tuned in play.
-- Latest tag **`0.221.12-run.alpha80.3`**, pushed, staged for Windows.
+- Latest tag **`0.221.12-run.alpha81`**, pushed, staged for Windows.
 - Engine tests: `Tests/run_tests.sh`, 514 assertions, all passing.
 - Game version 0.221.12, Unity 6000.0.61. Windows is the play machine, the Mac
   is the test/build machine, the Deck travels (and is **stale** — it still has
@@ -87,9 +87,28 @@ Nine items, all owner-reported:
    distance and sent a player with Bonemass alive to Moder.
 7. **The Waystone lands OUTSIDE the altar** — 28m out, on the approach bearing,
    above water. Bonemass's centre point is inside a closed skull.
-8. **The biome bearing agrees with the boss pin.** Both now resolve the same
-   altar instance, so "the swamps lie north-east" points at Bonemass's mire
-   rather than at the nearest scrap of swamp.
+8. **The biome bearing** — alpha80 pointed it AT the boss altar and alpha81 took
+   that back. Aiming at the altar produced "the Black Forest lies north, 2500m"
+   with black forest twenty seconds away, and it contradicted the step it
+   serves: `ReachBiome` matches the BIOME, not the instance, so any black forest
+   completes it. The arrow points at the nearest patch again, and the
+   disagreement with the map pin is now EXPLAINED instead of hidden — when the
+   act's altar is in a different patch (2x further and 500m+ beyond), the line
+   adds "The Elder's own lies further north-east". `BossAltarIn` is cached, since
+   `FindClosestLocation` scans every generated location and the HUD reads this
+   every frame.
+
+   **Over-world text is outlined now** (`RunTheme.ShadowedLabel` +
+   `AccentGoldBright`). The bearing sits on the world with no panel behind it,
+   and a mid gold on a bright background is an invisible line (owner: "the font
+   we use to indicate distance to biomes is too dark"). The panel's copy went
+   from `Small` at 72% alpha to `Body` at full.
+
+   **Dev mode gained `Home` = teleport to map cursor** — the GM mod's teleport,
+   reachable during a run. `Home` rather than `Insert` because `Insert` is the
+   menagerie boon. DEV ONLY on purpose: free travel is not a small change to a
+   mode whose score divides by time; Waystone and Homeward are the in-play
+   answers and both cost something.
 9. **Act III's craft track IS the iron pipeline now**: reach the swamp → haul
    20 Scrap Iron (`sw-scrap`) → smelt 10 bars (`sw-ironbar`, lifted off the
    marsh track where it sat behind a boat). The old `sw-iron` (60 MineHits) is

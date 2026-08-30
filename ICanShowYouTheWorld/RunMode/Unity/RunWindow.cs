@@ -783,10 +783,10 @@ namespace ICanShowYouTheWorld.RunMode
             string bearing = run.QuestBearing;
             if (!string.IsNullOrEmpty(bearing))
             {
-                GUI.contentColor = RunTheme.AccentGold;
-                GUI.Label(new Rect(rect.x - 100f, lineY, StripWidth + 200f, 20f),
-                    bearing, _noticeStyle);
-                GUI.contentColor = Color.white;
+                // Outlined, not just tinted. This line has the whole world behind it and no
+                // panel, so no single colour survives every backdrop.
+                RunTheme.ShadowedLabel(new Rect(rect.x - 100f, lineY, StripWidth + 200f, 20f),
+                    bearing, _noticeStyle, RunTheme.AccentGoldBright);
                 lineY += 20f;
             }
 
@@ -818,10 +818,8 @@ namespace ICanShowYouTheWorld.RunMode
 
                 if (racing && run.LightsBurning > 1)
                 {
-                    GUI.contentColor = RunTheme.TextMuted;
-                    GUI.Label(new Rect(rect.x - 100f, lineY, StripWidth + 200f, 18f),
-                        $"{run.LightsBurning} lights burning", _noticeStyle);
-                    GUI.contentColor = Color.white;
+                    RunTheme.ShadowedLabel(new Rect(rect.x - 100f, lineY, StripWidth + 200f, 18f),
+                        $"{run.LightsBurning} lights burning", _noticeStyle, RunTheme.TextParchment);
                     lineY += 18f;
                 }
             }
@@ -829,7 +827,8 @@ namespace ICanShowYouTheWorld.RunMode
             string notice = _concrete?.HudNotice;
             if (!string.IsNullOrEmpty(notice))
             {
-                GUI.Label(new Rect(rect.x - 100f, lineY, StripWidth + 200f, 20f), notice, _noticeStyle);
+                RunTheme.ShadowedLabel(new Rect(rect.x - 100f, lineY, StripWidth + 200f, 20f),
+                    notice, _noticeStyle, RunTheme.AccentGoldBright);
             }
         }
 
@@ -1059,7 +1058,7 @@ namespace ICanShowYouTheWorld.RunMode
             if (run.DevMode)
             {
                 GUI.contentColor = RunTheme.HeatRed;
-                GUILayout.Label("DEV MODE  +complete  -time  *items  .light  /god+speed  Ent:home  Del:slay", RunTheme.Small);
+                GUILayout.Label("DEV MODE  +complete  -time  *items  .light  /god+speed  Ent:home  Del:slay  Home:map-tp", RunTheme.Small);
                 GUI.contentColor = Color.white;
             }
 
@@ -1215,8 +1214,11 @@ namespace ICanShowYouTheWorld.RunMode
                 string bearing = Service?.QuestBearing;
                 if (!string.IsNullOrEmpty(bearing))
                 {
-                    GUI.contentColor = RunTheme.AccentGold;
-                    GUILayout.Label("  " + bearing, RunTheme.Small);
+                    // Body, not Small: the panel's copy of the bearing was 10px at 72% alpha,
+                    // which is the same "too dark to read" complaint one panel over. A direction
+                    // is the most-read line in the window and gets full size and full brightness.
+                    GUI.contentColor = RunTheme.AccentGoldBright;
+                    GUILayout.Label("  " + bearing, RunTheme.Body);
                     GUI.contentColor = Color.white;
                 }
             }
