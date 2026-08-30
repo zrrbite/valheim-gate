@@ -74,9 +74,33 @@ these is a one-line fix on the Mac side.
 | `Unknown REWARD prefabs` | That reward will not be granted when its step completes. |
 | `Unknown BUILD categories` | A typo in our own vocabulary — the quest is never dealt at all. |
 | `Unknown BIOME names` | An act's *arrival* step can never complete, which stalls the act at its first beat. |
+| `Unknown LOCATION names` | A *find the …* step can never complete, and everything behind it on that track is unreachable. The same line lists every name ZoneSystem really has — paste it and it is a one-word fix. |
 
 None of these break the run you are in — nothing is disabled on a miss. They just
 mean some piece of content quietly does not work.
+
+---
+
+## The creature probe (alpha83 and later)
+
+**Not in the log.** `PageUp` writes its own file, beside the config:
+
+```powershell
+notepad "$env:USERPROFILE\AppData\LocalLow\IronGate\Valheim\ICSYTW_probe.txt"
+```
+
+It dumps what the creature you are looking at is actually made of: the transform
+hierarchy, every renderer and material, and each unique shader's full property
+table with the live values. That is the groundwork for giving the saga's named
+creatures a look of their own — the shader slots and whether their textures are
+CPU-readable decide which approaches are open, and none of it can be read from
+the compiled game.
+
+- Needs `RunDevMode` **and** a live run. No toast at all means one of those is off.
+- Targets the creature nearest your crosshair within 40m.
+- **Appends.** Probe a plain greydwarf first for untouched values, then a branded
+  one — by then the mod has written to its materials, so the second reading shows
+  our changes rather than stock ones. Send the whole file.
 
 ---
 
@@ -126,3 +150,23 @@ Select-String -Path "$env:USERPROFILE\AppData\LocalLow\IronGate\Valheim\Player.l
 - Full folder:
   `%USERPROFILE%\AppData\LocalLow\IronGate\Valheim\` — paste that into Explorer's
   address bar to get there.
+
+---
+
+## On the Mac
+
+Everything above applies, but the log lives somewhere else than the config —
+Windows keeps them in one folder, macOS does not.
+
+| What | Where |
+|---|---|
+| Log | `~/Library/Logs/IronGate/Valheim/Player.log` |
+| Config, run saves, probe file | `~/Library/Application Support/IronGate/Valheim/` |
+
+There is a `Player.log` symlink in the config folder pointing at the real one, so
+either path works for reading.
+
+```bash
+grep ICanShowYouTheWorld ~/Library/Logs/IronGate/Valheim/Player.log
+open ~/Library/Application\ Support/IronGate/Valheim/ICSYTW_probe.txt
+```
