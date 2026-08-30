@@ -194,15 +194,21 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>
         /// A greydwarf given a burden and a title. The brand IS the cargo, so the cargo is what
         /// shows: a carried light, bright enough to find through trees at night.
+        ///
+        /// Toned down from the first version, which read as a floodlight (owner: "the couriers are
+        /// REALLY bright"). RANGE is what makes a light findable through trees and INTENSITY is
+        /// what makes it harsh, so the two moved in opposite directions: range barely dropped,
+        /// intensity fell by two thirds. The thing should read as something carrying a lamp
+        /// through the woods, not as the lamp.
         /// </summary>
         public static Look Courier() => new Look
         {
             Saturation = -0.15f,
-            Value = 0.1f,
-            Emission = new Color(0.95f, 0.80f, 0.30f),
-            LightRange = 12f,
+            Value = 0.05f,
+            Emission = new Color(0.42f, 0.34f, 0.13f),
+            LightRange = 10f,
             LightColor = new Color(1f, 0.88f, 0.50f),
-            LightIntensity = 2f,
+            LightIntensity = 0.7f,
         };
 
         /// <summary>

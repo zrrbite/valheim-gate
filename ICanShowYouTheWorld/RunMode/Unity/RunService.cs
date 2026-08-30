@@ -553,10 +553,18 @@ namespace ICanShowYouTheWorld.RunMode
         /// current. Boss cues loop, so the drums simply never stopped (owner: "the music should
         /// stop in act2 once we're done with the couriers").
         ///
-        /// Clearing both fields drops the claim, and the ordinary environment/location music takes
-        /// over on the next update, with the cue's own fade. Both field names were read out of this
-        /// build's IL rather than remembered, which is the only way a private-field reflection is
-        /// allowed to be load-bearing here.
+        /// Clearing both fields drops the claim. That alone was NOT ENOUGH, and alpha82 shipped
+        /// with the drums still playing (owner: "the music didnt stop after finding the last
+        /// courier"). Releasing the slot only stops MusicMan CLAIMING the track; it never tells
+        /// the player to stop one. UpdateCurrentMusic fades out on `m_queuedMusic != null ||
+        /// m_stopMusic`, and with neither set a cue whose NamedMusic.m_loop is true — every boss
+        /// cue — simply keeps looping on the AudioSource forever.
+        ///
+        /// So the claim is dropped AND the game's own StopMusic() is called, which is the private
+        /// one-liner (m_queuedMusic = null; m_stopMusic = true) that the game itself uses in nine
+        /// places, Reset() included, whenever it means it. Every name here was read out of this
+        /// build's IL rather than remembered, which is the only way a private-member reflection is
+        /// allowed to be load-bearing in this mode.
         /// </summary>
         private void StopRaceMusic()
         {
@@ -570,6 +578,11 @@ namespace ICanShowYouTheWorld.RunMode
 
                 typeof(MusicMan).GetField("m_triggerMusic", Private)?.SetValue(mm, null);
                 typeof(MusicMan).GetField("m_triggeredMusic", Private)?.SetValue(mm, null);
+
+                // The half that actually silences it. Null-conditional on purpose: if a future
+                // build renames this, the claim-drop above still runs and the failure is a track
+                // that outstays its welcome, not an exception in the middle of a run.
+                typeof(MusicMan).GetMethod("StopMusic", Private)?.Invoke(mm, null);
             }
             catch (Exception ex) { LogOnce("race-music-stop", ex); }
         }
@@ -935,6 +948,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // The point light is the part that does the work: it announces one through the
                 // trees, the way a thing carrying stolen light ought to.
                 CreatureDressing.Apply(candidate.gameObject, CreatureDressing.Courier());
+                MakeCourierPassive(candidate);
 
                 _couriers.Add(czdo.m_uid);
                 _courierDryScans = 0;
@@ -953,6 +967,36 @@ namespace ICanShowYouTheWorld.RunMode
         private static bool IsForestCourier(string prefabName) =>
             prefabName == "Greyling" || prefabName == "Greydwarf" ||
             prefabName == "Greydwarf_Elite" || prefabName == "Greydwarf_Shaman";
+
+        /// <summary>
+        /// A courier is on an ERRAND, not a hunt. It should hurry through the dark carrying its
+        /// cargo and let the player be the one who closes the distance (owner: "make them less
+        /// agressive? i have to come to them, not the other way around") — which is also the only
+        /// version of this that matches the fiction. A porter running its harvest to the Elder has
+        /// somewhere to be.
+        ///
+        /// Three public MonsterAI fields do it, and none of them make the creature harmless: being
+        /// struck sets a target regardless of alert range, so a courier you attack still turns and
+        /// fights. What changes is that it will not pick the fight, and will not follow you across
+        /// the forest once you break off.
+        ///
+        /// Safe to write per-creature: MonsterAI is a component, so these are instance fields
+        /// copied from the prefab at spawn — not the species-wide state that makes sharedMaterials
+        /// dangerous a few files over.
+        /// </summary>
+        private void MakeCourierPassive(Character courier)
+        {
+            try
+            {
+                var ai = courier.GetComponent<MonsterAI>();
+                if (ai == null) return;
+
+                ai.m_alertRange = 4f;           // notices you only if you are already on top of it
+                ai.m_enableHuntPlayer = false;  // never goes looking
+                ai.m_maxChaseDistance = 20f;    // and gives up rather than chasing you home
+            }
+            catch (Exception ex) { LogOnce("courier-passive", ex); }
+        }
 
         /// <summary>True while ANY light-race step is in play, whichever act owns it.</summary>
         private bool LightRaceWanted =>
