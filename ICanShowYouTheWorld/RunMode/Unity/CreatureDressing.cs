@@ -1,0 +1,222 @@
+using System;
+using UnityEngine;
+
+namespace ICanShowYouTheWorld.RunMode
+{
+    /// <summary>
+    /// Makes a creature LOOK like the thing the saga says it is, without shipping a single asset.
+    ///
+    /// The mode's named creatures — the Herald, the Gatherer, the couriers — have until now been
+    /// ordinary spawns with a star, a name and sometimes a bigger scale. That is thin for things
+    /// the story treats as characters, and the owner asked the obvious question: can we make our
+    /// own assets for them?
+    ///
+    /// You can go a long way before the answer has to be yes, and this is that way. It is not
+    /// guesswork: Valheim recolours its own starred creatures through LevelEffects, and that class
+    /// is compiled, so its method can be read. It shifts FOUR shader properties —
+    ///
+    ///     _Hue   _Saturation   _Value   _EmissionColor
+    ///
+    /// — on the creature's renderers. Those four names are lifted straight out of
+    /// LevelEffects.SetupLevelVisualization in this build's IL rather than remembered from a wiki,
+    /// which matters: a shader property that does not exist fails silently, exactly like a wrong
+    /// prefab name, and this mode has paid for that lesson more than once.
+    ///
+    /// The one thing that must NOT be copied from LevelEffects is how it writes them. It edits
+    /// sharedMaterials through a static per-prefab cache, which is correct for "every two-star
+    /// greydwarf looks like this" and catastrophic here: writing a shared material would repaint
+    /// every greydwarf in the world gold. So this touches <c>renderer.materials</c>, which Unity
+    /// instantiates per renderer — this creature only.
+    ///
+    /// Where a real asset pipeline would still be needed: a different SILHOUETTE. Everything here
+    /// changes colour, size and light, so a Gatherer is an unmistakable greydwarf rather than a
+    /// new creature. Swapping the mesh needs an AssetBundle built in Unity 6000.0.x, shipped
+    /// beside the DLL and loaded at runtime, with the game's own shaders re-bound by name — a real
+    /// piece of work, and a decision rather than a detail.
+    /// </summary>
+    internal static class CreatureDressing
+    {
+        // Shader property ids, resolved once. Names verified against LevelEffects in this build.
+        private static readonly int HueId = Shader.PropertyToID("_Hue");
+        private static readonly int SaturationId = Shader.PropertyToID("_Saturation");
+        private static readonly int ValueId = Shader.PropertyToID("_Value");
+        private static readonly int EmissionId = Shader.PropertyToID("_EmissionColor");
+
+        /// <summary>
+        /// How a named creature should look. Every field is optional — null means "leave it".
+        ///
+        /// Hue/Saturation/Value are OFFSETS, the way LevelEffects uses them: 0 is untouched.
+        /// </summary>
+        internal class Look
+        {
+            public float? Hue;
+            public float? Saturation;
+            public float? Value;
+
+            /// <summary>Emissive colour. This is what makes a thing look lit from inside.</summary>
+            public Color? Emission;
+
+            /// <summary>Multiplied into the existing scale, so a star's own growth is kept.</summary>
+            public float ScaleMultiplier = 1f;
+
+            /// <summary>A real point light on the creature, or 0 for none.</summary>
+            public float LightRange;
+            public Color LightColor = Color.white;
+            public float LightIntensity = 1.5f;
+        }
+
+        /// <summary>
+        /// Applies a look. Never throws: a creature that is the wrong colour is a cosmetic
+        /// disappointment, and one that threw on spawn is a broken act.
+        /// </summary>
+        public static void Apply(GameObject creature, Look look)
+        {
+            if (creature == null || look == null) return;
+
+            try
+            {
+                if (Math.Abs(look.ScaleMultiplier - 1f) > 0.001f)
+                    creature.transform.localScale *= look.ScaleMultiplier;
+
+                Recolour(creature, look);
+                AddGlow(creature, look);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[ICanShowYouTheWorld] Creature dressing failed: " + ex.Message);
+            }
+        }
+
+        private static void Recolour(GameObject creature, Look look)
+        {
+            if (look.Hue == null && look.Saturation == null && look.Value == null && look.Emission == null)
+                return;
+
+            var renderers = creature.GetComponentsInChildren<Renderer>(includeInactive: true);
+            if (renderers == null) return;
+
+            foreach (var renderer in renderers)
+            {
+                if (renderer == null) continue;
+
+                // Particle systems and trails carry their own materials and read none of these
+                // properties; touching them would instantiate a material per effect for nothing.
+                if (renderer is ParticleSystemRenderer || renderer is TrailRenderer ||
+                    renderer is LineRenderer) continue;
+
+                // .materials, NEVER .sharedMaterials — see the class summary. This is the line
+                // that keeps the change on one creature instead of on the species.
+                var materials = renderer.materials;
+                if (materials == null) continue;
+
+                foreach (var material in materials)
+                {
+                    if (material == null) continue;
+
+                    // Every write is guarded: these four exist on Valheim's creature shader and
+                    // not on, say, an eye or a cape using something else. Setting a property a
+                    // shader does not have is a silent no-op in Unity, which is exactly the kind
+                    // of silence this mode refuses to build on.
+                    if (look.Hue != null && material.HasProperty(HueId))
+                        material.SetFloat(HueId, look.Hue.Value);
+
+                    if (look.Saturation != null && material.HasProperty(SaturationId))
+                        material.SetFloat(SaturationId, look.Saturation.Value);
+
+                    if (look.Value != null && material.HasProperty(ValueId))
+                        material.SetFloat(ValueId, look.Value.Value);
+
+                    if (look.Emission != null && material.HasProperty(EmissionId))
+                    {
+                        material.SetColor(EmissionId, look.Emission.Value);
+
+                        // Standard-shader materials ignore _EmissionColor unless the keyword is
+                        // on. Valheim's creature shader does not need it; harmless where it is
+                        // not read, and the difference between glowing and not where it is.
+                        try { material.EnableKeyword("_EMISSION"); } catch { }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// A real point light on the creature, so it lights the ground and the trees around it.
+        ///
+        /// This is the half that sells a light-carrier at distance, and it is the reason the
+        /// couriers get one: the story says they are visibly laden and hurrying through the dark,
+        /// and "a starred greydwarf forty metres away in a night forest" was not visible at all.
+        /// An emissive skin glows only where you can already see the creature; a light announces
+        /// it through the trees.
+        /// </summary>
+        private static void AddGlow(GameObject creature, Look look)
+        {
+            if (look.LightRange <= 0f) return;
+
+            var holder = new GameObject("icsytw_glow");
+            holder.transform.SetParent(creature.transform, worldPositionStays: false);
+            holder.transform.localPosition = Vector3.up;
+
+            var light = holder.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = look.LightColor;
+            light.range = look.LightRange;
+            light.intensity = look.LightIntensity;
+
+            // No shadows on purpose. A shadow-casting point light on a moving creature is one of
+            // the most expensive things you can add to a scene, and it buys nothing here — the
+            // job is "you can see it coming", not "it is lit correctly".
+            light.shadows = LightShadows.None;
+        }
+
+        // --- The saga's named things, in one place so the fiction and the look stay together ---
+
+        /// <summary>
+        /// The oldest splinter, glutted on what the forest took. Deadwood grey-green, and lit from
+        /// inside in PROPORTION to the lights it ate — the arrival line reads the ledger out loud,
+        /// and now so does the creature.
+        /// </summary>
+        public static Look Gatherer(int lightsEaten)
+        {
+            float fed = Mathf.Clamp01(lightsEaten / 8f);
+
+            return new Look
+            {
+                Hue = 0.08f,
+                Saturation = -0.25f,
+                Value = -0.2f + fed * 0.25f,
+                Emission = Color.Lerp(new Color(0.10f, 0.09f, 0.04f), new Color(1.00f, 0.86f, 0.35f), fed),
+                LightRange = 6f + fed * 10f,
+                LightColor = new Color(1f, 0.85f, 0.45f),
+                LightIntensity = 1f + fed * 1.5f,
+            };
+        }
+
+        /// <summary>
+        /// A greydwarf given a burden and a title. The brand IS the cargo, so the cargo is what
+        /// shows: a carried light, bright enough to find through trees at night.
+        /// </summary>
+        public static Look Courier() => new Look
+        {
+            Saturation = -0.15f,
+            Value = 0.1f,
+            Emission = new Color(0.95f, 0.80f, 0.30f),
+            LightRange = 12f,
+            LightColor = new Color(1f, 0.88f, 0.50f),
+            LightIntensity = 2f,
+        };
+
+        /// <summary>
+        /// The herd's guardian: pale, and carrying more original light than any deer alive.
+        /// Brighter and cooler than the forest's things, because it is the opposite of them.
+        /// </summary>
+        public static Look Herald() => new Look
+        {
+            Saturation = -0.35f,
+            Value = 0.3f,
+            Emission = new Color(0.65f, 0.78f, 1.00f),
+            LightRange = 10f,
+            LightColor = new Color(0.72f, 0.84f, 1f),
+            LightIntensity = 1.6f,
+        };
+    }
+}

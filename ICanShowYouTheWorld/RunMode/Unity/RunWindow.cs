@@ -1057,8 +1057,11 @@ namespace ICanShowYouTheWorld.RunMode
             // and then reports its effects as bugs.
             if (run.DevMode)
             {
+                // Alert, not Small: contentColor multiplies, so tinting a muted style gave a
+                // dark red times a 72%-alpha parchment and produced something unreadable.
                 GUI.contentColor = RunTheme.HeatRed;
-                GUILayout.Label("DEV MODE  +complete  -time  *items  .light  /god+speed  Ent:home  Del:slay  Home:map-tp", RunTheme.Small);
+                GUILayout.Label("DEV MODE  +complete  -time  *items  .light  /god+speed  Ent:home  Del:slay  Home:map-tp",
+                    RunTheme.Alert);
                 GUI.contentColor = Color.white;
             }
 

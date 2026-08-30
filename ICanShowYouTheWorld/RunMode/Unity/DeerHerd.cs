@@ -238,6 +238,12 @@ namespace ICanShowYouTheWorld.RunMode
             ch.SetLevel(HeraldLevel);
             ch.m_name = HeraldName;
 
+            // Pale and lit, because it carries more original light than any deer alive — and
+            // because a two-star deer at night was, visually, a deer. Applied AFTER SetLevel:
+            // LevelEffects sets its own scale and colours from the star count, and it would
+            // otherwise overwrite this on the same frame.
+            CreatureDressing.Apply(inst, CreatureDressing.Herald());
+
             _herald = zdo.m_uid;
             return true;
         }

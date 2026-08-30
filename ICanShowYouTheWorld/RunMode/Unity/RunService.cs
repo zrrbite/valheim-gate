@@ -544,6 +544,37 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
+        /// Hands the music back to the game.
+        ///
+        /// The old comment here said "trigger music ends on its own, which is why there is no stop
+        /// call". It does not. MusicMan.HandleTriggerMusic latches: TriggerMusic sets
+        /// m_triggerMusic, the next update moves it to m_triggeredMusic, and from then on the
+        /// handler returns true — claiming the music slot — for as long as the same track is
+        /// current. Boss cues loop, so the drums simply never stopped (owner: "the music should
+        /// stop in act2 once we're done with the couriers").
+        ///
+        /// Clearing both fields drops the claim, and the ordinary environment/location music takes
+        /// over on the next update, with the cue's own fade. Both field names were read out of this
+        /// build's IL rather than remembered, which is the only way a private-field reflection is
+        /// allowed to be load-bearing here.
+        /// </summary>
+        private void StopRaceMusic()
+        {
+            try
+            {
+                var mm = MusicMan.instance;
+                if (mm == null) return;
+
+                const System.Reflection.BindingFlags Private =
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+
+                typeof(MusicMan).GetField("m_triggerMusic", Private)?.SetValue(mm, null);
+                typeof(MusicMan).GetField("m_triggeredMusic", Private)?.SetValue(mm, null);
+            }
+            catch (Exception ex) { LogOnce("race-music-stop", ex); }
+        }
+
+        /// <summary>
         /// What the race made of the Gatherer, in one line at its arrival. Each band is a real
         /// difficulty tier — +15% health per light the forest took — so the words and the fight
         /// describe the same creature.
@@ -631,17 +662,19 @@ namespace ICanShowYouTheWorld.RunMode
 
             try
             {
-                // The race gets its own music. Triggered on the 0 -> some edge, so one cue per
-                // engagement rather than one per deer; trigger music ends on its own, which is
-                // why there is no stop call.
+                // The race gets its own music, on the 0 -> some edge, so one cue per engagement
+                // rather than one per deer — and it is handed BACK on the way down. The music is
+                // the race; when nothing is burning there is no race, and drums over a quiet
+                // forest are just a bug that sounds like a mood.
                 if (_lights.Burning > 0 && !_raceMusicPlayed)
                 {
                     _raceMusicPlayed = true;
                     PlayRaceMusic();
                 }
-                else if (_lights.Burning == 0)
+                else if (_lights.Burning == 0 && _raceMusicPlayed)
                 {
                     _raceMusicPlayed = false;
+                    StopRaceMusic();
                 }
 
                 // The forest walks in on whatever burns — but only while the hunt is live, the
@@ -895,6 +928,14 @@ namespace ICanShowYouTheWorld.RunMode
 
                 try { candidate.SetLevel(Mathf.Max(2, candidate.GetLevel())); } catch { }
                 candidate.m_name = "Courier of the Elder";
+
+                // Carrying a light, and now visibly so. The brand IS the cargo, and until this
+                // the brand was a star and a hover name — neither of which you can see from
+                // forty metres away in a night forest, which is exactly where couriers live.
+                // The point light is the part that does the work: it announces one through the
+                // trees, the way a thing carrying stolen light ought to.
+                CreatureDressing.Apply(candidate.gameObject, CreatureDressing.Courier());
+
                 _couriers.Add(czdo.m_uid);
                 _courierDryScans = 0;
 
@@ -3365,6 +3406,14 @@ namespace ICanShowYouTheWorld.RunMode
 
             // The dev speed boost is a loan, and the run ending is the last chance to repay it.
             DevRestoreSpeed();
+
+            // So is the music. The race cue latches until something releases it, and a run that
+            // ends mid-race would otherwise leave the drums playing into the lobby.
+            if (_raceMusicPlayed)
+            {
+                _raceMusicPlayed = false;
+                StopRaceMusic();
+            }
 
             if (_challenges != null) _challenges.Completed -= OnChallengeCompleted;
             if (_boons != null)

@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-08-30 at `0.221.12-run.alpha81`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-08-30 at `0.221.12-run.alpha82`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -21,7 +21,7 @@ Everything below is what that file tells it.
 
 - Branch **`feature/run-mode`**, not merged, deliberately — the mode is still
   being tuned in play.
-- Latest tag **`0.221.12-run.alpha81`**, pushed, staged for Windows.
+- Latest tag **`0.221.12-run.alpha82`**, pushed, staged for Windows.
 - Engine tests: `Tests/run_tests.sh`, 514 assertions, all passing.
 - Game version 0.221.12, Unity 6000.0.61. Windows is the play machine, the Mac
   is the test/build machine, the Deck travels (and is **stale** — it still has
@@ -138,6 +138,33 @@ Two supporting fixes that shipped with them, both worth knowing about:
   questline is finished" everywhere, including for the act's boss.
 - `DevCompleteCurrent` fills the CLAUSES. A composite ignores `Progress`, so
   the dev skip would have silently done nothing on exactly the new content.
+
+### Custom looks for named creatures (alpha82)
+
+`RunMode/Unity/CreatureDressing.cs`. The Herald, the Gatherer and the couriers
+now look like what the story says they are, with **no shipped assets at all**.
+
+The four shader properties Valheim's own creature shader exposes —
+`_Hue`, `_Saturation`, `_Value`, `_EmissionColor` — were read out of
+`LevelEffects.SetupLevelVisualization` in this build's IL, not remembered. That
+is how starred creatures are recoloured, so it is known-good.
+
+**The one thing not copied from LevelEffects is how it writes them.** It edits
+`sharedMaterials` through a static per-prefab cache, which is right for "every
+two-star greydwarf looks like this" and catastrophic here — it would repaint
+every greydwarf in the world. `CreatureDressing` touches `renderer.materials`,
+which Unity instantiates per renderer, so the change lands on one creature.
+
+- **The Gatherer** glows in proportion to the lights it ate — the same number as
+  its health bonus and its arrival line, said a third way.
+- **Couriers** carry a real point light, which is the half that makes one
+  findable through trees at night. A star and a hover name are invisible at 40m.
+- **The Herald** is pale and cool-lit, the opposite of the forest's things.
+
+**What still needs a real pipeline: a different SILHOUETTE.** Colour, size and
+light are free; a new mesh needs an AssetBundle built in Unity 6000.0.x, shipped
+beside the DLL, loaded at runtime with the game's shaders re-bound by name. That
+is a decision, not a detail — see the note at the top of `CreatureDressing`.
 
 ### Act structure
 

@@ -18,7 +18,13 @@ namespace ICanShowYouTheWorld.RunMode
         // --- Palette ---
 
         public static readonly Color TextParchment = ParseColor("E8DFC8");
-        public static readonly Color TextMuted = ParseColor("E8DFC8", 0.72f);
+        /// <summary>
+        /// Secondary text. 0.86 rather than the 0.72 it was: GUI.contentColor MULTIPLIES with a
+        /// style's own colour, so every "tint a Small label" in this window was being dimmed
+        /// twice — once by the tint and once by this alpha — and the result was a colour nobody
+        /// chose. See <see cref="HeatRed"/>, which is where it showed worst.
+        /// </summary>
+        public static readonly Color TextMuted = ParseColor("E8DFC8", 0.86f);
         public static readonly Color PanelFill = ParseColor("12100E", 0.80f);
         public static readonly Color PanelBorder = ParseColor("6B5F44", 0.95f);
         public static readonly Color AccentGold = ParseColor("C9A227");
@@ -38,7 +44,16 @@ namespace ICanShowYouTheWorld.RunMode
 
         /// <summary>Backing for over-world text. Near-black rather than black, to read as depth.</summary>
         private static readonly Color TextShadow = ParseColor("000000", 0.85f);
-        public static readonly Color HeatRed = ParseColor("B0433A");
+        /// <summary>
+        /// The warning red, and it is BRIGHT on purpose.
+        ///
+        /// B0433A is a handsome red on paper and unreadable here (owner: "the contrast of the
+        /// text in the Run menu is off, dark red doesn't work"). Two things were stacking against
+        /// it: the panel behind it is near-black, and every use tinted a muted style, so
+        /// contentColor multiplied a dark red by a 72%-alpha parchment and produced mud. This
+        /// survives the multiply.
+        /// </summary>
+        public static readonly Color HeatRed = ParseColor("E8564A");
         public static readonly Color CompleteGreen = ParseColor("5C9A56");
         public static readonly Color TrackFill = ParseColor("000000", 0.45f);
         public static readonly Color CooldownOverlay = ParseColor("000000", 0.55f);
@@ -147,6 +162,7 @@ namespace ICanShowYouTheWorld.RunMode
         private static GUIStyle _bodyStyle;
         private static GUIStyle _smallStyle;
         private static GUIStyle _readyStyle;
+        private static GUIStyle _alertStyle;
 
         private static void EnsureStyles()
         {
@@ -190,6 +206,15 @@ namespace ICanShowYouTheWorld.RunMode
             };
             if (font != null) _smallStyle.font = font;
 
+            _alertStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontStyle = FontStyle.Bold,
+                fontSize = 11,
+                normal = { textColor = Color.white },
+                wordWrap = true,
+            };
+            if (font != null) _alertStyle.font = font;
+
             _readyStyle = new GUIStyle(GUI.skin.label)
             {
                 fontStyle = FontStyle.Bold,
@@ -213,6 +238,15 @@ namespace ICanShowYouTheWorld.RunMode
 
         /// <summary>Emphasis for a "ready"/actionable state: bold gold.</summary>
         public static GUIStyle Ready { get { EnsureStyles(); return _readyStyle; } }
+
+        /// <summary>
+        /// For a line whose colour is set by the CALLER through GUI.contentColor.
+        ///
+        /// Its own colour is white, which is the whole point: contentColor multiplies, so tinting
+        /// a style that already carries a muted parchment gives you neither colour. Anything that
+        /// wants to be exactly HeatRed, or exactly gold, asks for this and gets it.
+        /// </summary>
+        public static GUIStyle Alert { get { EnsureStyles(); return _alertStyle; } }
 
         // --- Drawing helpers ---
 
