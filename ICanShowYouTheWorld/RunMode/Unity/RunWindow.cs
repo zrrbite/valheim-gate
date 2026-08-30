@@ -1119,6 +1119,23 @@ namespace ICanShowYouTheWorld.RunMode
             GUILayout.Label($"  {track.Label}   {quest.Def.Display}{count}", RunTheme.Body);
             GUI.contentColor = Color.white;
 
+            // A deadline nobody can see is not a deadline, it is an ambush. A timed step therefore
+            // carries its clock on its own row, and turns red for the last two minutes — the point
+            // at which the answer changes from "go and find one" to "go and find one NOW".
+            //
+            // Hidden while the step is blocked, because a blocked step is not on its clock (see
+            // ChallengeEngine.Tick) and a counting-down number beside it would say otherwise.
+            if (!track.Blocked && quest.Def.TimeLimitSeconds > 0f)
+            {
+                float left = quest.TimeRemaining;
+                bool urgent = left <= 120f;
+
+                GUI.contentColor = urgent ? RunTheme.HeatRed : RunTheme.TextMuted;
+                GUILayout.Label($"      {Mathf.FloorToInt(left / 60f)}:{Mathf.FloorToInt(left % 60f):00} left",
+                                RunTheme.Small);
+                GUI.contentColor = Color.white;
+            }
+
             // A PROPER bar, on its own row. It has now been wrong twice in both directions: gone
             // entirely (alpha50.1, "the x/y seems lackluster"), then a 2px underline that "almost
             // can't be seen". Progress is the thing this panel exists to show, so it gets the

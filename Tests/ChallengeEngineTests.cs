@@ -496,6 +496,7 @@ static class ChallengeEngineTests
         Check.That(resumed.Tracks.Count == 2, "an unknown track id changes nothing");
 
         CombinedTrackStepTests();
+        TimedStepTests();
 
         // The single-chain API still works: it installs one track, which is what keeps every
         // pre-track test in this file meaningful.
@@ -606,6 +607,155 @@ static class ChallengeEngineTests
     }
 
     /// <summary>A hunt track whose first step is a combined kill list, then its boss.</summary>
+    /// <summary>
+    /// A questline step on a CLOCK — the saga's first step that can be lost rather than merely
+    /// postponed.
+    ///
+    /// The rules being pinned here are the ones that decide whether a deadline is fair:
+    /// completing on the expiring tick counts as completing, a blocked step does not burn time it
+    /// is not allowed to spend, a failure pays nothing, and quitting is not a way to buy more.
+    /// </summary>
+    static void TimedStepTests()
+    {
+        // Runs out: nothing was killed, so the step is lost and the chain moves on without it.
+        var e = new ChallengeEngine(Pool(), new Random(60), 120f);
+        e.SetTracks(TimedTracks());
+
+        var completed = new List<string>();
+        var failed = new List<string>();
+        e.Completed += d => completed.Add(d.Id);
+        e.Failed += d => failed.Add(d.Id);
+
+        e.Tick(5f);
+        Check.That(failed.Count == 0, "a step inside its limit has not failed");
+        Check.That(e.Tracks[0].Current.Elapsed == 5f, "and its clock is running");
+        Check.That(Math.Abs(e.Tracks[0].Current.TimeRemaining - 5f) < 0.001f, "time remaining counts down");
+
+        e.Tick(5f);
+        Check.That(failed.Contains("t-troll"), "reaching the limit fails the step");
+        Check.That(completed.Count == 0, "a failed step never reports as completed");
+        Check.That(e.Tracks[0].Current != null && e.Tracks[0].Current.Def.Id == "t-boss",
+            "and the track advances so the questline can still be finished");
+        Check.That(e.FailedStepIds.Count == 1 && e.FailedStepIds[0] == "t-troll",
+            "the run records what it lost");
+
+        // The next step has no limit, so no amount of ticking can fail it.
+        e.Tick(600f);
+        Check.That(failed.Count == 1, "a step with no limit never expires");
+        Check.That(e.Tracks[0].Current.Def.Id == "t-boss", "and stays put");
+
+        // Finishing ON the expiring tick counts as finishing. Done is checked before the clock, so
+        // a player who lands the kill as the timer runs out keeps the reward.
+        var raced = new ChallengeEngine(Pool(), new Random(61), 120f);
+        raced.SetTracks(TimedTracks());
+        var racedCompleted = new List<string>();
+        var racedFailed = new List<string>();
+        raced.Completed += d => racedCompleted.Add(d.Id);
+        raced.Failed += d => racedFailed.Add(d.Id);
+
+        raced.Tick(9.9f);
+        raced.ReportKill("Troll");
+        raced.Tick(5f);                       // enough to expire, but it is already done
+        Check.That(racedCompleted.Contains("t-troll"), "a kill on the expiring tick completes");
+        Check.That(racedFailed.Count == 0, "and does not also fail");
+
+        // A blocked step is not on its clock: its requirement is another track's business.
+        var gated = new ChallengeEngine(Pool(), new Random(62), 120f);
+        gated.SetTracks(GatedTimedTracks());
+        gated.Tick(600f);
+        Check.That(gated.Tracks[0].Blocked, "the gated step is blocked");
+        Check.That(gated.Tracks[0].Current.Def.Id == "g-timed", "and has not been failed away");
+        Check.That(gated.Tracks[0].Current.Elapsed == 0f, "a blocked step burns no time");
+
+        // Once the gate opens the clock starts, and only then.
+        gated.ReportKill("Boar");
+        gated.Tick(1f);
+        Check.That(!gated.Tracks[0].Blocked, "clearing the other track unblocks it");
+        gated.Tick(600f);
+        Check.That(gated.Tracks[0].Current == null || gated.Tracks[0].Current.Def.Id != "g-timed",
+            "and from there the clock can run out");
+
+        // A resume keeps the seconds already spent. Without this, quitting to the menu would reset
+        // every deadline in the run.
+        var resumed = new ChallengeEngine(Pool(), new Random(63), 120f);
+        resumed.SetTracks(TimedTracks());
+        resumed.RestoreTrack("hunt", 0, 0f, "t-troll", null, 9f);
+        Check.That(resumed.Tracks[0].Current.Elapsed == 9f, "a resume restores the clock");
+
+        var resumedFailed = new List<string>();
+        resumed.Failed += d => resumedFailed.Add(d.Id);
+        resumed.Tick(2f);
+        Check.That(resumedFailed.Contains("t-troll"), "and the restored clock still runs out on time");
+
+        // An untrusted restore drops the clock along with the progress: seconds banked against
+        // some other step's objective mean nothing here.
+        var mismatched = new ChallengeEngine(Pool(), new Random(64), 120f);
+        mismatched.SetTracks(TimedTracks());
+        mismatched.RestoreTrack("hunt", 0, 0f, "no-such-step", null, 9f);
+        Check.That(mismatched.Tracks[0].Current.Elapsed == 0f,
+            "an untrusted restore does not import someone else's clock");
+
+        // The failure record survives a resume, since the step is already behind the index and
+        // nothing else remembers it was failed rather than finished.
+        var record = new ChallengeEngine(Pool(), new Random(65), 120f);
+        record.SetTracks(TimedTracks());
+        record.RestoreFailedSteps(new List<string> { "t-troll", "t-troll", null });
+        Check.That(record.FailedStepIds.Count == 1, "the restored record de-duplicates and drops nulls");
+        Check.That(record.FailedStepIds[0] == "t-troll", "and keeps what was lost");
+    }
+
+    /// <summary>A hunt track whose first step is on a ten-second clock.</summary>
+    static List<QuestTrack> TimedTracks() => new List<QuestTrack>
+    {
+        new QuestTrack
+        {
+            Id = "hunt", Label = "HUNT",
+            Chain = new List<ChallengeDefinition>
+            {
+                new ChallengeDefinition
+                {
+                    Id = "t-troll", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Troll",
+                    Target = 1, Display = "Kill a Troll", TimeLimitSeconds = 10f,
+                },
+                new ChallengeDefinition
+                {
+                    Id = "t-boss", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "gd_king",
+                    Target = 1, Display = "Defeat The Elder",
+                },
+            },
+        },
+    };
+
+    /// <summary>A timed step gated behind another track, to prove a blocked step burns no clock.</summary>
+    static List<QuestTrack> GatedTimedTracks() => new List<QuestTrack>
+    {
+        new QuestTrack
+        {
+            Id = "hunt", Label = "HUNT",
+            Chain = new List<ChallengeDefinition>
+            {
+                new ChallengeDefinition
+                {
+                    Id = "g-timed", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Troll",
+                    Target = 1, Display = "Kill a Troll", TimeLimitSeconds = 10f,
+                    RequiresTrackComplete = "craft",
+                },
+            },
+        },
+        new QuestTrack
+        {
+            Id = "craft", Label = "CRAFT",
+            Chain = new List<ChallengeDefinition>
+            {
+                new ChallengeDefinition
+                {
+                    Id = "g-boar", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Boar",
+                    Target = 1, Display = "Kill a boar",
+                },
+            },
+        },
+    };
+
     static List<QuestTrack> CombinedTracks() => new List<QuestTrack>
     {
         new QuestTrack

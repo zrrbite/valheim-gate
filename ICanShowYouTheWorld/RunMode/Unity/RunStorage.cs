@@ -101,6 +101,22 @@ namespace ICanShowYouTheWorld.RunMode
         public List<string> trackSubProgress;
 
         /// <summary>
+        /// Run-seconds each track's seated step has spent on its clock, aligned with
+        /// <see cref="trackIds"/>. Zero (or a null list, on an older save) for the steps that have
+        /// no <see cref="ChallengeDefinition.TimeLimitSeconds"/>, which is nearly all of them.
+        ///
+        /// Written because a deadline you can reset by quitting to the menu is not a deadline.
+        /// </summary>
+        public List<float> trackElapsed;
+
+        /// <summary>
+        /// Ids of steps this run LOST on the clock. Not a position — a record: the step is already
+        /// behind the track index, and this is the only thing that remembers it was failed rather
+        /// than finished. Null on an older save, which reads as "nothing failed yet".
+        /// </summary>
+        public List<string> failedStepIds;
+
+        /// <summary>
         /// The player's WoodCutting skill level as it stood before the run LOANED them 100 (see
         /// RunService's skill boost — "max woodcutting from the start", with no grinding for it).
         /// Restored when the run finishes or is abandoned, so the loan is never permanent.

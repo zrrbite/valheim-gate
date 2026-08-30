@@ -218,6 +218,24 @@ namespace ICanShowYouTheWorld.RunMode
         /// simple on purpose.
         /// </summary>
         public List<SubObjective> Subs;
+
+        /// <summary>
+        /// Seconds this step may be worked on before it FAILS, or 0 for the usual "no clock".
+        ///
+        /// A failed step pays nothing — no heat, no rewards — and the track moves past it, so the
+        /// questline continues and the act can still be finished. That is the whole point: this is
+        /// a step you can LOSE without losing the run, which is a thing the saga did not previously
+        /// have. Every step until now was a matter of when, never whether.
+        ///
+        /// Only meaningful on a track step. A timed slot in the random-task pool would need "fail"
+        /// to mean "vacate the slot", which is a different behaviour on a different lifecycle, and
+        /// nothing wants it yet.
+        ///
+        /// The clock is RUN time, not wall time: it advances on the same dt as the rest of the
+        /// engine, and the host does not tick a frozen run. Time in a menu, in the respawn screen,
+        /// or with the world unloaded is not spent.
+        /// </summary>
+        public float TimeLimitSeconds;
     }
 
     /// <summary>
@@ -260,6 +278,22 @@ namespace ICanShowYouTheWorld.RunMode
         /// see <see cref="ChallengeEngine"/>'s MakeActive/RestoreActive.
         /// </summary>
         public List<float> SubProgress;
+
+        /// <summary>
+        /// Run-seconds spent on this step so far. Only read when
+        /// <see cref="ChallengeDefinition.TimeLimitSeconds"/> is set; zero for everything else.
+        /// </summary>
+        public float Elapsed;
+
+        /// <summary>
+        /// Seconds left before this step fails, or <see cref="float.PositiveInfinity"/> when it is
+        /// not on a clock — so a caller can format "time left" without first asking whether there
+        /// is any.
+        /// </summary>
+        public float TimeRemaining =>
+            Def == null || Def.TimeLimitSeconds <= 0f
+                ? float.PositiveInfinity
+                : Math.Max(0f, Def.TimeLimitSeconds - Elapsed);
 
         /// <summary>
         /// A composite challenge is done when EVERY sub's progress has reached its own target;
@@ -350,6 +384,36 @@ namespace ICanShowYouTheWorld.RunMode
 
         public IReadOnlyList<ActiveChallenge> Active => active;
         public event Action<ChallengeDefinition> Completed;
+
+        /// <summary>
+        /// A track step ran out of <see cref="ChallengeDefinition.TimeLimitSeconds"/> before it was
+        /// done. The track has ALREADY moved past it by the time this fires, exactly as
+        /// <see cref="Completed"/> does — so a handler reading Tracks sees the next step.
+        ///
+        /// Deliberately a separate event rather than a flag on Completed: the two mean opposite
+        /// things to every handler downstream, and the one thing that must never happen is a failed
+        /// step paying out because someone forgot to check the flag.
+        /// </summary>
+        public event Action<ChallengeDefinition> Failed;
+
+        /// <summary>Ids of steps this run has failed on the clock, in the order they expired.</summary>
+        private readonly List<string> failedStepIds = new List<string>();
+
+        /// <summary>
+        /// The run's record of what it let slip. Read by the host for the HUD and for the save; a
+        /// resumed run gets it back through <see cref="RestoreFailedSteps"/>.
+        /// </summary>
+        public IReadOnlyList<string> FailedStepIds => failedStepIds;
+
+        /// <summary>Puts a resumed run's failure record back, without firing <see cref="Failed"/>.</summary>
+        public void RestoreFailedSteps(IEnumerable<string> ids)
+        {
+            failedStepIds.Clear();
+            if (ids == null) return;
+            foreach (var id in ids)
+                if (!string.IsNullOrEmpty(id) && !failedStepIds.Contains(id))
+                    failedStepIds.Add(id);
+        }
 
         /// <summary>
         /// The questlines in play. Each holds one step at a time in a RESERVED slot of its own — not
@@ -465,7 +529,21 @@ namespace ICanShowYouTheWorld.RunMode
         /// this, every resume put a half-cleared kill list back at zero.
         /// </summary>
         public void RestoreTrack(string trackId, int index, float progress, string stepId,
-            IList<float> subProgress)
+            IList<float> subProgress) =>
+            RestoreTrack(trackId, index, progress, stepId, subProgress, 0f);
+
+        /// <summary>
+        /// As <see cref="RestoreTrack(string, int, float, string, IList{float})"/>, additionally
+        /// restoring how long the seated step has been on its clock.
+        ///
+        /// Without this, quitting and resuming would reset a timed step's deadline — turning a
+        /// 15-minute limit into an unlimited one for anyone who saves and reloads, which is the
+        /// kind of accidental cheat a deadline exists to prevent. Carried only on a TRUSTED
+        /// restore, like every other per-step value: seconds banked against some other step's
+        /// objective mean nothing here.
+        /// </summary>
+        public void RestoreTrack(string trackId, int index, float progress, string stepId,
+            IList<float> subProgress, float elapsed)
         {
             var track = tracks.FirstOrDefault(t => t.Id == trackId);
             if (track == null) return;
@@ -498,7 +576,11 @@ namespace ICanShowYouTheWorld.RunMode
 
             // Sub progress survives only a TRUSTED restore, for the same reason plain progress
             // does: values saved against some other step's objectives mean nothing here.
-            if (trusted) track.Current.SubProgress = BuildSubProgress(track.Current.Def, subProgress);
+            if (trusted)
+            {
+                track.Current.SubProgress = BuildSubProgress(track.Current.Def, subProgress);
+                track.Current.Elapsed = Math.Max(0f, elapsed);
+            }
         }
 
         /// <summary>
@@ -546,10 +628,43 @@ namespace ICanShowYouTheWorld.RunMode
             // Recomputed every tick rather than latched, so a gate opens the instant the track it
             // names finishes — including on the very tick that finished it, since the loop above
             // has already advanced every track.
-            foreach (var track in tracks)
-                track.Blocked = track.Current != null &&
-                                !string.IsNullOrEmpty(track.Current.Def.RequiresTrackComplete) &&
-                                !TrackComplete(track.Current.Def.RequiresTrackComplete);
+            RecomputeBlocked();
+
+            // (0b) Timed steps run out. AFTER the completion pass on purpose: a step finished on
+            // the same tick its clock expires must count as finished, and checking Done first is
+            // what guarantees the player never loses a step they had actually just completed.
+            //
+            // A blocked step is not on the clock. Its requirement is another track's business, and
+            // charging the player for time they are not allowed to spend would be a trap rather
+            // than a deadline.
+            bool anyExpired = false;
+            for (int i = 0; i < tracks.Count; i++)
+            {
+                var track = tracks[i];
+                var current = track.Current;
+
+                if (current == null || current.Done || track.Blocked) continue;
+                if (current.Def.TimeLimitSeconds <= 0f) continue;
+
+                current.Elapsed += dt;
+                if (current.Elapsed < current.Def.TimeLimitSeconds) continue;
+
+                var expired = current.Def;
+                if (!failedStepIds.Contains(expired.Id)) failedStepIds.Add(expired.Id);
+
+                // Advanced the same way a completion advances, and for the same reason: a step
+                // that can never be finished must not sit at the head of its questline forever.
+                // The difference is entirely in which event fires — and Completed does not.
+                track.Index++;
+                track.Current = track.Index < track.Chain.Count ? MakeActive(track.Chain[track.Index]) : null;
+                anyExpired = true;
+                Failed?.Invoke(expired);
+            }
+
+            // The steps promoted by an expiry have never had their gate evaluated. Without this a
+            // newly-seated blocked step reads as unblocked for one tick — long enough to start
+            // burning a clock it should not have been on.
+            if (anyExpired) RecomputeBlocked();
 
             // (1) Fire completions and vacate their slots — except a Repeatable, which keeps its
             // slot and starts over. Its progress is reset BEFORE the event fires, so a handler
@@ -932,6 +1047,18 @@ namespace ICanShowYouTheWorld.RunMode
         /// that deals a NEW slot (Tick's opener/random draw, Tick's refill draw, Reroll) goes
         /// through here so none of them can forget the allocation.
         /// </summary>
+        /// <summary>
+        /// Re-evaluates every track's gate. Extracted from <see cref="Tick"/> because an expiring
+        /// timed step promotes a new step mid-tick, and that one's gate has not been looked at.
+        /// </summary>
+        private void RecomputeBlocked()
+        {
+            foreach (var track in tracks)
+                track.Blocked = track.Current != null &&
+                                !string.IsNullOrEmpty(track.Current.Def.RequiresTrackComplete) &&
+                                !TrackComplete(track.Current.Def.RequiresTrackComplete);
+        }
+
         private static ActiveChallenge MakeActive(ChallengeDefinition def) => new ActiveChallenge
         {
             Def = def,

@@ -3488,7 +3488,11 @@ namespace ICanShowYouTheWorld.RunMode
                 StopRaceMusic();
             }
 
-            if (_challenges != null) _challenges.Completed -= OnChallengeCompleted;
+            if (_challenges != null)
+            {
+                _challenges.Completed -= OnChallengeCompleted;
+                _challenges.Failed -= OnChallengeFailed;
+            }
             if (_boons != null)
             {
                 _boons.Gained -= OnBoonGained;
@@ -3849,6 +3853,7 @@ namespace ICanShowYouTheWorld.RunMode
                 (d.Biomes == 0 || (d.Biomes & _visitedBiomes) != 0) &&
                 (string.IsNullOrEmpty(d.RequiresBuilt) || _builtSeen.Contains(d.RequiresBuilt));
             _challenges.Completed += OnChallengeCompleted;
+            _challenges.Failed += OnChallengeFailed;
 
             // The questline is installed for a fresh run and a resume alike; only its POSITION
             // differs, and a resume sets that with RestoreMainQuest right after this. The chain
@@ -4373,6 +4378,29 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 LogOnce("challenge-complete", ex);
             }
+        }
+
+        /// <summary>
+        /// A timed step ran out. The whole point is that this pays NOTHING — no health, no heat,
+        /// no reward table — so the body is deliberately almost empty, and that emptiness is the
+        /// feature. The saga's first step you can lose.
+        ///
+        /// The track has already moved on by the time this runs (the engine advances before it
+        /// fires, exactly as it does for a completion), so the run continues and the act can still
+        /// be finished. Losing a step costs its rewards and nothing else.
+        /// </summary>
+        private void OnChallengeFailed(ChallengeDefinition def)
+        {
+            try
+            {
+                Message($"Too late — {def.Display}. The moment has passed, and it pays nothing.");
+                Announce($"Step failed on the clock: {def.Id}");
+
+                // Saved immediately for the same reason a completion is: the questline has moved,
+                // and a crash before the next autosave would otherwise hand the step back.
+                SaveState();
+            }
+            catch (Exception ex) { LogOnce("challenge-failed", ex); }
         }
 
         // --- Questline rewards ---
@@ -5045,8 +5073,13 @@ namespace ICanShowYouTheWorld.RunMode
                         s.trackStepIds != null && i < s.trackStepIds.Count ? s.trackStepIds[i] : null,
                         s.trackSubProgress != null && i < s.trackSubProgress.Count
                             ? SplitSubProgress(s.trackSubProgress[i])
-                            : null);
+                            : null,
+                        s.trackElapsed != null && i < s.trackElapsed.Count ? s.trackElapsed[i] : 0f);
                 }
+
+                // The failure record is not a position and does not belong to any one track, so it
+                // is restored once, outside the loop.
+                _challenges.RestoreFailedSteps(s.failedStepIds);
                 return;
             }
 
@@ -5550,6 +5583,8 @@ namespace ICanShowYouTheWorld.RunMode
                 trackProgress = _challenges?.Tracks.Select(t => t.Current?.Progress ?? 0f).ToList(),
                 trackStepIds = _challenges?.Tracks.Select(t => t.Current?.Def?.Id).ToList(),
                 trackSubProgress = _challenges?.Tracks.Select(t => JoinSubProgress(t.Current?.SubProgress)).ToList(),
+                trackElapsed = _challenges?.Tracks.Select(t => t.Current?.Elapsed ?? 0f).ToList(),
+                failedStepIds = _challenges?.FailedStepIds.ToList(),
                 skillLoanTypes = _skillLoans.Keys.Select(k => (int)k).ToList(),
                 skillLoanOriginals = _skillLoans.Values.Select(v => v.Original).ToList(),
                 skillLoanLevels = _skillLoans.Values.Select(v => v.Level).ToList(),
@@ -6729,10 +6764,22 @@ namespace ICanShowYouTheWorld.RunMode
                 // troll is the exception that proves it: too big for the Elder's table, never fed,
                 // and long past collecting. It is what a splinter becomes when the harvest never
                 // reaches it.
+                // The saga's first LOSABLE step. Everything until now was a matter of when, never
+                // whether — and a questline in which nothing can be missed has no tension in it,
+                // only length. Fifteen run-minutes, and if the troll is not down the step pays
+                // nothing and the chain moves on without it.
+                //
+                // This step in particular, because its fiction is already a passing thing: a troll
+                // is weather, not a garrison. It comes through and it goes. Missing one is a thing
+                // that can happen to you, which is exactly what a deadline needs to be believable.
+                //
+                // The clock is RUN time — a frozen run does not tick — and it survives a resume,
+                // so quitting is not a way to buy more of it.
                 Id = "bf-troll", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Troll",
                 Target = 1, Display = "Kill a Troll", RewardText = "Troll hide, and the seeds the Elder wants",
-                Hint = "It will take your house down with it. Fight it away from anything you built.",
-                Opening = "That one was never fed. It stopped carrying light a long time ago, and started breaking it.",
+                TimeLimitSeconds = 900f,
+                Hint = "Fifteen minutes, then it has moved on. It will take your house down with it — fight it away from anything you built.",
+                Opening = "That one was never fed. It stopped carrying light a long time ago, and started breaking it. It will not stay in this part of the forest for long.",
             },
             new ChallengeDefinition
             {
