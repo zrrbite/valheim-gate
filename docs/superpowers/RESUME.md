@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-08-30 at `0.221.12-run.alpha80.1`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-08-30 at `0.221.12-run.alpha80.2`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -21,7 +21,7 @@ Everything below is what that file tells it.
 
 - Branch **`feature/run-mode`**, not merged, deliberately — the mode is still
   being tuned in play.
-- Latest tag **`0.221.12-run.alpha80.1`**, pushed, staged for Windows.
+- Latest tag **`0.221.12-run.alpha80.2`**, pushed, staged for Windows.
 - Engine tests: `Tests/run_tests.sh`, 514 assertions, all passing.
 - Game version 0.221.12, Unity 6000.0.61. Windows is the play machine, the Mac
   is the test/build machine, the Deck travels (and is **stale** — it still has
@@ -90,9 +90,18 @@ Nine items, all owner-reported:
 8. **The biome bearing agrees with the boss pin.** Both now resolve the same
    altar instance, so "the swamps lie north-east" points at Bonemass's mire
    rather than at the nearest scrap of swamp.
-9. **Act III gained a scrap-iron step** (`sw-scrap`, 20 Scrap Iron). The two
-   steps that already touched iron asked for pickaxe swings and for SMELTED
-   bars behind a boat; neither is the verb the swamp is about.
+9. **Act III's craft track IS the iron pipeline now**: reach the swamp → haul
+   20 Scrap Iron (`sw-scrap`) → smelt 10 bars (`sw-ironbar`, lifted off the
+   marsh track where it sat behind a boat). The old `sw-iron` (60 MineHits) is
+   GONE — it was the same activity as hauling the scrap, so the scrap step
+   would have completed on the tick after it was dealt, and `MineHits` is
+   incremented by `MineRock.RPC_Hit`/`MineRock5.DamageArea`, i.e. any rock
+   anywhere, so "Dig up the crypts" was satisfiable in the Black Forest.
+
+   **Act IV's `mt-silver` still has the second half of that flaw** — "Mine
+   silver (60 hits)" is satisfiable on any rock. Left alone deliberately: the
+   honest fix is `CollectItem $item_silverore`, and picking a target needs the
+   ore's weight, which is Unity data this build cannot read.
 
 Two supporting fixes that shipped with them, both worth knowing about:
 

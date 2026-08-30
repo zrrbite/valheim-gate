@@ -6554,39 +6554,47 @@ namespace ICanShowYouTheWorld.RunMode
                 RewardText = "A full hold of provisions",
                 Hint = "Follow the water inland. Most crypts sit on a shore.",
             },
-            new ChallengeDefinition
-            {
-                Id = "sw-ironbar", MainQuest = true, Track = MarshTrackId, Kind = ChallengeKind.CollectItem,
-                Param = "$item_iron", Target = 10, Display = "Iron enough to stand in (10)",
-                RewardText = "Coal for the smelting",
-                Hint = "Scrap from the crypts, smelted at home. The swamp is paid for in iron.",
-            },
             // "Kill 5 Blobs" and "Kill 3 Leeches" are clauses of "sw-cull" above now.
+            //
+            // The craft track is the act's IRON PIPELINE, in the order the swamp actually makes
+            // you do it: get here, break the piles, carry it home, smelt it.
+            //
+            // There used to be a "sw-iron" between these two, measuring 60 MineHits, and it was
+            // wrong twice over (owner: "What about the mining of iron?"):
+            //
+            //   - It is the SAME ACTIVITY as hauling the scrap out. A muddy pile takes a handful
+            //     of swings and drops several scrap, so sixty swings leaves you holding far more
+            //     than twenty — and since CollectItem latches on what you are CARRYING, the
+            //     scrap step would have completed on the first tick after it was dealt, handing
+            //     over its reward for nothing. A step that finishes the instant it appears is the
+            //     unearned-completion trap this file warns about everywhere else.
+            //   - MineHits is incremented by MineRock.RPC_Hit and MineRock5.DamageArea — ANY
+            //     rock. Sixty swings at a copper vein in the Black Forest completed "Dig up the
+            //     crypts", which is a line the world does not back.
+            //
+            // Scrap iron cannot be got anywhere but a crypt, so the collect step means what it
+            // says and the proxy is not needed. "$item_ironscrap" is verified against the game's
+            // own string table rather than remembered: an item token is Unity data, and a wrong
+            // one is a step that can never complete and never says so.
+            //
+            // Twenty is a load, not a number pulled out of the air: scrap is one of the heaviest
+            // things in the game, so this is a full trip home rather than a grind.
             new ChallengeDefinition
             {
-                Id = "sw-iron", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "MineHits",
-                Target = 60, Display = "Dig up the crypts (60 mining hits)", RewardText = "Iron, already smelted",
-                Hint = "Iron is scrap in the crypts, not ore in the ground. Bring a key.",
-            },
-            new ChallengeDefinition
-            {
-                // The act's actual work, asked for plainly (owner: "We need an iron gather quest
-                // for Swamp biome, act 3"). Both steps that already touched iron asked for
-                // something OTHER than gathering it: "sw-iron" counts swings of a pickaxe, and
-                // "sw-ironbar" wants ten SMELTED bars — a smelter, coal and a trip home away,
-                // sitting at the far end of the marsh track behind a boat. Neither is the verb the
-                // swamp is about.
-                //
-                // Scrap is what a crypt actually hands you, so scrap is what the questline asks
-                // for, between digging it out and smelting it down.
-                //
-                // "$item_ironscrap" is verified against the game's own string table rather than
-                // remembered: an item token is Unity data, and a wrong one is a step that can never
-                // complete and never says so.
                 Id = "sw-scrap", MainQuest = true, Kind = ChallengeKind.CollectItem, Param = "$item_ironscrap",
                 Target = 20, Display = "Haul out 20 Scrap Iron",
                 RewardText = "Coal, and nails for the hull",
                 Hint = "Muddy scrap piles inside the sunken crypts. The Elder's key opens them.",
+                Opening = "Men dug here before you. The iron they left is the only thing down there still worth carrying.",
+            },
+            new ChallengeDefinition
+            {
+                // The smelting, immediately after the hauling rather than at the far end of the
+                // marsh track behind a boat, which is where it used to sit.
+                Id = "sw-ironbar", MainQuest = true, Kind = ChallengeKind.CollectItem,
+                Param = "$item_iron", Target = 10, Display = "Iron enough to stand in (10)",
+                RewardText = "Iron and coal — the forge pays for itself",
+                Hint = "A smelter and coal, at home. The swamp is paid for in iron.",
             },
             new ChallengeDefinition
             {
@@ -6912,11 +6920,10 @@ namespace ICanShowYouTheWorld.RunMode
                 ["sw-scrap"] = new[] { ("Coal", 30), ("IronNails", 40) },
                 ["sw-fermenter"] = new[] { ("Honey", 20), ("Thistle", 20) },
                 ["sw-chart"] = new[] { ("Bronze", 10), ("BoneFragments", 20) },
-                ["sw-ironbar"] = new[] { ("Coal", 30) },
+                ["sw-ironbar"] = new[] { ("Iron", 20), ("Coal", 30) },
                 ["sw-abom"] = new[] { ("MeadHealthMedium", 4), ("Sausages", 10) },
                 ["sw-karve"] = new[] { ("IronNails", 40), ("Wood", 40) },
                 ["sw-sail"] = new[] { ("Sausages", 10), ("MeadHealthMedium", 3) },
-                ["sw-iron"] = new[] { ("Iron", 30), ("Coal", 30) },
                 ["sw-bonemass"] = new[] { ("Wishbone", 1) },
 
                 ["mt-arrive"] = new[] { ("MeadFrostResist", 5), ("WolfPelt", 10) },
