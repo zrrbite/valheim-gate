@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-08-30 at `0.221.12-run.alpha80.2`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-08-30 at `0.221.12-run.alpha80.3`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -21,7 +21,7 @@ Everything below is what that file tells it.
 
 - Branch **`feature/run-mode`**, not merged, deliberately — the mode is still
   being tuned in play.
-- Latest tag **`0.221.12-run.alpha80.2`**, pushed, staged for Windows.
+- Latest tag **`0.221.12-run.alpha80.3`**, pushed, staged for Windows.
 - Engine tests: `Tests/run_tests.sh`, 514 assertions, all passing.
 - Game version 0.221.12, Unity 6000.0.61. Windows is the play machine, the Mac
   is the test/build machine, the Deck travels (and is **stale** — it still has
@@ -98,10 +98,17 @@ Nine items, all owner-reported:
    incremented by `MineRock.RPC_Hit`/`MineRock5.DamageArea`, i.e. any rock
    anywhere, so "Dig up the crypts" was satisfiable in the Black Forest.
 
-   **Act IV's `mt-silver` still has the second half of that flaw** — "Mine
-   silver (60 hits)" is satisfiable on any rock. Left alone deliberately: the
-   honest fix is `CollectItem $item_silverore`, and picking a target needs the
-   ore's weight, which is Unity data this build cannot read.
+   **Act IV's `mt-silver` got the same treatment** (alpha80.3): it is
+   `CollectItem $item_silverore`, 15 — silver ore exists only under the
+   mountains, so the step now means what it says.
+
+   Picking that number needed a fact the assembly cannot see, so the run-start
+   validator gained a **carry-weight check**: it reads every item's
+   `m_shared.m_weight` from ObjectDB, prints what each collect step's target
+   actually WEIGHS against `Player.GetMaxCarryWeight()`, and logs an error if
+   an amount could never be held. That constraint is real and symptomless —
+   CollectItem latches on what is in the inventory, so the whole amount must be
+   carried at once and extra trips do not help. Grep the log for `Collect '`.
 
 Two supporting fixes that shipped with them, both worth knowing about:
 

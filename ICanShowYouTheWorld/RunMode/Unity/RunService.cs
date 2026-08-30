@@ -2509,6 +2509,33 @@ namespace ICanShowYouTheWorld.RunMode
                 _challenges.ReportMeasure(ChallengeKind.DiscoverLocation, found, 1f);
         }
 
+        /// <summary>
+        /// Every CollectItem clause a definition carries — its own, plus each composite sub's.
+        ///
+        /// Separate from <see cref="CollectItemParams"/>, which answers "what should the inventory
+        /// scanner count" from a LIVE challenge and needs only names. The validator is asking a
+        /// different question — "is this amount of this thing carryable" — so it needs the target
+        /// and something to call the clause in an error message.
+        /// </summary>
+        private static IEnumerable<(string param, float target, string label)> CollectClauses(
+            ChallengeDefinition def)
+        {
+            if (def == null) yield break;
+
+            if (def.Subs != null && def.Subs.Count > 0)
+            {
+                foreach (var sub in def.Subs)
+                {
+                    if (sub != null && sub.Kind == ChallengeKind.CollectItem && !string.IsNullOrEmpty(sub.Param))
+                        yield return (sub.Param, sub.Target, sub.Label ?? def.Display ?? def.Id);
+                }
+                yield break;
+            }
+
+            if (def.Kind == ChallengeKind.CollectItem && !string.IsNullOrEmpty(def.Param))
+                yield return (def.Param, def.Target, def.Display ?? def.Id);
+        }
+
         /// <summary>Location names any live questline step is currently asking to be found.</summary>
         private IEnumerable<string> WantedLocations() =>
             _challenges.Tracks
@@ -3786,6 +3813,52 @@ namespace ICanShowYouTheWorld.RunMode
                                     Debug.LogError($"[ICanShowYouTheWorld] '{step.Display}' wants {step.Target} " +
                                                    $"species, but only {species} edible fish prefabs exist.");
                             }
+                        }
+                    }
+
+                    // Every collect step's item, with WHAT IT WEIGHS and what the target costs.
+                    //
+                    // A CollectItem target is two facts this assembly cannot see. Whether the token
+                    // resolves is already checked above. Whether the amount can be CARRIED is not,
+                    // and it is the one with no symptom: CollectItem latches on what is in the
+                    // inventory, so the whole amount has to be held at once, and a target heavier
+                    // than the player's back is a step that sits at zero forever with nothing on
+                    // screen to explain it. Multiple trips do not help — that is the point.
+                    //
+                    // This exists because a target was set from memory once too often. "Mine silver
+                    // (60 hits)" was a proxy precisely because nobody could say what silver ore
+                    // weighs; asking the world at run start turns that into a number, and a wrong
+                    // one into a red line in the log rather than an hour of play.
+                    if (odb != null && odb.m_items != null)
+                    {
+                        var weights = new Dictionary<string, float>();
+                        foreach (var go in odb.m_items)
+                        {
+                            var shared = go == null ? null : go.GetComponent<ItemDrop>()?.m_itemData?.m_shared;
+                            if (shared == null || string.IsNullOrEmpty(shared.m_name)) continue;
+                            weights[shared.m_name] = shared.m_weight;
+                        }
+
+                        // The live player's own capacity, which boons and the Megingjord raise —
+                        // read rather than assumed, for the same reason as everything else here.
+                        // Valheim's own default when there is nobody to ask.
+                        float carry = 300f;
+                        try { if (Player.m_localPlayer != null) carry = Player.m_localPlayer.GetMaxCarryWeight(); }
+                        catch { }
+
+                        foreach (var clause in AllChallengeDefinitions().SelectMany(CollectClauses))
+                        {
+                            if (!weights.TryGetValue(clause.param, out float weight)) continue;
+
+                            float load = weight * clause.target;
+
+                            Debug.Log($"[ICanShowYouTheWorld] Collect '{clause.label}': " +
+                                      $"{clause.target:0} x {clause.param} @ {weight:0.##} = {load:0} of {carry:0} carry.");
+
+                            if (load > carry)
+                                Debug.LogError($"[ICanShowYouTheWorld] '{clause.label}' wants {load:0} weight of " +
+                                               $"{clause.param}, more than the {carry:0} this player can carry — " +
+                                               "it can never be held all at once, so the step can never complete.");
                         }
                     }
 
@@ -6685,9 +6758,20 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
-                Id = "mt-silver", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "MineHits",
-                Target = 60, Display = "Mine silver (60 hits)", RewardText = "Silver, already smelted",
-                Hint = "Silver hides underground — the wishbone finds it.",
+                // Silver ORE, not swings of a pickaxe. MineHits is incremented by
+                // MineRock.RPC_Hit and MineRock5.DamageArea — any rock anywhere — so "Mine
+                // silver (60 hits)" was completable on a stone outcrop in the meadows, which is
+                // the same lie Act III's crypt step was telling. Silver ore exists only under the
+                // mountains, so asking for the ore is asking for the mountain.
+                //
+                // Fifteen deliberately matches the swamp's twenty scrap: one heavy trip, not a
+                // grind. The exact load is asset data, so the run-start validator prints it and
+                // fails loudly if it ever exceeds what a player can carry — which is the real
+                // constraint here, since CollectItem needs the whole amount held at once.
+                Id = "mt-silver", MainQuest = true, Kind = ChallengeKind.CollectItem, Param = "$item_silverore",
+                Target = 15, Display = "Bring up 15 Silver Ore", RewardText = "Silver, already smelted",
+                Hint = "Silver hides underground — the wishbone finds it. Dig where it rattles.",
+                Opening = "Nothing up here has moved in an age. Whatever the mountain was keeping, it is under your feet.",
             },
             // The golems and fenrings are clauses of "mt-cull" above now.
             new ChallengeDefinition
