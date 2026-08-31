@@ -252,22 +252,42 @@ namespace ICanShowYouTheWorld.RunMode
 
         /// <summary>
         /// A greydwarf given a burden and a title. The brand IS the cargo, so the cargo is what
-        /// shows: a carried light, bright enough to find through trees at night.
+        /// shows — but carried, not worn.
         ///
-        /// Toned down from the first version, which read as a floodlight (owner: "the couriers are
-        /// REALLY bright"). RANGE is what makes a light findable through trees and INTENSITY is
-        /// what makes it harsh, so the two moved in opposite directions: range barely dropped,
-        /// intensity fell by two thirds. The thing should read as something carrying a lamp
-        /// through the woods, not as the lamp.
+        /// Dimmed twice now. The first version was a floodlight (owner: "the couriers are REALLY
+        /// bright") and the fix was to drop the light's INTENSITY while keeping its RANGE, on the
+        /// reasoning that range is what carries through trees and intensity is what glares. Still
+        /// too easy to spot (owner, again), and the second look at it found the reason: the light
+        /// was never the main offender. Body Emission on Custom/Creature makes the whole HIDE
+        /// self-lit, so the creature glowed from any distance and any angle whether or not its
+        /// lamp reached you. Turning the lamp down while the animal itself was luminous was
+        /// treating the smaller of two causes.
+        ///
+        /// So the brand moved to the EYES. A probe of a greydwarf shows them on their own
+        /// "eye_blue" material, already emissive at (0.74, 1.21, 2.96) — the cold blue every
+        /// greydwarf in the forest has. Overwriting that with a warm gold says "this one is
+        /// carrying stolen light" in the one place a player already looks, and it is
+        /// self-limiting in a way no body glow is: eyes are small and they face a direction, so a
+        /// courier reads when it turns toward you and stays a shape in the dark when it does not.
+        /// That is nearer the distance-based luminosity the mode wanted than a constant is.
+        ///
+        /// The hide keeps a fifth of its old emission — enough to look warm rather than grey once
+        /// you are close, not enough to be seen through trunks. The lamp halves again to a pool
+        /// at its feet.
+        ///
+        /// Finding one was never this system's job anyway: PollCouriers SAYS where it is, with a
+        /// compass bearing and a distance. The look only has to confirm the thing in front of you
+        /// is the thing that was announced.
         /// </summary>
         public static Look Courier() => new Look
         {
             Saturation = -0.15f,
             Value = 0.05f,
-            Emission = new Color(0.42f, 0.34f, 0.13f),
-            LightRange = 10f,
+            Emission = new Color(0.09f, 0.07f, 0.03f),
+            EyeEmission = new Color(1.00f, 0.72f, 0.25f),
+            LightRange = 6f,
             LightColor = new Color(1f, 0.88f, 0.50f),
-            LightIntensity = 0.7f,
+            LightIntensity = 0.35f,
         };
 
         /// <summary>
