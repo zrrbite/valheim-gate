@@ -33,6 +33,27 @@ namespace ICanShowYouTheWorld.RunMode
             return points[index];
         }
 
+        /// <summary>
+        /// The same bearing rounded to four points instead of eight — a direction to walk, not a
+        /// fix to navigate by.
+        ///
+        /// For the things the mode wants SUSPECTED rather than found. Eight points plus a distance
+        /// is a map reference: it takes the player to the creature and leaves nothing to work out.
+        /// Four points and no range gives them a heading and makes the rest their problem, which is
+        /// the whole point of a hunt whose quarry is only a shade warmer than its neighbours.
+        /// </summary>
+        public static string Coarse(Vector3 delta)
+        {
+            float degrees = Mathf.Atan2(delta.x, delta.z) * Mathf.Rad2Deg;
+            if (degrees < 0f) degrees += 360f;
+
+            string[] points = { "north", "east", "south", "west" };
+
+            // +45 for the same centring reason as above, at twice the arc.
+            int index = (int)((degrees + 45f) / 90f) % points.Length;
+            return points[index];
+        }
+
         /// <summary>How far out to look before giving up, and how far apart the rings are.</summary>
         private const float RingSpacing = 64f;
         private const float MaxRange = 3000f;

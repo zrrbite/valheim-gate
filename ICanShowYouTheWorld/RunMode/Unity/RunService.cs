@@ -896,7 +896,10 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 _courierForetold = true;
                 Announce("The forest moves its harvest at night.");
-                Message("Watch for the couriers \u2014 starred, laden, hurrying toward the Elder. Cut one down and its cargo rises.");
+                // "Laden" was true when couriers glowed. It now tells the player to look for
+                // something they will not see, which is worse than saying nothing \u2014 so the line
+                // teaches the actual tell instead: warmth, and only by comparison.
+                Message("Watch for the couriers \u2014 one of them will be carrying it, and the light warms whatever holds it. Cut that one down and its cargo rises.");
             }
 
             if (!IsNight || Time.time < _courierBrandAt) return;
@@ -982,12 +985,23 @@ namespace ICanShowYouTheWorld.RunMode
                 _couriers.Add(czdo.m_uid);
                 _courierDryScans = 0;
 
-                // SAY where it is. A starred greydwarf forty metres away in a night forest is a
-                // visible target with no way to find it — the brand alone was couriers that
-                // "worked" and were never seen.
+                // Say roughly where, and no more.
+                //
+                // This used to give an eight-point bearing and a distance to the nearest ten
+                // metres, because the couriers of the time were nearly invisible and the text was
+                // the only way anyone found one. Both halves have since moved the other way: the
+                // brand is now a deliberate near-miss of a hue, meant to be suspected rather than
+                // spotted, and against that a map reference gives the whole thing away — walk to
+                // the stated spot, kill the one greydwarf standing on it.
+                //
+                // A heading with no range asks the player to search a direction and then work out
+                // which of the things they find is the wrong colour, which is the hunt. Guessing
+                // badly costs nothing: a misjudged greydwarf is one swing, and killing the real
+                // one releases a light, so the world confirms the answer without the tracker
+                // having to.
                 Vector3 delta = candidate.transform.position - player.transform.position;
                 delta.y = 0f;
-                Message($"A courier moves in the dark \u2014 {BiomeCompass.Compass(delta)}, {Mathf.Round(delta.magnitude / 10f) * 10f:0}m.");
+                Message($"Something moves {BiomeCompass.Coarse(delta)} of here, carrying more light than it should.");
             }
             catch (Exception ex) { LogOnce("courier-brand", ex); }
         }
