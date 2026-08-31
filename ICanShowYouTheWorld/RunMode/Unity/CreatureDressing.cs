@@ -263,31 +263,36 @@ namespace ICanShowYouTheWorld.RunMode
         /// lamp reached you. Turning the lamp down while the animal itself was luminous was
         /// treating the smaller of two causes.
         ///
-        /// So the brand moved to the EYES. A probe of a greydwarf shows them on their own
-        /// "eye_blue" material, already emissive at (0.74, 1.21, 2.96) — the cold blue every
-        /// greydwarf in the forest has. Overwriting that with a warm gold says "this one is
-        /// carrying stolen light" in the one place a player already looks, and it is
-        /// self-limiting in a way no body glow is: eyes are small and they face a direction, so a
-        /// courier reads when it turns toward you and stays a shape in the dark when it does not.
-        /// That is nearer the distance-based luminosity the mode wanted than a constant is.
+        /// Third pass, and a change of GOAL rather than of degree (owner: "it would be awesome if
+        /// you had to guess if it was a courier — just a tiny hue hint"). Every version until now
+        /// answered "how do I see it"; this one answers "how do I suspect it". So the eye gold is
+        /// gone, the lamp is gone, and what remains is a shift in colour small enough to be
+        /// argued with.
         ///
-        /// The hide keeps a fifth of its old emission — enough to look warm rather than grey once
-        /// you are close, not enough to be seen through trunks. The lamp halves again to a pool
-        /// at its feet.
+        /// The hue is chosen against the forest rather than in isolation. Couriers are forced to
+        /// at least one star, and our write REPLACES the star's tint rather than adding to it, so
+        /// the comparison is: an ordinary greydwarf sits at hue 0, the one-star it is hiding among
+        /// sits at -0.06 and the two-star at -0.5 — all cool. A courier at +0.05 is the only warm
+        /// thing in a wood full of cold ones, by an amount you notice only if you are looking.
         ///
-        /// Finding one was never this system's job anyway: PollCouriers SAYS where it is, with a
-        /// compass bearing and a distance. The look only has to confirm the thing in front of you
-        /// is the thing that was announced.
+        /// The whisper of Emission is not decoration and must not be removed as "more dimming".
+        /// Couriers only walk at NIGHT, and hue on an unlit surface in the dark is invisible —
+        /// colour is the first thing night takes. A hue hint with no light to carry it is not a
+        /// subtle clue, it is no clue. This is the least light that lets the hint exist at all.
+        ///
+        /// NOTE the tension this creates with PollCouriers, which announces a bearing and a
+        /// distance. That message was written when the look was the giveaway and the text merely
+        /// helped you find it; now the text is the surer tell of the two. If guessing is to mean
+        /// anything the announcement probably wants to get vaguer — but that is a separate
+        /// decision about the hunt, not about the paint.
         /// </summary>
         public static Look Courier() => new Look
         {
-            Saturation = -0.15f,
-            Value = 0.05f,
-            Emission = new Color(0.09f, 0.07f, 0.03f),
-            EyeEmission = new Color(1.00f, 0.72f, 0.25f),
-            LightRange = 6f,
-            LightColor = new Color(1f, 0.88f, 0.50f),
-            LightIntensity = 0.35f,
+            Hue = 0.05f,
+            Saturation = -0.05f,
+            Value = 0.03f,
+            Emission = new Color(0.06f, 0.045f, 0.015f),
+            LightRange = 0f,
         };
 
         /// <summary>

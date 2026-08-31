@@ -6464,10 +6464,28 @@ namespace ICanShowYouTheWorld.RunMode
                 //
                 // Here it feeds the step directly after it: three different foods at once is
                 // berries, mushrooms and something cooked.
+                // Twelve, not thirty, and the word is NEW on purpose (owner: "the forage step
+                // doesn't always work, in meadows. Weird.").
+                //
+                // It always worked; it counts something other than what it said. Player.OnInventory
+                // Changed increments ItemsPickedUp behind a per-item m_pickedUp flag that is set
+                // once and never cleared, so the stat is "distinct item stacks I have ever held",
+                // not "things I picked up". Berries gathered into a raspberry stack you already
+                // own create no new ItemData and increment NOTHING. Read from this build's IL, not
+                // remembered.
+                //
+                // That is why it looked intermittent: it ran while every bush was a first, then
+                // stalled exactly when the player settled into gathering more of what they had —
+                // which in the meadows is most of the foraging. Thirty distinct stacks is also far
+                // more than a meadows start yields.
+                //
+                // Twelve is reachable from variety alone, which is what the step actually wants:
+                // it feeds mq-meal, and three different foods is the lesson. Counting every berry
+                // would need a pickup hook of our own, and is a bigger thing than this step needs.
                 Id = "mq-forage", MainQuest = true, Track = HearthTrackId, Kind = ChallengeKind.StatDelta,
-                Param = "ItemsPickedUp", Target = 30, Display = "Forage the meadows (30 finds)",
+                Param = "ItemsPickedUp", Target = 12, Display = "Forage the meadows (12 new finds)",
                 RewardText = "Seeds and a full larder",
-                Hint = "Berries, mushrooms, flint by the water, anything on the ground.",
+                Hint = "Twelve things you have not held yet — berries, mushrooms, flint, feathers, resin. More of the same does not count.",
             },
             new ChallengeDefinition
             {
@@ -6944,7 +6962,8 @@ namespace ICanShowYouTheWorld.RunMode
                 // The clock is RUN time — a frozen run does not tick — and it survives a resume,
                 // so quitting is not a way to buy more of it.
                 Id = "bf-troll", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Troll",
-                Target = 1, Display = "Kill a Troll", RewardText = "Troll hide, and the seeds the Elder wants",
+                Target = 1, Display = "Kill a Troll",
+                RewardText = "Its hoard, its hide, and the only seeds the Elder will answer to",
                 TimeLimitSeconds = 900f,
                 Hint = "Fifteen minutes, then it has moved on. It will take your house down with it — fight it away from anything you built.",
                 Opening = "That one was never fed. It stopped carrying light a long time ago, and started breaking it. It will not stay in this part of the forest for long.",
@@ -6952,7 +6971,8 @@ namespace ICanShowYouTheWorld.RunMode
             new ChallengeDefinition
             {
                 Id = "bf-find", MainQuest = true, Track = HuntTrackId, Kind = ChallengeKind.DiscoverLocation, Param = "GDKing",
-                Target = 1, Display = "Find the Elder's altar", RewardText = "The Elder's altar, and what it wants",
+                Target = 1, Display = "Find the Elder's altar",
+                RewardText = "Bronze arrows and mead — the seeds are the troll's to give",
                 Hint = "Follow where the stolen light was carried \u2014 the oldest trees feed first. A ring of stone, guarded.",
             },
             new ChallengeDefinition
@@ -7370,7 +7390,19 @@ namespace ICanShowYouTheWorld.RunMode
                 // arriving is the moment to be handed the thing you would otherwise have gone home
                 // for.
                 ["mq-find"] = new[] { ("TrophyDeer", 2), ("ArrowFlint", 40) },
-                ["bf-find"] = new[] { ("AncientSeed", 3), ("ArrowBronze", 40) },
+                // The ONE act that breaks the rule above, deliberately. Every other discovery step
+                // pays its boss's summon item, and this one paid three ancient seeds — which is
+                // also exactly what bf-troll pays, two steps earlier. The troll is a missable
+                // fifteen-minute event whose whole point is that catching it matters; paying its
+                // prize again, unconditionally, to everyone who walks to the altar made it a
+                // decoration. Whoever missed the troll lost nothing at all.
+                //
+                // So the seeds live on the troll alone now, and missing it means gathering them
+                // the ordinary way — brutes and shamans carry them. That is the intended shape:
+                // kill the troll or do it yourself. It costs this act the "arrive and fight
+                // without a trip home" guarantee the other three keep; that is the price of the
+                // troll meaning something, and it is paid knowingly.
+                ["bf-find"] = new[] { ("ArrowBronze", 40), ("MeadHealthMedium", 3) },
                 ["sw-find"] = new[] { ("WitheredBone", 3), ("MeadPoisonResist", 5) },
                 ["mt-find"] = new[] { ("DragonEgg", 3), ("MeadFrostResist", 5) },
                 ["pl-find"] = new[] { ("GoblinTotem", 5), ("MeadHealthMedium", 5) },
@@ -7427,9 +7459,17 @@ namespace ICanShowYouTheWorld.RunMode
                 ["bf-bronze"] = new[] { ("Bronze", 10), ("ArrowBronze", 40) },
                 ["bf-cull"] = new[] { ("ShieldBronzeBuckler", 1), ("ArrowBronze", 40), ("Resin", 30), ("MeadHealthMedium", 4) },
                 ["bf-brute"] = new[] { ("ArmorRootChest", 1), ("ArmorRootLegs", 1) },
-                // The seeds are the point: the Elder's altar wants three, they drop from shamans
-                // and brutes, and an act finale must never gate on drop luck (see mq-deer).
-                ["bf-troll"] = new[] { ("TrollHide", 10), ("AncientSeed", 3) },
+                // The seeds are the point, and since bf-find stopped paying them too they are now
+                // the ONLY ones handed out: the Elder's altar wants three, the troll has three,
+                // and anyone who lets the fifteen minutes run out gathers them from shamans and
+                // brutes instead. The act finale still does not gate on drop luck — the troll is
+                // a guaranteed payout for a fight you chose to take, not a roll.
+                //
+                // And a hoard, because a missable fight wants a prize worth hurrying for. Hide
+                // enough for real armour rather than a sample, plus what the thing had been
+                // sitting on. A troll should feel like the richest thing in the Black Forest,
+                // which it now is by a distance.
+                ["bf-troll"] = new[] { ("TrollHide", 20), ("AncientSeed", 3), ("Coins", 150), ("Ruby", 2), ("Amber", 5) },
                 ["bf-elder"] = new[] { ("CryptKey", 1) },
 
                 // Acts III-V, thin like their chains. Each pays the next step's tedious part and
