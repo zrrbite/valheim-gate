@@ -31,25 +31,40 @@ Select-String -Path "$env:USERPROFILE\AppData\LocalLow\IronGate\Valheim\Player.l
 
 ## The fish check (alpha49 and later)
 
-Two fishing steps carry numbers that depend on the game's own data — how heavy
-fish get, and how many kinds there are. The mod cannot read that from the code,
-so it **asks the world and prints the answer**:
+**You can skip this one.** It is groundwork, not a check — nothing today depends
+on it, and it will not tell you anything is wrong.
+
+The mod prints what the world's fish weigh, because weights and species lists
+are asset data that the compiled assembly cannot see:
 
 ```powershell
 Select-String -Path "$env:USERPROFILE\AppData\LocalLow\IronGate\Valheim\Player.log" -Pattern "Fish available"
 ```
 
-You should get one line listing every edible fish and its weight, e.g.
+You get one line listing every edible fish and its weight:
 
 ```
-[ICanShowYouTheWorld] Fish available: FishRaw(1.0), FishCooked(1.0), ...
+[ICanShowYouTheWorld] Fish available: Fish1(2), Fish2(2), ..., FishRaw(0.5)
 ```
 
-**Send that line.** It is what sets the "Land a big one (4.0+)" and "A varied
-catch (3 species)" thresholds — until then they are an educated guess.
+This section used to say the line "sets the *Land a big one (4.0+)* and *A
+varied catch (3 species)* thresholds". **Those steps do not exist.** They were
+planned, the measuring and the validation for them were both built, and the
+steps themselves were never written — so the line has had nothing to feed since
+the day it was added. Every fishing step in the game counts fish rather than
+weighing them: `FishHeld` at 1, 5 and 8, `CookedFishHeld` at 3 and 5, and
+fishing skill 10. All reachable, none affected by this.
 
-If one of those steps asks for more than the world has, an error prints
-alongside it saying so, in plain numbers.
+It is still worth having, because the numbers are the answer to a question
+somebody will ask. **The heaviest fish in the game weighs 2.0**, so a "big one"
+step must be at or under that, and there are fifteen edible fish prefabs, so a
+species count has plenty of room. If those steps ever get written, that is where
+their numbers come from — and the validator will complain in plain numbers if
+one asks for more than the world has.
+
+(Through alpha88 the line also listed `HelmetFishingHat(3)`, a hat, as the
+heaviest fish. That would have certified an unreachable 3.0 threshold as fine.
+Fixed in alpha89.)
 
 ### Everything from a new build in one command
 
@@ -58,7 +73,7 @@ Select-String -Path "$env:USERPROFILE\AppData\LocalLow\IronGate\Valheim\Player.l
 ```
 
 Catches the fish list, any misspelled reward name, and any impossible
-threshold.
+threshold. If only the fish line comes back, everything resolved.
 
 ---
 

@@ -2354,7 +2354,13 @@ namespace ICanShowYouTheWorld.RunMode
             prefabName.IndexOf("Bait", StringComparison.OrdinalIgnoreCase) >= 0 ||
             prefabName.IndexOf("Trophy", StringComparison.OrdinalIgnoreCase) >= 0 ||
             prefabName.IndexOf("AndBread", StringComparison.OrdinalIgnoreCase) >= 0 ||
-            prefabName.IndexOf("Wraps", StringComparison.OrdinalIgnoreCase) >= 0;
+            prefabName.IndexOf("Wraps", StringComparison.OrdinalIgnoreCase) >= 0 ||
+            // HelmetFishingHat. It is a HAT, and it weighs 3 — more than any fish in the game,
+            // which top out at 2. Left in, it becomes the "heaviest fish" the world reports, so a
+            // future "land a big one (3.0)" step would pass validation and then be unreachable
+            // forever, because the only thing that heavy is worn rather than caught. The check
+            // that exists to catch impossible thresholds would have certified one.
+            prefabName.IndexOf("Helmet", StringComparison.OrdinalIgnoreCase) >= 0;
 
         /// <summary>What the player is carrying, fish-wise. One scan, four questions.</summary>
         private struct FishCatch
