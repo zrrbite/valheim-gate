@@ -193,7 +193,7 @@ Extract both to the same folder and copy to:
 1. `libraries/` folder (for development/linking)
 2. Steam Deck `/home/deck/.local/share/Steam/steamapps/common/Valheim/valheim_Data/Managed/` (for runtime)
 
-Current Unity version: 6000.0.58 (Unity 6, since Valheim 0.221.6)
+Current Unity version: 6000.0.61 (Unity 6; 6000.0.58 from Valheim 0.221.6, 6000.0.61 since 0.221.12)
 
 ## Deployment
 
