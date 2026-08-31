@@ -178,12 +178,24 @@ namespace ICanShowYouTheWorld.RunMode
             Section(sb, "1. IDENTITY", () => Identity(sb, creature));
             Section(sb, "2. HIERARCHY  (• renderer, ○ inactive, ☀ light)", () => Hierarchy(sb, creature));
 
-            // Unique shaders are collected while walking the renderers and dumped afterwards, so a
-            // creature with eight renderers sharing one shader prints that property table once.
-            var shaders = new Dictionary<Shader, string>();
-            Section(sb, "3. RENDERERS AND MATERIALS", () => Renderers(sb, creature, shaders));
-            Section(sb, "4. SHADER PROPERTIES  (every slot, with this creature's current value)",
-                    () => Shaders(sb, shaders));
+            // Unique MATERIALS are collected while walking the renderers and dumped afterwards.
+            //
+            // Materials, not shaders, and this is the correction to a probe that lied for its whole
+            // life. It used to key on the shader and then read the values out of `new Material(shader)`
+            // — a blank material built from the shader — while captioning the table with the name of a
+            // real material it never touched. Every table it has ever printed was the shader's
+            // DEFAULTS: hence textures reading <none> on a creature that plainly has them, and
+            // _Hue/_Saturation/_Value reading 0 on a two-star greydwarf that Valheim demonstrably
+            // tinted. A probe that reports defaults as observations is worse than no probe, because
+            // it is believed.
+            //
+            // Keying on the material also fixes a subtler miss. LevelEffects tints only
+            // m_mainRender, so a Greydwarf_Elite has two renderers sharing one shader where only
+            // one is tinted; per-shader sampling could pick either and never said which.
+            var materials = new List<MaterialUse>();
+            Section(sb, "3. RENDERERS AND MATERIALS", () => Renderers(sb, creature, materials));
+            Section(sb, "4. MATERIAL PROPERTIES  (every slot, read from the creature's own material)",
+                    () => MaterialProperties(sb, materials));
 
             sb.AppendLine();
             return sb.ToString();
@@ -280,7 +292,14 @@ namespace ICanShowYouTheWorld.RunMode
                 WalkHierarchy(sb, t.GetChild(i), depth + 1, ref lines);
         }
 
-        private static void Renderers(StringBuilder sb, GameObject creature, Dictionary<Shader, string> shaders)
+        /// <summary>One material, and the first renderer found wearing it. See <see cref="BuildReport"/>.</summary>
+        private struct MaterialUse
+        {
+            public Material Material;
+            public string OwnerPath;
+        }
+
+        private static void Renderers(StringBuilder sb, GameObject creature, List<MaterialUse> seen)
         {
             var renderers = creature.GetComponentsInChildren<Renderer>(includeInactive: true);
             if (renderers == null || renderers.Length == 0)
@@ -309,6 +328,8 @@ namespace ICanShowYouTheWorld.RunMode
                 var materials = renderer.sharedMaterials;
                 if (materials == null) continue;
 
+                string path = PathTo(creature.transform, renderer.transform);
+
                 foreach (var material in materials)
                 {
                     if (material == null) { sb.AppendLine("    material: <null>"); continue; }
@@ -317,24 +338,36 @@ namespace ICanShowYouTheWorld.RunMode
                     sb.AppendLine("    material: \"" + material.name + "\"  shader: \"" +
                                   (shader == null ? "<null>" : shader.name) + "\"");
 
-                    if (shader != null && !shaders.ContainsKey(shader))
-                        shaders[shader] = material.name;
+                    // Reference equality, not Equals: two renderers may carry genuinely distinct
+                    // materials that share a name (Cube and Cube.001 are both "greydwarf_elite"),
+                    // and those are exactly the pair worth telling apart — LevelEffects tints only
+                    // one of them.
+                    bool known = false;
+                    for (int i = 0; i < seen.Count; i++)
+                    {
+                        if (ReferenceEquals(seen[i].Material, material)) { known = true; break; }
+                    }
+
+                    if (!known) seen.Add(new MaterialUse { Material = material, OwnerPath = path });
                 }
             }
         }
 
-        private static void Shaders(StringBuilder sb, Dictionary<Shader, string> shaders)
+        private static void MaterialProperties(StringBuilder sb, List<MaterialUse> seen)
         {
-            if (shaders.Count == 0) { sb.AppendLine("  none"); return; }
+            if (seen.Count == 0) { sb.AppendLine("  none"); return; }
 
-            foreach (var pair in shaders)
+            foreach (var use in seen)
             {
-                var shader = pair.Key;
-                sb.AppendLine();
-                sb.AppendLine("  shader \"" + shader.name + "\"   (values sampled from material \"" + pair.Value + "\")");
+                var material = use.Material;
+                if (material == null) continue;
 
-                Material sample = null;
-                try { sample = new Material(shader); } catch { }
+                var shader = material.shader;
+                if (shader == null) { sb.AppendLine("  material \"" + material.name + "\" has no shader"); continue; }
+
+                sb.AppendLine();
+                sb.AppendLine("  material \"" + material.name + "\"   shader \"" + shader.name + "\"");
+                sb.AppendLine("    on: " + use.OwnerPath);
 
                 int count;
                 try { count = shader.GetPropertyCount(); }
@@ -347,7 +380,11 @@ namespace ICanShowYouTheWorld.RunMode
                     {
                         string name = shader.GetPropertyName(i);
                         ShaderPropertyType type = shader.GetPropertyType(i);
-                        line = string.Format("    {0,-28} {1,-8} {2}", name, type, ValueOf(sample, name, type));
+
+                        // Read from the creature's OWN material. Nothing is constructed and nothing
+                        // is assigned, so this still observes without disturbing — the property that
+                        // the old `new Material(shader)` sample was wrongly believed to provide.
+                        line = string.Format("    {0,-28} {1,-8} {2}", name, type, ValueOf(material, name, type));
                     }
                     catch (Exception ex)
                     {
@@ -355,8 +392,6 @@ namespace ICanShowYouTheWorld.RunMode
                     }
                     sb.AppendLine(line);
                 }
-
-                if (sample != null) UnityEngine.Object.Destroy(sample);
             }
         }
 

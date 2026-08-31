@@ -56,6 +56,23 @@ namespace ICanShowYouTheWorld.RunMode
             /// <summary>Emissive colour. This is what makes a thing look lit from inside.</summary>
             public Color? Emission;
 
+            /// <summary>
+            /// Emissive colour for the EYES alone, when the creature keeps them on their own
+            /// material. Null leaves them with whatever <see cref="Emission"/> gives the body.
+            ///
+            /// Worth its own field because the eyes are the one part a player reads at a distance,
+            /// in the dark, before anything else resolves. A probe of Greydwarf_Elite showed them
+            /// as a separate "eye_red" material on the Standard shader — separate from the body's
+            /// two Custom/Creature renderers — so they can burn a different colour than the hide
+            /// for nothing but this field. Deer and greyling carry the same arrangement.
+            ///
+            /// Matched on the material NAME containing "eye", which is asset data and therefore
+            /// the one thing here that can silently stop matching. It degrades honestly: no match
+            /// means the eyes simply take the body treatment, which is what they did before this
+            /// existed. <see cref="Apply"/> says so in the log rather than leaving it a mystery.
+            /// </summary>
+            public Color? EyeEmission;
+
             /// <summary>Multiplied into the existing scale, so a star's own growth is kept.</summary>
             public float ScaleMultiplier = 1f;
 
@@ -89,11 +106,16 @@ namespace ICanShowYouTheWorld.RunMode
 
         private static void Recolour(GameObject creature, Look look)
         {
-            if (look.Hue == null && look.Saturation == null && look.Value == null && look.Emission == null)
+            if (look.Hue == null && look.Saturation == null && look.Value == null &&
+                look.Emission == null && look.EyeEmission == null)
                 return;
 
             var renderers = creature.GetComponentsInChildren<Renderer>(includeInactive: true);
             if (renderers == null) return;
+
+            // Only to report an EyeEmission that asked for eyes this creature does not have.
+            bool wantedEyes = look.EyeEmission != null;
+            bool foundEyes = false;
 
             foreach (var renderer in renderers)
             {
@@ -113,6 +135,9 @@ namespace ICanShowYouTheWorld.RunMode
                 {
                     if (material == null) continue;
 
+                    bool isEye = IsEyeMaterial(material);
+                    if (isEye) foundEyes = true;
+
                     // Every write is guarded: these four exist on Valheim's creature shader and
                     // not on, say, an eye or a cape using something else. Setting a property a
                     // shader does not have is a silent no-op in Unity, which is exactly the kind
@@ -126,18 +151,41 @@ namespace ICanShowYouTheWorld.RunMode
                     if (look.Value != null && material.HasProperty(ValueId))
                         material.SetFloat(ValueId, look.Value.Value);
 
-                    if (look.Emission != null && material.HasProperty(EmissionId))
+                    // The eyes win where both are set: a look that names them has said something
+                    // more specific than the one covering the whole hide.
+                    Color? emission = isEye && look.EyeEmission != null ? look.EyeEmission : look.Emission;
+
+                    if (emission != null && material.HasProperty(EmissionId))
                     {
-                        material.SetColor(EmissionId, look.Emission.Value);
+                        material.SetColor(EmissionId, emission.Value);
 
                         // Standard-shader materials ignore _EmissionColor unless the keyword is
                         // on. Valheim's creature shader does not need it; harmless where it is
-                        // not read, and the difference between glowing and not where it is.
+                        // not read, and the difference between glowing and not where it is. The
+                        // eyes are Standard on every creature probed, so this is the line that
+                        // makes EyeEmission visible at all.
                         try { material.EnableKeyword("_EMISSION"); } catch { }
                     }
                 }
             }
+
+            if (wantedEyes && !foundEyes)
+            {
+                Debug.Log("[ICanShowYouTheWorld] " + creature.name + " has no eye material — its " +
+                          "EyeEmission was ignored and the body's emission used throughout. Cosmetic only.");
+            }
         }
+
+        /// <summary>
+        /// Whether a material is a creature's eyes, by name.
+        ///
+        /// Valheim names them plainly — "eye_red" on greydwarves and their kin — and there is no
+        /// component or shader that distinguishes an eye, so the name is the only handle available.
+        /// A miss costs the eye treatment and nothing else; see <see cref="Look.EyeEmission"/>.
+        /// </summary>
+        private static bool IsEyeMaterial(Material material) =>
+            material.name != null &&
+            material.name.IndexOf("eye", StringComparison.OrdinalIgnoreCase) >= 0;
 
         /// <summary>
         /// A real point light on the creature, so it lights the ground and the trees around it.
@@ -174,6 +222,16 @@ namespace ICanShowYouTheWorld.RunMode
         /// The oldest splinter, glutted on what the forest took. Deadwood grey-green, and lit from
         /// inside in PROPORTION to the lights it ate — the arrival line reads the ledger out loud,
         /// and now so does the creature.
+        ///
+        /// The eyes go their own way, and they are the part that arrives first. A probe of
+        /// Greydwarf_Elite put them on a separate "eye_red" material, so they can be pushed well
+        /// past the hide without washing the whole creature out: they start as banked embers on a
+        /// Gatherer that has eaten nothing and end near white-gold on a full one. It comes at you
+        /// through trees at night, and this is what you see before the silhouette resolves.
+        ///
+        /// For scale, Valheim's own two-star brute is a 1.2x greydwarf with a hue shift of -0.11
+        /// and no emission at all. Everything here is deliberately an order of magnitude louder
+        /// than that, because this one is a character rather than a difficulty tier.
         /// </summary>
         public static Look Gatherer(int lightsEaten)
         {
@@ -185,6 +243,7 @@ namespace ICanShowYouTheWorld.RunMode
                 Saturation = -0.25f,
                 Value = -0.2f + fed * 0.25f,
                 Emission = Color.Lerp(new Color(0.10f, 0.09f, 0.04f), new Color(1.00f, 0.86f, 0.35f), fed),
+                EyeEmission = Color.Lerp(new Color(0.85f, 0.35f, 0.05f), new Color(1.00f, 0.95f, 0.70f), fed),
                 LightRange = 6f + fed * 10f,
                 LightColor = new Color(1f, 0.85f, 0.45f),
                 LightIntensity = 1f + fed * 1.5f,
