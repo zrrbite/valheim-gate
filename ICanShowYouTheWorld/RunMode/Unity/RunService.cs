@@ -2291,6 +2291,11 @@ namespace ICanShowYouTheWorld.RunMode
             PollLightForfeit();
             PollGatherer();
             PollCouriers();
+            // AFTER the CollectItem measuring above, never before it. The exemption already keeps
+            // a wanted item in the pack, so this is belt and braces — but an ordering that only
+            // works because of a filter elsewhere is one refactor away from a step that cannot be
+            // completed by doing what it says.
+            AutoStashMaterials();
             PollWhispers();
             PollStepOpenings();
             PollForest();
@@ -5123,6 +5128,62 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         public int DepositMaterials()
         {
+            // The button takes EVERYTHING, including what a quest is counting. Asking for it is an
+            // explicit act, and second-guessing an explicit act is worse than obeying a costly one:
+            // a player who empties their pack mid-collect-step can see the tracker fall and pull
+            // the items back out. Only the automatic path, which nobody asked for at that moment,
+            // has to be careful. See AutoStashMaterials.
+            int moved = MoveMaterialsToStash(null, out int candidates);
+
+            if (moved > 0)
+            {
+                Message($"Stashed {moved} items.");
+                SaveState();
+            }
+            else if (candidates > 0)
+            {
+                Message("Stash is full.");
+            }
+
+            return moved;
+        }
+
+        /// <summary>
+        /// The automatic half of the stash, behind <see cref="IConfiguration.RunAutoStash"/>:
+        /// materials leave the pack as they are gathered, so a run spends its inventory on tools,
+        /// food and arrows rather than on ore.
+        ///
+        /// EXEMPT: anything a live collect step is counting. CollectItem measures what is HELD, so
+        /// an unguarded auto-stash would empty the pack faster than the poll could read it and
+        /// leave "Take cores from the dead (10)" sitting at zero with the cores visibly in the
+        /// stash — a step that cannot be completed by doing exactly what it asks. The exemption
+        /// list is built from the same CollectItemParams the measuring uses, so the two can never
+        /// disagree about what a step wants.
+        ///
+        /// Quiet by design. It runs on the poll and says nothing; a message every time a berry
+        /// moved would be its own kind of noise, and the stash panel is where the answer lives.
+        /// Saving is left to the run's ordinary autosave for the same reason.
+        /// </summary>
+        private void AutoStashMaterials()
+        {
+            if (!_active || _frozen || _cfg == null || !_cfg.RunAutoStash) return;
+
+            try
+            {
+                var wanted = new HashSet<string>(MeasuredChallenges().SelectMany(CollectItemParams));
+                MoveMaterialsToStash(wanted, out _);
+            }
+            catch (Exception ex) { LogOnce("auto-stash", ex); }
+        }
+
+        /// <summary>
+        /// Moves unequipped materials into the stash, skipping any whose name is in
+        /// <paramref name="exempt"/> (null exempts nothing). Reports how many stacks were eligible
+        /// so the caller can tell "nothing to move" from "stash refused it".
+        /// </summary>
+        private int MoveMaterialsToStash(HashSet<string> exempt, out int candidateCount)
+        {
+            candidateCount = 0;
             if (!_active) return 0;
 
             var player = Player.m_localPlayer;
@@ -5133,7 +5194,13 @@ namespace ICanShowYouTheWorld.RunMode
                 .Where(i => i != null && i.m_shared != null && !i.m_equipped && i.m_stack > 0)
                 .Where(i => i.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Material)
                 .Where(i => i.m_dropPrefab != null)
+                // Matched on the localisation token, which is what CollectItem counts — see
+                // CountHeld. Comparing prefab names here and tokens there is how the two halves
+                // would quietly stop agreeing.
+                .Where(i => exempt == null || !exempt.Contains(i.m_shared.m_name))
                 .ToList();
+
+            candidateCount = candidates.Count;
 
             int moved = 0;
             foreach (var item in candidates)
@@ -5145,16 +5212,6 @@ namespace ICanShowYouTheWorld.RunMode
 
                 inventory.RemoveItem(item);
                 moved += taken;
-            }
-
-            if (moved > 0)
-            {
-                Message($"Stashed {moved} items.");
-                SaveState();
-            }
-            else if (candidates.Count > 0)
-            {
-                Message("Stash is full.");
             }
 
             return moved;

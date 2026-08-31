@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using UnityEngine;
 
@@ -79,6 +79,7 @@ namespace ICanShowYouTheWorld.Core
         float RunGathererGrowthPerLight { get; set; }
         int RunLightForfeitLost { get; set; }
         bool RunDevMode { get; set; }
+        bool RunAutoStash { get; set; }
         string RunLightMusic { get; set; }
         float RunStrayLightMinutes { get; set; }
         float RunLightConvergeSeconds { get; set; }
@@ -252,6 +253,13 @@ namespace ICanShowYouTheWorld.Core
         // aid somebody will forget is running.
         [SerializeField] private bool runDevMode = false;
 
+        // Materials go to the stash the moment they are picked up, minus anything a live
+        // collect step is asking for (see RunService.AutoStashMaterials). OFF by default: it
+        // removes the carry decision the stash's own design says to preserve for carried goods,
+        // which is a taste, not an improvement, and an existing run should not change under
+        // its player because a new version shipped.
+        [SerializeField] private bool runAutoStash = false;
+
         // Music cue for the light race. A NAME from the game's music table, which is asset
         // data — run start logs whether it resolves. Empty disables the cue.
         [SerializeField] private string runLightMusic = "boss_eikthyr";
@@ -344,6 +352,7 @@ namespace ICanShowYouTheWorld.Core
         public float RunGathererGrowthPerLight { get => runGathererGrowthPerLight; set => runGathererGrowthPerLight = value; }
         public int RunLightForfeitLost { get => runLightForfeitLost; set => runLightForfeitLost = value; }
         public bool RunDevMode { get => runDevMode; set => runDevMode = value; }
+        public bool RunAutoStash { get => runAutoStash; set => runAutoStash = value; }
         public string RunLightMusic { get => runLightMusic; set => runLightMusic = value; }
         public float RunStrayLightMinutes { get => runStrayLightMinutes; set => runStrayLightMinutes = value; }
         public float RunLightConvergeSeconds { get => runLightConvergeSeconds; set => runLightConvergeSeconds = value; }
