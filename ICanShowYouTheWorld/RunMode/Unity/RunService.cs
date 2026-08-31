@@ -3843,19 +3843,31 @@ namespace ICanShowYouTheWorld.RunMode
             // later act's step is dealt — the step completes instantly and hands over its reward for
             // nothing. This is invisible in review and obvious in play, which is the worst
             // combination, so it is checked here.
+            // The SIDE POOL is scanned alongside the acts, and it was the hole in this check.
+            //
+            // The scan walked _acts only, so it could see two acts claiming a category and was
+            // blind to a side challenge claiming one an act already had. s-boat sat in that blind
+            // spot the whole time: build the raft in Act II and it completes for free the moment
+            // it is dealt, paying two heat, with the validator reporting all clear. A check whose
+            // coverage is narrower than the bug it describes is the more dangerous half of having
+            // a check at all.
+            var groups = _acts
+                .Select(a => new { Label = a.Label, Steps = (IEnumerable<ChallengeDefinition>)a.AllSteps })
+                .Concat(new[] { new { Label = "the side pool", Steps = (IEnumerable<ChallengeDefinition>)BuildFullPool() } });
+
             var categoryOwners = new Dictionary<string, string>();
-            foreach (var act in _acts)
+            foreach (var group in groups)
             {
-                foreach (var category in act.AllSteps
+                foreach (var category in group.Steps
                              .Where(c => c.Kind == ChallengeKind.BuildPiece && !string.IsNullOrEmpty(c.Param))
                              .Select(c => c.Param)
                              .Distinct())
                 {
                     if (categoryOwners.TryGetValue(category, out var owner))
                         Debug.LogError($"[ICanShowYouTheWorld] Build category '{category}' is used by both " +
-                                       $"{owner} and {act.Label} — the run-long latch will auto-complete the later one.");
+                                       $"{owner} and {group.Label} — the run-long latch will auto-complete the later one.");
                     else
-                        categoryOwners[category] = act.Label;
+                        categoryOwners[category] = group.Label;
                 }
             }
         }
@@ -6070,8 +6082,23 @@ namespace ICanShowYouTheWorld.RunMode
 
             new ChallengeDefinition { Id = "alt-150",     Tier = 3, Kind = ChallengeKind.ReachAltitude, Param = "", Target = 150, HeatReward = 2, Display = "Climb to 150m altitude" },
             new ChallengeDefinition { Id = "alt-90",      Tier = 1, Kind = ChallengeKind.ReachAltitude, Param = "", Target = 90,  HeatReward = 1, Display = "Climb to 90m altitude" },
-            new ChallengeDefinition { Id = "c-wood",      Tier = 0, Kind = ChallengeKind.CollectItem, Param = "$item_wood",  Target = 25, HeatReward = 1, Display = "Hold 25 Wood" },
-            new ChallengeDefinition { Id = "c-stone",     Tier = 0, Kind = ChallengeKind.CollectItem, Param = "$item_stone", Target = 25, HeatReward = 1, Display = "Hold 25 Stone" },
+            // These were "Hold 25 Wood" and "Hold 25 Stone", and they paid for nothing.
+            //
+            // CollectItem measures what is CARRIED, and this saga hands out wood by the armful —
+            // 25 from mq-axe, 40 from mq-hammer, 40 from mq-shelter, 30 from mq-bed, 30 from
+            // mq-comfort, 40 each from the raft and the cart. Any player an hour in is holding 25
+            // wood permanently, so both of these completed on the tick they were dealt and paid
+            // heat for a state the player could not avoid being in. A quest that cannot be failed
+            // and cannot be worked at is not a quest, it is a tax rebate.
+            //
+            // As StatDelta they measure the ACTION, from the moment the slot is dealt: swing an
+            // axe, swing a pick. Nothing already in the pack counts, which is the whole point.
+            //
+            // Chopping has no other challenge, so 25 stands alone. Mining already has s-mine (35)
+            // and s-mine2 (70), so this is deliberately the bottom rung of that ladder rather than
+            // a third copy of it — the same shape as s-pickup/s-pickup2 and s-kills/s-kills2.
+            new ChallengeDefinition { Id = "c-wood",      Tier = 0, Kind = ChallengeKind.StatDelta, Param = "TreeChops", Target = 25, HeatReward = 1, Display = "Fell timber (25 chops)" },
+            new ChallengeDefinition { Id = "c-stone",     Tier = 0, Kind = ChallengeKind.StatDelta, Param = "MineHits",  Target = 15, HeatReward = 1, Display = "Break stone (15 hits)" },
             // Fishing bounties live in the POOL rather than the questline: they are the kind of
             // thing you take on when you fancy it, and the pool is where optional heat is bought.
             new ChallengeDefinition { Id = "c-fishhaul", Tier = 1, Kind = ChallengeKind.PlayerState, Param = "FishHeld",       Target = 8, HeatReward = 2, Display = "A day at the water (8 fish)" },
@@ -6138,7 +6165,15 @@ namespace ICanShowYouTheWorld.RunMode
             // paddling off a beach usually still reads as the shore's own biome — the gate really
             // fires for players genuinely out on open water. Never offering is the right way to be
             // wrong here.
-            new ChallengeDefinition { Id = "s-boat",   Tier = 1, Kind = ChallengeKind.BuildPiece, Param = "Ship", Target = 1, Biomes = (int)Heightmap.Biome.Ocean, HeatReward = 2, Display = "Build a boat" },
+            // There was an "s-boat" (BuildPiece/Ship) here. It is gone for the same reason
+            // sw-karve went: Act II's bf-raft claims the Ship category and _builtSeen latches for
+            // the whole run, so by the time a run is out on open water enough to be OFFERED an
+            // ocean challenge it necessarily owns a boat — and this one completed on the tick it
+            // was dealt, for two heat, every time.
+            //
+            // Nothing is lost. The two sail challenges below already carry the "this run owns a
+            // boat" meaning properly, as a RequiresBuilt GATE rather than as an objective, and
+            // they ask for something a boat-owner still has to go and do.
             new ChallengeDefinition { Id = "s-sail",   Tier = 2, Kind = ChallengeKind.StatDelta, Param = "DistanceSail",     Target = 180, Biomes = (int)Heightmap.Biome.Ocean, RequiresBuilt = "Ship", HeatReward = 2, Display = "Sail for 90 seconds" },
             new ChallengeDefinition { Id = "s-sail2",  Tier = 2, Kind = ChallengeKind.StatDelta, Param = "DistanceSail",     Target = 420, Biomes = (int)Heightmap.Biome.Ocean, RequiresBuilt = "Ship", HeatReward = 3, Display = "Sail for 3 minutes" },
 
@@ -6829,17 +6864,18 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
-                // A cart needs bronze nails, so it cannot be built before the smelter — which is
-                // why it sits after it rather than with the homestead work it resembles. It is the
-                // first thing in the saga that makes ORE a solvable problem rather than a series
-                // of trips.
-                Id = "bf-cart", MainQuest = true, Track = ForgeTrackId, Kind = ChallengeKind.BuildPiece,
-                Param = "Cart", Target = 1, Display = "Raise a cart",
-                RewardText = "Bronze nails, and iron to come",
-                Hint = "Wood and bronze nails, at the workbench. It hates hills.",
-            },
-            new ChallengeDefinition
-            {
+                // FIRST on the forge track, and it has to be something like this.
+                //
+                // The cart below used to be first, and its own comment said it "sits after the
+                // smelter" — which was true of the source order and false of the track. A track is
+                // its own linear chain, so bf-cart was the opening step of one of the two things
+                // the player sees on arriving in Act II, while needing bronze nails that cannot
+                // exist until bf-smelter completes on the OTHER track six steps away. Half the
+                // act's visible objectives were a locked door.
+                //
+                // A raft is wood and resin at any shore, so the track now opens with something the
+                // player can do on the day they arrive.
+                //
                 // The Elder's altar respects no coastline — the owner crossed an ocean to reach
                 // his, with no step acknowledging the trip. A raft is cheap, buildable on any
                 // shore, and completable even on a world where the altar is walkable, which is
@@ -6849,6 +6885,17 @@ namespace ICanShowYouTheWorld.RunMode
                 Param = "Ship", Target = 1, Display = "Raise a raft",
                 RewardText = "Provisions for a crossing",
                 Hint = "The Elder does not always wait on your shore. Wood and resin, at the water.",
+            },
+            new ChallengeDefinition
+            {
+                // A cart needs bronze nails, so it cannot be built before the smelter. It now
+                // genuinely sits after it — second on this track rather than first, by which time
+                // the other track has had time to deliver bronze. It is the first thing in the
+                // saga that makes ORE a solvable problem rather than a series of trips.
+                Id = "bf-cart", MainQuest = true, Track = ForgeTrackId, Kind = ChallengeKind.BuildPiece,
+                Param = "Cart", Target = 1, Display = "Raise a cart",
+                RewardText = "Bronze nails, and iron to come",
+                Hint = "Wood and bronze nails, at the workbench. It hates hills.",
             },
             new ChallengeDefinition
             {
