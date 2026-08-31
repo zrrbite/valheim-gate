@@ -163,6 +163,7 @@ namespace ICanShowYouTheWorld.RunMode
         private static GUIStyle _smallStyle;
         private static GUIStyle _readyStyle;
         private static GUIStyle _alertStyle;
+        private static GUIStyle _alertSmallStyle;
 
         private static void EnsureStyles()
         {
@@ -215,6 +216,14 @@ namespace ICanShowYouTheWorld.RunMode
             };
             if (font != null) _alertStyle.font = font;
 
+            _alertSmallStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 9,
+                normal = { textColor = Color.white },
+                wordWrap = true,
+            };
+            if (font != null) _alertSmallStyle.font = font;
+
             _readyStyle = new GUIStyle(GUI.skin.label)
             {
                 fontStyle = FontStyle.Bold,
@@ -247,6 +256,15 @@ namespace ICanShowYouTheWorld.RunMode
         /// wants to be exactly HeatRed, or exactly gold, asks for this and gets it.
         /// </summary>
         public static GUIStyle Alert { get { EnsureStyles(); return _alertStyle; } }
+
+        /// <summary>
+        /// <see cref="Alert"/> for a line that must be legible but must not shout: caller-tinted
+        /// the same way, one size below <see cref="Small"/>, and not bold.
+        ///
+        /// This exists for the dev-mode banner, which is a long key list that has to sit above the
+        /// quest tracker without becoming the loudest thing on a panel it is not part of.
+        /// </summary>
+        public static GUIStyle AlertSmall { get { EnsureStyles(); return _alertSmallStyle; } }
 
         // --- Drawing helpers ---
 

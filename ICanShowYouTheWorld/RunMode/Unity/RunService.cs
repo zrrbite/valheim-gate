@@ -908,7 +908,17 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 _courierBrandAt = Time.time + 20f;
 
-                int live = 0;
+                // Forget couriers the world no longer holds, so the cap below can never wedge.
+                //
+                // _couriers otherwise only shrinks when a courier dies where we can see it. One
+                // that died in an unloaded zone, or was culled, would hold a slot for the rest of
+                // the run — and since the step wants FOUR lights, two stuck slots would leave it
+                // permanently unfinishable. A ZDO that ZDOMan cannot produce is gone for good;
+                // one merely unloaded still resolves, and still counts, which is correct: it is
+                // out there wearing the brand.
+                PruneCouriers();
+
+                int live;
                 Character candidate = null;
 
                 var all = Character.GetAllCharacters();
@@ -921,7 +931,7 @@ namespace ICanShowYouTheWorld.RunMode
                     var zdo = view != null && view.IsValid() ? view.GetZDO() : null;
                     if (zdo == null) continue;
 
-                    if (_couriers.Contains(zdo.m_uid)) { live++; continue; }
+                    if (_couriers.Contains(zdo.m_uid)) continue;
 
                     if (candidate == null &&
                         c.GetHealth() >= c.GetMaxHealth() &&
@@ -930,6 +940,19 @@ namespace ICanShowYouTheWorld.RunMode
                 }
 
                 // Two at large keeps couriers an event, not a skin every greydwarf wears.
+                //
+                // Counted from _couriers, NOT from how many are currently loaded. That was the
+                // bug: a branded courier that wandered off or whose zone unloaded vanished from
+                // Character.GetAllCharacters(), the loaded count fell below two, and twenty
+                // seconds later the nearest healthy greydwarf was branded to replace one that was
+                // never gone. Walk a forest at night and the forest turns into couriers behind
+                // you — reported as "mobs turn into couriers as they come close", which is
+                // exactly what it looked like from the inside.
+                //
+                // _couriers only ever loses an entry when a courier DIES (see IsCourier), so this
+                // is the honest count of branded-and-still-out-there. The cap now means what its
+                // comment always claimed: two at large, and no more until you cut one down.
+                live = _couriers.Count;
                 if (live >= 2) return;
 
                 if (candidate == null)
@@ -967,6 +990,33 @@ namespace ICanShowYouTheWorld.RunMode
                 Message($"A courier moves in the dark \u2014 {BiomeCompass.Compass(delta)}, {Mathf.Round(delta.magnitude / 10f) * 10f:0}m.");
             }
             catch (Exception ex) { LogOnce("courier-brand", ex); }
+        }
+
+        /// <summary>
+        /// Drops branded couriers whose ZDO the world can no longer produce — killed out of
+        /// sight, or culled. See the call site in <see cref="PollCouriers"/> for why it matters.
+        /// </summary>
+        private void PruneCouriers()
+        {
+            if (_couriers.Count == 0) return;
+
+            try
+            {
+                var man = ZDOMan.instance;
+                if (man == null) return;
+
+                // Collected first: removing from a HashSet while enumerating it throws.
+                List<ZDOID> gone = null;
+                foreach (var id in _couriers)
+                {
+                    if (man.GetZDO(id) != null) continue;
+                    (gone ?? (gone = new List<ZDOID>())).Add(id);
+                }
+
+                if (gone != null)
+                    foreach (var id in gone) _couriers.Remove(id);
+            }
+            catch (Exception ex) { LogOnce("courier-prune", ex); }
         }
 
         /// <summary>The forest's porters: anything that carries harvest to the Elder.</summary>
@@ -6756,8 +6806,15 @@ namespace ICanShowYouTheWorld.RunMode
                 // The smelter needs surtling cores and the cores are in the burial chambers — the
                 // saga now SAYS so as a step instead of leaving it to a hint. The crypt dive is
                 // Act II's first real dungeon and deserved to be on the questline, not implied.
+                //
+                // Ten, not two. Two was a formality: the act handed out about forty cores in step
+                // rewards against a smelter, kiln and portal costing twelve, so the dungeon the
+                // questline had just spent two steps guiding the player into was worth less than
+                // the paperwork for arriving. Ten is what the chambers actually hold in their wall
+                // fires, weighs 50 of a 300 carry, and covers the smelter and kiln exactly — so
+                // the dive is where the act's iron economy genuinely starts.
                 Id = "bf-crypt", MainQuest = true, Kind = ChallengeKind.CollectItem, Param = "$item_surtlingcore",
-                Target = 2, Display = "Take cores from the dead (2)",
+                Target = 10, Display = "Take cores from the dead (10)",
                 RewardText = "Flint arrows, and coal for the smelter to come",
                 Hint = "Inside the chambers. Green fires in the walls — the cores are what burns in them.",
             },
@@ -6765,7 +6822,10 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 Id = "bf-smelter", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Smelter",
                 Target = 1, Display = "Build a smelter",
-                RewardText = "Ore, and surtling cores enough to never crawl a crypt again",
+                // Was "cores enough to never crawl a crypt again", and it paid thirty to prove it.
+                // That line was the crypt dive's obituary: it told the player the dungeon was a
+                // one-off errand and the real supply arrived by post.
+                RewardText = "Ore to feed it, and cores enough for a portal home",
                 Hint = "Stone, and surtling cores from the burial chambers.",
             },
             new ChallengeDefinition
@@ -7321,11 +7381,21 @@ namespace ICanShowYouTheWorld.RunMode
                 // a reason to exist, bf-smelter pays raw again to feed it, and bf-bronze pays
                 // finished bronze so the armour is a decision rather than another smelting trip.
                 ["bf-arrive"] = new[] { ("Torch", 1), ("ArrowFlint", 40) },
-                // Surtling cores here, NOT at the portal step two links later: a smelter needs
-                // them and they come from burial chambers, so without this the step quietly
-                // sends the player crypt-hunting. Same rule as the deer trophies and ancient
-                // seeds — the run gates on the FIGHT, never on a scavenger hunt.
-                ["bf-copper"] = new[] { ("CopperOre", 20), ("TinOre", 10), ("Coal", 20), ("SurtlingCore", 8) },
+                // NO surtling cores here any more, and this is load-bearing rather than tidying.
+                //
+                // They used to be paid here on the rule that the run gates on the FIGHT and never
+                // on a scavenger hunt: a smelter needs cores, cores are in crypts, so the step
+                // paid them rather than quietly sending the player crypt-hunting. That rule was
+                // right when the crypt was not on the questline. It now is — bf-tomb finds the
+                // chambers and bf-crypt dives them — so the hunt is the content, not a detour
+                // around it.
+                //
+                // Worse than redundant: bf-copper runs BEFORE bf-crypt, and CollectItem latches on
+                // what is held. Eight free cores meant the ten-core dive was most of the way done
+                // before the player found the door, and a bigger handout would have completed it
+                // on sight. That is the Ship-category trap in a different costume — a step that
+                // reads as satisfied because an earlier step paid for it.
+                ["bf-copper"] = new[] { ("CopperOre", 20), ("TinOre", 10), ("Coal", 20) },
                 ["bf-portal"] = new[] { ("FineWood", 20), ("SurtlingCore", 4), ("GreydwarfEye", 10) },
                 // The plant step pays the QUEEN BEE the hive step needs, so the beehive is
                 // buildable when asked — the same lesson the smelter's surtling cores taught.
@@ -7345,7 +7415,10 @@ namespace ICanShowYouTheWorld.RunMode
                 // reward for a fight you have already had.
                 ["bf-tomb"] = new[] { ("Torch", 4), ("Resin", 20) },
                 ["bf-crypt"] = new[] { ("ArrowFlint", 60), ("Coal", 20) },
-                ["bf-smelter"] = new[] { ("CopperOre", 30), ("TinOre", 15), ("Coal", 30), ("SurtlingCore", 30) },
+                // Five cores, not thirty. Thirty was "never crawl a crypt again" made literal, and
+                // it retired the dungeon the act had just introduced. Five covers the portal two
+                // steps later with a little spare; anything more comes back out of the ground.
+                ["bf-smelter"] = new[] { ("CopperOre", 30), ("TinOre", 15), ("Coal", 30), ("SurtlingCore", 5) },
                 ["bf-intercept"] = new[] { ("Bronze", 5), ("MeadHealthMedium", 4) },
                 ["bf-raft"] = new[] { ("Sausages", 10), ("Wood", 40) },
                 ["bf-cart"] = new[] { ("BronzeNails", 40), ("Wood", 40) },

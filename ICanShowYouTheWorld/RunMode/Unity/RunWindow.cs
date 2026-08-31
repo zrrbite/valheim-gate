@@ -1057,11 +1057,13 @@ namespace ICanShowYouTheWorld.RunMode
             // and then reports its effects as bugs.
             if (run.DevMode)
             {
-                // Alert, not Small: contentColor multiplies, so tinting a muted style gave a
-                // dark red times a 72%-alpha parchment and produced something unreadable.
+                // AlertSmall, not Small: contentColor multiplies, so tinting a muted style gave a
+                // dark red times a 72%-alpha parchment and produced something unreadable. Small
+                // in SIZE without being muted in colour is what this line actually wanted — it
+                // has to be readable and it has to stop dominating the panel it sits above.
                 GUI.contentColor = RunTheme.HeatRed;
                 GUILayout.Label("DEV MODE  +complete  -time  *items  .light  /god+speed  Ent:home  Del:slay  Home:map-tp  PgUp:probe",
-                    RunTheme.Alert);
+                    RunTheme.AlertSmall);
                 GUI.contentColor = Color.white;
             }
 
