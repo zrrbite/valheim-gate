@@ -160,13 +160,19 @@ namespace ICanShowYouTheWorld.RunMode
         /// Creature names the questline reports that are NOT Valheim prefabs, and which the name
         /// validator must therefore not look up.
         ///
-        /// Only the Herald so far. It is an ordinary Deer wearing a name, so its step cannot match
-        /// on "Deer" — any deer would finish it — and the host reports a synthetic name instead when
-        /// that specific creature dies. Looking it up in ZNetScene would correctly report that no
-        /// such creature exists, which would be a false alarm every launch.
+        /// The Herald and the Gatherer. Each is an ordinary prefab wearing a name — a Deer and a
+        /// Greydwarf_Elite respectively — so their steps cannot match on the prefab, which any
+        /// member of the species would finish. The host matches the one creature by ZDOID and
+        /// reports a synthetic name instead when it dies. Looking that name up in ZNetScene would
+        /// correctly report that no such creature exists, which is a false alarm every launch.
+        ///
+        /// ADD TO THIS SET when a named creature is added. The Gatherer was not, and spent its
+        /// first three builds being reported as a broken kill quest that in fact worked perfectly —
+        /// which is precisely the "validator that cries wolf" failure this whole check exists to
+        /// avoid. See <see cref="SagaNames"/> for the full vocabulary of synthetic names.
         /// </summary>
         private static readonly HashSet<string> SyntheticCreatureNames =
-            new HashSet<string> { DeerHerd.HeraldKillName };
+            new HashSet<string> { DeerHerd.HeraldKillName, TheGatherer.KillName };
 
         /// <summary>The saga's acts, built once per service. Pure content — see <see cref="Acts"/>.</summary>
         private readonly List<ActDefinition> _acts = Acts();
@@ -6956,21 +6962,21 @@ namespace ICanShowYouTheWorld.RunMode
                 RewardText = "Bronze and bone for the work",
                 Hint = "A cartography table. Bronze, fine wood and bone fragments.",
             },
-            new ChallengeDefinition
-            {
-                // A karve rather than a raft: the swamp's water is a road, and the act's spoils
-                // are heavy. Ship is a compiled component, so this covers raft, karve and longship
-                // alike — the quest is "you can travel by water now".
-                Id = "sw-karve", MainQuest = true, Track = MarshTrackId, Kind = ChallengeKind.BuildPiece,
-                Param = "Ship", Target = 1, Display = "Build a boat",
-                RewardText = "Iron nails, and a hold worth filling",
-                Hint = "At the water's edge, with a workbench nearby.",
-            },
+            // There was a "Build a boat" step here (sw-karve). It is gone because Act II's bf-raft
+            // already claims the Ship category, and _builtSeen latches for the WHOLE run: the step
+            // read as satisfied the moment it was dealt and paid out for nothing. Ship is one
+            // compiled component covering raft, karve and longship alike, so no finer category
+            // could separate them without naming prefabs, which PieceCategories deliberately avoids.
+            //
+            // Little is lost by dropping it. sw-sail below cannot be done without a boat, so the
+            // "you travel by water now" beat is still here — earned by sailing rather than by
+            // owning. Its payout was folded into sw-sail rather than deleted, so the act keeps the
+            // iron nails it was counting on.
             new ChallengeDefinition
             {
                 Id = "sw-sail", MainQuest = true, Track = MarshTrackId, Kind = ChallengeKind.StatDelta,
                 Param = "DistanceSail", Target = 600, Display = "Sail the fens",
-                RewardText = "A full hold of provisions",
+                RewardText = "Iron nails, and a full hold of provisions",
                 Hint = "Follow the water inland. Most crypts sit on a shore.",
             },
             // "Kill 5 Blobs" and "Kill 3 Leeches" are clauses of "sw-cull" above now.
@@ -7356,8 +7362,8 @@ namespace ICanShowYouTheWorld.RunMode
                 ["sw-chart"] = new[] { ("Bronze", 10), ("BoneFragments", 20) },
                 ["sw-ironbar"] = new[] { ("Iron", 20), ("Coal", 30) },
                 ["sw-abom"] = new[] { ("MeadHealthMedium", 4), ("Sausages", 10) },
-                ["sw-karve"] = new[] { ("IronNails", 40), ("Wood", 40) },
-                ["sw-sail"] = new[] { ("Sausages", 10), ("MeadHealthMedium", 3) },
+                // Carries sw-karve's old payout as well — see the note beside sw-sail's definition.
+                ["sw-sail"] = new[] { ("IronNails", 40), ("Wood", 40), ("Sausages", 10), ("MeadHealthMedium", 3) },
                 ["sw-bonemass"] = new[] { ("Wishbone", 1) },
 
                 ["mt-arrive"] = new[] { ("MeadFrostResist", 5), ("WolfPelt", 10) },
