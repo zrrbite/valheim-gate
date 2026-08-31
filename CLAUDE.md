@@ -40,8 +40,24 @@ Scripts/upload_valheim.sh  # Uploads patched assembly_valheim.dll
 
 ### Version management
 ```bash
-Scripts/setversion.sh  # Generates Version.cs from git tags
+Scripts/nextversion.sh                 # prints the next version, e.g. 0.221.12-run.2026-08-31c
+git tag "$(Scripts/nextversion.sh)"    # tag it
+Scripts/setversion.sh                  # writes the latest tag into Assets/Version.cs
 ```
+
+Builds are **date-based**: `<game version>-run.<YYYY-MM-DD>[letter]`. The letter is
+added from the second build of a day onward (`b`, `c`, …). This replaced an
+`alphaNN` counter that reached 95 and by then said nothing a date does not say
+better. The `<game version>` prefix is load-bearing — the deploy scripts guard on
+it and it records which Valheim API the DLL was compiled against.
+
+Three things parse the version out of the built DLL and all three still read the
+old `alphaNN` tags: `Scripts/stage_windows.sh`, `Scripts/make_release.sh`, and
+`dist/windows/Install-Mod.ps1`. Change the shape and you must change all three.
+
+**Order matters**: tag *before* `setversion.sh`, and stage *after* building, or
+`stage_windows.sh` refuses — it compares the built DLL's version against the tag
+precisely to stop a stale build shipping while reporting the right number.
 
 ### Unity version detection
 ```bash

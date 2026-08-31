@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Installs the ICanShowYouTheWorld Valheim mod on this Windows machine.
 
@@ -78,13 +78,16 @@ function Get-ModVersion {
 
         $text = [Text.Encoding]::Unicode.GetString([IO.File]::ReadAllBytes($Dll))
 
-        # The tagged shape first (0.221.12-run.alpha42.1), then the older plain
-        # shape (0.221.12-1) so this still works on a pre-Run-Mode build.
+        # Newest shape first: the DATE build (0.221.12-run.2026-08-31b), then the old
+        # alpha counter (0.221.12-run.alpha42.1), then the plain pre-Run-Mode shape
+        # (0.221.12-1). Order matters only because the first match wins, and the older
+        # patterns are kept so this still reads a DLL built before the change.
         #
-        # The optional .N is the BUILD number, and matching it is not cosmetic: without
-        # it this regex matches "alpha42" out of "alpha42.1" and prints a version that
-        # does not exist, which defeats the entire point of checking the popup.
-        foreach ($pattern in @('\d+\.\d+\.\d+-run\.alpha\d+(?:\.\d+)?', '\d+\.\d+\.\d+-\d+')) {
+        # The trailing [a-z] is the same-day build letter, and matching it is not
+        # cosmetic — for the same reason the alpha pattern had to match its optional
+        # .N. A regex that stops early prints a version that does not exist, which
+        # defeats the entire point of checking the popup.
+        foreach ($pattern in @('\d+\.\d+\.\d+-run\.\d{4}-\d{2}-\d{2}[a-z]?', '\d+\.\d+\.\d+-run\.alpha\d+(?:\.\d+)?', '\d+\.\d+\.\d+-\d+')) {
             $m = [regex]::Match($text, $pattern)
             if ($m.Success) { return $m.Value }
         }
