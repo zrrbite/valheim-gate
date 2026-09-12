@@ -195,7 +195,7 @@ Act VIII, which is a placeholder until the game has been asked what the Deep
 North's boss is called:
 
 ```powershell
-Select-String -Path "$env:USERPROFILE\AppData\LocalLow\IronGate\Valheim\Player.log" -Pattern "ICanShowYouTheWorld.*(Boss registry|Saga recipe|PLACEHOLDER)"
+Select-String -Path "$env:USERPROFILE\AppData\LocalLow\IronGate\Valheim\Player.log" -Pattern "ICanShowYouTheWorld.*(Boss registry|Saga recipe|Saga item|Thor|PLACEHOLDER)"
 ```
 
 - **Boss registry** — one line per altar the game knows (`boss=` and `key=` are
@@ -207,3 +207,9 @@ Select-String -Path "$env:USERPROFILE\AppData\LocalLow\IronGate\Valheim\Player.l
   prefab name is wrong and the Act I bow quest cannot be crafted.
 - **PLACEHOLDER** — the validator saying, once, that it skipped Act VIII.
   Expected until the names are filled in.
+- **Saga item created / registered** — Thor's bow exists and both registries
+  know it. These lines repeat on every world load, which is correct. A line
+  saying `NOT created` names what went wrong.
+- **Thor's bow lightning effect** — which effect prefab the flash uses. "No
+  lightning effect prefab resolved" means the bow still deals lightning
+  damage but shows nothing on impact.

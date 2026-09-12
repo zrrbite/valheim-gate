@@ -1,0 +1,314 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using UnityEngine;
+
+namespace ICanShowYouTheWorld.RunMode
+{
+    /// <summary>
+    /// An item of the saga's own, made by cloning one of the game's item prefabs at runtime and
+    /// changing its shared data — name, description, damage. No shipped assets: the model and
+    /// icon are the source item's.
+    /// </summary>
+    internal sealed class SagaItemDefinition
+    {
+        /// <summary>Prefab of the vanilla item to clone, e.g. "BowFineWood".</summary>
+        public string SourcePrefab;
+
+        /// <summary>Name of the clone. This is what saves, drops and recipes refer to — never change it once shipped.</summary>
+        public string PrefabName;
+
+        /// <summary>What the game shows. Plain text, not a "$" token: the localiser leaves it alone.</summary>
+        public string DisplayName;
+
+        public string Description;
+
+        /// <summary>Applied to the clone's OWN shared data once, after the copy.</summary>
+        public Action<ItemDrop.ItemData.SharedData> Tune;
+    }
+
+    /// <summary>
+    /// The saga's own items, and the two things they need to stay real: a place in the game's
+    /// registries, and their special behaviour.
+    ///
+    /// A cloned item is a GameObject the game never shipped, so nothing knows it unless it is
+    /// put in ObjectDB (what recipes and inventories resolve names through) and ZNetScene (what
+    /// dropped items in the world resolve through). Both registries are REBUILT on every world
+    /// load, so the check runs every frame and re-registers whenever either instance has changed.
+    /// Per frame, not per second, because the moment that matters is narrow: the player's
+    /// inventory is loaded a few frames after ObjectDB is, and a Thor's bow in a pack that loads
+    /// before the name resolves is silently dropped from the save. The check itself is two
+    /// reference comparisons.
+    ///
+    /// That is also why this is NOT run-only, unlike the recipe that makes the item: the bow
+    /// outlives the run it was strung in and must keep loading afterwards. The one thing this
+    /// cannot fix is the mod being absent — then the item is an unknown name and is lost from
+    /// any pack or world it was in. Documented in the act plans; accepted for a personal mod.
+    ///
+    /// The clones live under a holder object that is inactive and survives scene loads, so they
+    /// are never "in" the world and their ZNetViews never register a ZDO — the same trick the
+    /// game plays with its own prefab lists. Instantiating under an inactive parent is what
+    /// keeps Awake from running.
+    ///
+    /// Lightning on impact is done here too, because it is the ITEM's behaviour. The game plays
+    /// a projectile's hit effects from the ARROW, not the bow — so a bow cannot carry an effect of
+    /// its own in data. Instead, while Thor's bow is the weapon in hand, every arrow the player has
+    /// in flight is given a spawn-on-hit of the lightning effect the game already has. The
+    /// projectile's owner and weapon are private fields, read by reflection; nothing else is.
+    /// </summary>
+    internal sealed class SagaItems
+    {
+        public const string ThorsBowPrefab = "Saga_ThorsBow";
+        public const string ThorsBowName = "Thor’s bow";
+
+        /// <summary>The bow's own damage, on top of the Finewood bow it is cut from (32 pierce).</summary>
+        private const float ThorsBowLightning = 20f;
+        private const float ThorsBowLightningPerLevel = 4f;
+
+        /// <summary>Candidate lightning effects, the Herald's list; the first that resolves is used.</summary>
+        private static readonly string[] LightningPrefabs =
+            { "fx_eikthyr_stomp", "vfx_lightning", "fx_lightning", "fx_Eikthyr_stomp" };
+
+        public static readonly SagaItemDefinition[] All =
+        {
+            new SagaItemDefinition
+            {
+                SourcePrefab = "BowFineWood",
+                PrefabName = ThorsBowPrefab,
+                DisplayName = ThorsBowName,
+                Description = "Strung from the herd’s hide, sealed with the forest’s resin, taught by " +
+                              "a hunter who never loosed. The storm in it is Eikthyr’s own, turned.",
+                Tune = shared =>
+                {
+                    shared.m_damages.m_lightning = ThorsBowLightning;
+                    shared.m_damagesPerLevel.m_lightning = ThorsBowLightningPerLevel;
+                },
+            },
+        };
+
+        private const float StrikePollSeconds = 0.05f;
+
+        private GameObject _holder;
+        private readonly Dictionary<string, GameObject> _clones = new Dictionary<string, GameObject>();
+        private readonly HashSet<string> _reported = new HashSet<string>();
+
+        private ObjectDB _registeredDb;
+        private ZNetScene _registeredScene;
+
+        private GameObject _lightning;
+        private bool _lightningResolved;
+        private float _strikeTimer;
+        private readonly HashSet<int> _tunedProjectiles = new HashSet<int>();
+
+        private static readonly FieldInfo ProjectileOwner = typeof(Projectile).GetField("m_owner", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly FieldInfo ProjectileWeapon = typeof(Projectile).GetField("m_weapon", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly FieldInfo DbByHash = typeof(ObjectDB).GetField("m_itemByHash", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly FieldInfo DbByData = typeof(ObjectDB).GetField("m_itemByData", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly FieldInfo SceneNamed = typeof(ZNetScene).GetField("m_namedPrefabs", BindingFlags.Instance | BindingFlags.NonPublic);
+
+        /// <summary>Every frame. Cheap when nothing changed.</summary>
+        public void Ensure()
+        {
+            try
+            {
+                var odb = ObjectDB.instance;
+                var scene = ZNetScene.instance;
+
+                bool dbChanged = odb != null && !ReferenceEquals(odb, _registeredDb);
+                bool sceneChanged = scene != null && !ReferenceEquals(scene, _registeredScene);
+                if (!dbChanged && !sceneChanged) return;
+
+                // Clones need the source prefabs, which come from the same registries.
+                if (odb != null && odb.m_items != null) EnsureClones(odb, scene);
+
+                if (dbChanged && _clones.Count > 0) RegisterWithDb(odb);
+                if (sceneChanged && _clones.Count > 0) RegisterWithScene(scene);
+            }
+            catch (Exception ex)
+            {
+                ReportOnce("ensure", "[ICanShowYouTheWorld] Saga items could not be registered: " + ex.Message);
+            }
+        }
+
+        /// <summary>Every frame while the mod is loaded. Gives Thor's bow its lightning.</summary>
+        public void TickStrikes(float dt)
+        {
+            _strikeTimer += dt;
+            if (_strikeTimer < StrikePollSeconds) return;
+            _strikeTimer = 0f;
+
+            try
+            {
+                var player = Player.m_localPlayer;
+                if (player == null) return;
+
+                var weapon = player.GetCurrentWeapon();
+                if (weapon == null || weapon.m_shared == null || weapon.m_shared.m_name != ThorsBowName) return;
+
+                var lightning = Lightning();
+                if (lightning == null || ProjectileOwner == null || ProjectileWeapon == null) return;
+
+                var projectiles = UnityEngine.Object.FindObjectsByType<Projectile>(FindObjectsSortMode.None);
+                foreach (var p in projectiles)
+                {
+                    if (p == null) continue;
+
+                    int id = p.GetInstanceID();
+                    if (_tunedProjectiles.Contains(id)) continue;
+
+                    var owner = ProjectileOwner.GetValue(p) as Character;
+                    if (!ReferenceEquals(owner, player)) continue;
+
+                    var fired = ProjectileWeapon.GetValue(p) as ItemDrop.ItemData;
+                    if (fired == null || fired.m_shared == null || fired.m_shared.m_name != ThorsBowName) continue;
+
+                    p.m_spawnOnHit = lightning;
+                    p.m_spawnOnHitChance = 1f;
+                    _tunedProjectiles.Add(id);
+                }
+
+                // Instance ids are never reused within a session, but the set should not grow
+                // for the life of the process either.
+                if (_tunedProjectiles.Count > 512) _tunedProjectiles.Clear();
+            }
+            catch (Exception ex)
+            {
+                ReportOnce("strikes", "[ICanShowYouTheWorld] Thor's bow could not arm its arrows: " + ex.Message);
+            }
+        }
+
+        private void EnsureClones(ObjectDB odb, ZNetScene scene)
+        {
+            if (_holder == null)
+            {
+                _holder = new GameObject("saga_items");
+                _holder.SetActive(false);
+                UnityEngine.Object.DontDestroyOnLoad(_holder);
+            }
+
+            foreach (var def in All)
+            {
+                GameObject existing;
+                if (_clones.TryGetValue(def.PrefabName, out existing) && existing != null) continue;
+
+                var source = odb.GetItemPrefab(def.SourcePrefab);
+                if (source == null && scene != null) source = scene.GetPrefab(def.SourcePrefab);
+                if (source == null)
+                {
+                    ReportOnce(def.PrefabName + "-source",
+                        $"[ICanShowYouTheWorld] Saga item '{def.PrefabName}': source prefab '{def.SourcePrefab}' not found — item NOT created.");
+                    continue;
+                }
+
+                var clone = UnityEngine.Object.Instantiate(source, _holder.transform);
+                clone.name = def.PrefabName;
+
+                var drop = clone.GetComponent<ItemDrop>();
+                var sourceDrop = source.GetComponent<ItemDrop>();
+                if (drop == null || drop.m_itemData == null || drop.m_itemData.m_shared == null)
+                {
+                    UnityEngine.Object.Destroy(clone);
+                    ReportOnce(def.PrefabName + "-drop",
+                        $"[ICanShowYouTheWorld] Saga item '{def.PrefabName}': '{def.SourcePrefab}' is not an item — item NOT created.");
+                    continue;
+                }
+
+                // Instantiate copies serialised classes by value, so the shared data SHOULD be the
+                // clone's own. Checked rather than assumed: if it were the original's, tuning it
+                // would retune every Finewood bow in the world.
+                if (sourceDrop != null && ReferenceEquals(drop.m_itemData.m_shared, sourceDrop.m_itemData.m_shared))
+                {
+                    var copy = typeof(ItemDrop.ItemData.SharedData)
+                        .GetMethod("MemberwiseClone", BindingFlags.Instance | BindingFlags.NonPublic)
+                        ?.Invoke(drop.m_itemData.m_shared, null) as ItemDrop.ItemData.SharedData;
+                    if (copy == null)
+                    {
+                        UnityEngine.Object.Destroy(clone);
+                        ReportOnce(def.PrefabName + "-shared",
+                            $"[ICanShowYouTheWorld] Saga item '{def.PrefabName}': could not give it its own shared data — item NOT created.");
+                        continue;
+                    }
+                    drop.m_itemData.m_shared = copy;
+                }
+
+                var shared = drop.m_itemData.m_shared;
+                shared.m_name = def.DisplayName;
+                if (!string.IsNullOrEmpty(def.Description)) shared.m_description = def.Description;
+                try { def.Tune?.Invoke(shared); }
+                catch (Exception ex) { Debug.LogWarning($"[ICanShowYouTheWorld] Saga item '{def.PrefabName}' tuning failed: {ex.Message}"); }
+
+                // What a pack writes into the save is the drop prefab's NAME; it must be ours.
+                drop.m_itemData.m_dropPrefab = clone;
+
+                _clones[def.PrefabName] = clone;
+                Debug.Log($"[ICanShowYouTheWorld] Saga item created: {def.PrefabName} from {def.SourcePrefab} (\"{def.DisplayName}\").");
+            }
+        }
+
+        private void RegisterWithDb(ObjectDB odb)
+        {
+            var byHash = DbByHash?.GetValue(odb) as Dictionary<int, GameObject>;
+            var byData = DbByData?.GetValue(odb) as Dictionary<ItemDrop.ItemData.SharedData, GameObject>;
+
+            foreach (var clone in _clones.Values)
+            {
+                if (clone == null) continue;
+                if (!odb.m_items.Contains(clone)) odb.m_items.Add(clone);
+
+                int hash = clone.name.GetStableHashCode();
+                if (byHash != null) byHash[hash] = clone;
+
+                var drop = clone.GetComponent<ItemDrop>();
+                if (byData != null && drop != null && drop.m_itemData != null && drop.m_itemData.m_shared != null)
+                    byData[drop.m_itemData.m_shared] = clone;
+            }
+
+            if (byHash == null)
+                ReportOnce("db-hash", "[ICanShowYouTheWorld] Saga items: ObjectDB's hash table is not reachable — names may not resolve.");
+
+            _registeredDb = odb;
+            Debug.Log($"[ICanShowYouTheWorld] Saga items registered with ObjectDB: {string.Join(", ", _clones.Keys.ToArray())}.");
+        }
+
+        private void RegisterWithScene(ZNetScene scene)
+        {
+            var named = SceneNamed?.GetValue(scene) as Dictionary<int, GameObject>;
+
+            foreach (var clone in _clones.Values)
+            {
+                if (clone == null) continue;
+                if (scene.m_prefabs != null && !scene.m_prefabs.Contains(clone)) scene.m_prefabs.Add(clone);
+                if (named != null) named[clone.name.GetStableHashCode()] = clone;
+            }
+
+            if (named == null)
+                ReportOnce("scene-named", "[ICanShowYouTheWorld] Saga items: ZNetScene's prefab table is not reachable — a dropped saga item may not load.");
+
+            _registeredScene = scene;
+        }
+
+        private GameObject Lightning()
+        {
+            if (_lightningResolved && _lightning != null) return _lightning;
+
+            var scene = ZNetScene.instance;
+            if (scene == null) return null;
+
+            _lightningResolved = true;
+            _lightning = LightningPrefabs.Select(scene.GetPrefab).FirstOrDefault(p => p != null);
+            if (_lightning == null)
+                ReportOnce("lightning", "[ICanShowYouTheWorld] No lightning effect prefab resolved; Thor's bow strikes without a flash.");
+            else
+                Debug.Log($"[ICanShowYouTheWorld] Thor's bow lightning effect: {_lightning.name}.");
+
+            return _lightning;
+        }
+
+        private void ReportOnce(string key, string message)
+        {
+            if (!_reported.Add(key)) return;
+            Debug.LogError(message);
+        }
+    }
+}

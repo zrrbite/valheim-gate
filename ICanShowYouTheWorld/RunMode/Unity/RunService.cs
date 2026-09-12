@@ -189,6 +189,9 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>The saga's own crafting recipes, present only while a run is live. See <see cref="SagaRecipes"/>.</summary>
         private readonly SagaRecipes _recipes = new SagaRecipes();
 
+        /// <summary>The saga's own items — present whenever the mod is, run or no run. See <see cref="SagaItems"/>.</summary>
+        private readonly SagaItems _items = new SagaItems();
+
         /// <summary>
         /// Index into <see cref="_acts"/>. Not persisted: <see cref="CurrentActIndex"/> derives it
         /// from the world's defeated bosses, and this only caches that between polls so
@@ -1636,6 +1639,12 @@ namespace ICanShowYouTheWorld.RunMode
         {
             try
             {
+                // Before anything else, every frame, run or no run: a saga item in a pack must
+                // resolve the moment the world's registries exist, and Thor's bow arms its arrows
+                // whether or not a saga is running. Both are cheap when nothing changed.
+                _items.Ensure();
+                _items.TickStrikes(dt);
+
                 TickInner(dt);
                 _consecutiveTickFailures = 0;
             }
@@ -6874,17 +6883,15 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
-                // Completed by HOLDING the bow, however it was made — the shade's recipe is simply
-                // the only way the Meadows can make one (vanilla wants fine wood, which wants a
-                // bronze axe). The amounts in the hint are repeated in SagaRecipes and must agree.
-                //
-                // The bow is vanilla's Finewood bow for now. The owner's aim is a bow of its own —
-                // "Thor's bow", lightning on impact — which needs the cloned-item step the act
-                // plans describe. Until the item on the bench says so, the quest does not either.
-                Id = "mq-bow", MainQuest = true, Kind = ChallengeKind.CollectItem, Param = "$item_bow_finewood",
-                Target = 1, Display = "String the hunter\u2019s bow at the workbench",
+                // Completed by HOLDING the bow, however it was made. The bow is the saga's own item
+                // (SagaItems: the Finewood bow cloned, renamed, with lightning), so the match is on
+                // its display name — CollectItem compares m_shared.m_name, and a cloned item's is
+                // plain text rather than a "$" token. The amounts in the hint are repeated in
+                // SagaRecipes and must agree.
+                Id = "mq-bow", MainQuest = true, Kind = ChallengeKind.CollectItem, Param = SagaItems.ThorsBowName,
+                Target = 1, Display = "String Thor\u2019s bow at the workbench",
                 RewardText = "A quiver of flint arrows",
-                Hint = "The shade\u2019s recipe, at the workbench: 10 wood, 10 resin, 6 deer hide. It shows once the bench knows all three.",
+                Hint = "The shade\u2019s recipe, at the workbench: 10 wood, 10 resin, 6 deer hide. The bench lists it as Thor\u2019s bow once it knows all three.",
                 Opening = "The herd paid for this in hide. String it, and owe them a clean shot.",
             },
             new ChallengeDefinition

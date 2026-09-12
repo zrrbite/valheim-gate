@@ -68,20 +68,17 @@ namespace ICanShowYouTheWorld.RunMode
     /// is the identity: it survives a database rebuild finding an orphaned copy, which a cached
     /// reference would not.
     ///
-    /// What this deliberately does NOT do is add a new ITEM. A recipe for an existing prefab is
-    /// safe because nothing persists that the vanilla game cannot read back; a cloned prefab with
-    /// its own name would have to be registered with ZNetScene too, and any instance of it left in
-    /// a world or an inventory becomes an unknown object the moment the mod is absent. That is a
-    /// decision for when the first recipe has been played, not a detail.
+    /// The ITEMS a recipe produces are a separate concern — see <see cref="SagaItems"/>, which is
+    /// NOT run-only, because a saga item outlives the run that made it and must keep loading.
     /// </summary>
     internal sealed class SagaRecipes
     {
         public const string NamePrefix = "Saga_";
 
         /// <summary>
-        /// The saga's recipes. Act I's is the proof: a hunter's bow from what the Meadows yield —
-        /// wood, the splinters' resin, the herd's hide — at the act's own top station, the workbench.
-        /// Vanilla makes the same bow only after the Black Forest (fine wood needs a bronze axe).
+        /// The saga's recipes. Act I's is the proof: Thor's bow — the saga's own item, cut from the
+        /// Finewood bow with lightning added (see SagaItems) — from what the Meadows yield: wood,
+        /// the splinters' resin, the herd's hide, at the act's own top station, the workbench.
         /// Amounts are repeated in the quest step's Hint; change both or the hint lies.
         /// </summary>
         public static readonly SagaRecipeDefinition[] All =
@@ -89,7 +86,7 @@ namespace ICanShowYouTheWorld.RunMode
             new SagaRecipeDefinition
             {
                 Id = "hunters-bow",
-                ResultPrefab = "BowFineWood",
+                ResultPrefab = SagaItems.ThorsBowPrefab,
                 StationPrefab = "piece_workbench",
                 MinStationLevel = 1,
                 Resources = new[] { ("Wood", 10), ("Resin", 10), ("DeerHide", 6) },

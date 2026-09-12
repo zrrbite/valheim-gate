@@ -148,10 +148,11 @@ namespace ICanShowYouTheWorld.RunMode
         public const string TaughtLine =
             "Good. Now mark it: wood for the stave, resin to seal it, and the herd’s own hide for " +
             "the wrap. Your bench knows the shape now.\n\n" +
-            "String it well. What you loose from it, you owe the herd a clean shot.";
+            "Men will call it Thor’s. Let them — the storm in it is the herd’s, and Eikthyr’s own, " +
+            "turned. String it well. What you loose from it, you owe the herd a clean shot.";
 
         public const string AfterLine =
-            "Wood, resin, the herd’s hide. The bench knows. Go and string it.";
+            "Wood, resin, the herd’s hide. The bench knows it as Thor’s bow. Go and string it.";
 
         /// <summary>How far from the bed the shade stands.</summary>
         private const float MinDistance = 7f;

@@ -348,10 +348,12 @@ steps on the CRAFT track, late, after the bench upgrades:
    stones' UI). *Get a recipe* is literal: `SagaRecipes` registers the bow
    recipe while this step is DONE (`StepPredicates.StepDone`, derived from
    the tracks, so a resume re-teaches it and nothing is saved).
-3. **String the hunter's bow** (`mq-bow`, CollectItem for the result, so
-   however it was made counts) — the recipe at the WORKBENCH, the Meadows' top
-   station (the forge is Act II's): 10 wood, 10 resin, 6 deer hide, for
-   vanilla's Finewood bow, which the Meadows cannot otherwise make.
+3. **String Thor's bow** (`mq-bow`, CollectItem for the result, so however it
+   was made counts) — the recipe at the WORKBENCH, the Meadows' top station
+   (the forge is Act II's): 10 wood, 10 resin, 6 deer hide, for the saga's own
+   item (below). Until the same evening it produced vanilla's Finewood bow;
+   that version was played through end to end on 2026-09-12 (owner: "I think I
+   completed the quest") before the item was made its own.
 
 The recipe is registered for the run's length into `ObjectDB.m_recipes` and
 removed when the run ends — a recipe is a plain list entry, re-checked every
@@ -364,15 +366,35 @@ added first, so a component on the root loses the prompt to the creature's
 name. Not yet proven in play — the lights' Ghost fallback never ran because
 the Wisp prefab exists — so if the prompt shows only the name, this is where.
 
-**Where the story goes (owner):** *"a quest to complete a bow that'll make
-short work of Eikthyr. Maybe it will spawn lightning on impact"* — **"Thor's
-bow"**. That needs the cloned-item step below: lightning is a damage type on
-the item's SHARED data (`m_damages.m_lightning`) and a hit effect on its
-attack, and shared data is shared — changing it on the Finewood bow would
-change every Finewood bow in the world. The shade's last line already
-foreshadows it without naming it. The quest text says "hunter's bow" until the
-item on the bench says otherwise (the bible's rule: no line the world does not
-back).
+**Thor's bow — the saga's first item of its own** (owner: *"a quest to
+complete a bow that'll make short work of Eikthyr. Maybe it will spawn
+lightning on impact"*). Built the same evening, `RunMode/Unity/SagaItems.cs`:
+
+- The Finewood bow prefab is CLONED at runtime under an inactive holder that
+  survives scene loads (so its ZNetView never registers a ZDO), renamed
+  `Saga_ThorsBow`, given its own shared data (checked by reference, with a
+  MemberwiseClone fallback — shared data is shared, and tuning the original
+  would retune every Finewood bow in the world), a display name (plain text,
+  not a `$` token), a description, and **20 lightning damage, +4 per level**
+  on top of the Finewood bow's 32 pierce.
+- It is registered with BOTH registries — ObjectDB (recipes, inventories) and
+  ZNetScene (dropped items) — and re-registered EVERY FRAME whenever either
+  instance changes, because the player's pack loads a few frames after
+  ObjectDB does and an unresolved name is silently dropped from the save.
+  Not run-only: the bow outlives the run that strung it.
+- **Lightning on impact** is done from the mod's side, not in data: the game
+  plays a projectile's hit effects from the ARROW, so a bow cannot carry one.
+  While Thor's bow is the weapon in hand, every arrow the player has in flight
+  is given a spawn-on-hit of the game's own lightning effect (the Herald's
+  candidate list; the log says which resolved). The projectile's owner and
+  weapon are private and read by reflection — the only reflection in the mod
+  besides the two registry tables.
+- **The one thing it cannot survive is the mod being absent**: the item is
+  then an unknown name and is lost from any pack or world it was in. Accepted
+  for a personal mod; written here so nobody is surprised.
+
+Not yet verified in play: the clone's shared data being its own (the log
+reports it), the bow loading back from a save, and the flash on impact.
 
 **Undecided (owner):** where the player FINDS the quest's hint. For now it is
 the standing Hint under the step like every other, plus the shade's own words;
