@@ -127,6 +127,15 @@ namespace ICanShowYouTheWorld.RunMode
         private bool _aoeRenewalOnByUs;
         private bool _cloakOnByUs;
 
+        /// <summary>
+        /// The flames drawn on the player while Emberskin is on: the Burning status effect's own
+        /// start effects, attached to the player and destroyed when the cloak ends. The look
+        /// without the status — applying SE_Burning itself would burn the player (which is what
+        /// "I've tried it before" found). Owner, 2026-09-12: "Emberskin could trigger a fire
+        /// condition on player."
+        /// </summary>
+        private GameObject[] _emberFlames;
+
         // fleet: a single snapshot — CreateOffer excludes held passives, so at most one fleet can
         // ever be held at a time.
         private struct FleetSnapshot
@@ -1043,9 +1052,45 @@ namespace ICanShowYouTheWorld.RunMode
 
             RemovePending("ember");
             SchedulePending("ember", EmberOnSeconds, ForceCloakOff);
+            LightEmberFlames();
 
             held.CooldownRemaining = held.Def.CooldownSeconds;
             return true;
+        }
+
+        private void LightEmberFlames()
+        {
+            SnuffEmberFlames();
+            try
+            {
+                var player = Player.m_localPlayer;
+                var odb = ObjectDB.instance;
+                if (player == null || odb == null) return;
+
+                var burning = odb.GetStatusEffect("Burning".GetStableHashCode());
+                if (burning == null || burning.m_startEffects == null)
+                {
+                    Debug.Log("[ICanShowYouTheWorld] Emberskin: no Burning status effect to borrow flames from.");
+                    return;
+                }
+
+                _emberFlames = burning.m_startEffects.Create(
+                    player.transform.position, player.transform.rotation, player.transform, 1f, -1, ZDOID.None);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[ICanShowYouTheWorld] Emberskin flames failed: " + ex.Message);
+            }
+        }
+
+        private void SnuffEmberFlames()
+        {
+            if (_emberFlames == null) return;
+            foreach (var go in _emberFlames)
+            {
+                try { if (go != null) UnityEngine.Object.Destroy(go); } catch { }
+            }
+            _emberFlames = null;
         }
 
         private bool ActivateWay()
@@ -1444,6 +1489,7 @@ namespace ICanShowYouTheWorld.RunMode
         private void ForceCloakOff()
         {
             RemovePending("ember");
+            SnuffEmberFlames();
             if (!_cloakOnByUs) return;
             _cloakOnByUs = false;
 

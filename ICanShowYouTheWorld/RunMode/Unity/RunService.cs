@@ -366,6 +366,17 @@ namespace ICanShowYouTheWorld.RunMode
                     if (!string.IsNullOrEmpty(herald)) return $"The Herald\u2019s tracks lead {herald}";
                 }
 
+                // The light race with nothing burning: point at the herd, because a light only
+                // rises where a deer falls. Strays and the Herald outrank this above; a burning
+                // light needs no bearing, the player can see it.
+                if (_deer != null && ActIsMeadows && LightRaceWanted && IsNight && (_lights == null || _lights.Burning == 0))
+                {
+                    string herd = _deer.HerdBearing(player);
+                    return herd != null
+                        ? $"No light burns. The herd is {herd}."
+                        : "No light burns, and no deer near. They graze the open meadows; walk.";
+                }
+
                 // The shade only while it is to be FOUND: once spoken to, the player knows where it
                 // stands, and the strip goes back to pointing at things that move.
                 if (_shade != null && ActIsMeadows && _challenges != null && StepPredicates.ShadeFind(_challenges.Tracks))
@@ -6253,7 +6264,8 @@ namespace ICanShowYouTheWorld.RunMode
             // Fishing bounties live in the POOL rather than the questline: they are the kind of
             // thing you take on when you fancy it, and the pool is where optional heat is bought.
             new ChallengeDefinition { Id = "c-fishhaul", Tier = 1, Kind = ChallengeKind.PlayerState, Param = "FishHeld",       Target = 8, HeatReward = 2, Display = "A day at the water (8 fish)" },
-            new ChallengeDefinition { Id = "c-fishcook", Tier = 1, Kind = ChallengeKind.PlayerState, Param = "CookedFishHeld", Target = 3, HeatReward = 2, Display = "Fish supper (3 cooked)" },
+            new ChallengeDefinition { Id = "c-fishcook", Tier = 1, Kind = ChallengeKind.PlayerState, Param = "CookedFishHeld", Target = 3, HeatReward = 2, Display = "Fish supper (3 cooked)",
+                Hint = "Craft Raw fish from your catch in the crafting tab first, then cook it on the station." },
             new ChallengeDefinition { Id = "c-food",      Tier = 0, Kind = ChallengeKind.CollectFood, Param = "", Target = 10, HeatReward = 1, Display = "Hold 10 food items" },
             new ChallengeDefinition { Id = "naked-5",     Tier = 0, Kind = ChallengeKind.NoArmorMinutes, Param = "", Target = 3, HeatReward = 3, Display = "Wear no armor for 3 minutes" },
 
@@ -6817,8 +6829,14 @@ namespace ICanShowYouTheWorld.RunMode
             new ChallengeDefinition
             {
                 Id = "mq-home", MainQuest = true, Track = HearthTrackId, Kind = ChallengeKind.StatDelta, Param = "TimeInBase",
+                // What counts, read from Player.UpdateEnvStatusEffects in this build's IL: under a
+                // roof, within a fire's warmth, AND inside a base (GetBaseValue >= 1 — a workbench
+                // or bed nearby marks one). UpdateStats adds the elapsed seconds every 2.5 s while
+                // all three hold, so the number climbs in steps and stops the moment one fails —
+                // which reads as "ticks up slowly" when the player wanders in and out of the fire's
+                // radius (owner, 2026-09-12).
                 Target = 120, Display = "Settle in (2 min at home)", RewardText = "A shield by the door, and arrows",
-                Hint = "Needs a roof AND a fire. Stand still indoors and it counts up.",
+                Hint = "Under a roof, in the fire\u2019s warmth, near your workbench or bed \u2014 all three at once. It only counts while all three hold, in steps of a few seconds.",
             },
             new ChallengeDefinition
             {
@@ -6954,7 +6972,10 @@ namespace ICanShowYouTheWorld.RunMode
                 // homestead idea anyway, and it needs the cooking station the hearth already built.
                 Param = "CookedFishHeld", Target = 5, Display = "A fisherman's larder (5 cooked)",
                 RewardText = "A feast from the water",
-                Hint = "Cook them on the station. Cooked fish keeps and feeds better.",
+                // A caught fish is a Perch, not meat, and the station will not take it (owner,
+                // 2026-09-12: "Fish cant be cooked on cooking station"). The game turns a fish
+                // into Raw fish in the crafting tab, with no station; THAT cooks.
+                Hint = "A caught fish will not go on the station. Open the crafting tab and turn it into Raw fish (no station needed), then cook that.",
             },
             new ChallengeDefinition
             {

@@ -348,6 +348,42 @@ namespace ICanShowYouTheWorld.RunMode
             return $"{BiomeCompass.Compass(delta)}, {Mathf.Round(distance / 10f) * 10f:0}m";
         }
 
+        /// <summary>
+        /// The nearest ordinary deer, as a compass direction and rough distance, or null when
+        /// none is loaded. For the light race: a light only rises where a deer falls, and a
+        /// player with nothing burning had no pointer to the next one (owner, 2026-09-12: "we
+        /// dont always have light on the ground to chase"). Loaded creatures only — deer beyond
+        /// the active area do not exist yet, and a bearing to nothing would be the alpha38 bug.
+        /// </summary>
+        public string HerdBearing(Player player)
+        {
+            if (player == null) return null;
+
+            _scanBuffer.Clear();
+            try { Character.GetCharactersInRange(player.transform.position, HerdScanRadius, _scanBuffer); }
+            catch { return null; }
+
+            Character nearest = null;
+            float best = float.MaxValue;
+            foreach (var c in _scanBuffer)
+            {
+                if (c == null || c.IsTamed() || c.IsPlayer() || IsHerald(c)) continue;
+                if (PrefabNameOf(c) != DeerPrefab) continue;
+                float d = Vector3.Distance(player.transform.position, c.transform.position);
+                if (d < best) { best = d; nearest = c; }
+            }
+            _scanBuffer.Clear();
+
+            if (nearest == null || best < 1f) return null;
+
+            Vector3 delta = nearest.transform.position - player.transform.position;
+            delta.y = 0f;
+            return $"{BiomeCompass.Compass(delta)}, {Mathf.Round(best / 10f) * 10f:0}m";
+        }
+
+        /// <summary>How far the herd bearing looks. The loaded area is roughly this wide anyway.</summary>
+        private const float HerdScanRadius = 250f;
+
         /// <summary>Where the live Herald is, or null when none is loaded.</summary>
         private Vector3? HeraldPosition()
         {
