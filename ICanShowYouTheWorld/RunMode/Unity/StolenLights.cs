@@ -45,7 +45,15 @@ namespace ICanShowYouTheWorld.RunMode
 
         public bool UseItem(Humanoid user, ItemDrop.ItemData item) => false;
 
-        public string GetHoverText() => "A deer's light\n[<color=yellow><b>$KEY_Use</b></color>] Take it back";
+        // Localised here, as the game's own Hoverables do — the HUD does not, and "$KEY_Use"
+        // would otherwise show literally. Found on the shade, whose prompt copied this one.
+        public string GetHoverText()
+        {
+            const string raw = "A deer's light
+[<color=yellow><b>$KEY_Use</b></color>] Take it back";
+            try { return Localization.instance != null ? Localization.instance.Localize(raw) : raw; }
+            catch { return raw; }
+        }
 
         public string GetHoverName() => "A deer's light";
 
