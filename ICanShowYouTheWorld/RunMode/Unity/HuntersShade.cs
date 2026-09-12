@@ -68,7 +68,18 @@ namespace ICanShowYouTheWorld.RunMode
 
         public bool UseItem(Humanoid user, ItemDrop.ItemData item) => false;
 
-        public string GetHoverText()
+        // Localised HERE, not by the HUD: the game's own Hoverables each run their text through
+        // Localization.Localize before returning it, and that is what turns "$KEY_Use" into the
+        // bound key. Returned raw, the prompt read "$KEY_Use" on screen (owner, 2026-09-12).
+        public string GetHoverText() => Localize(RawHoverText());
+
+        private static string Localize(string text)
+        {
+            try { return Localization.instance != null ? Localization.instance.Localize(text) : text; }
+            catch { return text; }
+        }
+
+        private string RawHoverText()
         {
             switch (Phase)
             {
