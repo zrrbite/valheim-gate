@@ -49,8 +49,7 @@ namespace ICanShowYouTheWorld.RunMode
         // would otherwise show literally. Found on the shade, whose prompt copied this one.
         public string GetHoverText()
         {
-            const string raw = "A deer's light
-[<color=yellow><b>$KEY_Use</b></color>] Take it back";
+            const string raw = "A deer's light\n[<color=yellow><b>$KEY_Use</b></color>] Take it back";
             try { return Localization.instance != null ? Localization.instance.Localize(raw) : raw; }
             catch { return raw; }
         }
