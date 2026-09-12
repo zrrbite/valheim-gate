@@ -308,5 +308,20 @@ namespace ICanShowYouTheWorld.RunMode
             LightColor = new Color(0.72f, 0.84f, 1f),
             LightIntensity = 1.6f,
         };
+
+        /// <summary>
+        /// The hunter's shade: drained of colour and faintly lit, the light dimmer than the
+        /// Herald's because it carries none of its own — it is what a hunter looks like an age
+        /// after the forest took him. Findable near the bed at night, not a beacon.
+        /// </summary>
+        public static Look Shade() => new Look
+        {
+            Saturation = -0.6f,
+            Value = 0.15f,
+            Emission = new Color(0.55f, 0.62f, 0.80f),
+            LightRange = 6f,
+            LightColor = new Color(0.62f, 0.70f, 0.90f),
+            LightIntensity = 1.0f,
+        };
     }
 }

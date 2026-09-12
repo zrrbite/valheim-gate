@@ -140,6 +140,7 @@ It watches. It does not help.
 | V | The Golden Ruin | **Industrialise it.** Yagluth's people harvested at scale; the ruin is what remains when the harvest runs dry |
 | VI | A Light to Carry | **Carry it honestly.** The dvergr keep wisps in lanterns — borrowed and returned. The only ones who got it right |
 | VII | The Last Light | **Let it burn.** Where light goes to end |
+| VIII | What the Cold Keeps | **Keep it.** *(placeholder, 2026-09-12 — Valheim 1.0 gave the Deep North a boss; nothing below is written until it has been played)* The cold froze around its light and has held it since |
 
 **Act II, as built so far:** it opens on the premise, said once, twelve
 seconds after the card — *Nothing here makes its own light. Remember that.*

@@ -19,12 +19,16 @@ static class ActDefinitionTests
         Act("act3", "III", "The Swamp",        "defeated_bonemass",  "sw-bonemass", "Bonemass"),
         Act("act4", "IV",  "The Mountains",    "defeated_dragon",    "mt-moder",    "Dragon"),
         Act("act5", "V",   "The Plains",       "defeated_goblinking","pl-yagluth",  "GoblinKing"),
+        Act("act6", "VI",  "The Mistlands",    "defeated_queen",     "mi-queen",    "SeekerQueen"),
+        Act("act7", "VII", "The Ashlands",     "defeated_fader",     "as-fader",    "Fader"),
+        // The Deep North is a placeholder: its names are stand-ins (see ActDefinition.Placeholder).
+        Act("act8", "VIII","The Deep North",   "__deep_north_defeated", "dn-boss",  "__deep_north_boss", placeholder: true),
     };
 
-    static ActDefinition Act(string id, string numeral, string title, string key, string bossStepId, string bossPrefab) =>
+    static ActDefinition Act(string id, string numeral, string title, string key, string bossStepId, string bossPrefab, bool placeholder = false) =>
         new ActDefinition
         {
-            Id = id, Numeral = numeral, Title = title, BossDefeatKey = key,
+            Id = id, Numeral = numeral, Title = title, BossDefeatKey = key, Placeholder = placeholder,
             Tracks = new List<QuestTrack>
             {
                 new QuestTrack
@@ -51,7 +55,9 @@ static class ActDefinitionTests
     {
         var acts = Sample();
 
-        Check.That(acts.Count == 5, "the saga has five acts, one per boss");
+        Check.That(acts.Count == 8, "the saga has eight acts, one per boss");
+        Check.That(acts.Take(7).All(a => !a.Placeholder) && acts[7].Placeholder,
+            "only the Deep North is a placeholder — the flag defaults to false");
 
         // The banner is what the HUD heads the quest section with and what a transition announces.
         Check.That(acts[1].Banner == "ACT II — THE BLACK FOREST", "the banner reads ACT <numeral> — <TITLE>");

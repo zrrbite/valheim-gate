@@ -29,6 +29,14 @@ namespace ICanShowYouTheWorld.RunMode
             ("Bonemass",    "Bonemass",  "defeated_bonemass"),
             ("Dragonqueen", "Moder",     "defeated_dragon"),
             ("GoblinKing",  "Yagluth",   "defeated_goblinking"),
+            // Valheim's own order continues: the Queen, Fader, and since 1.0 the Deep North's boss.
+            // The Queen's and Fader's names are the game's as commonly documented, and the
+            // validator checks the creature names at every run start. The Deep North's three are
+            // STAND-INS — see the Act VIII placeholder and SagaNames. Acts past Yagluth are only
+            // reachable when runFinalBossKey (config) is moved past him.
+            ("Mistlands_DvergrBossEntrance1", "The Queen",       "defeated_queen"),
+            ("FaderLocation",                 "Fader",           "defeated_fader"),
+            (SagaNames.DeepNorthAltar,        "The Frozen King", SagaNames.DeepNorthBossKey),
         };
 
         /// <summary>Used when <see cref="IConfiguration.RunFinalBossKey"/> names something that isn't a boss.</summary>
@@ -150,6 +158,7 @@ namespace ICanShowYouTheWorld.RunMode
 
         /// <summary>Act I's deer: stars, the Herald, and what a kill draws. See <see cref="DeerHerd"/>.</summary>
         private DeerHerd _deer;
+        private HuntersShade _shade;
         private SpiritChase _spirit;
         private StolenLights _lights;
         private TheGatherer _gatherer;
@@ -172,10 +181,13 @@ namespace ICanShowYouTheWorld.RunMode
         /// avoid. See <see cref="SagaNames"/> for the full vocabulary of synthetic names.
         /// </summary>
         private static readonly HashSet<string> SyntheticCreatureNames =
-            new HashSet<string> { DeerHerd.HeraldKillName, TheGatherer.KillName };
+            new HashSet<string> { DeerHerd.HeraldKillName, TheGatherer.KillName, SagaNames.DeepNorthBoss };
 
         /// <summary>The saga's acts, built once per service. Pure content — see <see cref="Acts"/>.</summary>
         private readonly List<ActDefinition> _acts = Acts();
+
+        /// <summary>The saga's own crafting recipes, present only while a run is live. See <see cref="SagaRecipes"/>.</summary>
+        private readonly SagaRecipes _recipes = new SagaRecipes();
 
         /// <summary>
         /// Index into <see cref="_acts"/>. Not persisted: <see cref="CurrentActIndex"/> derives it
@@ -349,6 +361,14 @@ namespace ICanShowYouTheWorld.RunMode
                 {
                     string herald = _deer.HeraldBearing(player);
                     if (!string.IsNullOrEmpty(herald)) return $"The Herald\u2019s tracks lead {herald}";
+                }
+
+                // The shade only while it is to be FOUND: once spoken to, the player knows where it
+                // stands, and the strip goes back to pointing at things that move.
+                if (_shade != null && ActIsMeadows && _challenges != null && StepPredicates.ShadeFind(_challenges.Tracks))
+                {
+                    string shade = _shade.Bearing(player, IsNight);
+                    if (!string.IsNullOrEmpty(shade)) return shade;
                 }
 
                 return BiomeBearing(player);
@@ -777,6 +797,7 @@ namespace ICanShowYouTheWorld.RunMode
         private void BuildActSystems()
         {
             _deer = new DeerHerd(_cfg, _rng);
+            _shade = new HuntersShade(_rng);
             _spirit = new SpiritChase(_cfg, _rng);
             _lights = new StolenLights(_cfg);
             _gatherer = new TheGatherer(_cfg, _rng);
@@ -1482,6 +1503,7 @@ namespace ICanShowYouTheWorld.RunMode
                 _builtSeen.Clear();
                 _stash.Clear();
                 _deer.Reset();
+                _shade?.Reset();
                 _spirit?.Reset();
                 _strayOut = false;
                 _strayReadyAt = Time.time + 120f;
@@ -1751,6 +1773,9 @@ namespace ICanShowYouTheWorld.RunMode
                 // PollBosses may have finished the run.
                 if (_active) PollMeasures(pollDt);
                 if (_active) _boonEffects.ApplyPugilist();
+                // Re-checked every poll because a world load rebuilds ObjectDB and drops them.
+                // The gate is derived from the tracks, so a resume re-teaches what was taught.
+                if (_active) _recipes.Ensure(id => _challenges != null && StepPredicates.StepDone(_challenges.Tracks, id));
             }
 
             if (!_active) return;
@@ -3088,6 +3113,7 @@ namespace ICanShowYouTheWorld.RunMode
             if (player == null) return;
 
             _deer.UpgradeNearbyDeer(player.transform.position, DeerScanRadius);
+            PollShade(player);
 
             // The Herald exists only while its own step is current, and is re-spawned whenever it is
             // not standing — which is what makes it survive a logout, a zone unload, or a player who
@@ -3119,6 +3145,42 @@ namespace ICanShowYouTheWorld.RunMode
         /// ground and a starred one should be starred before the player is close enough to shoot.
         /// </summary>
         private const float DeerScanRadius = 60f;
+
+        /// <summary>
+        /// Keeps the hunter's shade standing while its steps are live and it is night, and turns
+        /// what the player did at it into questline events. Act I only, like the herd.
+        /// </summary>
+        private void PollShade(Player player)
+        {
+            if (_shade == null || _challenges == null) return;
+
+            try
+            {
+                var tracks = _challenges.Tracks;
+                bool wanted = StepPredicates.Shade(tracks);
+                var phase = StepPredicates.ShadeDelivery(tracks) ? HuntersShade.Phase.Deliver
+                          : StepPredicates.ShadeFind(tracks) ? HuntersShade.Phase.Find
+                          : HuntersShade.Phase.Done;
+
+                bool spoken, delivered;
+                _shade.Tick(player, phase, wanted, IsNight, out spoken, out delivered);
+
+                if (spoken)
+                {
+                    _challenges.ReportEvent(ChallengeKind.PlayerEvent, SagaNames.ShadeFound);
+                    Message("The shade has a price. Bring it after dark.");
+                }
+                if (delivered)
+                {
+                    _challenges.ReportEvent(ChallengeKind.PlayerEvent, SagaNames.ShadeDelivered);
+                    Message("The shade is paid. Your bench knows a hunter's bow now.");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogOnce("shade", ex);
+            }
+        }
 
         /// <summary>
         /// Reports every biome this run has stood in, so <see cref="ChallengeKind.ReachBiome"/>
@@ -3623,6 +3685,9 @@ namespace ICanShowYouTheWorld.RunMode
         {
             _active = false;
 
+            // The saga's recipes are run-only: outside a run the bench is vanilla.
+            _recipes.Remove();
+
             // The dev speed boost is a loan, and the run ending is the last chance to repay it.
             DevRestoreSpeed();
 
@@ -3745,6 +3810,63 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
+        /// Prints what the live game knows about boss altars, once per run start: every ZNetScene
+        /// prefab carrying an OfferingBowl (with the boss prefab it spawns and the global key it
+        /// sets), and every registered location whose name looks like a boss's. Diagnostics only.
+        ///
+        /// It exists for one reason: a boss's prefab, altar location and defeat key are asset data,
+        /// and 1.0 added a boss (the Deep North's) whose three names this build does not know. Act
+        /// VIII stays a placeholder until these lines have been read from a 1.0 game — grep the
+        /// log for "Boss registry".
+        /// </summary>
+        private static void LogBossRegistry()
+        {
+            try
+            {
+                var scene = ZNetScene.instance;
+                if (scene != null && scene.m_prefabs != null)
+                {
+                    int found = 0;
+                    foreach (var prefab in scene.m_prefabs)
+                    {
+                        if (prefab == null) continue;
+                        var bowl = prefab.GetComponent<OfferingBowl>();
+                        if (bowl == null) continue;
+
+                        found++;
+                        string boss = bowl.m_bossPrefab != null ? bowl.m_bossPrefab.name : "(none)";
+                        Debug.Log($"[ICanShowYouTheWorld] Boss registry: altar prefab '{prefab.name}' " +
+                                  $"boss='{boss}' key='{bowl.m_setGlobalKey}' name='{bowl.m_name}'");
+                    }
+
+                    if (found == 0)
+                        Debug.Log("[ICanShowYouTheWorld] Boss registry: no OfferingBowl prefab in ZNetScene — " +
+                                  "the altars may live only inside location prefabs.");
+                }
+
+                var zone = ZoneSystem.instance;
+                if (zone != null && zone.m_locations != null)
+                {
+                    string[] marks = { "boss", "king", "altar", "throne", "queen", "fader", "dragon", "eikthyr", "bonemass", "gdking", "north" };
+                    var names = zone.m_locations
+                        .Where(l => l != null && !string.IsNullOrEmpty(l.m_prefabName))
+                        .Select(l => l.m_prefabName)
+                        .Where(n => marks.Any(m => n.IndexOf(m, StringComparison.OrdinalIgnoreCase) >= 0))
+                        .Distinct()
+                        .OrderBy(n => n)
+                        .ToArray();
+
+                    Debug.Log($"[ICanShowYouTheWorld] Boss registry: boss-like locations ({names.Length}): " +
+                              string.Join(", ", names));
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[ICanShowYouTheWorld] Boss registry could not be read: " + ex.Message);
+            }
+        }
+
+        /// <summary>
         /// Checks the act table's own invariants at run start.
         ///
         /// ActDefinitionTests covers these rules, but only against a stand-in table — the real one
@@ -3753,13 +3875,15 @@ namespace ICanShowYouTheWorld.RunMode
         /// on the next launch instead of in a run hours later.
         /// </summary>
         /// <summary>
-        /// Every challenge definition this build ships: the random pool and all five acts' tracks.
+        /// Every challenge definition this build ships: the random pool and every built act's
+        /// tracks. A placeholder act's stand-in names are left out on purpose — they are not the
+        /// game's and the validator would cry wolf at every run start. See ActDefinition.Placeholder.
         ///
         /// Validation needs both. A threshold that is impossible is just as broken in a pool
         /// bounty as in a questline step, and the pool is where the fishing bounties live.
         /// </summary>
         private IEnumerable<ChallengeDefinition> AllChallengeDefinitions() =>
-            BuildFullPool().Concat(_acts.SelectMany(a => a.AllSteps));
+            BuildFullPool().Concat(_acts.Where(a => !a.Placeholder).SelectMany(a => a.AllSteps));
 
         private void ValidateActs()
         {
@@ -3777,6 +3901,13 @@ namespace ICanShowYouTheWorld.RunMode
 
             foreach (var act in _acts)
             {
+                if (act.Placeholder)
+                {
+                    Debug.Log($"[ICanShowYouTheWorld] {act.Label} is a PLACEHOLDER — its names are stand-ins and " +
+                              "were not validated. Fill it in from the 'Boss registry' lines, then drop the flag.");
+                    continue;
+                }
+
                 if (!Bosses.Any(b => b.defeatKey == act.BossDefeatKey))
                     Debug.LogError($"[ICanShowYouTheWorld] {act.Label} names a boss key no boss has: '{act.BossDefeatKey}'.");
 
@@ -4311,6 +4442,7 @@ namespace ICanShowYouTheWorld.RunMode
                                      "registries were ready; some names were not checked this run.");
 
                 ValidateActs();
+                LogBossRegistry();
                 ResolveSkillParams();
             }
             catch (Exception e)
@@ -6332,7 +6464,7 @@ namespace ICanShowYouTheWorld.RunMode
         // --- The saga: one act per boss ---
 
         /// <summary>
-        /// The five acts, in order, aligned one-to-one with <see cref="Bosses"/>. Which one is
+        /// The acts, in order, aligned one-to-one with <see cref="Bosses"/>. Which one is
         /// current is derived from the world's defeated-boss count — see
         /// <see cref="CurrentActIndex"/> — so this table is pure content.
         ///
@@ -6356,7 +6488,9 @@ namespace ICanShowYouTheWorld.RunMode
                 // answers where it goes, and the finale bookends the theft the saga opens with.
                 //
                 // The saga is SEVEN acts — the five mainland bosses plus the Queen and Fader.
-                // Only five are built. V was called "The Last Harvest" while five was the whole
+                // Five are built; VI–VIII are thin stand-ins, and VIII a true placeholder (see
+                // ActDefinition.Placeholder) until 1.0's Deep North has been played.
+                // V was called "The Last Harvest" while five was the whole
                 // story and read as a finale; it is a middle, so it takes the Plains' own image
                 // instead. See the act plans spec.
                 Id = "act1", Numeral = "I", Title = "The Stolen Light",
@@ -6396,6 +6530,42 @@ namespace ICanShowYouTheWorld.RunMode
                 RavenLine = "Look at the stones before you fight anything. " +
                             "Someone tried exactly what you are trying.",
                 BossDefeatKey = "defeated_goblinking", Tracks = Split(PlainsChain()),
+            },
+            new ActDefinition
+            {
+                // VI–VIII are THIN, as III–V were before anyone had played them (owner's rule: thin
+                // is honest, absent is a bug). VI and VII use names the game is known to have and
+                // the validator checks them at every run start. Reachable only when runFinalBossKey
+                // (config) is moved past Yagluth.
+                Id = "act6", Numeral = "VI", Title = "A Light to Carry",
+                Epigraph = "The dvergr borrow light and give it back. Learn how.",
+                RavenLine = "They keep it in lanterns. Borrowed, they say. " +
+                            "Odin would like to know from whom.",
+                BossDefeatKey = "defeated_queen", Tracks = Split(MistlandsChain()),
+            },
+            new ActDefinition
+            {
+                Id = "act7", Numeral = "VII", Title = "The Last Light",
+                Epigraph = "Where light goes to end. Follow it in.",
+                RavenLine = "Everything here has already burned once. " +
+                            "Mind what you carry.",
+                BossDefeatKey = "defeated_fader", Tracks = Split(AshlandsChain()),
+            },
+            new ActDefinition
+            {
+                // PLACEHOLDER (2026-09-12). Valheim 1.0 shipped the Deep North with a boss of its
+                // own — the assembly carries GP_DeepNorth, a "frozen king" item token, a Crowned
+                // status effect and a crown mode on the player — but the boss prefab, its altar
+                // location and its defeat key are asset data this build cannot read. All three
+                // are stand-ins from SagaNames; the run-start "Boss registry" log lines print the
+                // real ones from the live game. Replace the stand-ins in Bosses and DeepNorthChain,
+                // drop Placeholder, and this act validates like any other.
+                Id = "act8", Numeral = "VIII", Title = "What the Cold Keeps",
+                Epigraph = "Ice does not take light. It keeps it. Find out from whom.",
+                RavenLine = "Nothing here has thawed in an age. " +
+                            "Odin is curious what it was keeping warm.",
+                BossDefeatKey = SagaNames.DeepNorthBossKey, Tracks = Split(DeepNorthChain()),
+                Placeholder = true,
             },
         };
 
@@ -6664,7 +6834,7 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
-                // LAST on the crafting track, not beside the bench it upgrades. Sitting fourth it
+                // Late on the crafting track (the bow steps follow it), not beside the bench it upgrades. Sitting fourth it
                 // arrived before the flint and deer hide it wants, so it read as a wall rather
                 // than a step (owner: "it's too early"). The bench upgrades are what you build
                 // once the house is finished and you are improving it, which is exactly here.
@@ -6676,6 +6846,46 @@ namespace ICanShowYouTheWorld.RunMode
                 Param = "StationUpgrade", Target = 2, Display = "Upgrade the workbench (2)",
                 RewardText = "Flint, hide and resin",
                 Hint = "A chopping block and a tanning rack, both inside the bench's circle.",
+            },
+            // The act's ITEM quest (2026-09-12), the proof for one per act, in the owner's shape:
+            // talk to someone, bring them what they ask, get a recipe, craft the thing at the
+            // act's top station — the Meadows' is the workbench; the forge is Act II's.
+            //
+            // The someone is the hunter's shade (HuntersShade): the bible's ravens never help and
+            // the Meadows have no living human, so the teacher is one who did not finish. It
+            // stands near the bed after dark, and BOTH its steps are events its interact raises.
+            new ChallengeDefinition
+            {
+                Id = "mq-shade-find", MainQuest = true, Kind = ChallengeKind.PlayerEvent, Param = SagaNames.ShadeFound,
+                Target = 1, Display = "Find the hunter\u2019s shade",
+                Hint = "After dark, near your bed. Nothing you seek walks in the light.",
+                Opening = "Something waits near your bed at night. It was a hunter once.",
+            },
+            new ChallengeDefinition
+            {
+                // What it asks for is NOT the bow's makings (those are the recipe's cost, below)
+                // but the quiver it never filled — flint and leather scraps, both Meadows finds.
+                // The saga's bow recipe registers while this step is DONE (SagaRecipes, gated on
+                // StepPredicates.StepDone), which is what "get a recipe" means mechanically.
+                Id = SagaNames.ShadeBringStepId, MainQuest = true, Kind = ChallengeKind.PlayerEvent, Param = SagaNames.ShadeDelivered,
+                Target = 1, Display = "Bring the shade what it lacked",
+                RewardText = "The shade\u2019s recipe: a hunter\u2019s bow, at the workbench",
+                Hint = "Ten flint and five leather scraps in your pack, then speak to it after dark.",
+            },
+            new ChallengeDefinition
+            {
+                // Completed by HOLDING the bow, however it was made — the shade's recipe is simply
+                // the only way the Meadows can make one (vanilla wants fine wood, which wants a
+                // bronze axe). The amounts in the hint are repeated in SagaRecipes and must agree.
+                //
+                // The bow is vanilla's Finewood bow for now. The owner's aim is a bow of its own —
+                // "Thor's bow", lightning on impact — which needs the cloned-item step the act
+                // plans describe. Until the item on the bench says so, the quest does not either.
+                Id = "mq-bow", MainQuest = true, Kind = ChallengeKind.CollectItem, Param = "$item_bow_finewood",
+                Target = 1, Display = "String the hunter\u2019s bow at the workbench",
+                RewardText = "A quiver of flint arrows",
+                Hint = "The shade\u2019s recipe, at the workbench: 10 wood, 10 resin, 6 deer hide. It shows once the bench knows all three.",
+                Opening = "The herd paid for this in hide. String it, and owe them a clean shot.",
             },
             new ChallengeDefinition
             {
@@ -7439,6 +7649,113 @@ namespace ICanShowYouTheWorld.RunMode
         /// Deliberately rare. A boon is the run's real power currency, normally bought with heat,
         /// and handing them out freely would make the offer wheel meaningless.
         /// </summary>
+        // --- Act VI: the Mistlands → the Queen. THIN, like III–V were before they were played. ---
+
+        /// <summary>
+        /// Creature and location names here are the game's as commonly documented (Seeker, Tick,
+        /// SeekerQueen; the Queen's lair "Mistlands_DvergrBossEntrance1"); the run-start validator
+        /// reports any that the live game does not have.
+        /// </summary>
+        internal static List<ChallengeDefinition> MistlandsChain() => new List<ChallengeDefinition>
+        {
+            new ChallengeDefinition
+            {
+                Id = "mi-power", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "SetGuardianPower",
+                Target = 1, Display = "Claim Yagluth\u2019s power",
+                RewardText = "Provisions for the road", Hint = "Same stones. Fire, frost and lightning slide off you for a while.",
+            },
+            new ChallengeDefinition
+            {
+                Id = "mi-arrive", MainQuest = true, Kind = ChallengeKind.ReachBiome, Param = "Mistlands",
+                Target = 1, Display = "Reach the Mistlands",
+                Hint = "Grey mist over black rock. Nothing shows in it until a wisp is at your belt.",
+            },
+            new ChallengeDefinition
+            {
+                Id = "mi-cull", MainQuest = true, Kind = ChallengeKind.KillPrefab,
+                Display = "Thin the nests",
+                Hint = "Seekers hunt in pairs and hear you before you see them. Ticks latch on.",
+                Subs = new List<SubObjective>
+                {
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Seeker", Target = 8, Label = "Kill 8 Seekers" },
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Tick",   Target = 5, Label = "Kill 5 Ticks" },
+                },
+            },
+            new ChallengeDefinition
+            {
+                Id = "mi-find", MainQuest = true, Track = HuntTrackId, Kind = ChallengeKind.DiscoverLocation, Param = "Mistlands_DvergrBossEntrance1",
+                Target = 1, Display = "Find the Queen\u2019s lair",
+                Hint = "A sealed dvergr door in the rock. It opens to a key the dvergr made.",
+            },
+            new ChallengeDefinition
+            {
+                Id = "mi-queen", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "SeekerQueen",
+                Target = 1, Display = "Defeat the Queen",
+            },
+        };
+
+        // --- Act VII: the Ashlands → Fader. THIN. ---
+
+        internal static List<ChallengeDefinition> AshlandsChain() => new List<ChallengeDefinition>
+        {
+            new ChallengeDefinition
+            {
+                Id = "as-power", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "SetGuardianPower",
+                Target = 1, Display = "Claim the Queen\u2019s power",
+                RewardText = "Provisions for the road", Hint = "Same stones. Eitr comes back faster for a while.",
+            },
+            new ChallengeDefinition
+            {
+                Id = "as-arrive", MainQuest = true, Kind = ChallengeKind.ReachBiome, Param = "AshLands",
+                Target = 1, Display = "Reach the Ashlands",
+                Hint = "Far south, across a sea that boils. The shore itself burns.",
+            },
+            new ChallengeDefinition
+            {
+                Id = "as-cull", MainQuest = true, Kind = ChallengeKind.KillPrefab,
+                Display = "Cut through the charred",
+                Hint = "The charred come in bands. Voltures circle before they dive.",
+                Subs = new List<SubObjective>
+                {
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Charred_Melee", Target = 8, Label = "Kill 8 Charred" },
+                    new SubObjective { Kind = ChallengeKind.KillPrefab, Param = "Volture",       Target = 3, Label = "Kill 3 Voltures" },
+                },
+            },
+            new ChallengeDefinition
+            {
+                Id = "as-find", MainQuest = true, Track = HuntTrackId, Kind = ChallengeKind.DiscoverLocation, Param = "FaderLocation",
+                Target = 1, Display = "Find Fader\u2019s seat",
+                Hint = "A fortress of black stone at the heart of the fire.",
+            },
+            new ChallengeDefinition
+            {
+                Id = "as-fader", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Fader",
+                Target = 1, Display = "Defeat Fader",
+            },
+        };
+
+        // --- Act VIII: the Deep North. A PLACEHOLDER — see the act table and ActDefinition.Placeholder. ---
+
+        internal static List<ChallengeDefinition> DeepNorthChain() => new List<ChallengeDefinition>
+        {
+            new ChallengeDefinition
+            {
+                // The hint is backed by 1.0's code: deep snow slows by depth (SnowRoller) and a
+                // fireplace melts it (Fireplace.UpdateSnowMelt).
+                Id = "dn-arrive", MainQuest = true, Kind = ChallengeKind.ReachBiome, Param = "DeepNorth",
+                Target = 1, Display = "Reach the Deep North",
+                Hint = "Past the mountains, where the snow is deep enough to slow you. Fire melts a path.",
+            },
+            new ChallengeDefinition
+            {
+                // A stand-in that no creature answers to, so the step can never complete. The act
+                // still ENDS when the world sets its defeat key — itself a stand-in until the boss
+                // registry lines name the real one.
+                Id = "dn-boss", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = SagaNames.DeepNorthBoss,
+                Target = 1, Display = "Defeat what the cold keeps",
+            },
+        };
+
         private static readonly Dictionary<string, string> QuestBoons =
             new Dictionary<string, string>
             {
@@ -7462,6 +7779,10 @@ namespace ICanShowYouTheWorld.RunMode
                 ["sw-power"] = new[] { ("Sausages", 5), ("CarrotSoup", 3) },
                 ["mt-power"] = new[] { ("TurnipStew", 3), ("Sausages", 5) },
                 ["pl-power"] = new[] { ("WolfMeatSkewer", 5), ("OnionSoup", 3) },
+                // Acts VI and VII, thin like their chains. Names are the game's as commonly
+                // documented; a wrong one logs loudly in GrantItem and grants nothing.
+                ["mi-power"] = new[] { ("LoxPie", 3), ("Bread", 5) },
+                ["as-power"] = new[] { ("MeatPlatter", 3), ("SeekerAspic", 3) },
                 // Armor arrives a piece at a time across the Meadows steps rather than as one
                 // handout, so each fight in the starter zone pays for itself (owner, alpha18:
                 // "a few more steps in the starter zone, like kill boars, with armor and arrow
@@ -7485,6 +7806,9 @@ namespace ICanShowYouTheWorld.RunMode
                 // homestead funds its own decoration rather than the hunt funding it.
                 ["mq-meal"] = new[] { ("CookedMeat", 5), ("Raspberry", 20), ("Mushroom", 10) },
                 ["mq-upgrade"] = new[] { ("Flint", 20), ("DeerHide", 10), ("Resin", 20) },
+                // The bow step pays in what a bow eats; the gathering step before it pays nothing
+                // but heat and health, because its point is the craft that follows.
+                ["mq-bow"] = new[] { ("ArrowFlint", 40) },
                 ["mq-comfort"] = new[] { ("DeerHide", 10), ("Resin", 20), ("Wood", 30) },
                 ["bf-trophy"] = new[] { ("Wood", 30), ("Resin", 15) },
                 ["mq-fish"] = new[] { ("FishingBait", 100), ("Wood", 20) },

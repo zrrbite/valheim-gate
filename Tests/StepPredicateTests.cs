@@ -95,6 +95,40 @@ static class StepPredicateTests
         Check.That(StepPredicates.CourierIntercept(couriers), "the intercept is found by id");
         Check.That(StepPredicates.LightRace(couriers), "and is a light race, so it shares the machinery");
 
+        // --- The hunter's shade: wanted while either step is live, done when passed ---------
+        var shadeFind = new List<QuestTrack>
+        {
+            Track("craft", Step("mq-shade-find", ChallengeKind.PlayerEvent, SagaNames.ShadeFound)),
+        };
+        Check.That(StepPredicates.Shade(shadeFind) && StepPredicates.ShadeFind(shadeFind), "the shade stands while it is to be found");
+        Check.That(!StepPredicates.ShadeDelivery(shadeFind), "but is not yet taking payment");
+
+        var shadeBring = new List<QuestTrack>
+        {
+            Track("craft", Step(SagaNames.ShadeBringStepId, ChallengeKind.PlayerEvent, SagaNames.ShadeDelivered)),
+        };
+        Check.That(StepPredicates.Shade(shadeBring) && StepPredicates.ShadeDelivery(shadeBring), "and while it is to be paid");
+        Check.That(!StepPredicates.StepDone(shadeBring, SagaNames.ShadeBringStepId), "the delivery is not done while current");
+
+        var find = Step("mq-shade-find", ChallengeKind.PlayerEvent, SagaNames.ShadeFound);
+        var bring = Step(SagaNames.ShadeBringStepId, ChallengeKind.PlayerEvent, SagaNames.ShadeDelivered);
+        var bow = Step("mq-bow", ChallengeKind.CollectItem, "$item_bow_finewood");
+        var paid = new List<QuestTrack>
+        {
+            new QuestTrack
+            {
+                Id = "craft", Label = "CRAFT",
+                Chain = new List<ChallengeDefinition> { find, bring, bow },
+                Index = 2, Current = new ActiveChallenge { Def = bow },
+            },
+        };
+        Check.That(StepPredicates.StepDone(paid, SagaNames.ShadeBringStepId), "the delivery is done once the track has moved past it — this is what unlocks the recipe");
+        Check.That(StepPredicates.StepDone(paid, "mq-shade-find"), "and so is the step before it");
+        Check.That(!StepPredicates.StepDone(paid, "mq-bow"), "the current step is not done");
+        Check.That(!StepPredicates.Shade(paid), "and the shade is no longer wanted");
+        Check.That(!StepPredicates.StepDone(paid, "no-such-step"), "a step in no chain is never done — a dropped step unlocks nothing");
+        Check.That(!StepPredicates.StepDone(null, "mq-bow") && !StepPredicates.StepDone(paid, null), "null input is not done");
+
         // --- Degenerate input ---------------------------------------------------------------
         Check.That(!StepPredicates.DeerHunt(null), "a null track list is not a hunt");
         Check.That(!StepPredicates.DeerHunt(new List<QuestTrack>()), "nor is an empty one");

@@ -66,6 +66,38 @@ namespace ICanShowYouTheWorld.RunMode
         public static bool CourierIntercept(IReadOnlyList<QuestTrack> tracks) =>
             Live(tracks).Any(d => d.Id == SagaNames.InterceptStepId);
 
+        /// <summary>The hunter's shade should be standing: either of its steps is in play.</summary>
+        public static bool Shade(IReadOnlyList<QuestTrack> tracks) =>
+            ShadeFind(tracks) || ShadeDelivery(tracks);
+
+        public static bool ShadeFind(IReadOnlyList<QuestTrack> tracks) =>
+            Live(tracks).Any(d => d.Kind == ChallengeKind.PlayerEvent && d.Param == SagaNames.ShadeFound);
+
+        public static bool ShadeDelivery(IReadOnlyList<QuestTrack> tracks) =>
+            Live(tracks).Any(d => d.Kind == ChallengeKind.PlayerEvent && d.Param == SagaNames.ShadeDelivered);
+
+        /// <summary>
+        /// A step is DONE when some track has moved past it: its chain holds the id at a position
+        /// below the track's index. Absent from every chain is not done — an act that dropped the
+        /// step must not unlock what the step guards.
+        ///
+        /// Derived from the tracks rather than remembered, so a resume recomputes it and a
+        /// dev-skip counts the same as an honest completion.
+        /// </summary>
+        public static bool StepDone(IReadOnlyList<QuestTrack> tracks, string stepId)
+        {
+            if (tracks == null || string.IsNullOrEmpty(stepId)) return false;
+
+            foreach (var t in tracks)
+            {
+                if (t == null || t.Chain == null) continue;
+                int at = t.Chain.FindIndex(d => d != null && d.Id == stepId);
+                if (at >= 0 && t.Index > at) return true;
+            }
+
+            return false;
+        }
+
         /// <summary>
         /// A step only the DARK can finish. The strip refuses to point at anything while this is
         /// true and the sun is up, and the act says so outright rather than letting a hunt

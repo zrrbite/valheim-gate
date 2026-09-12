@@ -51,6 +51,18 @@ namespace ICanShowYouTheWorld.RunMode
         public string BossDefeatKey;
 
         /// <summary>
+        /// True for an act whose content is a STAND-IN: its names are not the game's and were never
+        /// meant to be, so the validator skips them and says so once, instead of reporting an
+        /// unknown creature at every run start for an act nobody can reach yet.
+        ///
+        /// Exists for Act VIII. Valheim 1.0 shipped the Deep North with a boss this build cannot
+        /// name — prefab, altar and defeat key are all asset data — and the alternative to a
+        /// placeholder was an act table one biome short of the game. A placeholder can never END
+        /// on its own: its defeat key is a stand-in the world will never set.
+        /// </summary>
+        public bool Placeholder;
+
+        /// <summary>
         /// This act's questlines, handed to <see cref="ChallengeEngine.SetTracks"/> when the act
         /// becomes current. Two of them: HUNT and CRAFT.
         ///

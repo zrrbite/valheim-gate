@@ -21,11 +21,17 @@ Everything below is what that file tells it.
 
 - Branch **`feature/run-mode`**, not merged, deliberately — the mode is still
   being tuned in play.
-- Latest tag **`0.221.12-run.alpha82`**, pushed, staged for Windows.
+- Latest tag **`0.221.12-run.alpha82`** when this was written; builds are
+  date-based since 2026-08-31 (`Scripts/nextversion.sh`), and the game moved to
+  **1.0.12 / Unity 6000.0.75 on 2026-09-12** — the mod was rebuilt and installed
+  on Windows that day (`1.0.12-run.2026-09-12`); the Deck and the Mac still need
+  their own patch-and-deploy for 1.0.12.
 - Engine tests: `Tests/run_tests.sh`, 514 assertions, all passing.
-- Game version 0.221.12, Unity 6000.0.61. Windows is the play machine, the Mac
-  is the test/build machine, the Deck travels (and is **stale** — it still has
-  an older patched assembly and needs a re-patch before use).
+- Game version 1.0.12, Unity 6000.0.75 (was 0.221.12 / 6000.0.61 until
+  2026-09-12). Windows is the play machine and can now BUILD too
+  (`Scripts/build_windows.sh`, Visual Studio's MSBuild); the Mac is the
+  test/build machine; the Deck travels (and is **stale** — it still has an
+  older patched assembly and needs a re-patch before use).
 
 ### Confirmed in play
 
@@ -515,3 +521,14 @@ That is how the percentage bug, `Player.UseStamina`'s stamina multiplier,
 `ZDOMan.DestroyZDO`'s ownership check, and the `Sleep`/`TimeInBase` stat
 increments were all confirmed. If a change depends on what the game does, read
 it there first.
+
+## Parked ideas
+
+- **A quest book instead of the tracker panel** (owner, 2026-09-12, prompted
+  by the story *bible*): an in-world asset — a book the player opens — showing
+  the saga's progress, in place of the panel on the right. Also the natural
+  home for a quest's HINT if hints should be found rather than shown (the Act I
+  item quest's hint placement is undecided for exactly this reason). Needs the
+  asset pipeline decision `CreatureDressing` is already waiting on: a book is a
+  mesh and a UI, and both want an AssetBundle built in Unity 6000.0.x. Until
+  then the tracker is the book.

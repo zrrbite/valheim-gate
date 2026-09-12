@@ -8,9 +8,13 @@ while what the game actually contains is fresh.
 
 **The saga is SEVEN acts, not five.** It was scoped to the five "mainland"
 bosses; Valheim also ships the Mistlands (the Queen) and the Ashlands (Fader).
-Deep North has no boss — the game has not finished it — so there is nothing to
-build an act around there yet, and an eighth act should not be planned on
-speculation.
+The Deep North got its boss in Valheim 1.0 (noted 2026-09-12, from the 1.0.12
+assembly: `GP_DeepNorth`, a "frozen king" item token, a `SE_Crowned` status
+effect and a crown mode on the player). **Act VIII exists as a PLACEHOLDER** —
+see the section at the end — until its boss prefab, altar location and defeat
+key have been read out of a 1.0 game. The saga is therefore EIGHT acts; VI and
+VII were built thin on the same day, so the table stays one-to-one with the
+game's boss order.
 
 Acts VI and VII are planned here but should not be BUILT until II–V have been
 played. They are also where "asset data this assembly cannot verify" gets much
@@ -287,6 +291,101 @@ lie, since nothing you build in the Ashlands is meant to survive.
 **Risks:** the newest content in the game, and the least certain names.
 
 ---
+
+## Act VIII — The Deep North (placeholder, 2026-09-12)
+
+**What the 1.0.12 assembly says** (read from the IL, not remembered): a guardian
+power `GP_DeepNorth` with `SetPowerDeepNorth`/`UsePowerDeepNorth` stats; an
+item message key `$item_frozenking_drop`; `SE_Crowned` and `Player.SetCrownMode`
+saved on the character as `crowned`; the offering bowl reworked to spawn the
+boss at a distance and take offerings from item stands. Deep snow that slows
+by depth (`SnowRoller`), snow that builds up on pieces and damages them
+(`Game.m_snowDamage`, world keys `NoHeavySnow`/`AllHeavySnow`), fireplaces that
+melt it, slippery/skating movement on `Character`, grappling points, aurora
+shader parameters, a `DeepNorth` build category and a `StoneCircle` global key.
+
+**What it cannot say:** the boss prefab, its altar's location name, and the
+global key its death sets. All three are asset data. The placeholder uses
+stand-ins from `SagaNames` (`__deep_north_boss`, `__deep_north_altar`,
+`__deep_north_defeated`), the act is flagged `ActDefinition.Placeholder` so the
+run-start validator skips it and says so once, and the run-start log now prints
+a **"Boss registry"** — every `OfferingBowl` prefab with the boss it spawns and
+the key it sets, plus every boss-looking location name. Read those lines from a
+1.0 game, put the real names into `RunService.Bosses` and `DeepNorthChain`,
+drop the flag.
+
+**Title, as a placeholder:** "What the Cold Keeps" — *Ice does not take light.
+It keeps it. Find out from whom.* The story bible's rule that only Act VII
+answers the shortage is left standing; the Deep North's answer is not written
+until someone has played it.
+
+**Chain, as built:** reach the Deep North → defeat what the cold keeps (a
+stand-in kill that can never complete). Nothing else, on purpose.
+
+## Item quests — one per act (started 2026-09-12)
+
+Owner: *"an actual quest where we can collect materials, and maybe craft it at
+the Act 1 top crafting station … Later, we'll add an Act item quest for every
+act, once we prove the first one."*
+
+**The shape (owner, same day):** *"talk to someone, find a bunch of mats for
+that person, get a recipe. Then fulfill that recipe to craft the item."* Three
+steps on the CRAFT track, late, after the bench upgrades:
+
+1. **Find the shade** (`mq-shade-find`, PlayerEvent) — the someone. A hunter
+   who died before the bow was strung, wearing the Ghost prefab (the lights'
+   fallback body, no shipped asset), pale and faintly lit, standing 7–11 m from
+   the claimed bed AFTER DARK only — the act's rule, "nothing you seek walks in
+   the light", dismisses it at dawn and brings it back at dusk. Non-persistent,
+   like the Herald; re-made whenever wanted, night, and none standing. The
+   strip carries a bearing to it while this step is live. `HuntersShade.cs`.
+   Why a shade: the bible's ravens never help and the Meadows have no living
+   human, so the teacher is one who did not finish.
+2. **Bring the shade what it lacked** (`mq-shade-bring`, PlayerEvent) — the
+   mats for the person, NOT the bow's own makings: ten flint and five leather
+   scraps, "the quiver it never filled". The interact takes them from the pack
+   and the shade speaks through the game's rune panel (`TextViewer`, the lore
+   stones' UI). *Get a recipe* is literal: `SagaRecipes` registers the bow
+   recipe while this step is DONE (`StepPredicates.StepDone`, derived from
+   the tracks, so a resume re-teaches it and nothing is saved).
+3. **String the hunter's bow** (`mq-bow`, CollectItem for the result, so
+   however it was made counts) — the recipe at the WORKBENCH, the Meadows' top
+   station (the forge is Act II's): 10 wood, 10 resin, 6 deer hide, for
+   vanilla's Finewood bow, which the Meadows cannot otherwise make.
+
+The recipe is registered for the run's length into `ObjectDB.m_recipes` and
+removed when the run ends — a recipe is a plain list entry, re-checked every
+poll because a world load rebuilds the database.
+
+**The interact lives on a CHILD object with its own trigger collider.** The
+game finds hover text and interacts with `GetComponentInParent` from the
+collider the crosshair hit; a Character is itself Hoverable, on the root, and
+added first, so a component on the root loses the prompt to the creature's
+name. Not yet proven in play — the lights' Ghost fallback never ran because
+the Wisp prefab exists — so if the prompt shows only the name, this is where.
+
+**Where the story goes (owner):** *"a quest to complete a bow that'll make
+short work of Eikthyr. Maybe it will spawn lightning on impact"* — **"Thor's
+bow"**. That needs the cloned-item step below: lightning is a damage type on
+the item's SHARED data (`m_damages.m_lightning`) and a hit effect on its
+attack, and shared data is shared — changing it on the Finewood bow would
+change every Finewood bow in the world. The shade's last line already
+foreshadows it without naming it. The quest text says "hunter's bow" until the
+item on the bench says otherwise (the bible's rule: no line the world does not
+back).
+
+**Undecided (owner):** where the player FINDS the quest's hint. For now it is
+the standing Hint under the step like every other, plus the shade's own words;
+the quest-book idea in RESUME.md is the candidate home if the hint should be
+discovered rather than shown.
+
+**Not done, and the next decision:** a NEW item — its own name, stats, icon —
+rather than a new recipe for an existing one. Cloning a prefab at runtime is
+possible (copy the `ItemDrop`'s shared data, rename, register with `ObjectDB`
+AND `ZNetScene`), but any such item left in a world or an inventory is an
+unknown object the moment the mod is absent, and a new LOOK needs an
+AssetBundle — the same decision `CreatureDressing` is waiting on. Prove the
+recipe in play first.
 
 ## Verification discipline
 

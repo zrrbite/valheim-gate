@@ -185,3 +185,25 @@ either path works for reading.
 grep ICanShowYouTheWorld ~/Library/Logs/IronGate/Valheim/Player.log
 open ~/Library/Application\ Support/IronGate/Valheim/ICSYTW_probe.txt
 ```
+
+---
+
+## The boss registry and the saga's recipes (1.0.12 builds and later)
+
+Two more lines worth reading after a run starts. Both are groundwork for
+Act VIII, which is a placeholder until the game has been asked what the Deep
+North's boss is called:
+
+```powershell
+Select-String -Path "$env:USERPROFILE\AppData\LocalLow\IronGate\Valheim\Player.log" -Pattern "ICanShowYouTheWorld.*(Boss registry|Saga recipe|PLACEHOLDER)"
+```
+
+- **Boss registry** — one line per altar the game knows (`boss=` and `key=` are
+  the two names the act table needs), and one line listing boss-looking location
+  names. Copy the Deep North's three into `RunService.Bosses` and
+  `DeepNorthChain`, and Act VIII stops being a placeholder.
+- **Saga recipe registered** — the hunter's bow recipe made it into the object
+  database. If instead a line says `NOT registered`, an ingredient or station
+  prefab name is wrong and the Act I bow quest cannot be crafted.
+- **PLACEHOLDER** — the validator saying, once, that it skipped Act VIII.
+  Expected until the names are filled in.
