@@ -12,6 +12,16 @@
     currently installed — patching an already-patched assembly would inject
     the mod's entry point twice.
 
+    The backup is refreshed whenever the installed assembly is unpatched,
+    because that is what a Steam update leaves behind: a NEW vanilla. A backup
+    taken once and kept forever is a backup of the OLD game, and patching that
+    installs a previous version's assembly into the updated game — which does
+    not start. (This happened on the 1.0 update.)
+
+    The installer also refuses to install a mod DLL built for a different game
+    version than the one on disk. A game update needs the mod REBUILT, not just
+    re-installed; the installer cannot do that for you.
+
 .PARAMETER ModOnly
     Copy just the mod DLL, skipping the patch step. This is the normal way to
     pick up mod changes; a full run is only needed after a Valheim update.
@@ -22,6 +32,11 @@
 .PARAMETER AllowStale
     Install even when the bundled mod DLL does not match the tag you pulled.
     Only useful for deliberately installing an older build.
+
+.PARAMETER IgnoreGameVersion
+    Install even when the mod DLL was built against a different Valheim version
+    than the one installed. Expect MissingMethodExceptions in the log; this is
+    for finding out WHAT broke, not for playing.
 
 .PARAMETER ManagedPath
     Override auto-detection, e.g.
@@ -36,6 +51,7 @@ param(
     [switch]$ModOnly,
     [switch]$Restore,
     [switch]$AllowStale,
+    [switch]$IgnoreGameVersion,
     [string]$ManagedPath
 )
 
@@ -43,16 +59,10 @@ $ErrorActionPreference = 'Stop'
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $patcherDir = Join-Path $here 'patcher'
 
-# Game version these binaries were built and tested against (Steam buildid
-# observed on the Deck for the same patch). A mismatch is a warning, not a
-# hard stop: the assembly is patched locally either way, but the mod DLL was
-# compiled against this version's API.
-$ExpectedVersion = '0.221.12'
-$ExpectedBuildId = '21981559'
-
 function Write-Ok    { param($m) Write-Host "[ok]   $m" -ForegroundColor Green }
 function Write-Info  { param($m) Write-Host "[info] $m" -ForegroundColor Cyan }
 function Write-Warn2 { param($m) Write-Host "[warn] $m" -ForegroundColor Yellow }
+function Write-Err   { param($m) Write-Host "[fail] $m" -ForegroundColor Red }
 
 <#
 .SYNOPSIS
@@ -97,7 +107,64 @@ function Get-ModVersion {
 
     return $null
 }
-function Write-Err   { param($m) Write-Host "[fail] $m" -ForegroundColor Red }
+
+<#
+.SYNOPSIS
+    The Valheim version (e.g. "1.0.12") compiled into an assembly_valheim.dll, or $null.
+
+.DESCRIPTION
+    Same method as Scripts/GetGameVersion.cs on the Mac: find the store into
+    Version.CurrentVersion and read the three integer pushes that precede it.
+    The version is not a string literal in the assembly, so a byte scan cannot
+    find it; this needs Mono.Cecil, which is bundled for the Patcher anyway.
+    Works on vanilla and patched assemblies alike. $null when anything goes
+    wrong, so a diagnostic never blocks an install by itself.
+#>
+function Get-GameVersion {
+    param([string]$Dll)
+
+    try {
+        if (-not (Test-Path $Dll)) { return $null }
+        Add-Type -Path (Join-Path $patcherDir 'Mono.Cecil.dll') -ErrorAction Stop
+
+        $asm = [Mono.Cecil.AssemblyDefinition]::ReadAssembly($Dll)
+        try {
+            foreach ($type in $asm.MainModule.GetTypes()) {
+                foreach ($method in $type.Methods) {
+                    if (-not $method.HasBody) { continue }
+                    $ins = $method.Body.Instructions
+                    for ($i = 0; $i -lt $ins.Count; $i++) {
+                        $field = $ins[$i].Operand -as [Mono.Cecil.FieldReference]
+                        if ($ins[$i].OpCode -ne [Mono.Cecil.Cil.OpCodes]::Stsfld -or -not $field) { continue }
+                        if (-not $field.Name.Contains('CurrentVersion')) { continue }
+
+                        # Expect: ldc major, ldc minor, ldc patch, newobj GameVersion, stsfld
+                        $nums = @()
+                        for ($j = [Math]::Max(0, $i - 8); $j -lt $i; $j++) {
+                            $op = $ins[$j].OpCode
+                            if ($op -eq [Mono.Cecil.Cil.OpCodes]::Ldc_I4)       { $nums += [int]$ins[$j].Operand }
+                            elseif ($op -eq [Mono.Cecil.Cil.OpCodes]::Ldc_I4_S) { $nums += [int][sbyte]$ins[$j].Operand }
+                            elseif ($op -eq [Mono.Cecil.Cil.OpCodes]::Ldc_I4_M1) { $nums += -1 }
+                            elseif ($op.Code -ge [Mono.Cecil.Cil.Code]::Ldc_I4_0 -and $op.Code -le [Mono.Cecil.Cil.Code]::Ldc_I4_8) {
+                                $nums += ([int]$op.Code - [int][Mono.Cecil.Cil.Code]::Ldc_I4_0)
+                            }
+                        }
+                        if ($nums.Count -ge 3) {
+                            $n = $nums.Count
+                            return "$($nums[$n-3]).$($nums[$n-2]).$($nums[$n-1])"
+                        }
+                    }
+                }
+            }
+        } finally {
+            $asm.Dispose()
+        }
+    } catch {
+        # See Get-ModVersion: diagnostics must never be the thing that fails an install.
+    }
+
+    return $null
+}
 
 <#
 .SYNOPSIS
@@ -116,8 +183,15 @@ function Write-Err   { param($m) Write-Host "[fail] $m" -ForegroundColor Red }
 function Assert-BundledFresh {
     param([string]$Dll)
 
+    # Newest version tag reachable from HEAD. Not `git describe --tags --abbrev=0`:
+    # when two tags sit on the same commit (two builds with no commit in between)
+    # describe returns whichever sorts FIRST, i.e. the OLDER one, and this check
+    # then rejects a perfectly fresh DLL. Newest commit date wins, and on a tie the
+    # higher version; the '[0-9]*' filter skips stray non-version tags ('working').
     $tag = $null
-    try { $tag = (& git -C $here describe --tags --abbrev=0 2>$null) } catch { return }
+    try {
+        $tag = (& git -C $here tag --merged HEAD --list '[0-9]*' --sort=-v:refname --sort=-creatordate 2>$null | Select-Object -First 1)
+    } catch { return }
     if (-not $tag) { return }
 
     $bundled = Get-ModVersion $Dll
@@ -134,6 +208,52 @@ function Assert-BundledFresh {
     Write-Info 'Override with -AllowStale if you really do want the older build.'
     if (-not $AllowStale) { exit 1 }
     Write-Warn2 'Continuing anyway (-AllowStale).'
+}
+
+<#
+.SYNOPSIS
+    Refuse to install a mod DLL built against a different Valheim version.
+
+.DESCRIPTION
+    The mod is compiled against one specific assembly_valheim.dll, and a game
+    update changes signatures the mod calls (1.0 changed five and added an
+    interface member). Installing anyway gives a mod that loads, shows its popup,
+    and then throws MissingMethodException from whatever it touches first — a
+    failure that looks like a bug in the mod rather than a version gap.
+
+    The mod's version starts with the game version it was built for
+    (1.0.12-run.2026-09-12 was built against 1.0.12), and the game's own version
+    is compiled into its assembly, so the two can simply be compared. This used
+    to be a WARNING keyed on the Steam buildid, and the warning was missed on the
+    update that mattered; a hard stop with the fix spelled out is the honest form.
+#>
+function Assert-GameVersionMatches {
+    param([string]$ModDll, [string]$GameDll)
+
+    $mod = Get-ModVersion $ModDll
+    $game = Get-GameVersion $GameDll
+    if (-not $mod -or -not $game) {
+        Write-Warn2 'Could not compare the mod and game versions; installing unchecked.'
+        return
+    }
+
+    $builtFor = ($mod -split '-')[0]
+    if ($builtFor -eq $game) {
+        Write-Ok "Mod build $mod matches the installed game ($game)."
+        return
+    }
+
+    Write-Err "The mod was built for Valheim $builtFor, but the installed game is $game."
+    Write-Info 'A game update needs the mod REBUILT against the new assembly, not re-installed:'
+    Write-Info '  1. Copy this machine''s (unpatched) assembly_valheim.dll, assembly_utils.dll,'
+    Write-Info '     assembly_guiutils.dll, Splatform.dll and UnityEngine.UI.dll into libraries\.'
+    Write-Info '  2. If the Unity version changed too (Player.log, first lines), refresh libraries\'
+    Write-Info '     from https://unity.bepinex.dev/ — see CLAUDE.md, "Unity Version Management".'
+    Write-Info '  3. Patch the new assembly, rebuild the mod against it, fix whatever no longer'
+    Write-Info '     compiles, tag, stage (Scripts/stage_windows.sh), then re-run this installer.'
+    Write-Info 'Override with -IgnoreGameVersion to install anyway (for diagnosis, not play).'
+    if (-not $IgnoreGameVersion) { exit 1 }
+    Write-Warn2 'Continuing anyway (-IgnoreGameVersion).'
 }
 
 function Find-ValheimManaged {
@@ -169,6 +289,14 @@ function Find-ValheimManaged {
         if (Test-Path $candidate) { return $candidate }
     }
     return $null
+}
+
+# The mod's entry point lives in the assembly's metadata string heap once the
+# Patcher has injected it, so a byte scan tells patched from vanilla. Used both
+# to decide whether the installed file IS the vanilla and to verify a patch.
+function Test-Patched {
+    param([string]$Dll)
+    return ([Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($Dll))).Contains('NotACheater')
 }
 
 # ---- Locate the install -------------------------------------------------
@@ -217,47 +345,61 @@ try {
 
 Assert-BundledFresh $modSource
 
+$installedIsPatched = Test-Patched $installed
+
 # Mod-only refresh: the mod DLL is pure IL and identical on every platform, so
 # a change to the mod alone needs no re-patching — the patched assembly already
 # installed stays valid until the GAME updates.
 if ($ModOnly) {
-    if (-not (Test-Path $vanilla)) {
-        Write-Err 'No vanilla backup found, so the assembly has never been patched here.'
-        Write-Info 'Run a full install first: .\Install-Mod.ps1'
+    if (-not $installedIsPatched) {
+        if (Test-Path $vanilla) {
+            Write-Err 'The installed assembly is unpatched — Valheim has updated since the last install.'
+        } else {
+            Write-Err 'No vanilla backup found, so the assembly has never been patched here.'
+        }
+        Write-Info 'A mod-only copy would never be called. Run a full install: .\Install-Mod.ps1'
         exit 1
     }
+    Assert-GameVersionMatches $modSource $installed
     Copy-Item $modSource $modTarget -Force
     Write-Ok 'Updated ICanShowYouTheWorld.dll (assembly left as-is).'
     Write-Info 'Restart Valheim and open Credits to load the new build.'
     exit 0
 }
 
-# Compare the Steam build against what these binaries were built for.
-# Managed -> valheim_Data -> Valheim -> common -> steamapps (four levels up).
-$steamapps = $ManagedPath
-1..4 | ForEach-Object { $steamapps = Split-Path -Parent $steamapps }
-$appManifest = Join-Path $steamapps 'appmanifest_892970.acf'
-if (Test-Path $appManifest) {
-    $m = [regex]::Match((Get-Content $appManifest -Raw), '"buildid"\s+"(\d+)"')
-    if ($m.Success) {
-        if ($m.Groups[1].Value -eq $ExpectedBuildId) {
-            Write-Ok "Steam buildid $($m.Groups[1].Value) matches the tested build ($ExpectedVersion)."
-        } else {
-            Write-Warn2 "Steam buildid is $($m.Groups[1].Value); these binaries were built against $ExpectedBuildId ($ExpectedVersion)."
-            Write-Warn2 'The assembly is still patched locally, but the mod DLL may not match the game API.'
-            Write-Warn2 'If the game misbehaves, rebuild the mod on the Mac against this version.'
-        }
+# ---- Back up the vanilla assembly ---------------------------------------
+
+# Whatever is installed and NOT patched is the vanilla, and it REPLACES the
+# backup: a Steam update leaves exactly that behind, and the old backup is
+# then a backup of the old game. Only an installed file that carries the
+# injection leaves the backup alone, because then the backup is the only
+# unpatched copy there is — and even then it must be from the same game
+# version, or it is the stale one that broke the 1.0 update.
+if (-not $installedIsPatched) {
+    if (Test-Path $vanilla) {
+        Write-Info 'Installed assembly is unpatched (game updated?) — refreshing the vanilla backup from it.'
     }
-}
-
-# ---- Back up the vanilla assembly (once) --------------------------------
-
-if (-not (Test-Path $vanilla)) {
-    Copy-Item $installed $vanilla
-    Write-Ok "Vanilla backup created: $vanilla"
+    Copy-Item $installed $vanilla -Force
+    Write-Ok "Vanilla backup: $vanilla"
 } else {
-    Write-Info 'Vanilla backup already exists — patching from it, not from the installed file.'
+    if (-not (Test-Path $vanilla)) {
+        Write-Err 'The installed assembly is already patched and there is no vanilla backup to patch from.'
+        Write-Info 'In Steam: Properties > Installed Files > Verify integrity of game files, then re-run.'
+        exit 1
+    }
+    $installedGame = Get-GameVersion $installed
+    $vanillaGame   = Get-GameVersion $vanilla
+    if ($installedGame -and $vanillaGame -and $installedGame -ne $vanillaGame) {
+        Write-Err "The installed assembly is Valheim $installedGame but the vanilla backup is $vanillaGame."
+        Write-Info 'The backup is from an older game; patching it would install the older game''s assembly.'
+        Write-Info 'In Steam: Properties > Installed Files > Verify integrity of game files (this puts'
+        Write-Info 'the real vanilla back), then re-run this installer.'
+        exit 1
+    }
+    Write-Info 'Installed assembly is already patched — patching from the vanilla backup, not from it.'
 }
+
+Assert-GameVersionMatches $modSource $vanilla
 
 # ---- Patch --------------------------------------------------------------
 
@@ -283,8 +425,7 @@ Write-Ok 'Assembly patched.'
 # sit at 0 forever, with only a subtle in-game notice to explain it. Both names
 # live in the assembly's metadata string heap, so a string scan settles it.
 # Checked before the install copy, so a bad patch never reaches the game folder.
-$patchedBytes = [IO.File]::ReadAllBytes($patchedOut)
-$patchedText  = [Text.Encoding]::ASCII.GetString($patchedBytes)
+$patchedText = [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($patchedOut))
 
 if (-not $patchedText.Contains('NotACheater')) {
     Write-Err 'Patched assembly is missing the mod entry point — aborting.'
@@ -320,3 +461,4 @@ if ($modVersion) {
 
 Write-Info "Roll back with: .\Install-Mod.ps1 -Restore"
 Write-Warn2 'A Steam game update overwrites assembly_valheim.dll — re-run this script afterwards.'
+Write-Warn2 'If the game VERSION changed, the mod must be rebuilt first; this script will refuse otherwise.'

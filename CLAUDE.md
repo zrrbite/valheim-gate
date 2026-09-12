@@ -209,7 +209,7 @@ Extract both to the same folder and copy to:
 1. `libraries/` folder (for development/linking)
 2. Steam Deck `/home/deck/.local/share/Steam/steamapps/common/Valheim/valheim_Data/Managed/` (for runtime)
 
-Current Unity version: 6000.0.61 (Unity 6; 6000.0.58 from Valheim 0.221.6, 6000.0.61 since 0.221.12)
+Current Unity version: 6000.0.75 (Unity 6; 6000.0.58 from Valheim 0.221.6, 6000.0.61 since 0.221.12, 6000.0.75 since 1.0.12)
 
 ## Deployment
 
@@ -277,7 +277,13 @@ gotchas, both handled/explained by `Scripts/win_common.sh`:
 
 ### Simple scenario: Valheim patch only
 Valheim updates via Steam, overwriting patched assembly_valheim.dll
-→ Re-download assembly, re-patch with Patcher.exe, re-upload both DLLs
+→ Re-download assembly, re-patch with Patcher.exe, **rebuild the mod against
+the new assembly**, re-upload both DLLs. Re-patching alone is never enough:
+the mod DLL is compiled against one exact game assembly, and every update so
+far has changed something it calls (1.0.12: five signatures gained a trailing
+parameter, `PlayerProfile.m_playerStats` became an array, `Hoverable` gained
+`GetHoverOffset()`). The deploy scripts and the Windows installer refuse a mod
+whose version prefix does not match the game's version for this reason.
 
 ### Complex scenario: Unity version change
 Check https://valheim.fandom.com/wiki/Version_History for Unity version updates

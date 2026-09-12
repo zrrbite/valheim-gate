@@ -9,7 +9,12 @@ if [[ ! -d "$ROOT" ]]; then
 fi
 
 # 2) Find the latest tag
-VERSION="$(git describe --tags --abbrev=0)"
+# Newest version tag reachable from HEAD. Not `git describe --tags --abbrev=0`: when
+# two tags sit on the same commit (two builds with no commit in between) describe
+# returns whichever sorts FIRST, i.e. the OLDER one — which is how a fresh 1.0.12
+# build got refused as stale on 2026-09-12. Newest commit date wins, and on a tie
+# the higher version; the '[0-9]*' filter skips stray non-version tags ('working').
+VERSION="$(git tag --merged HEAD --list '[0-9]*' --sort=-v:refname --sort=-creatordate | head -n1)"
 echo "Using version: $VERSION"
 
 # 3) Paths

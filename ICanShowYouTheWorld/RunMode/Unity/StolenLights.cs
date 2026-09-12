@@ -48,6 +48,9 @@ namespace ICanShowYouTheWorld.RunMode
         public string GetHoverText() => "A deer's light\n[<color=yellow><b>$KEY_Use</b></color>] Take it back";
 
         public string GetHoverName() => "A deer's light";
+
+        /// <summary>Valheim 1.0 added this to Hoverable: how far above the object the prompt floats. Zero is what a vanilla Pickable defaults to.</summary>
+        public float GetHoverOffset() => 0f;
     }
 
     /// <summary>

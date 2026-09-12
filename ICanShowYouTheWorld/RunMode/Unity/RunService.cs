@@ -3457,11 +3457,16 @@ namespace ICanShowYouTheWorld.RunMode
         /// Current value of a lifetime player stat named by its PlayerStatType member, or null when
         /// the name is unknown, the profile isn't reachable, or the stat has no entry yet.
         ///
-        /// Reads PlayerProfile.m_playerStats.m_stats (a Dictionary&lt;PlayerStatType, float&gt;,
+        /// Reads PlayerProfile.m_playerStats[0].m_stats (a Dictionary&lt;PlayerStatType, float&gt;,
         /// confirmed against the IL) rather than the indexer, which throws on a missing key. In
         /// practice PlayerStats' constructor pre-seeds every member with 0, but a build that adds
         /// an enum member without widening that loop would turn a missing entry into a run-killing
         /// exception every poll.
+        ///
+        /// Since Valheim 1.0 m_playerStats is an ARRAY, one PlayerStats per achievement difficulty
+        /// plus a raw copy at index 0 (PlayerProfile.c_RawStats, which is private). IncrementStat
+        /// always writes index 0 and only writes the others when achievements are enabled, so the
+        /// raw slot is the one that counts cheated progress too — which is what a run wants.
         /// </summary>
         private float? ReadPlayerStat(string param)
         {
@@ -3470,7 +3475,8 @@ namespace ICanShowYouTheWorld.RunMode
 
             try
             {
-                var stats = Game.instance?.GetPlayerProfile()?.m_playerStats?.m_stats;
+                var all = Game.instance?.GetPlayerProfile()?.m_playerStats;
+                var stats = all != null && all.Length > 0 ? all[0]?.m_stats : null;
                 if (stats == null) return null;
 
                 return stats.TryGetValue(type.Value, out float value) ? value : 0f;

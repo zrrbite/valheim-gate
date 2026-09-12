@@ -86,21 +86,38 @@ The mod DLL itself is pure IL and identical on every platform, so the one in
 | `patcher\Mono.Cecil*.dll` | Patcher dependencies |
 | `patcher\ICanShowYouTheWorld.dll` | The mod — also the symbol source the patcher reads |
 
-Built from the **`feature/run-mode`** branch (Run Mode preview), against Valheim
-0.221.12 / Unity 6000.0.61. The installer prints the version it
-installed and the popup should match it — nothing here names a version, so
-nothing here can go stale.
-The script warns if this machine's Steam buildid differs from the tested one
-(`21981559`); it will still patch correctly, but the mod DLL was compiled
-against that version's API, so a large version gap wants a rebuild on the Mac.
+Built from the **`feature/run-mode`** branch (Run Mode preview). The installer
+prints the version it installed and the popup should match it — nothing here
+names a version, so nothing here can go stale. The game version the mod was
+built against is the first part of that version (`1.0.12-run.2026-09-12` was
+built against Valheim 1.0.12).
+
+**The script refuses to install a mod built for a different game version** than
+the one on disk — it reads both out of the DLLs. A game update is not something
+the installer can fix: the mod has to be rebuilt against the new assembly, and
+the update usually changes something the mod calls (1.0 changed five signatures,
+added a `Hoverable` member, and moved Unity from 6000.0.61 to 6000.0.75). What
+the rebuild involves is in the repo's `CLAUDE.md` under "Update Scenarios".
+
+It also refreshes its vanilla backup whenever the installed assembly is
+unpatched, which is what a Steam update leaves behind. Until 2026-09-12 the
+backup was taken once and kept forever, so after the 1.0 update the script
+patched the *old* game's assembly and installed it into the new game, which
+then failed at startup with `TypeLoadException`s against the newer `Splatform`.
+If you are ever in that state, Steam's *Verify integrity of game files* puts the
+real vanilla back.
 
 ## Caveats
 
-- **Untested on Windows.** Written on macOS and never executed against a real
-  Windows install — if something fails, the failure is worth reporting back
-  rather than working around silently.
 - A Steam game update overwrites `assembly_valheim.dll`; re-run the script
-  afterwards.
+  afterwards. If the game *version* changed, rebuild the mod first — the script
+  will tell you so and stop.
+- The mod can be built on this Windows box too: Visual Studio 2022's MSBuild
+  builds `ICanShowYouTheWorld\ICanShowYouTheWorld.csproj` directly (the Patcher
+  project needs a NuGet restore, but the bundled `Patcher.exe` does the same
+  job). The Mac shell scripts run under Git Bash, `Testsun_tests.sh` excepted
+  (it wants `mcs`/`mono`; Roslyn's `csc.exe` from the VS install compiles the
+  same sources).
 - These binaries are refreshed by hand from the Mac. If the mod source has
   moved on, they're stale — check the repo's latest tag.
 - Once SSH works, prefer `Scripts/upload_windows.sh` from the Mac; see

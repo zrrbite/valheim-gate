@@ -22,7 +22,12 @@ DEST="$ROOT/dist/windows/patcher"
 [[ -f "$BUILT" ]] || { echo "No build at $BUILT — build first."; exit 1; }
 
 # The tag is the source of truth for what this release IS; the DLL must agree.
-TAG="$(git describe --tags --abbrev=0)"
+# Newest version tag reachable from HEAD. Not `git describe --tags --abbrev=0`: when
+# two tags sit on the same commit (two builds with no commit in between) describe
+# returns whichever sorts FIRST, i.e. the OLDER one — which is how a fresh 1.0.12
+# build got refused as stale on 2026-09-12. Newest commit date wins, and on a tie
+# the higher version; the '[0-9]*' filter skips stray non-version tags ('working').
+TAG="$(git tag --merged HEAD --list '[0-9]*' --sort=-v:refname --sort=-creatordate | head -n1)"
 DLL_VERSION="$(python3 - "$BUILT" <<'PY'
 import re, sys
 data = open(sys.argv[1], 'rb').read().decode('utf-16-le', 'ignore')
