@@ -1245,12 +1245,9 @@ namespace ICanShowYouTheWorld.RunMode
                 }
             }
 
-            if (!string.IsNullOrEmpty(quest.Def.RewardText))
-            {
-                GUI.contentColor = RunTheme.AccentGold;
-                GUILayout.Label("  \u2192 " + quest.Def.RewardText, RunTheme.Small);
-                GUI.contentColor = Color.white;
-            }
+            // The reward is deliberately NOT shown under the step any more (owner, 2026-09-12:
+            // "takes up too much space and ruins surprise"). It is still said once, when the step
+            // completes — RunService's "Quest reward:" message — which is where a surprise belongs.
         }
 
         /// <summary>Splits, tasks and held boons — the part of the HUD that scrolls.</summary>
@@ -1366,8 +1363,8 @@ namespace ICanShowYouTheWorld.RunMode
                     }
                 }
 
-                float cost = Config?.RunRerollHeatCost ?? 0f;
-                if (!frozen && cost > 0f) GUILayout.Label($"  reroll costs {cost:0.#} heat", RunTheme.Small);
+                // No standing "reroll costs N heat" line: it never changed, so it was furniture
+                // (owner, 2026-09-12). The refusal when heat is short still names the cost.
             }
 
             GUILayout.Space(4f);
