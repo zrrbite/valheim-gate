@@ -62,9 +62,12 @@ namespace ICanShowYouTheWorld.RunMode
         public const string ThorsBowPrefab = "Saga_ThorsBow";
         public const string ThorsBowName = "Thor’s bow";
 
-        /// <summary>The bow's own damage, on top of the Finewood bow it is cut from (32 pierce).</summary>
-        private const float ThorsBowLightning = 20f;
-        private const float ThorsBowLightningPerLevel = 4f;
+        /// <summary>
+        /// The bow's own damage, on top of the Finewood bow it is cut from (32 pierce). Raised from
+        /// 20/+4 after the first play (owner: "we COULD increase the dmg just a bit").
+        /// </summary>
+        private const float ThorsBowLightning = 26f;
+        private const float ThorsBowLightningPerLevel = 5f;
 
         /// <summary>Candidate lightning effects, the Herald's list; the first that resolves is used.</summary>
         private static readonly string[] LightningPrefabs =

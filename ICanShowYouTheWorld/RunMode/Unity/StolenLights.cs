@@ -161,6 +161,14 @@ namespace ICanShowYouTheWorld.RunMode
             Lost = Mathf.Max(0, lost);
         }
 
+        /// <summary>
+        /// A light taken back that this class did not release — a stray found out in the dark.
+        /// The step already counted it; the SCOREBOARD did not, so "you N — forest N" fell behind
+        /// the quest's own count (owner, 2026-09-12). The bible says a stray counts fully, and the
+        /// ledger the player reads must agree with the step it narrates.
+        /// </summary>
+        public void CreditTaken() => Taken++;
+
         /// <summary>How many lights are still burning. The HUD counts them down.</summary>
         public int Burning => _lights.Count;
 

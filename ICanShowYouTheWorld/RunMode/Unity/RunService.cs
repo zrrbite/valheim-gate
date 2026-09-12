@@ -447,9 +447,13 @@ namespace ICanShowYouTheWorld.RunMode
                     _strayOut = false;
                     _strayReadyAt = Time.time + Mathf.Max(60f, _cfg.RunStrayLightMinutes * 60f);
 
-                    // A found stray IS a light taken back — the race counts it.
+                    // A found stray IS a light taken back — the race counts it, and so must the
+                    // scoreboard, or the two numbers the player sees disagree.
+                    _lights?.CreditTaken();
                     _challenges.ReportEvent(ChallengeKind.PlayerEvent, StolenLights.TakenEvent);
-                    Message("A stray light, safe. The forest never had it.");
+                    Message(_lights != null
+                        ? $"A stray light, safe. The forest never had it. (you {_lights.Taken} — forest {_lights.Lost})"
+                        : "A stray light, safe. The forest never had it.");
                 }
             }
             catch (Exception ex) { LogOnce("stray-lights", ex); }
