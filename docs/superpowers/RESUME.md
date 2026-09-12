@@ -532,3 +532,30 @@ it there first.
   asset pipeline decision `CreatureDressing` is already waiting on: a book is a
   mesh and a UI, and both want an AssetBundle built in Unity 6000.0.x. Until
   then the tracker is the book.
+
+## Next session, first thing (2026-09-12, owner: "we'll revisit when I get back")
+
+**Move the mod's entry point off the Credits menu.** The saga now has an item of
+its own (Thor's bow, `SagaItems`), and a saga item is only known to the game
+while the mod is loaded. The mod loads when the player opens Credits. Launch
+the game, load a character WITHOUT visiting Credits, and the pack loads with
+the bow's name unresolved — the bow is dropped from the inventory and the next
+save writes it that way. Gone, silently. Until today forgetting Credits cost
+nothing permanent; now it costs the bow.
+
+The fix is the Patcher: inject `NotACheater.Run()` at game startup
+(`FejdStartup.Awake` or `Start`) instead of, or as well as, `OnCredits`. Then
+re-patch the assembly on EVERY machine — Windows via `Install-Mod.ps1` without
+`-ModOnly`, the Deck and the Mac via their download/patch/upload scripts —
+and update the "open Credits to activate" line everywhere it appears
+(CLAUDE.md, dist/windows/README.md, the installer's closing message). Check
+first that `Run()` is safe to call that early: it creates the persistent
+GameObject and the DI container, and nothing in it should need a world.
+
+Until then the rule is: **Credits first, every launch, before loading a
+character.**
+
+Also waiting on the owner's play-test of tag `1.0.12-run.2026-09-12f`:
+Thor's bow on the bench after paying the shade, the flash on impact, and the
+bow surviving a relog. And the shade's prompt now reading "[E] Speak".
+
