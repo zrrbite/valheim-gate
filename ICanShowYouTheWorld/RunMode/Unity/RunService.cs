@@ -192,6 +192,12 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>The saga's own items — present whenever the mod is, run or no run. See <see cref="SagaItems"/>.</summary>
         private readonly SagaItems _items = new SagaItems();
 
+        /// <summary>What the player dreams while a run is live. See <see cref="SagaDreams"/>.</summary>
+        private readonly SagaDreams _dreams = new SagaDreams();
+
+        /// <summary>The game's raids, forced at the saga's beats. See <see cref="SagaRaids"/>.</summary>
+        private readonly SagaRaids _raids = new SagaRaids();
+
         /// <summary>
         /// Index into <see cref="_acts"/>. Not persisted: <see cref="CurrentActIndex"/> derives it
         /// from the world's defeated bosses, and this only caches that between polls so
@@ -689,6 +695,11 @@ namespace ICanShowYouTheWorld.RunMode
                 if (_gatherer.TryArrive(player, _lights?.Lost ?? 0))
                 {
                     Announce("Something heavy is coming through the trees.");
+
+                    // And not alone: the forest moves with its oldest splinter. The greydwarf
+                    // raid, forced here, is the act's climax fight given the scale the bible
+                    // describes — "the forest sends its children".
+                    _raids.Trigger(SagaRaids.ForestMoving, player.transform.position);
 
                     // The arrival reads out the race: what the hunt ended at, and what that has
                     // made of the thing arriving. The player has already watched both numbers —
@@ -1800,6 +1811,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // Re-checked every poll because a world load rebuilds ObjectDB and drops them.
                 // The gate is derived from the tracks, so a resume re-teaches what was taught.
                 if (_active) _recipes.Ensure(id => _challenges != null && StepPredicates.StepDone(_challenges.Tracks, id));
+                if (_active) _dreams.Ensure();
             }
 
             if (!_active) return;
@@ -3709,8 +3721,10 @@ namespace ICanShowYouTheWorld.RunMode
         {
             _active = false;
 
-            // The saga's recipes are run-only: outside a run the bench is vanilla.
+            // The saga's recipes, dreams and raids are run-only: outside a run the game is vanilla.
             _recipes.Remove();
+            _dreams.Remove();
+            _raids.Reset();
 
             // The dev speed boost is a loan, and the run ending is the last chance to repay it.
             DevRestoreSpeed();
@@ -4467,6 +4481,7 @@ namespace ICanShowYouTheWorld.RunMode
 
                 ValidateActs();
                 LogBossRegistry();
+                _raids.LogRegistry();
                 ResolveSkillParams();
             }
             catch (Exception e)
@@ -5272,6 +5287,12 @@ namespace ICanShowYouTheWorld.RunMode
                     {
                         _challenges?.ReportKill(synthetic);
                         Message($"{DeerHerd.HeraldName} falls.");
+
+                        // "Its fall will be heard" — the bible's line, now backed by the world.
+                        // Eikthyr's own rally, the raid the game keeps until he is dead, forced
+                        // at the carcass the moment his Herald drops.
+                        if (_raids.Trigger(SagaRaids.EikthyrRally, c.transform.position))
+                            Announce("The meadows heard that.");
                     }
                 }
             }

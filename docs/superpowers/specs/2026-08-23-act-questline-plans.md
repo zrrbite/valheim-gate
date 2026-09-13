@@ -409,6 +409,35 @@ unknown object the moment the mod is absent, and a new LOOK needs an
 AssetBundle — the same decision `CreatureDressing` is waiting on. Prove the
 recipe in play first.
 
+## The world speaking back (2026-09-13)
+
+Three of the game's own systems, driven from outside the way the shade and the
+recipe are. All run-only; the game is vanilla again when the run ends.
+
+- **Dreams** (`SagaDreams`). The sleep screen's dream list is REPLACED for the
+  run with the saga's: one per act, gated on the same defeat keys the acts
+  use, the first at chance 1.0 so the first night dreams (owner: "Would be fun
+  to dream on the first night"), the rest at 0.6–0.8 so sleep stays quiet
+  sometimes. Vanilla's list is set aside and restored at run end.
+- **Speech bubbles** (`HuntersShade.Greet`). The trader's NPC bubble, over the
+  shade's head, once per phase when the player first comes within 9 m. The
+  rune panel keeps the long speeches.
+- **Raids as beats** (`SagaRaids`). The game's random events, FORCED by name
+  at a place: the full vanilla package (event bar, music, waves, end message)
+  for one call, and forcing skips the event's own key requirements. Two beats
+  so far, both Act I: the Herald's fall forces Eikthyr's rally at the carcass
+  ("its fall will be heard", now backed by the world), and the Gatherer's
+  arrival forces the greydwarf raid. Event names are asset data: the run
+  start logs a **"Raid registry"** with every event's name, biome, duration,
+  requirements and start message, and a beat whose event is missing logs and
+  skips. The two names used (`army_eikthyr`, `army_theelder`) are as commonly
+  documented and unverified in play until that registry has been read.
+
+Candidates from the same survey, not built: weather forced per beat (EnvMan),
+noise on the Herald's fall (Character.AddNoise), heat riding the forced
+player-count difficulty, a sign near the bed that the raven writes on, the
+1.0 persistent-event system and video cinematics (names unknown; log first).
+
 ## Verification discipline
 
 Every act above must go through what Act I learned the hard way. In order:

@@ -195,7 +195,7 @@ Act VIII, which is a placeholder until the game has been asked what the Deep
 North's boss is called:
 
 ```powershell
-Select-String -Path "$env:USERPROFILE\AppData\LocalLow\IronGate\Valheim\Player.log" -Pattern "ICanShowYouTheWorld.*(Boss registry|Saga recipe|Saga item|Thor|PLACEHOLDER)"
+Select-String -Path "$env:USERPROFILE\AppData\LocalLow\IronGate\Valheim\Player.log" -Pattern "ICanShowYouTheWorld.*(Boss registry|Raid registry|Raid|Saga recipe|Saga item|Saga dreams|Thor|PLACEHOLDER)"
 ```
 
 - **Boss registry** — one line per altar the game knows (`boss=` and `key=` are
@@ -213,3 +213,10 @@ Select-String -Path "$env:USERPROFILE\AppData\LocalLow\IronGate\Valheim\Player.l
 - **Thor's bow lightning effect** — which effect prefab the flash uses. "No
   lightning effect prefab resolved" means the bow still deals lightning
   damage but shows nothing on impact.
+- **Raid registry** — one line per random event the game has. The saga
+  forces `army_eikthyr` when the Herald falls and `army_theelder` when the
+  Gatherer arrives; if either name is absent from the registry, the beat logs
+  "not in this build's event list" and is skipped, and the name in
+  `SagaRaids.cs` needs correcting from the registry.
+- **Saga dreams in place** — the sleep screen has the saga's dreams. The
+  first night of a run should always dream.

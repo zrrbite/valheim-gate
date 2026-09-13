@@ -177,7 +177,20 @@ namespace ICanShowYouTheWorld.RunMode
         private ZDOID _shade = ZDOID.None;
         private Vector3? _spot;
         private ShadeTalk _talk;
+        private GameObject _body;
         private bool _priceChecked;
+
+        /// <summary>The phase the last bubble was for; a new phase earns a new greeting.</summary>
+        private Phase? _greetedFor;
+
+        /// <summary>How close the player must come for the shade to speak first.</summary>
+        private const float GreetRange = 9f;
+
+        // One line each, said in a bubble over its head as you come near — the way the trader
+        // greets. The rune panel is for what it has to SAY; this is for it being there.
+        private const string GreetFind = "You. Closer. I have waited long enough to be quiet about it.";
+        private const string GreetDeliver = "Ten flint. Five scraps. Have you brought them?";
+        private const string GreetDone = "The bench knows. Go and string it.";
 
         public HuntersShade(System.Random rng)
         {
@@ -214,6 +227,7 @@ namespace ICanShowYouTheWorld.RunMode
             if (_talk == null) return;
 
             _talk.Phase = phase;
+            Greet(player, phase);
 
             if (_talk.SpokenPending)
             {
@@ -224,6 +238,28 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 _talk.DeliveredPending = false;
                 delivered = true;
+            }
+        }
+
+        /// <summary>
+        /// A bubble over the shade's head when the player first comes near in each phase — the
+        /// game's own NPC text, the one the trader uses. Cleared when the shade goes.
+        /// </summary>
+        private void Greet(Player player, Phase phase)
+        {
+            if (_body == null || _greetedFor == phase) return;
+            if (Vector3.Distance(player.transform.position, _body.transform.position) > GreetRange) return;
+
+            _greetedFor = phase;
+            string line = phase == Phase.Find ? GreetFind : phase == Phase.Deliver ? GreetDeliver : GreetDone;
+            try
+            {
+                var chat = Chat.instance;
+                if (chat != null) chat.SetNpcText(_body, Vector3.up * 2.4f, 25f, 8f, Name, line, false);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[ICanShowYouTheWorld] The shade's greeting failed: " + ex.Message);
             }
         }
 
@@ -321,6 +357,8 @@ namespace ICanShowYouTheWorld.RunMode
             trigger.radius = 1.4f;
             _talk = talkObject.AddComponent<ShadeTalk>();
 
+            _body = inst;
+            _greetedFor = null;
             _shade = zdo.m_uid;
         }
 
@@ -365,6 +403,12 @@ namespace ICanShowYouTheWorld.RunMode
         {
             try
             {
+                if (_body != null && Chat.instance != null) Chat.instance.ClearNpcText(_body);
+            }
+            catch { }
+
+            try
+            {
                 var zdo = _shade == ZDOID.None ? null : ZDOMan.instance?.GetZDO(_shade);
                 if (zdo != null) ZDOMan.instance.DestroyZDO(zdo);
             }
@@ -372,6 +416,8 @@ namespace ICanShowYouTheWorld.RunMode
 
             _shade = ZDOID.None;
             _talk = null;
+            _body = null;
+            _greetedFor = null;
         }
 
         /// <summary>
