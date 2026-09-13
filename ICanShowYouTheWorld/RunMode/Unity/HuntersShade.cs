@@ -248,14 +248,34 @@ namespace ICanShowYouTheWorld.RunMode
         private void Greet(Player player, Phase phase)
         {
             if (_body == null || _greetedFor == phase) return;
-            if (Vector3.Distance(player.transform.position, _body.transform.position) > GreetRange) return;
+
+            float distance = Vector3.Distance(player.transform.position, _body.transform.position);
+            if (distance > GreetRange) return;
+
+            // Not while the rune panel is up: the phase changes the instant the shade is paid,
+            // and a bubble raised under the panel is gone before the panel is. Wait; the next
+            // tick after the panel closes greets instead.
+            try { if (TextViewer.instance != null && TextViewer.instance.IsVisible()) return; } catch { }
 
             _greetedFor = phase;
             string line = phase == Phase.Find ? GreetFind : phase == Phase.Deliver ? GreetDeliver : GreetDone;
             try
             {
                 var chat = Chat.instance;
-                if (chat != null) chat.SetNpcText(_body, Vector3.up * 2.4f, 25f, 8f, Name, line, false);
+                if (chat == null)
+                {
+                    Debug.LogWarning("[ICanShowYouTheWorld] The shade cannot greet: no Chat instance.");
+                    return;
+                }
+
+                // SetNpcText returns silently when the HUD is user-hidden; say so, since the
+                // symptom is simply "no bubble" (owner, 2026-09-13).
+                bool hudHidden = false;
+                try { hudHidden = Hud.instance != null && Hud.instance.m_userHidden; } catch { }
+
+                chat.SetNpcText(_body, Vector3.up * 2.4f, 30f, 12f, Name, line, false);
+                Debug.Log($"[ICanShowYouTheWorld] The shade greets ({phase}) at {distance:0.0}m" +
+                          (hudHidden ? " — but the HUD is hidden, so the game will not show it." : "."));
             }
             catch (Exception ex)
             {
