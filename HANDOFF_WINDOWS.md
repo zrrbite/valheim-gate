@@ -17,6 +17,12 @@ Standing context for the Windows side:
 
 ---
 
+> **Agreed for the next session** (details in `docs/superpowers/RESUME.md`, "Next session"):
+> a **QUESTS page** taking the sub-objectives, hints, SPLITS and HOMESTEAD off the HUD and showing
+> COMPLETED steps as the run's record, reached by a tab rather than a new key; and the **saga menu
+> opening itself on spawn** with a visible CANCEL, so the mode is not something you have to remember
+> to open.
+
 ## 2026-09-20 - THE TEST LIST for 1.0.15-run.2026-09-20
 
 Ten builds stacked up in one afternoon, so this is all of them as ONE pass, ordered by when you

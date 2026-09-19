@@ -212,6 +212,71 @@ is a decision, not a detail — see the note at the top of `CreatureDressing`.
 `specs/2026-08-27-story-bible.md`. Acts II–V exist and open correctly; their
 middles are thinner than Act I's.
 
+## Next session: agreed 2026-09-20, before anything else
+
+Two things the owner asked for at the end of the day, both decided, neither built.
+
+### 1. A QUESTS page, and a rule about what belongs where
+
+The Run window has grown to act headline, score/health/gates, QUESTS (three tracks with their
+sub-objectives), SPLITS, HOMESTEAD, TASKS and BOONS in one scroll. Owner: "Its getting kind of
+cluttered, so im wondering if we should do a seperate quest log that has the main quests which gives
+us a chance to be a bit more descriptive, leaving some spare room in the main run menu."
+
+The rule to build to, which is broader than the request and is the useful part:
+
+> **The HUD holds what you act on. The log holds what you have done and what is coming.**
+
+So:
+
+- **Quests stay on the HUD, summarised** - one line per track (label, current step, count). They do
+  NOT move out wholesale: there is a decision recorded in `RunWindow` that the main questline is
+  pinned above the scroll because "it is the one thing on this HUD that says where the run is GOING,
+  so it must never scroll out of view", and that was learned in play.
+- **Everything around them moves**: sub-objective lists, hints, blocked reasons, reward text.
+- **SPLITS and HOMESTEAD move too.** Both are records, not decisions, and they are spending HUD
+  height on information nobody acts on mid-fight. TASKS and BOONS stay - those are live choices.
+- **The page shows COMPLETED steps.** This is the prize, and it is nearly free: `QuestTrack` already
+  carries `Chain` plus `Index`, so everything before the index is done, the index is current, and
+  everything after is upcoming. No new state. A finished step currently just vanishes, so the run has
+  no memory the player can read - and for a mode whose pitch is a saga, "what have I done so far" is
+  the page it is missing. Each done step can carry its `Opening` line as the record of that beat,
+  which is where the descriptive room actually pays off.
+- **No new key.** The keypad and nav cluster are saturated, and a log is a PAGE of the run window
+  rather than a separate mode, so a small tab row at the top (`RUN | QUESTS`) costs nothing. If a key
+  is wanted later, `End` cycling the two pages is the honest version.
+
+The code shape is known: `DrawStash`, `DrawTracker` and `DrawOffer` are already separate windows with
+their own body methods, so this is a fifth instance of an existing pattern.
+
+### 2. The saga menu opens itself on spawn
+
+Owner: "I'd also like to trigger the Saga menu on char spawn instead of having to press END. User can
+always CANCEL instead of starting the saga run."
+
+Same reasoning as the entry point moving off the Credits menu: a mode you have to remember to open is
+a mode that gets forgotten. `UIManager.ToggleRunWindow()` -> `RunWindow.ToggleVisible()` is the
+existing door; this needs a `Show()` and a trigger.
+
+Three things to get right, in the order they will bite:
+
+1. **Trigger on entering a WORLD, not on a fresh Player instance.** `DetectRespawnAndReapplyPassives`
+   already watches the player reference, but using it would re-open the lobby every time the player
+   dies outside a run, which is precisely when they do not want a menu. The signal wanted is
+   `WorldIdentifier()` going non-null with a player present - one offer per world load, tracked by a
+   flag that is cleared on suspend/world change.
+2. **Only when no run is active.** During a live run the HUD is the correct window and the lobby is
+   not; and a resumed run must not be interrupted by an offer to begin one.
+3. **It needs a visible CANCEL.** The lobby today has "Begin the saga" and "Discard saved run" and is
+   dismissed by pressing `End` again - which is fine for a window you opened deliberately and wrong
+   for one that opened itself. A window that appears unbidden and can only be closed by a key nobody
+   told you about is worse than the key press it replaced.
+
+Note that `UIManager` does no cursor management at all, so the lobby's buttons work on Valheim's own
+cursor state. That is already true of every button in there, so it is a fact to preserve rather than
+a problem to solve - but it is the first thing to check if the auto-opened window turns out to be
+unclickable.
+
 ## The loop
 
 Every alpha follows the same seven steps. It takes about a minute.
