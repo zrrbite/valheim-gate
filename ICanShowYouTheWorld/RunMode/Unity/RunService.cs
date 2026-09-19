@@ -2163,6 +2163,12 @@ namespace ICanShowYouTheWorld.RunMode
             else if (Input.GetKeyDown(KeyCode.Keypad8)) TryActivateHeldBoon("windfall");
             else if (Input.GetKeyDown(KeyCode.Keypad0)) TryActivateHeldBoon("bonecaller");
             else if (Input.GetKeyDown(KeyCode.Insert)) TryActivateHeldBoon("menagerie");
+            // PgDn and Backspace rather than the next free numpad keys: every numpad symbol is a
+            // DEV binding (KeypadPlus/Minus/Multiply/Divide), and Keypad1-3 are the offer's own
+            // pick keys - putting an active on those would show "[1]" on a held boon and "[1] pick"
+            // on an offer at the same time. Unambiguous beat tidy.
+            else if (Input.GetKeyDown(KeyCode.PageDown)) TryActivateHeldBoon("shaman");
+            else if (Input.GetKeyDown(KeyCode.Backspace)) TryActivateHeldBoon("unseen");
             // Keypad 9 is not a boon: Homeward is a run mechanic earned from bosses, so it sits
             // beside the boon keys rather than among them.
             else if (Input.GetKeyDown(KeyCode.Keypad9)) TryHomeward();
@@ -8194,6 +8200,12 @@ namespace ICanShowYouTheWorld.RunMode
             new BoonDefinition { Id = "ember", Display = "Emberskin",    IsPassive = false, CooldownSeconds = 180f, Description = "Cloak of flames burns nearby foes for 30s." },
             new BoonDefinition { Id = "way",   Display = "Waystone",     IsPassive = false, Description = "Teleport to the next boss altar. One charge." },
             new BoonDefinition { Id = "windfall", Display = "Windfall",  IsPassive = false, Description = $"Double every stack you carry. {BoonEffects.WindfallCharges} charges, never refills." },
+            // Both ride commands the GM mod has had for years (CastHealAOE, ToggleGhostMode), which
+            // is the whole point of BoonEffects: a boon is a legacy cheat with a cooldown and a
+            // reason. A burst heal where Second Wind is a window, and an escape where the mode had
+            // none at all.
+            new BoonDefinition { Id = "shaman", Display = "Shaman\u2019s Mercy", IsPassive = false, CooldownSeconds = 90f, Description = "Cast a healing burst where you stand. Heals you and your own. [PgDn]" },
+            new BoonDefinition { Id = "unseen", Display = "Unseen", IsPassive = false, CooldownSeconds = 150f, Description = "Nothing can see you for 20s. Walk away from anything. [Bksp]" },
         };
     }
 }

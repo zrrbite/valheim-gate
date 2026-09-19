@@ -17,6 +17,42 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-19 - TASK: 1.0.15-run.2026-09-19f - two actives from the old mod
+
+Installed here already (`-ModOnly`). Both are GM commands you already had, given a cooldown and
+a reason - which is what BoonEffects is for.
+
+**Shaman's Mercy** - `[PgDn]`, 90s cooldown. Casts the AoE heal (`CheatCommands.CastHealAOE`,
+the `DvergerStaffHeal_aoe` prefab) where you stand. A BURST, where Second Wind is a 10s window
+of AoE Renewal - that is the whole difference between them, and why both are worth a slot.
+
+**Unseen** - `[Bksp]`, 150s cooldown, lasts 20s. Ghost mode (`CheatCommands.ToggleGhostMode`),
+then off again on a timer. Short on purpose: it is a total answer to every melee in the game, so
+its value should be "get out of this", not "win this".
+
+**On the keys.** Every numpad symbol is already a DEV binding (KeypadPlus/Minus/Multiply/Divide)
+and Keypad1-3 are the offer's own pick keys, so an active there would show "[1]" on a held boon
+and "[1] pick" on an offer at the same time. PgDn and Backspace are unambiguous. Say the word if
+you want them somewhere else - it is one line each.
+
+**Both go through the legacy god-mode bracket**, like Second Wind and Emberskin, because both
+commands are gated on `RequireGodMode` and a run forces that flag off. Unbracketed they would
+refuse in every fair run while printing a GM warning - exactly how Shepherd's silent no-op was
+found.
+
+**What to watch for:** the heal actually healing you and your tames (and the GM-flavoured "Heal
+AOE cast" line it prints - tell me if that should be a saga line instead); Unseen making enemies
+lose you and, critically, wearing off after 20s rather than sticking; and a death mid-window
+turning it back off rather than leaving you invisible for the rest of the run.
+
+The pool is 30 boons.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
+---
+
 ## 2026-09-19 - TASK: 1.0.15-run.2026-09-19e - Bountiful
 
 Installed here already (`-ModOnly`). One new boon, from your ask for a drop-multiplier one.

@@ -44,6 +44,12 @@ namespace ICanShowYouTheWorld.RunMode
         private const float WindOnSeconds = 10f;
         private const float EmberOnSeconds = 30f;
 
+        /// <summary>
+        /// How long Unseen lasts. Short on purpose: ghost mode is a total answer to every melee in
+        /// the game, so its value has to be "get out of this", not "win this".
+        /// </summary>
+        private const float UnseenOnSeconds = 20f;
+
         private const float MuleCarryWeightBonus = 100f;   // vanilla Player.m_maxCarryWeight is 300
 
         // Vanilla Player.m_baseHP is 25, so the originally specified +25 was a flat doubling of
@@ -126,6 +132,9 @@ namespace ICanShowYouTheWorld.RunMode
         // themselves outside Run Mode.
         private bool _aoeRenewalOnByUs;
         private bool _cloakOnByUs;
+
+        /// <summary>Unseen turned ghost mode on and owes it an off. See ForceGhostOff.</summary>
+        private bool _ghostOnByUs;
 
         /// <summary>
         /// The flames drawn on the player while Emberskin is on: the Burning status effect's own
@@ -394,6 +403,12 @@ namespace ICanShowYouTheWorld.RunMode
                     ForceCloakOff();
                     break;
 
+                case "unseen":
+                    // Losing the boon mid-window (a death, most likely) must not leave the player
+                    // permanently unseen - the flag is ours and nothing else would turn it back.
+                    ForceGhostOff();
+                    break;
+
                 case "irongut":
                 case "coldblood":
                 case "fireblood":
@@ -451,6 +466,8 @@ namespace ICanShowYouTheWorld.RunMode
                 case "bonecaller": return ActivateBonecaller();
                 case "menagerie": return ActivateMenagerie();
                 case "windfall": return ActivateWindfall();
+                case "shaman": return ActivateShamanHeal();
+                case "unseen": return ActivateUnseen();
                 default: return false;
             }
         }
@@ -483,6 +500,10 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 ForceAoeRenewalOff();
                 ForceCloakOff();
+                // Same reasoning, and the worst of the three to get wrong: a run that ended with
+                // the window open must not leave the player walking through a world that cannot
+                // see them.
+                ForceGhostOff();
                 // Pugilist is run baseline rather than a held boon, so the held-boon loop above
                 // never reaches it — unwind it here so weapon stamina costs always come back.
                 SafeInvoke(UnapplyPugilist);
@@ -1114,6 +1135,74 @@ namespace ICanShowYouTheWorld.RunMode
             _emberFlames = null;
         }
 
+        /// <summary>
+        /// The AoE heal the GM mod has cast for years, handed to a saga as an active.
+        ///
+        /// Rides CheatCommands.CastHealAOE rather than reimplementing it: the legacy statics are the
+        /// pipeline that is actually ticked, and this one already resolves the prefab, places it and
+        /// reports a missing one. It is gated on the legacy god-mode flag, which a run forces off, so
+        /// it needs the same bracket Second Wind and Emberskin use - unbracketed it would refuse in
+        /// every fair run while printing a GM warning, which is exactly how Shepherd was caught.
+        ///
+        /// A BURST, where Second Wind is a window: Second Wind turns AoE Renewal on for ten seconds
+        /// and this is one cast that lands and is gone. That is the whole difference between them,
+        /// and it is why both are worth a slot.
+        /// </summary>
+        private bool ActivateShamanHeal()
+        {
+            var held = FindHeld("shaman");
+            if (held == null || held.CooldownRemaining > 0f) return false;
+
+            if (Player.m_localPlayer == null)
+            {
+                LastActivationMessage = "Nothing here to mend.";
+                return false;
+            }
+
+            WithLegacyGodModeBracket(CheatCommands.CastHealAOE);
+
+            held.CooldownRemaining = held.Def.CooldownSeconds;
+            return true;
+        }
+
+        /// <summary>
+        /// Ghost mode for a window, then off again. The mod's own ToggleGhostMode, bracketed and on
+        /// a timer.
+        ///
+        /// The flag is set BEFORE the call for the reason ActivateWind spells out: the toggle can
+        /// flip the live static and then throw, and a later step throwing must never be able to
+        /// strand an on-but-unflagged effect. Here that would mean a player invisible for the rest
+        /// of the run with nothing left that knows to undo it.
+        /// </summary>
+        private bool ActivateUnseen()
+        {
+            var held = FindHeld("unseen");
+            if (held == null || held.CooldownRemaining > 0f) return false;
+
+            if (CheatCommands.GhostMode)
+            {
+                LastActivationMessage = "You are already unseen.";
+                return false;
+            }
+
+            _ghostOnByUs = true;
+            try
+            {
+                WithLegacyGodModeBracket(CheatCommands.ToggleGhostMode);
+            }
+            catch
+            {
+                _ghostOnByUs = false;
+                throw;
+            }
+
+            RemovePending("unseen");
+            SchedulePending("unseen", UnseenOnSeconds, ForceGhostOff);
+
+            held.CooldownRemaining = held.Def.CooldownSeconds;
+            return true;
+        }
+
         private bool ActivateWay()
         {
             var held = FindHeldWithCharge("way");
@@ -1507,6 +1596,15 @@ namespace ICanShowYouTheWorld.RunMode
 
             // See ForceCloakOff: the ring's lifetime must not depend on a flag staying in sync.
             CheatVisualizer.KillConformHeal();
+        }
+
+        private void ForceGhostOff()
+        {
+            RemovePending("unseen");
+            if (!_ghostOnByUs) return;
+            _ghostOnByUs = false;
+
+            if (CheatCommands.GhostMode) WithLegacyGodModeBracket(CheatCommands.ToggleGhostMode);
         }
 
         private void ForceCloakOff()

@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-09-19 at `1.0.15-run.2026-09-19e`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-09-19 at `1.0.15-run.2026-09-19f`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -21,7 +21,7 @@ Everything below is what that file tells it.
 
 - Branch **`feature/run-mode`**, not merged, deliberately — the mode is still
   being tuned in play.
-- Latest tag **`1.0.15-run.2026-09-19e`**; builds are date-based since 2026-08-31
+- Latest tag **`1.0.15-run.2026-09-19f`**; builds are date-based since 2026-08-31
   (`Scripts/nextversion.sh`). The game moved to **1.0.12 on 2026-09-12** and to
   **1.0.15 on 2026-09-19**; both times the mod was rebuilt and installed on Windows
   the same day. **1.0.15 needed no source change** — all 316 member references from
@@ -346,9 +346,9 @@ went from 10 to 14 across the two.
 move stamina ×0.5, stamina regen ×2.5, all stamina costs ×0.75, free melee and
 tools (ranged pays 25%), and the Hunter's Eye tracker panel.
 
-**28 boons**, never offering one already held. Actives on
-Keypad 4-8 plus 0 and Insert (Second Wind, Emberskin, Waystone, Packbrother, Windfall,
-Bonecaller, Menagerie); the rest are passives, across seven kinds:
+**30 boons**, never offering one already held. Nine actives - Keypad 4-8 plus 0 and Insert
+(Second Wind, Emberskin, Waystone, Packbrother, Windfall, Bonecaller, Menagerie), and PgDn /
+Backspace (Shaman's Mercy, Unseen); the rest are passives, across seven kinds:
 
 | Kind | Boons |
 |---|---|
@@ -661,10 +661,31 @@ function of (config, held boons) - which is the only honest way to have two writ
 key, and the discipline the mode has paid for three times. Any further rate boon is now one line
 in the table, one id in `IsRateBoon`, and one call in `RefreshRateBoons`.
 
-The pool is **28 boons**. `runResourceBoonMultiplier` (2) and `runSkillBoonMultiplier` (3) are
+The pool is **30 boons**. `runResourceBoonMultiplier` (2) and `runSkillBoonMultiplier` (3) are
 config.
 
-Waiting on the owner's play-test of `1.0.15-run.2026-09-19e` - see the TASK entry in
+**`...-19f` added two actives that already existed** (owner: "we also need the shaman heal as an
+activated ability boon", "and invisibility activated ability boon", "I have both in my old mod
+code" - and they were there):
+
+- **Shaman's Mercy** `[PgDn]`, 90s - `CheatCommands.CastHealAOE`, the `DvergerStaffHeal_aoe`
+  prefab cast where the player stands. A burst, where Second Wind is a ten-second window of AoE
+  Renewal. Both are worth a slot precisely because of that difference.
+- **Unseen** `[Bksp]`, 150s, 20s window - `CheatCommands.ToggleGhostMode` with a scheduled off.
+
+Both ride the LEGACY statics rather than new code, which is what `BoonEffects` is for: a boon is
+a legacy cheat with a cooldown and a reason. Both therefore need `WithLegacyGodModeBracket`,
+since both commands are gated on `RequireGodMode` and a run forces that flag off - unbracketed
+they refuse in every fair run while printing a GM warning, which is how Shepherd's silent no-op
+was caught. Unseen also follows Emberskin exactly on the flag-before-the-call ordering and the
+`ForceGhostOff` unwind, reached from Unapply, from UnapplyAll's finally, and from the pending
+timer - a stranded ghost mode would be a player invisible for the rest of the run with nothing
+left that knows to undo it.
+
+**Keys:** every numpad symbol is a DEV binding and Keypad1-3 are the offer's pick keys, so these
+went on PgDn and Backspace. Unambiguous beat tidy; both are one line to move.
+
+Waiting on the owner's play-test of `1.0.15-run.2026-09-19f` - see the TASK entry in
 [`../../HANDOFF_WINDOWS.md`](../../HANDOFF_WINDOWS.md). Beyond the entry point itself,
 still unverified from 12-13 September: Thor's bow on the bench after paying the shade
 and its flash on impact, the shade's greeting and its "[E] Speak" prompt, the saga
