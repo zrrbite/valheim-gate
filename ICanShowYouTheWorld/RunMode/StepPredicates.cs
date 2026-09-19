@@ -107,6 +107,15 @@ namespace ICanShowYouTheWorld.RunMode
             Live(tracks).Any(d =>
                 (d.Kind == ChallengeKind.PlayerState && d.Param == SagaNames.SpiritFound) ||
                 (d.Kind == ChallengeKind.PlayerEvent && d.Param == SagaNames.LightTaken) ||
+                // The night watch is the act's FIRST dark step, and it belongs here for the same
+                // reason as the rest: the whisper that advances it only speaks after sundown, so
+                // without this the strip would never tell the player to wait for the dark — and a
+                // step that cannot progress and does not say why is the worst thing this design does.
+                //
+                // Note it is deliberately NOT in DeerHunt: an early clause landed there by mistake
+                // and the tests caught it immediately. The vigil brings no pack and no starred deer;
+                // there is nothing being hunted yet, which is the whole point of it.
+                (d.Kind == ChallengeKind.PlayerEvent && d.Param == SagaNames.NightWatch) ||
                 (d.Kind == ChallengeKind.KillPrefab &&
                  (d.Param == SagaNames.NightDeerKill || d.Param == SagaNames.HeraldKill)));
     }

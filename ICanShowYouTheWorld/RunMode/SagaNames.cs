@@ -18,6 +18,17 @@ namespace ICanShowYouTheWorld.RunMode
         public const string LightTaken = "SpiritTaken";
         public const string InterceptStepId = "bf-intercept";
 
+        // Act I's opening arc, before the pale light (2026-09-19). Three beats that teach the
+        // act's one rule instead of narrating it: the errand, the failed experiment, the vigil.
+        // None of the three is a prefab name.
+        //
+        // DayDeerKill is the daylight twin of NightDeerKill and exists to be USED as a step
+        // param, not merely reported: killing a deer by day is a quest whose whole content is
+        // that nothing happens.
+        public const string RavenHeard = "RavenHeard";
+        public const string DayDeerKill = "__day_deer";
+        public const string NightWatch = "NightWatch";
+
         // Act I's hunter's shade (2026-09-12): spoken to, then paid. Both are events the shade's
         // interact raises; neither is a prefab name.
         public const string ShadeFound = "ShadeFound";

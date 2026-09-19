@@ -17,6 +17,50 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-19 - TASK: 1.0.15-run.2026-09-19h - Act I, before the light
+
+Installed here already (`-ModOnly`). Three new beats on the HUNT track, between clearing the
+greylings and the pale light. The story bible is updated to match; it is still the source of
+truth.
+
+The hunt track used to run "kill 6 greylings" straight into "follow the pale light", so
+everything the act is about arrived as whispers while you were busy with an axe. Now:
+
+**1. Hear the raven out.** Hugin finds you and states the errand: *"He did not send you for the
+antlered one. He sent you to find where the light is going."* Odin's audit is the frame of the
+whole saga and had never been in the chain. It retries until the bird actually speaks, and after
+twenty attempts delivers the line plainly instead - a missing raven prefab must cost the staging,
+not the saga.
+
+**2. Hunt a deer by daylight.** And nothing rises: *"Nothing rose. They bank it while the sun is
+up — there is no light in a deer at noon. Come back when it is dark."* Deliberately
+anticlimactic. After it, the nocturnal rule is yours rather than ours, and it needs no second
+explanation. The line only fires while the step is live, so it will not nag you for the rest of
+the act.
+
+**3. Keep a watch after dark.** Stay out past sundown until the meadows have whispered three
+times. The whispers already existed with nothing depending on them; now they are the step. It is
+the first thing in the saga that asks you to be in the dark with nothing to kill.
+
+**What to watch for:** the raven actually landing and speaking (check the log if it does not - it
+says when it falls back to a plain line); a daylight deer kill advancing the step and saying its
+line; the strip telling you to wait for dark during the vigil; and the vigil NOT spawning packs or
+starred deer, since nothing is being hunted yet.
+
+**On the numbers.** Act I gains three questline steps, so +3 heat and +6 max health. Saga
+questline heat goes 50 to 53. Heat has never been tuned, so this nudges a curve nobody has felt as
+designed - worth a verdict on whether the act's first hour now runs long.
+
+One thing the tests caught while building this and I want on the record: the dark-rule clause
+landed in `DeerHunt` instead of `DarkStep` on the first pass, which would have spawned the pack
+during a vigil that is supposed to be empty. Two assertions found it before the build shipped.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
+---
+
 ## 2026-09-19 - TASK: 1.0.15-run.2026-09-19g - keys are per-mode, and the saga says them
 
 Installed here already (`-ModOnly`). Your two points, both taken.

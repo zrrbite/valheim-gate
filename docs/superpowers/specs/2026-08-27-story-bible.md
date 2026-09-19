@@ -68,6 +68,42 @@ At night, the meadows whisper. *The dark is awake. The forest is counting.*
 The act's one rule is taught before it is tested: **nothing you seek walks in
 the light.**
 
+**How it is taught (added 2026-09-19).** The rule used to be taught only in
+those whispers, which meant the act's whole premise arrived as wallpaper while
+the player was busy with an axe. Three beats now sit between clearing the
+greylings off your land and the pale light, and each one is the premise
+happening to you rather than being said at you.
+
+**1. The errand.** A raven has been circling since you landed, and the hunt
+does not begin until it has spoken:
+
+> *He did not send you for the antlered one. He sent you to find where the
+> light is going.*
+
+Odin's audit is the frame of the entire saga and had never once been in the
+chain. Now the first thing Act I asks of you is to stand still and be told
+what you are actually doing here.
+
+**2. The kill that gives nothing.** Hunt a deer in daylight. A warm carcass,
+and no light leaves it:
+
+> *Nothing rose. They bank it while the sun is up — there is no light in a
+> deer at noon. Come back when it is dark.*
+
+Deliberately anticlimactic, and deliberately early. The player kills a deer
+expecting the thing the act keeps hinting at and gets venison. After that the
+rule is theirs rather than ours, and the nocturnal hunt needs no second
+explanation.
+
+**3. The vigil.** Stay out past sundown until the meadows have spoken three
+times. This is the first thing in the saga that asks you to be in the dark
+with nothing to kill — no pack yet, no herd, nothing being raced for. The
+whispers were atmosphere with nothing depending on them; now they are the
+step, and the dark becomes a place you have chosen to be before it becomes a
+place that is hunting you.
+
+Then, and only then:
+
 **The pale light** opens the hunt: a single free spark drifting at the edge
 of the world — the one the forest never found. It cannot be caught by day.
 The strip carries only a rumour ("something pale drifts far to the

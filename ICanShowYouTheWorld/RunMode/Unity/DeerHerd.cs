@@ -47,6 +47,13 @@ namespace ICanShowYouTheWorld.RunMode
         public const string NightDeerKillName = "__night_deer";
 
         /// <summary>
+        /// The daylight twin, reported when a deer falls while the sun is up. A step can then ask
+        /// for the kill that yields NOTHING — which is how the act teaches that the herd banks its
+        /// light by day, instead of saying so in a whisper nobody connects to anything.
+        /// </summary>
+        public const string DayDeerKillName = "__day_deer";
+
+        /// <summary>
         /// Reported to the challenge engine when the Herald dies, and matched by its questline step.
         ///
         /// SYNTHETIC — deliberately not a real prefab name. The Herald is an ordinary Deer wearing a

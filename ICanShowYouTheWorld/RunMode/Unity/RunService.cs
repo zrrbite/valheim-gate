@@ -181,7 +181,13 @@ namespace ICanShowYouTheWorld.RunMode
         /// avoid. See <see cref="SagaNames"/> for the full vocabulary of synthetic names.
         /// </summary>
         private static readonly HashSet<string> SyntheticCreatureNames =
-            new HashSet<string> { DeerHerd.HeraldKillName, TheGatherer.KillName, SagaNames.DeepNorthBoss };
+            new HashSet<string>
+            {
+                DeerHerd.HeraldKillName, TheGatherer.KillName, SagaNames.DeepNorthBoss,
+                // Reported by us when a deer falls in daylight. No prefab is called this, and the
+                // validator would otherwise report the act’s opening step as a dead quest.
+                DeerHerd.DayDeerKillName,
+            };
 
         /// <summary>The saga's acts, built once per service. Pure content — see <see cref="Acts"/>.</summary>
         private readonly List<ActDefinition> _acts = Acts();
@@ -899,6 +905,11 @@ namespace ICanShowYouTheWorld.RunMode
 
             var lines = IsNight ? NightWhispers : DaylightWhispers;
             Message(lines[_rng.Next(lines.Length)]);
+
+            // The vigil is measured in whispers, because the whispers were already what the dark does
+            // to you and had no job beyond mood. Night only: a daylight line says the opposite of what
+            // the step is for.
+            if (IsNight) _challenges?.ReportEvent(ChallengeKind.PlayerEvent, SagaNames.NightWatch);
         }
 
         /// <summary>True while a deer-hunt step is the one in play, day or night.</summary>
@@ -2362,6 +2373,7 @@ namespace ICanShowYouTheWorld.RunMode
             PollPlayerState();
             ReassertDevGod();
             PollMeals();
+            PollRavenErrand();
             PollSpirit();
             PollStrays();
             PollLights();
@@ -2758,27 +2770,83 @@ namespace ICanShowYouTheWorld.RunMode
         /// A spoken beat also feeds the "speak with Hugin" task: Raven.Talk increments the
         /// RavenTalk player stat, which is exactly what that challenge measures.
         /// </summary>
-        private void TrySpawnRaven(string beat, string text)
+        /// <summary>
+        /// Odin's audit, stated once, as a step rather than as decoration.
+        ///
+        /// The saga's frame is that the ravens are his audit and that the gods keep being in the way
+        /// of the answer — but Hugin only ever commented on act transitions, which is the one
+        /// moment the player is already being told something. This puts the errand in the chain: the
+        /// hunt does not begin until the bird has said why there is a hunt.
+        ///
+        /// With a FLOOR, because a chain step must never be unfinishable and this one depends on a
+        /// prefab the mod does not own. After enough failed attempts the line is delivered plainly and
+        /// the step completes regardless: a missing raven costs the staging, not the saga.
+        /// </summary>
+        private const int RavenErrandAttempts = 20;
+
+        private static readonly string RavenErrand =
+            "He did not send you for the antlered one. He sent you to find where the light is going.";
+
+        private bool _ravenErrandDone;
+        private int _ravenErrandTries;
+
+        private void PollRavenErrand()
+        {
+            if (_ravenErrandDone || _challenges == null || !ActIsMeadows) return;
+            if (Player.m_localPlayer == null) return;
+
+            bool wanted = _challenges.Tracks.Any(t =>
+                t.Current != null && !t.Blocked &&
+                t.Current.Def.Kind == ChallengeKind.PlayerEvent &&
+                t.Current.Def.Param == SagaNames.RavenHeard);
+
+            if (!wanted) return;
+
+            _ravenErrandTries++;
+            bool spoken = TrySpawnRaven("errand", RavenErrand);
+
+            if (!spoken && _ravenErrandTries < RavenErrandAttempts) return;
+
+            if (!spoken)
+            {
+                Debug.Log("[ICanShowYouTheWorld] Raven errand: no raven available, delivering it plainly.");
+                Announce(RavenErrand);
+            }
+
+            _ravenErrandDone = true;
+            _challenges.ReportEvent(ChallengeKind.PlayerEvent, SagaNames.RavenHeard);
+        }
+
+        /// <summary>True while the daylight-kill step is the one in play.</summary>
+        private bool DayDeerKillWanted =>
+            _challenges != null && _challenges.Tracks.Any(t =>
+                t.Current != null && !t.Blocked &&
+                t.Current.Def.Kind == ChallengeKind.KillPrefab &&
+                t.Current.Def.Param == DeerHerd.DayDeerKillName);
+
+        /// <summary>Returns true when a line was actually put over a raven's head.</summary>
+        private bool TrySpawnRaven(string beat, string text)
         {
             try
             {
                 if (!Raven.IsInstantiated())
                 {
                     var prefab = Tutorial.instance != null ? Tutorial.instance.m_ravenPrefab : null;
-                    if (prefab == null) return;
+                    if (prefab == null) return false;
 
                     UnityEngine.Object.Instantiate(prefab, Vector3.zero, Quaternion.identity);
                 }
 
-                if (string.IsNullOrEmpty(text)) return;
+                if (string.IsNullOrEmpty(text)) return false;
 
                 // munin:false — Hugin is the one who explains things, and Munin's texts are only
                 // shown by a raven whose own m_isMunin matches. label:"" keeps this to a line over
                 // the bird's head; a label opens the parchment reader on top of the moment it is
                 // commenting on.
                 Raven.AddTempText($"icsytw_{_rngSeed}_{beat}", "Hugin", text, string.Empty, false);
+                return true;
             }
-            catch (Exception ex) { LogOnce("raven", ex); }
+            catch (Exception ex) { LogOnce("raven", ex); return false; }
         }
 
         /// <summary>
@@ -5342,6 +5410,21 @@ namespace ICanShowYouTheWorld.RunMode
                 if (prefabName == DeerHerd.DeerPrefab && IsNight)
                     _challenges?.ReportKill(DeerHerd.NightDeerKillName);
 
+                // And the daylight twin, which is a whole quest whose content is that nothing
+                // happens. The act's rule stops being a whisper the moment the player has stood over
+                // a warm carcass in the sun and watched no light leave it.
+                if (prefabName == DeerHerd.DeerPrefab && !IsNight && ActIsMeadows)
+                {
+                    bool wanted = DayDeerKillWanted;
+                    _challenges?.ReportKill(DeerHerd.DayDeerKillName);
+
+                    // Only while the step is live. An unprompted "nothing rose" on every deer shot in
+                    // daylight for the rest of the act would be nagging rather than teaching.
+                    if (wanted)
+                        Message("Nothing rose. They bank it while the sun is up \u2014 there is no light in a " +
+                                "deer at noon. Come back when it is dark.");
+                }
+
                 // The herd answers separately, and may hand back a synthetic name — the Herald's,
                 // which is matched by identity rather than by prefab so ordinary deer cannot
                 // complete its step. Reported IN ADDITION to the ordinary kill above: killing the
@@ -7129,6 +7212,52 @@ namespace ICanShowYouTheWorld.RunMode
                 Id = "mq-pen", MainQuest = true, Track = HearthTrackId, Kind = ChallengeKind.PlayerState, Param = "TamedNearby",
                 Target = 3, Display = "A pen of three", RewardText = "Feed enough for a herd",
                 Hint = "Two tamed boar in a pen, fed and left alone, will raise a third.",
+            },
+            // ---- Before the light: the errand, the failed experiment, the vigil (2026-09-19) ----
+            //
+            // The hunt track used to run "kill 6 greylings" straight into "follow the pale light",
+            // which meant everything the act is ABOUT — that nothing here makes its own light, that
+            // the herd is the exception, that the forest is starving and counting — arrived as
+            // whispers rather than as anything the player did. The bible says the act's one rule is
+            // "taught before it is tested". These three beats are where it is taught.
+            new ChallengeDefinition
+            {
+                // Odin's audit, in the chain rather than in the scenery. The ravens are the frame of
+                // the whole saga and until now Hugin spoke only at act transitions, which is exactly
+                // the moment the player is already being told something.
+                Id = "mq-errand", MainQuest = true, Track = HuntTrackId,
+                Kind = ChallengeKind.PlayerEvent, Param = SagaNames.RavenHeard, Target = 1,
+                Display = "Hear the raven out",
+                RewardText = "A raven\u2014s eye for the dark",
+                Hint = "Hugin will find you. Stand still long enough to let him.",
+                Opening = "A raven has been circling since you landed. It wants to say something.",
+            },
+            new ChallengeDefinition
+            {
+                // The quest whose content is that NOTHING HAPPENS. It is deliberately
+                // anticlimactic: the player kills a deer expecting the thing the act keeps hinting
+                // at, and gets a carcass. The rule is then theirs rather than ours.
+                //
+                // Measured on the synthetic day-kill name, so a night kill cannot satisfy it — which
+                // would be the same lie the chase's daylight guard exists to prevent.
+                Id = "mq-daylight", MainQuest = true, Track = HuntTrackId,
+                Kind = ChallengeKind.KillPrefab, Param = DeerHerd.DayDeerKillName, Target = 1,
+                Display = "Hunt a deer by daylight",
+                RewardText = "Venison, and a question",
+                Hint = "Any deer, while the sun is up. Watch what rises from it.",
+                Opening = "The meadows are full of deer. Take one in the daylight and see what you get.",
+            },
+            new ChallengeDefinition
+            {
+                // The vigil. Three whispers, and the whispers only speak after dark — so this is a
+                // night spent outside, which is the state the rest of the act lives in. It also gives
+                // the whisper system a job: it was atmosphere with nothing depending on it.
+                Id = "mq-watch", MainQuest = true, Track = HuntTrackId,
+                Kind = ChallengeKind.PlayerEvent, Param = SagaNames.NightWatch, Target = 3,
+                Display = "Keep a watch after dark",
+                RewardText = "A torch, and eyes that have adjusted",
+                Hint = "Stay out past sundown and listen. The meadows will tell you three times.",
+                Opening = "Nothing you want walks in the light. Sit in the dark until you believe it.",
             },
             new ChallengeDefinition
             {

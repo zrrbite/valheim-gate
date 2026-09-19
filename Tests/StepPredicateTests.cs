@@ -70,6 +70,18 @@ static class StepPredicateTests
         Check.That(!StepPredicates.DeerHunt(blocked), "a blocked step is not in play");
         Check.That(!StepPredicates.DarkStep(blocked), "nor does it impose the dark rule");
 
+        // --- The night watch is dark work too (2026-09-19) ---------------------------------
+        //
+        // It is advanced by the nightly whisper, so a strip that did not tell the player to wait
+        // for dark would leave the act's first dark step looking like a step that does nothing.
+        var watch = new List<QuestTrack>
+        {
+            Track("hunt", Step("mq-watch", ChallengeKind.PlayerEvent, SagaNames.NightWatch)),
+        };
+        Check.That(StepPredicates.DarkStep(watch), "the night watch imposes the dark rule");
+        Check.That(!StepPredicates.DeerHunt(watch), "but it is not a deer hunt " + "—" + " no pack, no herd");
+        Check.That(!StepPredicates.LightRace(watch), "and nothing is being raced for yet");
+
         // --- Multi-track: any track can carry the step -------------------------------------
         var spread = new List<QuestTrack>
         {

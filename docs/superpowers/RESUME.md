@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-09-19 at `1.0.15-run.2026-09-19g`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-09-19 at `1.0.15-run.2026-09-19h`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -21,7 +21,7 @@ Everything below is what that file tells it.
 
 - Branch **`feature/run-mode`**, not merged, deliberately — the mode is still
   being tuned in play.
-- Latest tag **`1.0.15-run.2026-09-19g`**; builds are date-based since 2026-08-31
+- Latest tag **`1.0.15-run.2026-09-19h`**; builds are date-based since 2026-08-31
   (`Scripts/nextversion.sh`). The game moved to **1.0.12 on 2026-09-12** and to
   **1.0.15 on 2026-09-19**; both times the mod was rebuilt and installed on Windows
   the same day. **1.0.15 needed no source change** — all 316 member references from
@@ -32,7 +32,7 @@ Everything below is what that file tells it.
   `FejdStartup.Start()` (and still into `OnCredits`, where it is a no-op). The mod
   loads itself at startup; "open Credits first" is no longer a rule anybody has to
   remember, and no longer a way to lose Thor's bow.
-- Engine tests: `Tests/run_tests.sh`, 561 assertions, all passing. The script now
+- Engine tests: `Tests/run_tests.sh`, 564 assertions, all passing. The script now
   falls back to Visual Studio's Roslyn `csc.exe` when `mcs`/`mono` are absent, so the
   suite runs on the Windows box too.
 - Game version 1.0.15, Unity 6000.0.75 (was 0.221.12 / 6000.0.61 until 2026-09-12,
@@ -305,10 +305,10 @@ Two rules the content follows, both learned the hard way:
   therefore have **no** build step — no distinctively mountain-built piece has a
   compiled class, and filler would be worse than an extra fight.
 
-Questline heat across the saga is **50** (16+10+8+8+8) — roughly ×3.2 enemy damage
+Questline heat across the saga is **53** (19+10+8+8+8) — roughly ×3.2 enemy damage
 by the Plains before any random task, and far steeper than anything played.
 
-**Act I**, 15 steps, all of it doable without leaving the Meadows: craft an axe
+**Act I**, 19 questline steps, all of it doable without leaving the Meadows (the hunt track opens with the raven's errand, a daylight kill that yields nothing, and a night watch - see the `...-19h` note below): craft an axe
 → craft a hammer → build a workbench → hunt 5 boar → raise a roof (6 pieces) →
 **build a fire** → **build a cooking station** → kill 6 greylings → **build a
 bed** → settle in (2 min at home) → sleep through the night → **build a chest**
@@ -705,7 +705,36 @@ answers were not symmetrical:
   the definition: the input handler walks it, the HUD labels from it, and the offer card prints
   "active  [+]" from it. One row per active, and the label cannot go missing.
 
-Waiting on the owner's play-test of `1.0.15-run.2026-09-19g` - see the TASK entry in
+**`...-19h` gave Act I an opening arc** (owner: "let's review the act1 story. I think it's coming
+together nicely but can we make it more intricate? Add some more detail? A section before we start
+chasing the light?"). The hunt track ran "kill 6 greylings" straight into "follow the pale light",
+so everything the act is ABOUT arrived as whispers while the player was busy with an axe. The
+bible says the act's one rule is "taught before it is tested"; in the code it was only narrated.
+Three beats now teach it:
+
+1. **`mq-errand` - hear the raven out.** Odin's audit, in the chain instead of the scenery: it had
+   only ever spoken at act transitions, which is the one moment the player is already being told
+   something. `PollRavenErrand` retries until Hugin actually speaks and, after twenty attempts,
+   delivers the line plainly - a chain step must never be unfinishable, and this one depends on a
+   prefab the mod does not own.
+2. **`mq-daylight` - hunt a deer by daylight**, and nothing rises. A quest whose whole content is
+   that nothing happens. `DeerHerd.DayDeerKillName` is the daylight twin of the existing night
+   synthetic, exempt in `SyntheticCreatureNames`, and the "nothing rose" line fires only while the
+   step is live so it does not nag for the rest of the act.
+3. **`mq-watch` - keep a watch after dark**, measured in three nightly whispers. The whispers were
+   atmosphere with nothing depending on them; now they are the step, and it is the first thing in
+   the saga that asks the player to be in the dark with nothing to kill.
+
+**The bug the tests caught**, worth remembering because it is the exact class `StepPredicates` was
+extracted to prevent: the dark-rule clause landed in `DeerHunt` rather than `DarkStep` on the first
+pass, which would have spawned the pack and the starred deer during a vigil that is meant to be
+empty, while leaving the strip silent about waiting for dark. Two assertions found it before the
+build shipped. Predicates that can be tested cannot rot quietly.
+
+**Numbers:** Act I goes to 19 questline steps, so +3 heat and +6 max health, and saga questline
+heat is 53. Heat remains untuned, so this nudges a curve nobody has felt as designed.
+
+Waiting on the owner's play-test of `1.0.15-run.2026-09-19h` - see the TASK entry in
 [`../../HANDOFF_WINDOWS.md`](../../HANDOFF_WINDOWS.md). Beyond the entry point itself,
 still unverified from 12-13 September: Thor's bow on the bench after paying the shade
 and its flash on impact, the shade's greeting and its "[E] Speak" prompt, the saga
