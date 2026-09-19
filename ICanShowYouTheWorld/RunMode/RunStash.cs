@@ -75,8 +75,38 @@ namespace ICanShowYouTheWorld.RunMode
 
             if (IsFull) return 0;
 
-            entries.Add(new StashEntry { Prefab = prefab, Count = count, Quality = quality, Variant = variant });
+            // Inserted in order rather than appended, so the list IS the display order (owner:
+            // "stash should be sorted alphabetically"). Sorting in the view instead would have
+            // meant mapping a displayed row back to its real index on every withdrawal, and the
+            // withdrawal is index-addressed across a frame boundary — one mapping to get wrong.
+            //
+            // Restore() deposits, so a resumed stash comes back sorted too, whatever order the
+            // save file happens to hold.
+            entries.Insert(InsertionPoint(prefab, quality, variant),
+                new StashEntry { Prefab = prefab, Count = count, Quality = quality, Variant = variant });
             return count;
+        }
+
+        /// <summary>
+        /// Where a new kind belongs. Prefab name first, because that is the text the row shows;
+        /// quality and variant break the tie so two rows sharing a prefab have a defined order
+        /// instead of depending on which was deposited first.
+        /// </summary>
+        private int InsertionPoint(string prefab, int quality, int variant)
+        {
+            for (int i = 0; i < entries.Count; i++)
+                if (Compare(entries[i], prefab, quality, variant) > 0) return i;
+
+            return entries.Count;
+        }
+
+        private static int Compare(StashEntry entry, string prefab, int quality, int variant)
+        {
+            int byName = string.Compare(entry.Prefab, prefab, StringComparison.OrdinalIgnoreCase);
+            if (byName != 0) return byName;
+
+            if (entry.Quality != quality) return entry.Quality.CompareTo(quality);
+            return entry.Variant.CompareTo(variant);
         }
 
         /// <summary>

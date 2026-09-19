@@ -1549,6 +1549,7 @@ namespace ICanShowYouTheWorld.RunMode
                 _discovered.Clear();
                 _pinnedActIndex = -1;
                 _worldModifiers.ApplyBaseline(_cfg);
+                RefreshSkillGain();   // baseline first, then whatever Quick Study adds on top
                 // Free melee/tool stamina is baseline empowerment: the early game's stamina tax
                 // is tedium, not difficulty. Re-run on the poll tick for newly crafted gear.
                 _boonEffects.ApplyPugilist();
@@ -2500,6 +2501,39 @@ namespace ICanShowYouTheWorld.RunMode
             public int Cooked;
             public float Heaviest;
             public string HeaviestName;
+        }
+
+        /// <summary>
+        /// Is the player carrying one of these, by PREFAB name?
+        ///
+        /// The reading behind <see cref="ChallengeDefinition.RequiresItem"/>. Prefab name rather
+        /// than Inventory.HaveItem, which compares the localised shared name — the same distinction
+        /// the fishing scan makes, and the reward tables are written in prefab names throughout.
+        ///
+        /// Answers FALSE when there is no player or no inventory, which is the safe direction: the
+        /// gate then withholds the task rather than dealing one it cannot vouch for.
+        /// </summary>
+        private static bool PlayerCarries(string prefabName)
+        {
+            if (string.IsNullOrEmpty(prefabName)) return true;
+
+            try
+            {
+                var items = Player.m_localPlayer?.GetInventory()?.GetAllItems();
+                if (items == null) return false;
+
+                foreach (var item in items)
+                {
+                    var prefab = item?.m_dropPrefab;
+                    if (prefab != null && prefab.name == prefabName) return true;
+                }
+            }
+            catch
+            {
+                // Unreadable inventory: withhold rather than guess.
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -4172,13 +4206,15 @@ namespace ICanShowYouTheWorld.RunMode
         private void BuildEngines(List<ChallengeDefinition> pool, bool freshRun)
         {
             _challenges = new ChallengeEngine(pool, _rng, _cfg.RunChallengeRefillSeconds);
-            // Two gates on what may be DEALT, both asking the same kind of question: has the run
+            // Three gates on what may be DEALT, all asking the same kind of question: has the run
             // actually reached the thing this task is about? Biomes covers "have you been there";
-            // RequiresBuilt covers "do you own one of these" — a door task dealt to a player with
-            // no door is a dead slot they have to pay heat to reroll.
+            // RequiresBuilt covers "have you built one of these" — a door task dealt to a player
+            // with no door is a dead slot they have to pay heat to reroll; RequiresItem covers "are
+            // you carrying the tool", which is the fishing rod and, in play, was the one that bit.
             _challenges.ExternalFilter = d =>
                 (d.Biomes == 0 || (d.Biomes & _visitedBiomes) != 0) &&
-                (string.IsNullOrEmpty(d.RequiresBuilt) || _builtSeen.Contains(d.RequiresBuilt));
+                (string.IsNullOrEmpty(d.RequiresBuilt) || _builtSeen.Contains(d.RequiresBuilt)) &&
+                (string.IsNullOrEmpty(d.RequiresItem) || PlayerCarries(d.RequiresItem));
             _challenges.Completed += OnChallengeCompleted;
             _challenges.Failed += OnChallengeFailed;
 
@@ -5164,12 +5200,41 @@ namespace ICanShowYouTheWorld.RunMode
         {
             try { ApplyBoonEffect?.Invoke(def.Id); }
             catch (Exception ex) { LogOnce("boon-apply", ex); }
+
+            if (def.Id == SkillGainBoonId) RefreshSkillGain();
         }
 
         private void OnBoonLost(BoonDefinition def)
         {
             try { UnapplyBoonEffect?.Invoke(def.Id); }
             catch (Exception ex) { LogOnce("boon-unapply", ex); }
+
+            // A death penalty removes the newest boon, so this is a real path, not a tidy one.
+            if (def.Id == SkillGainBoonId) RefreshSkillGain();
+        }
+
+        /// <summary>Quick Study: the one boon whose effect is a world-modifier key.</summary>
+        private const string SkillGainBoonId = "study";
+
+        /// <summary>
+        /// Writes the run's skill-gain rate: the configured baseline, multiplied when Quick Study is
+        /// held. Called after every ApplyBaseline and whenever that boon is gained or lost.
+        ///
+        /// It lives here rather than in BoonEffects because the key belongs to the WORLD, and the
+        /// world modifiers are the host's to write — guarded by world identity, with the pre-run
+        /// original stored in the run state. A boon reaching around that would be the one write in
+        /// the mode that could outlive the run.
+        /// </summary>
+        private void RefreshSkillGain()
+        {
+            try
+            {
+                bool held = _boons != null && _boons.Held != null &&
+                            _boons.Held.Any(h => h.Def != null && h.Def.Id == SkillGainBoonId);
+
+                _worldModifiers.ApplySkillGain(_cfg, held ? _cfg.RunSkillBoonMultiplier : 1f);
+            }
+            catch (Exception ex) { LogOnce("skill-gain", ex); }
         }
 
         private void OnCharacterDied(Character c)
@@ -5821,6 +5886,9 @@ namespace ICanShowYouTheWorld.RunMode
             _worldModifiers.ImportOriginals(s.modifierKeys, s.modifierValues);
 
             _worldModifiers.ApplyBaseline(_cfg);
+            // AFTER the baseline, which writes the plain rate and would otherwise erase a held
+            // Quick Study — the boons were restored earlier in this method, so this reads them.
+            RefreshSkillGain();
             _boonEffects.ApplyPugilist();   // baseline empowerment, same as StartRun
 
             // A resume must NOT re-snapshot: the character is already carrying the loans, so
@@ -6284,8 +6352,12 @@ namespace ICanShowYouTheWorld.RunMode
             new ChallengeDefinition { Id = "c-stone",     Tier = 0, Kind = ChallengeKind.StatDelta, Param = "MineHits",  Target = 15, HeatReward = 1, Display = "Break stone (15 hits)" },
             // Fishing bounties live in the POOL rather than the questline: they are the kind of
             // thing you take on when you fancy it, and the pool is where optional heat is bought.
-            new ChallengeDefinition { Id = "c-fishhaul", Tier = 1, Kind = ChallengeKind.PlayerState, Param = "FishHeld",       Target = 8, HeatReward = 2, Display = "A day at the water (8 fish)" },
-            new ChallengeDefinition { Id = "c-fishcook", Tier = 1, Kind = ChallengeKind.PlayerState, Param = "CookedFishHeld", Target = 3, HeatReward = 2, Display = "Fish supper (3 cooked)",
+            //
+            // Both gated on the ROD (owner, in play: "I had a fish task before i got a rod"). A
+            // fishing task without one is not difficult, it is unstartable — the same dead slot as
+            // a door task with no door, and the rod is not something the run hands you.
+            new ChallengeDefinition { Id = "c-fishhaul", Tier = 1, Kind = ChallengeKind.PlayerState, Param = "FishHeld",       Target = 8, HeatReward = 2, RequiresItem = "FishingRod", Display = "A day at the water (8 fish)" },
+            new ChallengeDefinition { Id = "c-fishcook", Tier = 1, Kind = ChallengeKind.PlayerState, Param = "CookedFishHeld", Target = 3, HeatReward = 2, RequiresItem = "FishingRod", Display = "Fish supper (3 cooked)",
                 Hint = "Craft Raw fish from your catch in the crafting tab first, then cook it on the station." },
             new ChallengeDefinition { Id = "c-food",      Tier = 0, Kind = ChallengeKind.CollectFood, Param = "", Target = 10, HeatReward = 1, Display = "Hold 10 food items" },
             new ChallengeDefinition { Id = "naked-5",     Tier = 0, Kind = ChallengeKind.NoArmorMinutes, Param = "", Target = 3, HeatReward = 3, Display = "Wear no armor for 3 minutes" },
@@ -8034,6 +8106,12 @@ namespace ICanShowYouTheWorld.RunMode
             new BoonDefinition { Id = "woodsman", Display = "Woodsman", IsPassive = true, Description = "Woodcutting skill to 60. Trees fall fast." },
             new BoonDefinition { Id = "hunter",   Display = "Hunter",   IsPassive = true, Description = "Bow skill to 50. Straighter, harder shots." },
             new BoonDefinition { Id = "warrior",  Display = "Warrior",  IsPassive = true, Description = "Axe, sword and club skill to 50." },
+            // The first skill boon that is not a one-off grant (owner: "a boon that gives
+            // accelerated skills"). The other three hand you a level in one skill and are done;
+            // this pays out in whatever you actually spend the run doing, which makes it a pick for
+            // a long saga rather than for the next fight. It rides the world's own SkillGainRate on
+            // top of the baseline — see RefreshSkillGain.
+            new BoonDefinition { Id = "study", Display = "Quick Study", IsPassive = true, Description = "Every skill rises far faster, in whatever you do." },
 
             // --- Resistances (alpha34) ---
             //
@@ -8072,7 +8150,7 @@ namespace ICanShowYouTheWorld.RunMode
             new BoonDefinition { Id = "wind",  Display = "Second Wind",  IsPassive = false, CooldownSeconds = 120f, Description = "Heals you and nearby allies for 10s." },
             new BoonDefinition { Id = "ember", Display = "Emberskin",    IsPassive = false, CooldownSeconds = 180f, Description = "Cloak of flames burns nearby foes for 30s." },
             new BoonDefinition { Id = "way",   Display = "Waystone",     IsPassive = false, Description = "Teleport to the next boss altar. One charge." },
-            new BoonDefinition { Id = "windfall", Display = "Windfall",  IsPassive = false, Description = "Double every stack you carry. One charge, never refills." },
+            new BoonDefinition { Id = "windfall", Display = "Windfall",  IsPassive = false, Description = $"Double every stack you carry. {BoonEffects.WindfallCharges} charges, never refills." },
         };
     }
 }

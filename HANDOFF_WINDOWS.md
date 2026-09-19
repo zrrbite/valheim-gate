@@ -17,6 +17,46 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-19 — TASK: 1.0.15-run.2026-09-19c — four things from the run
+
+Installed here already (`-ModOnly`; the Patcher did not change). All four came out of your
+own play notes on `...19b`.
+
+**1. No fishing task before you own a rod.** `ChallengeDefinition` gained a `RequiresItem`
+gate — the tool sibling of `RequiresBuilt` — and both pool bounties (`c-fishhaul`,
+`c-fishcook`) now carry `RequiresItem = "FishingRod"`. It reads the LIVE inventory when a
+slot is dealt, so a rod left in a chest withholds the task, and selling one afterwards does
+not retract a task already in play.
+
+The questline's own fishing steps are untouched and were never the problem: `mq-rest` hands
+you the rod and sits ahead of `mq-fish` on the hearth track. What you saw was a POOL slot.
+
+**2. Windfall has three charges.** Was one, by an old ruling; the card now reads
+"3 charges, never refills" and the number in the text and the number in the code are the
+same constant, so they cannot drift. Each spend reports what is left.
+
+**3. The stash is sorted alphabetically.** Sorted in the LIST, not in the view — the list is
+what "Take" indexes into, so sorting only the display would have been a mapping to get
+wrong. Two rows sharing a prefab order by quality. A resumed stash comes back sorted
+whatever order the save file held.
+
+**4. A new boon: Quick Study.** *"Every skill rises far faster, in whatever you do."* Passive.
+It multiplies the run's SkillGainRate by 3 on top of the baseline 3x, so 9x while held.
+Unlike Woodsman/Hunter/Warrior it is not a one-off grant into one skill — it pays out in
+whatever you actually spend the saga doing. `runSkillBoonMultiplier` in the config if 3x is
+the wrong number.
+
+**What to watch for:** that a fishing bounty now only ever appears with a rod on you; that
+Windfall says "2 left" and then "1 left" rather than going quiet; that the stash reads
+alphabetically and "Take" empties the row you clicked; and that Quick Study visibly moves
+skills when held. Tests: 561 assertions, all passing.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
+---
+
 ## 2026-09-19 — TASK: 1.0.15-run.2026-09-19b — the mod loads itself, and says so
 
 Built and installed on this box already. Just play it. (`...-19` was the full install, since

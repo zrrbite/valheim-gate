@@ -273,8 +273,12 @@ namespace ICanShowYouTheWorld.RunMode
                 // Stash actions are handled before the lifecycle ones and do not compete with them:
                 // they never change which windows exist, so they cannot be the thing that has to
                 // wait, and an abandon queued in the same frame should still find the stash settled.
-                if (deposit) run.DepositMaterials();
+                // Withdraw BEFORE deposit: the index was read from the list as it looked last frame,
+                // and the stash is kept sorted, so a deposit that adds a new kind can shift every
+                // row after it. Two stash buttons cannot realistically be clicked in one frame, but
+                // the order costs nothing and removes the question.
                 if (withdraw >= 0) run.WithdrawStash(withdraw);
+                if (deposit) run.DepositMaterials();
 
                 // Abandon wins if both somehow queued: it is the safer of the two to honour.
                 if (abandon) run.AbandonRun();

@@ -50,6 +50,7 @@ namespace ICanShowYouTheWorld.Core
         // === Run Mode ===
         float RunResourceRate { get; set; }
         float RunSkillGainRate { get; set; }
+        float RunSkillBoonMultiplier { get; set; }
         float RunMoveStaminaRate { get; set; }
         float RunStaminaRegenRate { get; set; }
         float RunStaminaRate { get; set; }
@@ -158,6 +159,10 @@ namespace ICanShowYouTheWorld.Core
         // === Run Mode ===
         [SerializeField] private float runResourceRate = 3f;
         [SerializeField] private float runSkillGainRate = 3f;
+
+        // What Quick Study multiplies the baseline skill rate BY, so the two numbers stay
+        // independent: raise the baseline and the boon is still worth the same relative jump.
+        [SerializeField] private float runSkillBoonMultiplier = 3f;
         [SerializeField] private float runMoveStaminaRate = 0.5f;
         [SerializeField] private float runStaminaRegenRate = 2.5f;
 
@@ -323,6 +328,7 @@ namespace ICanShowYouTheWorld.Core
 
         public float RunResourceRate { get => runResourceRate; set => runResourceRate = value; }
         public float RunSkillGainRate { get => runSkillGainRate; set => runSkillGainRate = value; }
+        public float RunSkillBoonMultiplier { get => runSkillBoonMultiplier; set => runSkillBoonMultiplier = value; }
         public float RunMoveStaminaRate { get => runMoveStaminaRate; set => runMoveStaminaRate = value; }
         public float RunStaminaRegenRate { get => runStaminaRegenRate; set => runStaminaRegenRate = value; }
         public float RunStaminaRate { get => runStaminaRate; set => runStaminaRate = value; }

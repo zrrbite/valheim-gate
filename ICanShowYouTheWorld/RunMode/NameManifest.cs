@@ -75,6 +75,12 @@ namespace ICanShowYouTheWorld.RunMode
                 // sitting after an early-continue is how it went uncollected for all of them.
                 manifest.AddTo(manifest.PieceCategories, def.RequiresBuilt);
 
+                // RequiresItem is the same trap wearing the other gate's clothes: a typo makes the
+                // task undrawable forever and nothing appears to go wrong. The item validator
+                // accepts a prefab name or a "$item_" token, so either spelling passes and only a
+                // name that is neither is reported.
+                manifest.AddTo(manifest.ItemNames, def.RequiresItem);
+
                 if (def.Subs == null) continue;
                 foreach (var sub in def.Subs.Where(s => s != null)) manifest.Add(sub.Kind, sub.Param);
             }

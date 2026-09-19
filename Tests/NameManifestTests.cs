@@ -39,6 +39,10 @@ static class NameManifestTests
             // forever, which is quieter than a dead objective.
             new ChallengeDefinition { Id = "s-doors", Kind = ChallengeKind.StatDelta, Param = "DoorsOpened", Target = 8, RequiresBuilt = "Door" },
 
+            // The tool gate, same reasoning: a rod task dealt to a player with no rod is a dead
+            // slot, and a misspelt gate is a task that is never dealt at all.
+            new ChallengeDefinition { Id = "c-fish", Kind = ChallengeKind.PlayerState, Param = "FishHeld", Target = 8, RequiresItem = "FishingRod" },
+
             // Duplicates collapse; nulls and blanks are ignored rather than thrown on.
             new ChallengeDefinition { Id = "k-boar2", Kind = ChallengeKind.KillPrefab, Param = "Boar", Target = 5 },
             new ChallengeDefinition { Id = "k-blank", Kind = ChallengeKind.KillPrefab, Param = "", Target = 1 },
@@ -50,8 +54,10 @@ static class NameManifestTests
 
         Check.That(m.CreaturePrefabs.SequenceEqual(new[] { "Boar", "Greyling" }),
             "creature names come from KillPrefab challenges and subs, deduped, in pool order");
-        Check.That(m.ItemNames.SequenceEqual(new[] { "$item_wood", "$item_stone" }),
-            "item names come from CollectItem challenges and subs");
+        Check.That(m.ItemNames.SequenceEqual(new[] { "$item_wood", "$item_stone", "FishingRod" }),
+            "item names come from CollectItem challenges, subs, and RequiresItem gates");
+        Check.That(!m.PieceCategories.Contains("FishingRod"),
+            "a required ITEM is not a build category");
         Check.That(m.PieceCategories.SequenceEqual(new[] { "Fire", "Cooking", "Door" }),
             "piece categories come from BuildPiece challenges, subs, and RequiresBuilt gates");
 

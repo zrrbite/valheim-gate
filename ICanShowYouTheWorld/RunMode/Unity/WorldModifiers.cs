@@ -75,6 +75,28 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
+        /// Writes SkillGainRate as the baseline times a boon multiplier (1 for "no boon held").
+        ///
+        /// Recomputed from the CONFIG value every time, never from the key's current contents. That
+        /// is what keeps this safe next to <see cref="ApplyBaseline"/>: two writers on one value
+        /// corrupt each other the moment either treats the other's output as its starting point, and
+        /// this mode has paid for that lesson three times. Here the pristine value is a config
+        /// constant, so there is nothing to snapshot and nothing to drift — call it in any order,
+        /// as often as you like, and the answer is the same.
+        ///
+        /// The pre-run original is saved as usual, so RestoreAll still hands the world back exactly
+        /// what it had.
+        /// </summary>
+        public void ApplySkillGain(IConfiguration cfg, float boonMultiplier)
+        {
+            if (ZoneSystem.instance == null) return;
+
+            SaveOriginal(GlobalKeys.SkillGainRate);
+            SetRate(GlobalKeys.SkillGainRate, cfg.RunSkillGainRate * Mathf.Max(0.01f, boonMultiplier));
+            RefreshRates();
+        }
+
+        /// <summary>
         /// Scales enemy damage and level-up chance with the run's current heat.
         /// Called on every heat change; does not log each call.
         /// </summary>

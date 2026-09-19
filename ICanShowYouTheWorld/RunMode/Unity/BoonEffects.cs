@@ -245,6 +245,14 @@ namespace ICanShowYouTheWorld.RunMode
         public string LastActivationMessage { get; private set; }
 
         /// <summary>
+        /// How many times Windfall may be spent in a run. Deliberately a constant rather than
+        /// config: the boon's DESCRIPTION states the number, and the description is built from this
+        /// same constant — a config value could not reach it, and a number the card and the code
+        /// disagreed about would be worse than one that cannot be tuned without a rebuild.
+        /// </summary>
+        public const int WindfallCharges = 3;
+
+        /// <summary>
         /// Hands the player an item stack — RunService.GrantItem, which resolves the prefab, adds
         /// what fits, drops the rest at their feet, and logs either way. Windfall goes through the
         /// host for the same reason the skill boons do: the awkward parts (a full inventory, a
@@ -336,10 +344,22 @@ namespace ICanShowYouTheWorld.RunMode
                     break;
 
                 case "windfall":
-                    // One charge, and unlike Waystone nothing ever refills it. The boon is a single
-                    // windfall you choose the moment for, not a tap.
+                    // Charges given at the pick, and unlike Waystone nothing ever refills them. The
+                    // boon is a fixed number of windfalls you choose the moments for, not a tap.
+                    //
+                    // Was one charge, by ruling, until it was played (owner: "it would be nice with
+                    // a boon x charges of replenish stacks"). Three keeps the "choose the moment"
+                    // decision that made it interesting — a tap would remove it — while making the
+                    // pick worth a slot against a permanent passive.
                     var windfall = FindNewestHeld("windfall");
-                    if (windfall != null) windfall.Charges++;
+                    if (windfall != null) windfall.Charges += WindfallCharges;
+                    break;
+
+                case "study":
+                    // Nothing to apply here. It rides the world's SkillGainRate key, which only the
+                    // host can write (and must re-write after its own baseline pass) — see
+                    // RunService.RefreshSkillGain. Listed so a reader looking for its effect finds
+                    // this note rather than concluding it was forgotten.
                     break;
 
                 // wind/ember have no effect on gain — only on activation (Keypad4/5).
@@ -1248,7 +1268,9 @@ namespace ICanShowYouTheWorld.RunMode
             foreach (var entry in toGrant) _grantItem(entry.Name, entry.Count);
 
             held.Charges--;
-            LastActivationMessage = $"Windfall: {toGrant.Count} stacks doubled.";
+            LastActivationMessage = held.Charges > 0
+                ? $"Windfall: {toGrant.Count} stacks doubled. {held.Charges} left."
+                : $"Windfall: {toGrant.Count} stacks doubled. That was the last of it.";
             return true;
         }
 

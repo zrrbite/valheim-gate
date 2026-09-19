@@ -201,6 +201,25 @@ namespace ICanShowYouTheWorld.RunMode
         public string RequiresBuilt;
 
         /// <summary>
+        /// Gate on whether this definition may be DEALT at all: the player must be CARRYING the
+        /// named item prefab. Null or empty means no gate.
+        ///
+        /// The tool sibling of <see cref="RequiresBuilt"/>, and it exists for the same reason, found
+        /// the same way (owner, in play: "I had a fish task before i got a rod"). Fishing is the
+        /// clearest case in the pool — without a rod the task is not hard, it is unstartable, and
+        /// the only way out is to pay heat to reroll it.
+        ///
+        /// Unlike <see cref="RequiresBuilt"/>, which latches for the whole run, this reads the LIVE
+        /// inventory: a rod can be lost or left in a chest, and a gate on "did you ever hold one"
+        /// would deal the task to a player who no longer can fish. It is checked only when a slot is
+        /// dealt, so selling the rod afterwards does not retract a task already in play.
+        ///
+        /// Like RequiresBuilt, the engine does not read it — it rides <see cref="ExternalFilter"/>,
+        /// host-side, because only the host can see an inventory.
+        /// </summary>
+        public string RequiresItem;
+
+        /// <summary>
         /// When set (non-null, non-empty), this definition is a COMPOSITE/multi-objective
         /// challenge: <see cref="Kind"/>/<see cref="Param"/>/<see cref="Target"/> above are
         /// unused and <see cref="ActiveChallenge.Done"/> instead requires every sub's own

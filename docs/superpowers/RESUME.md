@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-09-19 at `1.0.15-run.2026-09-19b`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-09-19 at `1.0.15-run.2026-09-19c`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -21,7 +21,7 @@ Everything below is what that file tells it.
 
 - Branch **`feature/run-mode`**, not merged, deliberately — the mode is still
   being tuned in play.
-- Latest tag **`1.0.15-run.2026-09-19b`**; builds are date-based since 2026-08-31
+- Latest tag **`1.0.15-run.2026-09-19c`**; builds are date-based since 2026-08-31
   (`Scripts/nextversion.sh`). The game moved to **1.0.12 on 2026-09-12** and to
   **1.0.15 on 2026-09-19**; both times the mod was rebuilt and installed on Windows
   the same day. **1.0.15 needed no source change** — all 316 member references from
@@ -32,7 +32,7 @@ Everything below is what that file tells it.
   `FejdStartup.Start()` (and still into `OnCredits`, where it is a no-op). The mod
   loads itself at startup; "open Credits first" is no longer a rule anybody has to
   remember, and no longer a way to lose Thor's bow.
-- Engine tests: `Tests/run_tests.sh`, 555 assertions, all passing. The script now
+- Engine tests: `Tests/run_tests.sh`, 561 assertions, all passing. The script now
   falls back to Visual Studio's Roslyn `csc.exe` when `mcs`/`mono` are absent, so the
   suite runs on the Windows box too.
 - Game version 1.0.15, Unity 6000.0.75 (was 0.221.12 / 6000.0.61 until 2026-09-12,
@@ -599,7 +599,31 @@ IronGate activates when `Game.isModded`. It was left alone on purpose — settin
 also feeds `Achievements.IsCheatedAtAll`, and the object's own text is a localised token
 rather than anything the saga would want to say.
 
-Waiting on the owner's play-test of `1.0.15-run.2026-09-19b` — see the TASK entry in
+**`...-19c` answered four notes from the first real run of the day**, all owner-reported:
+
+1. **A fishing bounty was dealt before the player owned a rod.** `ChallengeDefinition` gained
+   `RequiresItem`, the tool sibling of `RequiresBuilt`, and both pool fishing bounties carry
+   it. It reads the LIVE inventory at deal time rather than latching like `_builtSeen`: a rod
+   can be lost or left in a chest, and "did you ever hold one" would deal the task to someone
+   who can no longer fish. The questline's fishing steps were never at fault — `mq-rest`
+   grants the rod and precedes `mq-fish` on the hearth track.
+2. **Windfall carries three charges**, reversing the alpha27 one-charge ruling on the owner's
+   word. The number lives in one constant that the boon's DESCRIPTION is built from, because a
+   card and a code path disagreeing about it would be worse than a number that needs a rebuild.
+3. **The stash is sorted alphabetically** — in the LIST, not the view. Withdrawal is addressed
+   by index into that list across a frame boundary, so sorting only the display would have
+   meant mapping a row back to a real index, and that mapping is the thing to get wrong. The
+   deferred stash actions also swapped order (withdraw before deposit) since a sorted insert
+   can now shift rows.
+4. **A new boon, Quick Study** — the first skill boon that is not a one-off grant. It rides the
+   world's `SkillGainRate` key, which is why it lives in `RunService.RefreshSkillGain` rather
+   than in `BoonEffects`: the key belongs to the WORLD, is guarded by world identity and has
+   its pre-run original in the run state. It is recomputed from the CONFIG baseline every time
+   it is written, never from the key's current contents — which is how a second writer on one
+   value stays safe next to `ApplyBaseline`, the lesson this mode has paid for three times.
+   `runSkillBoonMultiplier` (3) is config.
+
+Waiting on the owner's play-test of `1.0.15-run.2026-09-19c` — see the TASK entry in
 [`../../HANDOFF_WINDOWS.md`](../../HANDOFF_WINDOWS.md). Beyond the entry point itself,
 still unverified from 12-13 September: Thor's bow on the bench after paying the shade
 and its flash on impact, the shade's greeting and its "[E] Speak" prompt, the saga

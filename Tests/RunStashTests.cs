@@ -28,7 +28,10 @@ static class RunStashTests
         Check.That(s.Deposit("", 5, 1, 0) == 0, "a blank prefab deposits nothing");
         Check.That(s.Deposit("Wood", 0, 1, 0) == 0, "a zero count deposits nothing");
         Check.That(s.Deposit("Wood", -5, 1, 0) == 0, "a negative count deposits nothing");
-        Check.That(s.Entries[0].Count == 80, "a refused deposit does not disturb the stack");
+        // By prefab, not by index: entries are kept in alphabetical order, so "the Wood stack" is
+        // no longer whatever was deposited first.
+        Check.That(s.Entries.Single(e => e.Prefab == "Wood").Count == 80,
+            "a refused deposit does not disturb the stack");
 
         // Withdrawal is partial-friendly and removes an emptied kind.
         int woodIndex = s.Entries.ToList().FindIndex(e => e.Prefab == "Wood");
@@ -90,5 +93,49 @@ static class RunStashTests
         cleared.Deposit("Wood", 10, 1, 0);
         cleared.Clear();
         Check.That(cleared.Entries.Count == 0, "clearing empties the stash");
+
+        // --- Alphabetical order ---
+        //
+        // The list IS the display order, and withdrawal is addressed by index into it, so the
+        // ordering is not cosmetic: if these two ever disagreed, "Take" would empty the wrong row.
+        var sorted = new RunStash();
+        sorted.Deposit("Wood", 10, 1, 0);
+        sorted.Deposit("Coal", 5, 1, 0);
+        sorted.Deposit("LeatherScraps", 3, 1, 0);
+        sorted.Deposit("Bronze", 2, 1, 0);
+        Check.That(sorted.Entries.Select(e => e.Prefab)
+                .SequenceEqual(new[] { "Bronze", "Coal", "LeatherScraps", "Wood" }),
+            "deposits land in alphabetical order whatever order they arrive in");
+
+        // A later deposit of an existing kind must merge, not re-sort into a second row.
+        sorted.Deposit("Coal", 7, 1, 0);
+        Check.That(sorted.Entries.Count == 4 && sorted.Entries[1].Prefab == "Coal" && sorted.Entries[1].Count == 12,
+            "merging into a sorted list leaves the order alone");
+
+        // Two rows can share a prefab, so the tie needs a defined answer rather than arrival order.
+        var tied = new RunStash();
+        tied.Deposit("AxeBronze", 1, 3, 0);
+        tied.Deposit("AxeBronze", 1, 1, 0);
+        tied.Deposit("AxeBronze", 1, 2, 0);
+        Check.That(tied.Entries.Select(e => e.Quality).SequenceEqual(new[] { 1, 2, 3 }),
+            "same prefab, different quality: ordered by quality");
+
+        // Withdrawal by index still means what the row says after the sort.
+        var addressed = new RunStash();
+        addressed.Deposit("Wood", 10, 1, 0);
+        addressed.Deposit("Coal", 5, 1, 0);
+        addressed.WithdrawAll(0);
+        Check.That(addressed.Entries.Count == 1 && addressed.Entries[0].Prefab == "Wood",
+            "index 0 is the alphabetically first row, not the first deposited");
+
+        // Whatever order a save file holds, a resumed stash is sorted.
+        var resumed = new RunStash();
+        resumed.Restore(
+            new List<string> { "Wood", "Coal", "Bronze" },
+            new List<int> { 1, 1, 1 },
+            new List<int> { 1, 1, 1 },
+            new List<int> { 0, 0, 0 });
+        Check.That(resumed.Entries.Select(e => e.Prefab).SequenceEqual(new[] { "Bronze", "Coal", "Wood" }),
+            "a restored stash comes back sorted, whatever order the save held");
     }
 }

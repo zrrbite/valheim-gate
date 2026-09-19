@@ -86,6 +86,7 @@ positioned once at startup.
 ```json
 "runResourceRate": 3.0             // Resource gain multiplier during runs
 "runSkillGainRate": 3.0            // Skill XP gain multiplier during runs
+"runSkillBoonMultiplier": 3.0      // What the Quick Study boon multiplies that by
 "runMoveStaminaRate": 0.5          // Stamina drain rate multiplier during runs
 "runStaminaRegenRate": 1.5         // Stamina regeneration multiplier during runs
 "runHeatEnemyDamageWeight": 0.05   // Heat→enemy damage: multiplier = 1 + heat × weight
