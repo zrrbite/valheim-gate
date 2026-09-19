@@ -61,6 +61,12 @@ namespace ICanShowYouTheWorld.Services
         bool CorpseWaiting { get; }
         float CorpseGateCooldown { get; }
 
+        /// <summary>True when the saga menu should open itself on entering a world. See RunService.</summary>
+        bool WantsLobbyShown { get; }
+
+        /// <summary>Told to the service once the window has acted on that offer.</summary>
+        void LobbyOfferTaken();
+
         /// <summary>
         /// Where Eikthyr's Herald is ("north-east, 180m") while its questline step is in play;
         /// null otherwise.

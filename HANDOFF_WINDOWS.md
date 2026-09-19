@@ -17,13 +17,7 @@ Standing context for the Windows side:
 
 ---
 
-> **Agreed for the next session** (details in `docs/superpowers/RESUME.md`, "Next session"):
-> a **QUESTS page** taking the sub-objectives, hints, SPLITS and HOMESTEAD off the HUD and showing
-> COMPLETED steps as the run's record, reached by a tab rather than a new key; and the **saga menu
-> opening itself on spawn** with a visible CANCEL, so the mode is not something you have to remember
-> to open.
-
-## 2026-09-20 - THE TEST LIST for 1.0.15-run.2026-09-20
+## 2026-09-20 - THE TEST LIST for 1.0.15-run.2026-09-20b
 
 Ten builds stacked up in one afternoon, so this is all of them as ONE pass, ordered by when you
 meet each thing rather than by build number. The per-build TASK entries below keep the reasoning;
@@ -32,12 +26,27 @@ this is the list to play with.
 **`...19k` needs an install** - the game was running when it was built, so the DLL could not be
 replaced. Quit Valheim and run `.\dist\windows\Install-Mod.ps1 -ModOnly`, then relaunch.
 
+### The menu, which now comes to you
+
+- [ ] **Load a character. The saga menu opens by itself** - you should not have to press `End`.
+- [ ] **"Not now" closes it** and it does NOT come back for that world. Die, respawn, walk about:
+      still no menu. It re-offers only when you load a world again.
+- [ ] Press `End` and it comes back, as before.
+- [ ] Start a run, then **abandon** it: no menu reappears immediately afterwards.
+- [ ] **The run window has two tabs now, `RUN` and `QUESTS`.** RUN keeps the numbers, the step in
+      play with its counts and bar, the tasks and the boons. SPLITS and HOMESTEAD have moved.
+- [ ] **QUESTS is the log**: each track shows what it has FINISHED - with the line that was said at
+      the time - then the step in play with its hint and what it pays, then "N more on this track".
+      Future steps are a count and never a list, on purpose.
+- [ ] Switching tabs must not shift the tab row itself, and no `Mismatched LayoutGroup` errors in the
+      log after clicking about.
+
 ### Before you load a character
 
 - [ ] Launch and **do not open Credits**. There should be **no popup at all** - that is the change
       in `...19k`. Silence is success.
 - [ ] Under the menu's own version line, a single gold line at 70% size and **not overlapping**:
-      `SAGA v1.0.15-run.2026-09-20`. That line is now the ONLY proof the mod loaded, so if it is
+      `SAGA v1.0.15-run.2026-09-20b`. That line is now the ONLY proof the mod loaded, so if it is
       missing, the mod is not in.
 - [ ] Load the character carrying **Thor's bow**. Still there. Save, quit to desktop, come back:
       still there. No `Failed to find item prefab` in the log.
@@ -147,6 +156,74 @@ default is **2.5** - the file wins over the code, so you have been playing a mon
 regen. Thirty-four newer settings are absent from it entirely and running on code defaults, which
 is correct behaviour but means they cannot be TUNED without adding the lines by hand. Ask and I
 will either add the keys or make `Load()` re-save so no future setting is invisible.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
+---
+
+## 2026-09-20 - TASK: 1.0.15-run.2026-09-20b - two pages, and a menu that opens itself
+
+### The split, and the rule behind it
+
+> The RUN page holds what you act on. The QUESTS page holds what you have done and the detail
+> behind it.
+
+That rule is broader than "move the quests out", and it is the part worth arguing with. By it:
+
+- **The step in play STAYS on the RUN page**, with its count, its bar, its clause list and its
+  bearing. There is a decision recorded in `RunWindow` that the questline is pinned above the scroll
+  because it is the one thing saying where the run is GOING - learned in play, and not undone by a
+  tidy-up. The clause counts stay for the same reason they were just made legible: they are read
+  mid-fight.
+- **SPLITS and HOMESTEAD move.** Records, not decisions. This also retires a workaround: the
+  homestead panel was switched OFF by default because it "was competing for room with the three quest
+  tracks" - a room problem, answered better by a page than by hiding the records. It now shows on the
+  QUESTS page unconditionally, and `RunShowHomestead` decides only whether it ALSO appears on RUN.
+- **The hint moves.** Three reasons in order of weight: it is spoken aloud when the step opens now,
+  so the panel copy was a second telling; it was the largest variable-height thing on a row that has
+  to stay compact; and it had been narrowed to "only before you make progress", which meant the one
+  place to re-read it vanished the moment you started.
+- **TASKS and BOONS stay.** Live choices.
+
+### The log
+
+No new state at all. `QuestTrack` already carries the whole `Chain` and the `Index` into it, so the
+page is a different reading of what the HUD already had: everything before the index is done, the
+index is in play, the rest is to come.
+
+Finished steps are why the page is worth having. A completed step used to simply vanish, so a run had
+no memory the player could read - which for a mode calling itself a saga is the page it was missing.
+Each one shows its `Opening` line where it has one, because that line WAS the beat.
+
+Steps still to come are a COUNT and never a list. Naming them would spoil the act, and the same
+objection already took reward text off the step rows. A number answers "how much of this act is left"
+without answering "what happens next".
+
+### The menu opens itself
+
+Three things had to be right, and two of them were traps.
+
+**It keys on entering a WORLD, not on a fresh Player.** The player reference is the signal already
+sitting in `DetectRespawnAndReapplyPassives`, and using it would have re-opened the lobby every time
+the player died outside a run. Worse, the obvious guard is wrong the same way: a death leaves
+`Player.m_localPlayer` null for about ten seconds while `Game.RequestRespawn` works, so resetting the
+"already offered" flag on a null player would re-offer on every respawn. Only a world actually going
+away re-arms it.
+
+**It belongs in `TickInner`'s INACTIVE branch.** My first version sat further down, where everything
+returns early when no run is running - which is precisely the state the offer exists for. It could
+never have fired.
+
+**And `UIManager.OnGUI` had to let the pass through.** It returns early when nothing is visible, which
+is exactly the state the auto-open starts from, so the door could never have been opened from inside
+`RunWindow.Draw`.
+
+Both visibility flips are deferred to a **Layout** event, the one pass where the set of live windows
+may change - the rule `ApplyPendingActions` already obeyed. And the lobby has a **"Not now"** button,
+because a window that appears unbidden and can only be dismissed by a key nobody told you about is
+worse than the key press it replaced.
 
 ### RESULTS (Windows side appends here)
 

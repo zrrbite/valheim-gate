@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-09-20 at `1.0.15-run.2026-09-20`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-09-20 at `1.0.15-run.2026-09-20b`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -21,7 +21,7 @@ Everything below is what that file tells it.
 
 - Branch **`feature/run-mode`**, not merged, deliberately — the mode is still
   being tuned in play.
-- Latest tag **`1.0.15-run.2026-09-20`**; builds are date-based since 2026-08-31
+- Latest tag **`1.0.15-run.2026-09-20b`**; builds are date-based since 2026-08-31
   (`Scripts/nextversion.sh`). The game moved to **1.0.12 on 2026-09-12** and to
   **1.0.15 on 2026-09-19**; both times the mod was rebuilt and installed on Windows
   the same day. **1.0.15 needed no source change** — all 316 member references from
@@ -212,9 +212,10 @@ is a decision, not a detail — see the note at the top of `CreatureDressing`.
 `specs/2026-08-27-story-bible.md`. Acts II–V exist and open correctly; their
 middles are thinner than Act I's.
 
-## Next session: agreed 2026-09-20, before anything else
+## Done 2026-09-20 (`...20b`): the QUESTS page and the self-opening menu
 
-Two things the owner asked for at the end of the day, both decided, neither built.
+Both built the same evening they were agreed. Kept here because the REASONING is what a later
+change needs, not the diff.
 
 ### 1. A QUESTS page, and a rule about what belongs where
 

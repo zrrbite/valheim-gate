@@ -89,6 +89,8 @@ namespace ICanShowYouTheWorld
         /// <summary>End key: opens the Run Mode lobby, or the Heat HUD while a run is live.</summary>
         public void ToggleRunWindow() => runWindow.ToggleVisible();
 
+
+
         void OnGUI()
         {
             // stash old color
@@ -115,7 +117,13 @@ namespace ICanShowYouTheWorld
 
             // A live run draws its timer/heat strip whether or not the cheat UI is up, and the
             // lobby answers the End key on its own — so "nothing visible" is no longer just !visible.
-            if (!visible && !runActive && !runWindow.Visible) return;
+            //
+            // And since 2026-09-20 the lobby also opens ITSELF on entering a world, which it can only
+            // do from inside RunWindow.Draw — so a pass where nothing is visible yet still has to
+            // reach Draw when the saga is waiting to be offered. Without this clause the auto-open
+            // could never fire: the one state it exists for is exactly the state this early return
+            // was written to skip.
+            if (!visible && !runActive && !runWindow.Visible && !runWindow.LobbyWanted) return;
 
             // Scale the whole GUI, which sizes fonts along with the windows —
             // IMGUI is otherwise pure pixels and shrinks as resolution grows.

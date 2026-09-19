@@ -1535,6 +1535,66 @@ namespace ICanShowYouTheWorld.RunMode
 
         public int LightsBurning => _active && _lights != null ? _lights.Burning : 0;
 
+        /// <summary>
+        /// Raises the offer once per world entered, while no run is running.
+        /// </summary>
+        /// <remarks>
+        /// The null-player case is a RETURN and not a reset, and that is the whole care in this
+        /// method. Outside a run a death leaves Player.m_localPlayer null for about ten seconds while
+        /// Game.RequestRespawn works, and the world never moves - so resetting on a null player would
+        /// re-offer the saga every time the player died, which is the one moment nobody wants a menu.
+        /// Only a world actually going away re-arms it.
+        /// </remarks>
+        private void OfferLobbyOnWorldEntry()
+        {
+            string world = WorldIdentifier();
+
+            if (world == null)
+            {
+                _lobbyOfferedForWorld = null;
+                return;
+            }
+
+            if (Player.m_localPlayer == null) return;
+            if (world == _lobbyOfferedForWorld) return;
+
+            _lobbyOfferedForWorld = world;
+            _lobbyOfferPending = true;
+        }
+
+        /// <summary>The world the lobby has already been offered for, so it is offered once.</summary>
+        private string _lobbyOfferedForWorld;
+
+        /// <summary>Set when the lobby should open itself; cleared once the window has taken it.</summary>
+        private bool _lobbyOfferPending;
+
+        /// <summary>
+        /// True when the saga menu should open itself, unbidden.
+        /// </summary>
+        /// <remarks>
+        /// The same argument that moved the mod's entry point off the Credits menu: a mode you have
+        /// to remember to open is a mode that gets forgotten (owner: "I'd also like to trigger the
+        /// Saga menu on char spawn instead of having to press END. User can always CANCEL instead of
+        /// starting the saga run").
+        ///
+        /// Keyed to entering a WORLD, deliberately, and not to a fresh Player instance. The player
+        /// reference is the signal already sitting there in DetectRespawnAndReapplyPassives, and
+        /// using it would have re-opened the lobby every time the player died OUTSIDE a run - which
+        /// is precisely the moment nobody wants a menu. One offer per world identity, and
+        /// WorldIdentifier() is the same signal the suspend logic trusts for "this process still has
+        /// this world open".
+        ///
+        /// Never while a run is live: then the HUD is the right window and an offer to begin is a
+        /// question already answered.
+        /// </remarks>
+        public bool WantsLobbyShown => _lobbyOfferPending && !_active;
+
+        /// <summary>
+        /// Called by the window once it has opened itself, so the offer is made once per world and
+        /// a CANCEL stays cancelled.
+        /// </summary>
+        public void LobbyOfferTaken() => _lobbyOfferPending = false;
+
         /// <summary>True when testing shortcuts are live. The HUD says so; see HandleDevInput.</summary>
         public bool DevMode => _cfg != null && _cfg.RunDevMode;
 
@@ -1889,6 +1949,12 @@ namespace ICanShowYouTheWorld.RunMode
 
                 RearmResumeOnIdentityChange();
                 TryResume();
+
+                // Entering a world with no run offers the saga once. It belongs in THIS branch and
+                // nowhere else: everything below returns early when no run is active, which is
+                // precisely the state the offer exists for. The first version of this sat down there
+                // and could never have fired.
+                OfferLobbyOnWorldEntry();
                 return;
             }
 
@@ -4176,6 +4242,11 @@ namespace ICanShowYouTheWorld.RunMode
             _recipes.Remove();
             CreatureDressing.Forget();
             _corpseAt = null;
+
+            // Not an offer: the world the run ended in has just been asked and answered. Clearing
+            // the WORLD would re-offer the saga the moment the abandon finished, which reads as the
+            // mode arguing with the player.
+            _lobbyOfferPending = false;
             _dreams.Remove();
             _raids.Reset();
 

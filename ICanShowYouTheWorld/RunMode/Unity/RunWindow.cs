@@ -224,10 +224,49 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         private const float SubCountColumn = 56f;
 
+        /// <summary>A "Not now" click on the lobby, applied at the next Layout pass.</summary>
+        private bool _pendingLobbyClose;
+
         /// <summary>The Hud whose tip list we have already added to; guards against adding twice.</summary>
         private Hud _tippedHud;
 
         public void ToggleVisible() => Visible = !Visible;
+
+        /// <summary>Which page of the run window is showing.</summary>
+        private enum HudPage
+        {
+            /// <summary>What you act on: the numbers, the step in play, the tasks, the boons.</summary>
+            Run,
+
+            /// <summary>What you have done, and the detail there was never room for.</summary>
+            Quests,
+        }
+
+        /// <summary>
+        /// The page in view. One window with two pages rather than a second window, and rather than
+        /// a new key.
+        /// </summary>
+        /// <remarks>
+        /// The window had grown to act headline, score, gates, three quest tracks with their
+        /// sub-objectives, splits, homestead, tasks and boons in one scroll (owner: "Its getting kind
+        /// of cluttered... a seperate quest log that has the main quests which gives us a chance to
+        /// be a bit more descriptive, leaving some spare room in the main run menu").
+        ///
+        /// The rule the split follows, which is broader than "move the quests out" and is the part
+        /// worth stating: THE RUN PAGE HOLDS WHAT YOU ACT ON, THE QUESTS PAGE HOLDS WHAT YOU HAVE
+        /// DONE AND THE DETAIL BEHIND IT. So splits and homestead move (records, not decisions), the
+        /// step hints move (they are spoken aloud as a step opens now, so the panel copy was a second
+        /// telling), and tasks and boons stay where they are, because those are live choices.
+        ///
+        /// What does NOT move is the step in play. There is a decision recorded below that the
+        /// questline is pinned above the scroll because it is the one thing on this panel that says
+        /// where the run is GOING - learned in play, and not undone by a tidy-up.
+        ///
+        /// A page rather than a key because the keypad and the Home/End cluster are both full, and a
+        /// log is a page of this window rather than a mode of its own. Not a separate window either:
+        /// a second draggable panel is more clutter, differently arranged.
+        /// </remarks>
+        private HudPage _page = HudPage.Run;
 
         /// <summary>
         /// True while a run is in progress. UIManager asks before drawing the GM windows — they
@@ -251,6 +290,28 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
+        /// True when the saga is waiting to offer itself, so UIManager knows this pass must reach
+        /// <see cref="Draw"/> even with nothing visible yet. Never throws: a broken lookup reads as
+        /// "no", and a missed offer is a key press rather than a fault.
+        /// </summary>
+        public bool LobbyWanted
+        {
+            get
+            {
+                try
+                {
+                    var run = Service;
+                    return run != null && run.WantsLobbyShown;
+                }
+                catch (Exception ex)
+                {
+                    LogOnce("lobby-wanted", ex);
+                    return false;
+                }
+            }
+        }
+
+        /// <summary>
         /// Applies a [Start Run] / [Abandon run] click raised on an earlier pass, but only at a
         /// Layout event — the one point in the IMGUI cycle where changing which windows exist is
         /// safe. Called by UIManager BEFORE it reads <see cref="RunActive"/>, so the whole pass
@@ -260,8 +321,16 @@ namespace ICanShowYouTheWorld.RunMode
         public void ApplyPendingActions()
         {
             if (!_pendingStart && !_pendingAbandon && !_pendingDiscard &&
-                !_pendingDeposit && _pendingWithdraw < 0) return;
+                !_pendingDeposit && _pendingWithdraw < 0 && !_pendingLobbyClose) return;
             if (Event.current == null || Event.current.type != EventType.Layout) return;
+
+            // Closing the lobby removes a window, so it waits for Layout with the rest. It touches
+            // no service, so it is handled here and returns nothing to the try below.
+            if (_pendingLobbyClose)
+            {
+                _pendingLobbyClose = false;
+                Visible = false;
+            }
 
             bool start = _pendingStart;
             bool abandon = _pendingAbandon;
@@ -425,11 +494,29 @@ namespace ICanShowYouTheWorld.RunMode
                         }
                     }
                 }
-                else if (Visible)
+                else
                 {
-                    UpdateOfferFadeState(0);
-                    _lobbyRect = GUILayout.Window(LobbyWindowId, _lobbyRect, DrawLobby, GUIContent.none, RunTheme.Panel,
-                        GUILayout.Width(LobbyWidth), GUILayout.Height(LobbyHeight));
+                    // The saga offers itself on entering a world, once. The service owns the WHEN
+                    // (see RunService.WantsLobbyShown, which keys on world identity rather than on
+                    // the player reference for a reason worth reading); this only opens the door and
+                    // says it has been opened, so a CANCEL stays cancelled.
+                    // At a LAYOUT event only. Unity runs OnGUI several times a frame, and flipping
+                    // which windows exist part-way through leaves IMGUI's layout groups mismatched
+                    // for every window drawn after - the same rule ApplyPendingActions obeys, and
+                    // Layout is the first pass, so every later pass of the frame agrees with it.
+                    if (!Visible && run.WantsLobbyShown &&
+                        Event.current != null && Event.current.type == EventType.Layout)
+                    {
+                        Visible = true;
+                        run.LobbyOfferTaken();
+                    }
+
+                    if (Visible)
+                    {
+                        UpdateOfferFadeState(0);
+                        _lobbyRect = GUILayout.Window(LobbyWindowId, _lobbyRect, DrawLobby, GUIContent.none, RunTheme.Panel,
+                            GUILayout.Width(LobbyWidth), GUILayout.Height(LobbyHeight));
+                    }
                 }
             }
             catch (Exception ex)
@@ -965,10 +1052,15 @@ namespace ICanShowYouTheWorld.RunMode
 
             GUILayout.Space(4f);
 
+            DrawPageTabs();
+
+            GUILayout.Space(2f);
+
             // --- Main questline: pinned above the scroll, like the timer. It is the one thing on
             //     this HUD that says where the run is GOING, so it must never scroll out of view
-            //     behind a long splits list. ---
-            DrawQuestSection(run);
+            //     behind a long splits list. Kept on the RUN page for exactly that reason when the
+            //     window gained pages - see HudPage. ---
+            if (_page == HudPage.Run) DrawQuestSection(run);
 
             GUILayout.Space(4f);
 
@@ -982,7 +1074,11 @@ namespace ICanShowYouTheWorld.RunMode
                 GUIStyle.none, GUI.skin.verticalScrollbar, GUIStyle.none, GUILayout.ExpandHeight(true));
             // finally, not a plain call: a throw inside the body must still close the group,
             // or every window drawn after this one inherits a broken layout stack.
-            try { DrawHudSections(run); }
+            try
+            {
+                if (_page == HudPage.Quests) DrawQuestLog(run);
+                else DrawHudSections(run);
+            }
             finally { GUILayout.EndScrollView(); }
 
             // --- Abandon, behind a two-press confirm so a stray click can't end a run. Outside
@@ -1086,6 +1182,158 @@ namespace ICanShowYouTheWorld.RunMode
         /// is spelled out rather than left as a surprise. Nothing here is interactive — a questline
         /// step cannot be rerolled.
         /// </summary>
+        /// <summary>
+        /// The page selector: two buttons that look like a choice and cost no key.
+        /// </summary>
+        /// <remarks>
+        /// Deliberately drawn ABOVE the scroll view and below the header, so it does not move when
+        /// the page under it changes length. A tab row that shifts as you switch pages is a tab row
+        /// you misclick.
+        /// </remarks>
+        private void DrawPageTabs()
+        {
+            GUILayout.BeginHorizontal();
+
+            DrawPageTab("RUN", HudPage.Run);
+            DrawPageTab("QUESTS", HudPage.Quests);
+
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+        }
+
+        private void DrawPageTab(string label, HudPage page)
+        {
+            bool active = _page == page;
+
+            // The selected tab is gold and unclickable; the other is muted and is the button. No
+            // custom style: contentColor over the skin's button is enough to say which is which,
+            // and this panel already tints everything else the same way.
+            GUI.contentColor = active ? RunTheme.AccentGoldBright : RunTheme.TextMuted;
+            if (GUILayout.Button(active ? "• " + label : label, GUILayout.Width(88f)) && !active)
+                _page = page;
+            GUI.contentColor = Color.white;
+        }
+
+        /// <summary>
+        /// The quest log: what each track has already done, what it is doing, and how much is left
+        /// as a COUNT.
+        /// </summary>
+        /// <remarks>
+        /// No new state. <see cref="QuestTrack"/> already carries the whole Chain plus the Index
+        /// into it, so everything before the index is finished, the index is in play, and the rest
+        /// is to come - the log is a different reading of what the HUD already has.
+        ///
+        /// Finished steps are the reason this page is worth having. A completed step used to simply
+        /// vanish, so a run had no memory the player could read, which for a mode calling itself a
+        /// saga is the page it was missing. Each one shows its Opening line where it has one, since
+        /// that line WAS the beat: "The forest sent nothing for this one" reads as a record of the
+        /// night it was said.
+        ///
+        /// Steps still to come are a COUNT and never a list. Naming them would spoil the act, and
+        /// the same objection already took reward text off the step rows ("takes up too much space
+        /// and ruins surprise"). A number answers "how much of this act is left" without answering
+        /// "what happens next", which is the only one of those two questions the player wants.
+        /// </remarks>
+        private void DrawQuestLog(IRunService run)
+        {
+            var tracks = run.Challenges?.Tracks;
+            if (tracks == null || tracks.Count == 0)
+            {
+                GUILayout.Label("  no questline", RunTheme.Small);
+                return;
+            }
+
+            var act = run.CurrentAct;
+            if (act != null && !string.IsNullOrEmpty(act.Epigraph))
+            {
+                GUI.contentColor = RunTheme.TextMuted;
+                GUILayout.Label(act.Epigraph, RunTheme.Small);
+                GUI.contentColor = Color.white;
+                GUILayout.Space(4f);
+            }
+
+            foreach (var track in tracks)
+            {
+                if (track == null) continue;
+
+                var chain = track.Chain ?? new List<ChallengeDefinition>();
+
+                GUILayout.BeginHorizontal();
+                GUILayout.Label(track.Label, RunTheme.Header);
+                GUILayout.FlexibleSpace();
+                GUI.contentColor = RunTheme.TextMuted;
+                GUILayout.Label($"{Mathf.Min(track.Index, chain.Count)}/{chain.Count}", RunTheme.Small);
+                GUI.contentColor = Color.white;
+                GUILayout.EndHorizontal();
+
+                // --- Done, in the order it happened.
+                for (int i = 0; i < chain.Count && i < track.Index; i++)
+                {
+                    var def = chain[i];
+                    if (def == null) continue;
+
+                    GUI.contentColor = RunTheme.CompleteGreen;
+                    GUILayout.Label($"  ✓ {def.Display}", RunTheme.Small);
+                    GUI.contentColor = Color.white;
+
+                    if (!string.IsNullOrEmpty(def.Opening))
+                    {
+                        GUI.contentColor = RunTheme.TextMuted;
+                        GUILayout.Label("      " + def.Opening, RunTheme.Small);
+                        GUI.contentColor = Color.white;
+                    }
+                }
+
+                // --- In play, with the detail the RUN page has no room for.
+                var quest = track.Current;
+                if (quest != null)
+                {
+                    GUI.contentColor = track.Blocked ? RunTheme.TextMuted : RunTheme.AccentGoldBright;
+                    GUILayout.Label($"  ▸ {quest.Def.Display}", RunTheme.Body);
+                    GUI.contentColor = Color.white;
+
+                    if (track.Blocked && !string.IsNullOrEmpty(quest.Def.BlockedText))
+                    {
+                        GUI.contentColor = RunTheme.AccentGold;
+                        GUILayout.Label("      " + quest.Def.BlockedText, RunTheme.Small);
+                        GUI.contentColor = Color.white;
+                    }
+
+                    // The hint lives HERE now rather than on the step row. It is also spoken aloud
+                    // when the step opens, so the panel is the place you go to hear it again -
+                    // which means it no longer has to be brief, and no longer has to disappear the
+                    // moment you make any progress.
+                    if (!string.IsNullOrEmpty(quest.Def.Hint))
+                    {
+                        GUI.contentColor = RunTheme.TextParchment;
+                        GUILayout.Label("      " + quest.Def.Hint, RunTheme.Small);
+                        GUI.contentColor = Color.white;
+                    }
+
+                    // And the reward, which the step rows deliberately do not show. Here it is a
+                    // thing you went looking for rather than a thing that spoiled itself.
+                    if (!string.IsNullOrEmpty(quest.Def.RewardText))
+                    {
+                        GUI.contentColor = RunTheme.TextMuted;
+                        GUILayout.Label("      pays: " + quest.Def.RewardText, RunTheme.Small);
+                        GUI.contentColor = Color.white;
+                    }
+                }
+
+                int left = chain.Count - track.Index - (quest != null ? 1 : 0);
+                if (left > 0)
+                {
+                    GUI.contentColor = RunTheme.TextMuted;
+                    GUILayout.Label($"  {left} more on this track", RunTheme.Small);
+                    GUI.contentColor = Color.white;
+                }
+
+                GUILayout.Space(6f);
+            }
+
+            DrawRecordSections(run);
+        }
+
         private void DrawQuestSection(IRunService run)
         {
             // No act line here: since alpha38 the act IS the HUD's headline, drawn above by
@@ -1272,18 +1520,12 @@ namespace ICanShowYouTheWorld.RunMode
             }
 
 
-            // What the step actually NEEDS, for the steps where that is not obvious. Written after
-            // two play sessions lost time to exactly this — a smelter wanting surtling cores, a
-            // home wanting a fire — so it sits above the reward, which is the thing you read when
-            // you already know what to do.
-            // Only before you have started. A hint you have already acted on is a line of clutter
-            // on a panel that now carries three tracks instead of one.
-            if (!string.IsNullOrEmpty(quest.Def.Hint) && quest.Progress <= 0f)
-            {
-                GUI.contentColor = RunTheme.TextMuted;
-                GUILayout.Label("  " + quest.Def.Hint, RunTheme.Small);
-                GUI.contentColor = Color.white;
-            }
+            // The hint used to be here, and is now on the QUESTS page. Three reasons, in order of
+            // weight: it is SPOKEN when the step opens, so the panel copy was a second telling of
+            // something the player has already been told; it was the largest variable-height thing
+            // on a row that must stay compact; and it had been narrowed to "only before you have
+            // made progress", which meant the one place to re-read it disappeared the moment you
+            // started. On its own page it is always there and no longer has to be brief.
 
             // Live direction to whatever this step wants found — the Herald, or the biome an act
             // opens on. Not part of the definition because it depends on where you are standing.
@@ -1309,10 +1551,20 @@ namespace ICanShowYouTheWorld.RunMode
             // completes — RunService's "Quest reward:" message — which is where a surprise belongs.
         }
 
-        /// <summary>Splits, tasks and held boons — the part of the HUD that scrolls.</summary>
-        private void DrawHudSections(IRunService run)
+        /// <summary>
+        /// Splits and homestead records — what the run HAS been, drawn on the QUESTS page.
+        /// </summary>
+        /// <remarks>
+        /// They were on the RUN page and are records rather than decisions: nobody acts on a split
+        /// mid-fight, and both were spending height on the panel whose job is the three live tracks.
+        /// That is also what the homestead's config flag was really working around - it was switched
+        /// off by default "because the panel was competing for room with the three quest tracks",
+        /// which is a room problem answered better by a page than by hiding the records. So it is
+        /// shown here unconditionally, and <c>RunShowHomestead</c> now decides only whether it ALSO
+        /// appears on the RUN page.
+        /// </remarks>
+        private void DrawRecordSections(IRunService run)
         {
-            // --- Splits ---
             GUILayout.Label("SPLITS", RunTheme.Header);
             var splits = run.Splits;
             if (splits == null || splits.Count == 0)
@@ -1326,32 +1578,40 @@ namespace ICanShowYouTheWorld.RunMode
 
             GUILayout.Space(4f);
 
-            // --- Homestead (splits measure the run against the clock; these measure it against
-            //     itself). Hidden entirely until something has actually happened, so a fresh run
-            //     is not headed by six empty rows. ---
-            // Off by default since alpha55, at the owner's request — the panel was competing for
-            // room with the three quest tracks, which are what the window is FOR. The records are
-            // still kept and still written to the permanent record, so turning this back on shows
-            // a full history rather than starting from nothing.
-            var records = (_config?.RunShowHomestead ?? false) ? run.Records : null;
-            if (records != null && records.Achieved.Any())
+            DrawHomestead(run.Records);
+        }
+
+        /// <summary>
+        /// Splits measure the run against the clock; these measure it against itself. Nothing at all
+        /// until something has happened, so a fresh run is not headed by six empty rows.
+        /// </summary>
+        private void DrawHomestead(HearthRecords records)
+        {
+            if (records == null || !records.Achieved.Any()) return;
+
+            GUILayout.Label("HOMESTEAD", RunTheme.Header);
+
+            foreach (var record in records.Achieved)
             {
-                GUILayout.Label("HOMESTEAD", RunTheme.Header);
+                GUILayout.BeginHorizontal();
+                GUILayout.Label($"  {record.Label}", RunTheme.Small, GUILayout.Width(110f));
 
-                foreach (var record in records.Achieved)
-                {
-                    GUILayout.BeginHorizontal();
-                    GUILayout.Label($"  {record.Label}", RunTheme.Small, GUILayout.Width(110f));
+                GUI.contentColor = record.IsPersonalBest ? RunTheme.AccentGold : RunTheme.TextParchment;
+                GUILayout.Label(record.Text + (record.IsPersonalBest ? "  ★ best" : string.Empty), RunTheme.Small);
+                GUI.contentColor = Color.white;
 
-                    GUI.contentColor = record.IsPersonalBest ? RunTheme.AccentGold : RunTheme.TextParchment;
-                    GUILayout.Label(record.Text + (record.IsPersonalBest ? "  ★ best" : string.Empty), RunTheme.Small);
-                    GUI.contentColor = Color.white;
-
-                    GUILayout.EndHorizontal();
-                }
-
-                GUILayout.Space(4f);
+                GUILayout.EndHorizontal();
             }
+
+            GUILayout.Space(4f);
+        }
+
+        /// <summary>Tasks and held boons — the part of the RUN page that scrolls.</summary>
+        private void DrawHudSections(IRunService run)
+        {
+            // Splits and the homestead records moved to the QUESTS page - see DrawRecordSections.
+            // The homestead can still be asked for here, for anyone who wants it where it was.
+            if (_config?.RunShowHomestead ?? false) DrawHomestead(run.Records);
 
             // --- Tasks (the three random, rerollable slots — the questline is drawn above) ---
             GUILayout.Label("TASKS", RunTheme.Header);
@@ -1640,6 +1900,12 @@ namespace ICanShowYouTheWorld.RunMode
             GUILayout.Space(5f);
             // Deferred: starting a run here would change the window set mid-pass.
             if (GUILayout.Button("Begin the saga")) _pendingStart = true;
+
+            // A visible way out, and it is not decoration. This window opens ITSELF now, on entering
+            // a world - and a window that appears unbidden and can only be dismissed by a key nobody
+            // told you about is worse than the key press it replaced. Closing needs no deferral: it
+            // changes nothing but this window's own visibility.
+            if (GUILayout.Button("Not now")) _pendingLobbyClose = true;
 
             GUILayout.Space(4f);
             // Said in the saga's voice, not the mod's. "GM mode" is a developer's phrase for a
