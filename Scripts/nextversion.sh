@@ -32,18 +32,32 @@ TODAY="$(date +%Y-%m-%d)"
 PREFIX="${GAME}-run.${TODAY}"
 
 # Bare first, then b, c, ... Skipping 'a' keeps the first build of a day reading as a
-# plain date rather than as "the a one", which is how anybody says it out loud.
+# plain date rather than as "the a one", which is how anybody says it out loud. The
+# sequence only ever moves FORWARD - see the note below the bare case.
 if ! git rev-parse -q --verify "refs/tags/${PREFIX}" >/dev/null; then
     echo "$PREFIX"
     exit 0
 fi
 
-for letter in b c d e f g h i j k l m n o p q r s t u v w x y z; do
-    if ! git rev-parse -q --verify "refs/tags/${PREFIX}${letter}" >/dev/null; then
-        echo "${PREFIX}${letter}"
-        exit 0
+# The letter after the HIGHEST one already used, NOT the first unused one.
+#
+# A gap is what a deleted tag leaves behind, and a deleted tag is most often a mistagged
+# build. Filling the gap hands a LATER build a LOWER version than one already shipped,
+# which every script that compares versions reads backwards - and so does anybody reading
+# a bug report. This happened once: a stray 'l' was deleted after 'm' had been tagged, the
+# next --release reused 'l', and the staged build claimed to predate the one installed.
+LETTERS=(b c d e f g h i j k l m n o p q r s t u v w x y z)
+HIGHEST=-1
+for i in "${!LETTERS[@]}"; do
+    if git rev-parse -q --verify "refs/tags/${PREFIX}${LETTERS[$i]}" >/dev/null; then
+        HIGHEST=$i
     fi
 done
 
-echo "More than 26 builds of $PREFIX already exist. Take the evening off." >&2
-exit 1
+NEXT=$((HIGHEST + 1))
+if (( NEXT >= ${#LETTERS[@]} )); then
+    echo "More than 26 builds of $PREFIX already exist. Take the evening off." >&2
+    exit 1
+fi
+
+echo "${PREFIX}${LETTERS[$NEXT]}"

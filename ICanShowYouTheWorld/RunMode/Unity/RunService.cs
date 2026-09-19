@@ -899,12 +899,66 @@ namespace ICanShowYouTheWorld.RunMode
             // observation is a silent baseline — otherwise continuing a run would open with the
             // opening line of a step you have been working on for an hour.
             _openings = new StepOpenings();
+            _owedLines.Clear();
+            _lineCursor = 0f;
         }
 
         private StepOpenings _openings = new StepOpenings();
 
         /// <summary>
-        /// Says a step's one line the moment it becomes the step in play.
+        /// Lines waiting their turn, each with the earliest time it may be said.
+        /// </summary>
+        /// <remarks>
+        /// Valheim's centre message REPLACES itself, so two lines said in one frame are one line
+        /// plus a flicker. That was already true of three tracks advancing on the same kill, and it
+        /// became unavoidable once a step could owe both an opening and a hint. So every line goes
+        /// through here and they are spoken one at a time, spaced.
+        /// </remarks>
+        private readonly List<(float at, string text)> _owedLines = new List<(float at, string text)>();
+
+        /// <summary>The earliest a newly queued line may be spoken; see <see cref="OweLine"/>.</summary>
+        private float _lineCursor;
+
+        /// <summary>Long enough to read a sentence and notice the next one is different.</summary>
+        private const float LineSpacingSeconds = 6f;
+
+        /// <summary>
+        /// Queues a line behind whatever is already owed. Null and empty are ordinary.
+        /// </summary>
+        private void OweLine(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return;
+
+            float at = Mathf.Max(Time.time, _lineCursor);
+            _owedLines.Add((at, text));
+            _lineCursor = at + LineSpacingSeconds;
+        }
+
+        /// <summary>
+        /// Hugin, the moment a bench learns one of the saga's shapes.
+        /// </summary>
+        /// <remarks>
+        /// A raven rather than a plain message, and this is the beat that earns one. The recipe
+        /// unlock is the saga's only event that changes what the WORLD can do rather than what the
+        /// player is being asked to do, and it happened in total silence: ObjectDB gained the
+        /// recipe, Player.log gained a line, and the player — whose step opened minutes earlier,
+        /// before the ingredients were in hand — had nothing to tell them the bench was ready.
+        ///
+        /// Falls back to the plain message if the bird cannot be had (no Tutorial instance, which
+        /// happens if the prefab is missing), because the words matter more than the messenger.
+        /// </remarks>
+        private void AnnounceRecipe(SagaRecipeDefinition def)
+        {
+            if (def == null || string.IsNullOrEmpty(def.TaughtLine)) return;
+
+            if (!TrySpawnRaven("recipe-" + def.Id, def.TaughtLine)) Message(def.TaughtLine);
+
+            Debug.Log($"[ICanShowYouTheWorld] Saga recipe taught: {def.Id}.");
+        }
+
+        /// <summary>
+        /// Says a step's lines the moment it becomes the step in play — what it is, and then what
+        /// it needs.
         ///
         /// This is where the saga's remaining SEPARATE kills earn being separate. Combining an
         /// act's plain kills into one list made every kill left standing alone a claim — the
@@ -919,8 +973,23 @@ namespace ICanShowYouTheWorld.RunMode
 
             try
             {
+                // One due line per pass, oldest first. The queue is appended in non-decreasing
+                // time order, so the front is always the next thing owed.
+                if (_owedLines.Count > 0 && Time.time >= _owedLines[0].at)
+                {
+                    Message(_owedLines[0].text);
+                    _owedLines.RemoveAt(0);
+                }
+
                 foreach (var def in _openings.Observe(StepPredicates.Live(_challenges.Tracks)))
-                    Message(def.Opening);
+                {
+                    // The opening (or the hint, when there is no opening), then the hint behind it.
+                    // A step with both gets both: the opening says what this is, the hint says what
+                    // it needs, and the hint used to live only in a panel nobody has open while
+                    // they are building.
+                    OweLine(StepOpenings.LineFor(def));
+                    if (!string.IsNullOrEmpty(def.Opening)) OweLine(def.Hint);
+                }
             }
             catch (Exception ex) { LogOnce("step-openings", ex); }
         }
@@ -1879,7 +1948,9 @@ namespace ICanShowYouTheWorld.RunMode
                 if (_active) _boonEffects.ApplyPugilist();
                 // Re-checked every poll because a world load rebuilds ObjectDB and drops them.
                 // The gate is derived from the tracks, so a resume re-teaches what was taught.
-                if (_active) _recipes.Ensure(id => _challenges != null && StepPredicates.StepDone(_challenges.Tracks, id));
+                if (_active) _recipes.Ensure(
+                    id => _challenges != null && StepPredicates.StepDone(_challenges.Tracks, id),
+                    AnnounceRecipe);
                 if (_active) _dreams.Ensure();
             }
 

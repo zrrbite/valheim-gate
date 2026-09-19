@@ -13,8 +13,8 @@ using ICanShowYouTheWorld.RunMode;
 /// </summary>
 static class StepOpeningTests
 {
-    static ChallengeDefinition Step(string id, string opening = null) =>
-        new ChallengeDefinition { Id = id, Opening = opening, Display = id };
+    static ChallengeDefinition Step(string id, string opening = null, string hint = null) =>
+        new ChallengeDefinition { Id = id, Opening = opening, Hint = hint, Display = id };
 
     public static void Run()
     {
@@ -37,6 +37,27 @@ static class StepOpeningTests
         Check.That(owed.Count == 0, "a step leaving says nothing");
         owed = fresh.Observe(new[] { Step("a", "line A"), Step("c", "line C") });
         Check.That(owed.Count == 0, "and a step that comes back does not say its line twice");
+
+        // A HINT is something to say. It used to live only in the Run window, which a player
+        // mid-build is not looking at, and the hints exist because of failures already seen in play.
+        var hinted = new StepOpenings();
+        hinted.Observe(new[] { Step("seed") });
+        owed = hinted.Observe(new[] { Step("seed"), Step("hint-only", null, "build it on the fire") });
+        Check.That(owed.Count == 1, "a step whose only line is a hint still speaks");
+        Check.That(StepOpenings.LineFor(owed[0]) == "build it on the fire",
+            "and the hint is the line, since there is no opening to lead with");
+
+        // Both: the statement leads, the instruction follows. LineFor answers for the first only;
+        // the pause before the second is the host's business, since it needs a clock.
+        var both = Step("both", "The storm is his.", "At an improved bench.");
+        Check.That(StepOpenings.LineFor(both) == "The storm is his.",
+            "a step with both leads with the opening, never the instruction");
+        Check.That(StepOpenings.HasSomethingToSay(both), "and it has something to say");
+
+        Check.That(!StepOpenings.HasSomethingToSay(Step("mute")), "a step with neither says nothing");
+        Check.That(!StepOpenings.HasSomethingToSay(null), "and a null definition is quiet, not fatal");
+        Check.That(StepOpenings.LineFor(null) == null, "LineFor is quiet on null too");
+        Check.That(StepOpenings.LineFor(Step("mute")) == null, "and on a step with no lines at all");
 
         // Steps with nothing to say are still recorded, so they cannot be new later.
         var quiet = new StepOpenings();

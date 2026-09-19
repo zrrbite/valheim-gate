@@ -44,6 +44,24 @@ namespace ICanShowYouTheWorld.RunMode
         /// is derived from the tracks and survives a resume without being saved.
         /// </summary>
         public string RequiresStepDone;
+
+        /// <summary>
+        /// What Hugin says the moment this recipe becomes craftable. Null for a recipe that needs
+        /// no announcing.
+        /// </summary>
+        /// <remarks>
+        /// It lives on the DEFINITION, next to the ingredients it describes, for the reason the dev
+        /// key help was moved next to the dev keys: a recipe's requirements and the sentence
+        /// telling the player about them drift the moment they are written in two files.
+        ///
+        /// And it exists at all because the unlock was SILENT. A run gated the bow on paying the
+        /// shade, then added the shape to ObjectDB and logged a line to Player.log — nothing in the
+        /// game said the bench had learned anything. The quest step's own opening fires when the
+        /// step becomes current, which is EARLIER: for the bow that is before the lights are in
+        /// hand, and a player who walks to the bench then finds nothing there and concludes the
+        /// step is broken.
+        /// </remarks>
+        public string TaughtLine;
     }
 
     /// <summary>
@@ -101,6 +119,12 @@ namespace ICanShowYouTheWorld.RunMode
                     (SagaItems.RescuedLightPrefab, SagaItems.ThorsBowLightCost),
                 },
                 RequiresStepDone = SagaNames.ShadeBringStepId,
+                // Deliberately NOT a shopping list: the step's own Hint already recites the
+                // amounts, and it is spoken now too. The news here is the event, plus the one thing
+                // the bench itself will not tell you - that it stays empty until the lights are in
+                // your pack rather than in your stash.
+                TaughtLine = "The shade has given up the shape, and your bench knows it now. It will not " +
+                             "show you the bow until you are carrying the lights.",
             },
             new SagaRecipeDefinition
             {
@@ -122,6 +146,8 @@ namespace ICanShowYouTheWorld.RunMode
                     (SagaItems.RescuedLightPrefab, SagaItems.StormwardLightCost),
                 },
                 RequiresStepDone = SagaNames.BreakerStepId,
+                TaughtLine = "It is down, and its hide is yours. Improve your bench, and it will show you " +
+                             "what to bind the rest into."
             },
         };
 
@@ -130,13 +156,24 @@ namespace ICanShowYouTheWorld.RunMode
 
         private readonly HashSet<string> _reported = new HashSet<string>();
 
+        /// <summary>Recipes whose unlock has already been noticed this run. See Ensure.</summary>
+        private readonly HashSet<string> _taught = new HashSet<string>();
+
+        /// <summary>False until the first Ensure of a run has looked; see Ensure.</summary>
+        private bool _baselined;
+
         /// <summary>
         /// Makes sure every UNLOCKED recipe is present in the live database and every locked one
         /// is absent. <paramref name="stepDone"/> answers whether a questline step has been
         /// passed; a recipe with no gate is always unlocked. Cheap when nothing changed: one
         /// reference check and a short scan of the recipe list.
         /// </summary>
-        public void Ensure(Func<string, bool> stepDone)
+        /// <param name="onTaught">
+        /// Called once per run for each recipe the moment it becomes craftable, for recipes with a
+        /// <see cref="SagaRecipeDefinition.TaughtLine"/>. Never called for what a resumed run finds
+        /// already unlocked. Optional: the registration does not depend on anybody listening.
+        /// </param>
+        public void Ensure(Func<string, bool> stepDone, Action<SagaRecipeDefinition> onTaught = null)
         {
             try
             {
@@ -145,6 +182,24 @@ namespace ICanShowYouTheWorld.RunMode
 
                 bool Unlocked(SagaRecipeDefinition d) =>
                     string.IsNullOrEmpty(d.RequiresStepDone) || (stepDone != null && stepDone(d.RequiresStepDone));
+
+                // The teaching moment is the UNLOCK, and it is tracked here rather than inferred
+                // from the registration below, because the two are not the same event: a world load
+                // rebuilds ObjectDB and every recipe is registered AGAIN, which would re-teach a
+                // recipe the player has been crafting with for an hour.
+                //
+                // And the first pass of a run is a silent baseline, the same trap and the same
+                // answer as StepOpenings: a RESUMED run finds its recipes already unlocked and must
+                // treat that as history rather than news.
+                foreach (var def in All)
+                {
+                    if (!Unlocked(def) || !_taught.Add(def.Id)) continue;
+                    if (!_baselined || onTaught == null || string.IsNullOrEmpty(def.TaughtLine)) continue;
+
+                    try { onTaught(def); }
+                    catch (Exception ex) { ReportOnce("taught-" + def.Id, "[ICanShowYouTheWorld] Saga recipe announce failed: " + ex.Message); }
+                }
+                _baselined = true;
 
                 bool sameDb = ReferenceEquals(odb, _registeredOn);
                 if (sameDb && All.All(d => Has(odb, d) == Unlocked(d))) return;
@@ -170,6 +225,10 @@ namespace ICanShowYouTheWorld.RunMode
         {
             _registeredOn = null;
             _reported.Clear();
+
+            // So the next run teaches its recipes again, and takes a fresh baseline on its way in.
+            _taught.Clear();
+            _baselined = false;
 
             try
             {

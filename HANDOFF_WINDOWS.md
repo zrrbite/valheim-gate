@@ -17,7 +17,7 @@ Standing context for the Windows side:
 
 ---
 
-## 2026-09-19 - THE TEST LIST for 1.0.15-run.2026-09-19m
+## 2026-09-19 - THE TEST LIST for 1.0.15-run.2026-09-19n
 
 Ten builds stacked up in one afternoon, so this is all of them as ONE pass, ordered by when you
 meet each thing rather than by build number. The per-build TASK entries below keep the reasoning;
@@ -31,7 +31,7 @@ replaced. Quit Valheim and run `.\dist\windows\Install-Mod.ps1 -ModOnly`, then r
 - [ ] Launch and **do not open Credits**. There should be **no popup at all** - that is the change
       in `...19k`. Silence is success.
 - [ ] Under the menu's own version line, a single gold line at 70% size and **not overlapping**:
-      `SAGA v1.0.15-run.2026-09-19m`. That line is now the ONLY proof the mod loaded, so if it is
+      `SAGA v1.0.15-run.2026-09-19n`. That line is now the ONLY proof the mod loaded, so if it is
       missing, the mod is not in.
 - [ ] Load the character carrying **Thor's bow**. Still there. Save, quit to desktop, come back:
       still there. No `Failed to find item prefab` in the log.
@@ -59,6 +59,18 @@ replaced. Quit Valheim and run `.\dist\windows\Install-Mod.ps1 -ModOnly`, then r
       comfort, chest*, then the fishing and the pen. CRAFT must be tools and gear only: *axe,
       hammer, workbench, upgrade, the shade, Thor's bow, the Stormward*. The roof and the fire had
       drifted onto CRAFT, which also put "Settle in" on a different track from the fire it needs.
+- [ ] **Every step now SPEAKS what it needs.** A step with a hint says it as it opens, not only in
+      the panel: the cooking station going ON the fire, the bed under a roof, settle-in wanting all
+      three at once. A step with both a story line and a hint says the story line first and the hint
+      about six seconds later - watch that the second does not wipe the first.
+- [ ] **Two lines never land in the same frame** any more. Finish something that advances two tracks
+      at once (the cull, usually) and confirm you get both lines in turn rather than a flicker.
+- [ ] **Hugin announces the recipes.** When the shade is paid, a raven says the bench knows the
+      shape and that it stays empty until you are CARRYING the lights. When the Breaker falls, a
+      raven says to improve the bench. This is the unlock that used to be completely silent.
+- [ ] **And announces them ONCE.** Save, quit to the menu, load back in: no raven repeating a
+      recipe you already have. Same for a world reload, which rebuilds ObjectDB and re-registers
+      every recipe - that is the case the guard exists for.
 - [ ] **Hear the raven out** - Hugin lands and states the errand.
 - [ ] **Hunt a deer by daylight** - nothing rises, and the line says why.
 - [ ] **Keep a watch after dark** - three whispers. The strip should tell you to wait for dark, and
@@ -104,6 +116,62 @@ default is **2.5** - the file wins over the code, so you have been playing a mon
 regen. Thirty-four newer settings are absent from it entirely and running on code defaults, which
 is correct behaviour but means they cannot be TUNED without adding the lines by hand. Ask and I
 will either add the keys or make `Load()` re-save so no future setting is invisible.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
+---
+
+## 2026-09-19 - TASK: 1.0.15-run.2026-09-19n - the quest hints learn to speak
+
+Your note: "we should consider if we need to add more ravens/stones or other types of quest hints
+where it makes sense". Two places where it clearly made sense, both of them holes rather than
+additions.
+
+### Hints were written for the panel and the panel is not open
+
+Every `Hint` on a step exists because of a failure already seen in play - "settle in" needing a fire
+as well as a roof, a cooking station going ON the fire and not beside it. They were only ever drawn
+in the Run window, and a player halfway through building a house is not looking at the Run window.
+A hint nobody reads is a failure already paid for and not yet fixed.
+
+So a step now says its hint as it opens. `StepOpenings` treats a hint as something to say, and
+`StepOpenings.LineFor` picks which line leads: the opening if there is one, because an opening is a
+statement about the world and a hint is an instruction, and a step that opens by telling you what to
+do has no moment left to be about anything.
+
+A step with BOTH says both, six seconds apart, through a new paced queue in `RunService`. That queue
+also fixes something older and quieter: Valheim's centre message replaces itself, so two lines in one
+frame were one line plus a flicker - which is what happened every time a single kill advanced two
+tracks. Every step line goes through the queue now and they are spoken one at a time.
+
+### The recipe unlock was silent
+
+The saga's one event that changes what the WORLD can do, rather than what you are being asked to do,
+and it announced itself to `Player.log`. The bow's step opens when the shade is found - minutes
+before the lights are in hand - so a player who walked to the bench at the wrong moment found
+nothing there and had every reason to think the step was broken.
+
+Hugin says it now, at the moment it becomes true: `SagaRecipeDefinition.TaughtLine`, on the
+definition beside the ingredients it describes, delivered by the existing `TrySpawnRaven` and falling
+back to a plain message if the bird cannot be had. The lines are deliberately not shopping lists -
+the step's hint recites the amounts and is now spoken too. What they carry is the event, plus the one
+thing the bench will not tell you: it stays empty until the lights are in your PACK.
+
+Two traps, both of which have bitten this codebase before and both handled the same way as
+`StepOpenings`. The unlock is tracked separately from the registration, because a world load rebuilds
+`ObjectDB` and re-registers everything - which would re-teach a recipe you had been crafting with for
+an hour. And the first `Ensure` of a run is a silent baseline, so a RESUMED run treats what it finds
+already unlocked as history.
+
+### What I did not build
+
+Stones. `Raven.AddTempText` takes a label, and a non-empty one opens Valheim's own parchment reader -
+a page you read instead of a toast you miss, with no new prefab. That is the cheap version of the
+"stone" and it is one argument away. A genuinely placeable saga runestone would want a Piece prefab
+and ZDO persistence, which is a bigger thing than a line of text. Worth deciding after you see how a
+labelled raven reads.
 
 ### RESULTS (Windows side appends here)
 
