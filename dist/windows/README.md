@@ -32,6 +32,17 @@ version popup appears at the main menu on its own. **The installer prints the ex
 version the popup should read**, taken from the DLL it just installed, so it is right on
 every build rather than whatever was current when this page was written.
 
+**How to tell it loaded**, at a glance and at any time: the main menu's version line gains a
+second line in gold —
+
+```
+Version 1.0.15 (n-40)
+VALHEIM: THE SAGA  v1.0.15-run.2026-09-19
+```
+
+That is the standing answer. The popup says the same thing once and is then dismissed
+forever, which is no use an hour later.
+
 Opening the **Credits** menu still works and is now simply unnecessary. The move was not
 cosmetic: a saga item is only known to the game while the mod is loaded, so loading a
 character before visiting Credits used to drop Thor's bow out of the pack, permanently and

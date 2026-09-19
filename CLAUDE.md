@@ -248,6 +248,11 @@ reads the version out of the assembly's IL).
 the main menu reports the version. Visiting Credits is no longer required (and does
 nothing but log a line).
 
+**Is it loaded?** The main menu's own version line carries a gold `VALHEIM: THE SAGA` line
+with the build under it (`MenuBadge.cs`, appended to `FejdStartup.m_versionLabel` by
+reflection — the mod does not reference TextMeshPro). The popup answers once and is then
+gone; this answers whenever anyone asks.
+
 ### Steam Deck (Linux)
 
 **Target**: 192.168.86.42, `/home/deck/.local/share/Steam/steamapps/common/Valheim/valheim_Data/Managed/`

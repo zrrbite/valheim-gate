@@ -17,10 +17,22 @@ Standing context for the Windows side:
 
 ---
 
-## 2026-09-19 — TASK: 1.0.15-run.2026-09-19 — the mod loads itself now
+## 2026-09-19 — TASK: 1.0.15-run.2026-09-19b — the mod loads itself, and says so
 
-Built and installed on this box already (full `.\Install-Mod.ps1`, not `-ModOnly` — the
-Patcher changed). Just play it.
+Built and installed on this box already. Just play it. (`...-19` was the full install, since
+the Patcher changed; `...-19b` added the menu line and went in with `-ModOnly` — which was
+also a live test of the new stale-patch guard, and it passed.)
+
+**0. The main menu's version line should now read two lines:**
+
+```
+Version 1.0.15 (n-40)
+VALHEIM: THE SAGA  v1.0.15-run.2026-09-19b
+```
+
+the second in gold. That is the standing answer to "is the mod loaded" — the popup says it
+once and is then gone. If the gold line is missing while the popup appeared, the log will
+say `Could not brand the menu version label` with the reason.
 
 **Valheim updated to 1.0.15 today at 12:25** and Steam put a vanilla assembly back, which
 is why nothing loaded before this build. Unity is unchanged at 6000.0.75, and 1.0.15 broke
@@ -28,7 +40,7 @@ nothing the mod calls: all 316 member references from the built DLL into the gam
 assemblies still resolve, and the rebuild needed no source change.
 
 **1. The mod loads at startup — do NOT open Credits.** That is the whole test. The version
-popup should appear at the main menu on its own and read **v1.0.15-run.2026-09-19**.
+popup should appear at the main menu on its own and read **v1.0.15-run.2026-09-19b**.
 
 Why it moved: a saga item is only known to the game while the mod is loaded, so loading a
 character before visiting Credits left Thor's bow an unresolved prefab name. Valheim drops

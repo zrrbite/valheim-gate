@@ -428,6 +428,7 @@ namespace ICanShowYouTheWorld
         void Update()
         {
             DrainPendingPopup();
+            MenuBadge.Tick();
 
             inputManager.HandleInput();
             CheatCommands.HandlePeriodic();

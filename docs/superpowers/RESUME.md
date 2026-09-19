@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-09-19 at `1.0.15-run.2026-09-19`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-09-19 at `1.0.15-run.2026-09-19b`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -21,7 +21,7 @@ Everything below is what that file tells it.
 
 - Branch **`feature/run-mode`**, not merged, deliberately — the mode is still
   being tuned in play.
-- Latest tag **`1.0.15-run.2026-09-19`**; builds are date-based since 2026-08-31
+- Latest tag **`1.0.15-run.2026-09-19b`**; builds are date-based since 2026-08-31
   (`Scripts/nextversion.sh`). The game moved to **1.0.12 on 2026-09-12** and to
   **1.0.15 on 2026-09-19**; both times the mod was rebuilt and installed on Windows
   the same day. **1.0.15 needed no source change** — all 316 member references from
@@ -584,7 +584,22 @@ What the change needed beyond the Patcher, all of it load-bearing:
 assemblies and must each be re-downloaded, re-patched with the new Patcher and
 re-uploaded. Until then they are on the old entry point and the old game.
 
-Waiting on the owner's play-test of `1.0.15-run.2026-09-19` — see the TASK entry in
+**`...-19b` added the standing proof** (owner: "is there some way i can tell the mod is
+loaded? Can we add some text to the main menu?"). `MenuBadge.cs` appends a gold
+`VALHEIM: THE SAGA` line plus the build to the main menu's own version label. The game's
+label was chosen over an IMGUI overlay because it is already placed, styled, scaled to the
+resolution and where a player looks for a version — an overlay would have to guess all four
+and would guess differently on every display. It is written by reflection
+(`FejdStartup.m_versionLabel` is a `TMPro.TMP_Text`, and the mod does not reference
+TextMeshPro), re-applied whenever the line lacks it, since `SetupGui` writes that text
+*after* our entry point runs and a reloaded start scene brings a fresh label.
+
+A bolder slot exists if the corner is too quiet: `FejdStartup.m_moddedText`, the GameObject
+IronGate activates when `Game.isModded`. It was left alone on purpose — setting that flag
+also feeds `Achievements.IsCheatedAtAll`, and the object's own text is a localised token
+rather than anything the saga would want to say.
+
+Waiting on the owner's play-test of `1.0.15-run.2026-09-19b` — see the TASK entry in
 [`../../HANDOFF_WINDOWS.md`](../../HANDOFF_WINDOWS.md). Beyond the entry point itself,
 still unverified from 12-13 September: Thor's bow on the bench after paying the shade
 and its flash on impact, the shade's greeting and its "[E] Speak" prompt, the saga
