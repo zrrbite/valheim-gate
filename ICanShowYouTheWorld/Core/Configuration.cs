@@ -63,6 +63,7 @@ namespace ICanShowYouTheWorld.Core
         int RunDeerStarLevel { get; set; }
         float RunDeerGreylingChance { get; set; }
         float RunHomewardCooldownMinutes { get; set; }
+        float RunCorpseGateCooldownMinutes { get; set; }
         bool RunShowHomestead { get; set; }
         float RunForestNoticeChance { get; set; }
         int RunForestNoticeChops { get; set; }
@@ -220,6 +221,11 @@ namespace ICanShowYouTheWorld.Core
         // Long enough to plan around, short enough never to strand anyone. Boss charges are
         // spent first, so a boss kill still buys something this does not.
         [SerializeField] private float runHomewardCooldownMinutes = 10f;
+
+        // Shorter than Homeward's ten. The walk back to a corpse is not a decision the way the trip
+        // home is - it is the same walk you already made, with none of it left to find out - and the
+        // death itself has already been paid for in heat and lost skill.
+        [SerializeField] private float runCorpseGateCooldownMinutes = 4f;
         // The HOMESTEAD records panel. Off by default: it competed for room with the three
         // quest tracks. The records are still kept either way, so switching this on shows the
         // full history rather than starting from nothing.
@@ -347,6 +353,7 @@ namespace ICanShowYouTheWorld.Core
         public int RunDeerStarLevel { get => runDeerStarLevel; set => runDeerStarLevel = value; }
         public float RunDeerGreylingChance { get => runDeerGreylingChance; set => runDeerGreylingChance = value; }
         public float RunHomewardCooldownMinutes { get => runHomewardCooldownMinutes; set => runHomewardCooldownMinutes = value; }
+        public float RunCorpseGateCooldownMinutes { get => runCorpseGateCooldownMinutes; set => runCorpseGateCooldownMinutes = value; }
         public bool RunShowHomestead { get => runShowHomestead; set => runShowHomestead = value; }
         public float RunForestNoticeChance { get => runForestNoticeChance; set => runForestNoticeChance = value; }
         public int RunForestNoticeChops { get => runForestNoticeChops; set => runForestNoticeChops = value; }

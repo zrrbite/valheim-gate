@@ -103,11 +103,25 @@ namespace ICanShowYouTheWorld.RunMode
         public const int StormwardLightCost = 3;
 
         /// <summary>
-        /// The bow's own damage, on top of the Finewood bow it is cut from (32 pierce). Raised from
-        /// 20/+4 after the first play (owner: "we COULD increase the dmg just a bit").
+        /// The bow's damage, SET rather than added to whatever the source prefab happened to carry.
         /// </summary>
-        private const float ThorsBowLightning = 26f;
-        private const float ThorsBowLightningPerLevel = 5f;
+        /// <remarks>
+        /// Set, because inherited was a quiet defect: the pierce came from whichever prefab the
+        /// fallback chain resolved, so the saga's signature weapon had a different power depending
+        /// on which bow existed in the build - and the number nobody chose was the one the player
+        /// read. It is also the number that was WRONG. The Finewood bow it was cut from is 32
+        /// pierce, while mq-herald hands out a Huntsman at 52 four steps later, so the reward for a
+        /// whole craft track plus three won lights was outclassed by a quest drop (owner: "Finebow
+        /// does 50 dmg, but thor a lot less pierce? boost it a bit?").
+        ///
+        /// 58 pierce beats the Huntsman on its own terms, and the lightning on top is what makes it
+        /// Thor's rather than a better bow. Both raised: 20/+4 first, then 26/+5 ("we COULD increase
+        /// the dmg just a bit"), now this.
+        /// </remarks>
+        private const float ThorsBowPierce = 58f;
+        private const float ThorsBowPiercePerLevel = 6f;
+        private const float ThorsBowLightning = 32f;
+        private const float ThorsBowLightningPerLevel = 6f;
 
         /// <summary>Candidate lightning effects, the Herald's list; the first that resolves is used.</summary>
         private static readonly string[] LightningPrefabs =
@@ -117,15 +131,37 @@ namespace ICanShowYouTheWorld.RunMode
         {
             new SagaItemDefinition
             {
-                SourcePrefab = "BowFineWood",
+                // The Huntsman rather than the Finewood bow, for the LOOK: the saga's named things
+                // should not be the plainest model in their class (owner: "The storm shield/thor bow
+                // models are a bit simple"). Nothing about the weapon is inherited any more - every
+                // number below is set - so the source prefab is now purely which mesh it wears, and
+                // the fallbacks exist because a prefab name is asset data this build cannot verify.
+                // The log line "Saga item created: ... from X" says which one won.
+                SourcePrefab = "BowHuntsman",
+                SourceFallbacks = new[] { "BowDraugrFang", "BowFineWood", "Bow" },
                 PrefabName = ThorsBowPrefab,
                 DisplayName = ThorsBowName,
                 Description = "Strung from the herd’s hide, sealed with the forest’s resin, taught by " +
                               "a hunter who never loosed. The storm in it is Eikthyr’s own, turned.",
                 Tune = shared =>
                 {
+                    shared.m_damages.m_pierce = ThorsBowPierce;
+                    shared.m_damagesPerLevel.m_pierce = ThorsBowPiercePerLevel;
+
                     shared.m_damages.m_lightning = ThorsBowLightning;
                     shared.m_damagesPerLevel.m_lightning = ThorsBowLightningPerLevel;
+
+                    // Whatever else the source bow did, it does not do here. DraugrFang carries
+                    // poison and is the first fallback, and a bow named for the storm that also
+                    // poisons things is the source prefab leaking through the item.
+                    shared.m_damages.m_poison = 0f;
+                    shared.m_damages.m_fire = 0f;
+                    shared.m_damages.m_frost = 0f;
+                    shared.m_damages.m_spirit = 0f;
+                    shared.m_damagesPerLevel.m_poison = 0f;
+                    shared.m_damagesPerLevel.m_fire = 0f;
+                    shared.m_damagesPerLevel.m_frost = 0f;
+                    shared.m_damagesPerLevel.m_spirit = 0f;
                 },
             },
 
@@ -143,8 +179,11 @@ namespace ICanShowYouTheWorld.RunMode
             // rather than a stalled act.
             new SagaItemDefinition
             {
-                SourcePrefab = "ShieldWood",
-                SourceFallbacks = new[] { "ShieldBronzeBuckler", "ShieldBanded", "ShieldWoodTower" },
+                // Serpentscale first, for the same reason the bow moved off Finewood: a shield
+                // this expensive should not be the starter plank with better numbers. Every stat is
+                // set below, so the source is the silhouette and nothing else.
+                SourcePrefab = "ShieldSerpentscale",
+                SourceFallbacks = new[] { "ShieldBronzeBuckler", "ShieldBanded", "ShieldWoodTower", "ShieldWood" },
                 PrefabName = StormwardPrefab,
                 DisplayName = StormwardName,
                 Description = "Troll hide over a meadow frame, with three rescued lights bound under " +

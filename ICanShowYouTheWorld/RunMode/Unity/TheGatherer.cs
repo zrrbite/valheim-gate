@@ -144,7 +144,7 @@ namespace ICanShowYouTheWorld.RunMode
             // And it LOOKS like what it ate. Same number as the health bonus and the arrival
             // line, said a third way — the thing walking at you glows brighter the more of your
             // race it won. A star and a name were doing all the work before this.
-            CreatureDressing.Apply(inst, CreatureDressing.Gatherer(stolen));
+            CreatureDressing.ApplyWhenSettled(inst, CreatureDressing.Gatherer(stolen));
 
             // SetHuntPlayer, not SetTarget — the latter is not on MonsterAI. Hunting rather than
             // targeting is the right verb anyway: it comes looking, and keeps looking.

@@ -365,7 +365,7 @@ namespace ICanShowYouTheWorld.RunMode
 
             // Pale and cool-lit, like the Herald: the opposite of the forest's things, and
             // findable at night from a distance, which is the whole point of the light.
-            CreatureDressing.Apply(inst, CreatureDressing.Shade());
+            CreatureDressing.ApplyWhenSettled(inst, CreatureDressing.Shade());
 
             // The interact lives on a child with its own trigger — see ShadeTalk for why.
             var talkObject = new GameObject("saga_shade_talk");

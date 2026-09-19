@@ -15,9 +15,13 @@ namespace ICanShowYouTheWorld.RunMode
     /// owner's call, it lands while a troll is still the largest thing they have ever seen.
     ///
     /// **It is spawned, because the Meadows have no trolls.** Same reasoning as the Herald and the
-    /// Gatherer: beside the player, so it can never be placed somewhere unloaded — the bug that made
-    /// the Herald unfindable for two versions. Unstarred, deliberately: a troll against flint is
+    /// Gatherer: inside a loaded zone, so it can never be placed somewhere unloaded — the bug that
+    /// made the Herald unfindable for two versions. Unstarred, deliberately: a troll against flint is
     /// already the hardest thing in the act, and stars would make it a wall rather than a fight.
+    ///
+    /// **It comes out by the HOUSE when the house is near** (see <see cref="HomeThreatRange"/>),
+    /// because a troll is the only thing in this act that takes buildings down and the fight is
+    /// better for having something of yours inside it.
     ///
     /// **The allies of convenience are the whole trick, and the game's own rule provides them.**
     /// `BaseAI.IsEnemy` was read out of this build's IL: a ForestMonster is hostile to every faction
@@ -43,6 +47,35 @@ namespace ICanShowYouTheWorld.RunMode
 
         /// <summary>How far out it appears. Further than the Gatherer's 28m, so it WALKS IN.</summary>
         private const float ArrivalRange = 34f;
+
+        /// <summary>
+        /// How close to the claimed bed the player must be for the troll to come out at the HOUSE
+        /// rather than at them.
+        /// </summary>
+        /// <remarks>
+        /// The owner asked for the fight to have the house in it: "would it be sweet if we spawned
+        /// it near our house so that it risks ruining everything?" - and it is the right instinct,
+        /// because a troll is the only thing in Act I that demolishes what you built. A mini-boss
+        /// you can fight in an empty field is a health bar; one swinging near your roof is a
+        /// decision about what you are willing to lose.
+        ///
+        /// Bounded, because the alternative is worse than the plain version: spawned at a house
+        /// 900m away, the Breaker walks for the whole fifteen minutes and the player never sees it.
+        /// Inside this radius the house is a place the fight can reach; outside it, the troll comes
+        /// for the player as before and the house is simply not part of that night.
+        /// </remarks>
+        private const float HomeThreatRange = 140f;
+
+        /// <summary>
+        /// True when the last arrival came out by the house rather than by the player.
+        /// </summary>
+        /// <remarks>
+        /// Read by the caller so the line it says is the line that is TRUE. "It came out by the
+        /// house", said on a night the player was two valleys away, would be the mode lying to them
+        /// about something they can see for themselves - which is the one thing a narrator does not
+        /// get to do twice.
+        /// </remarks>
+        public bool CameOutAtHome { get; private set; }
 
         private readonly IConfiguration _cfg;
         private readonly System.Random _rng;
@@ -78,7 +111,12 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>
         /// Brings it through. Returns false when it is already here, or when nothing could be spawned.
         /// </summary>
-        public bool TryArrive(Player player)
+        /// <param name="home">
+        /// The player's claimed bed, when they have one. Within <see cref="HomeThreatRange"/> the
+        /// troll comes out beside the HOUSE instead of beside the player, so what it walks through
+        /// on its way to them is what they built.
+        /// </param>
+        public bool TryArrive(Player player, Vector3? home)
         {
             if (player == null || Alive) return false;
 
@@ -98,9 +136,23 @@ namespace ICanShowYouTheWorld.RunMode
                 return false;
             }
 
+            // The house if it is close enough to matter, the player otherwise. Either way the
+            // troll is ArrivalRange out and walks the rest, because a troll that materialises next
+            // to you is a spawn and one that comes through the trees is an arrival.
+            Vector3 anchor = player.transform.position;
+            bool atHome = home.HasValue &&
+                          Vector3.Distance(player.transform.position, home.Value) <= HomeThreatRange;
+            if (atHome) anchor = home.Value;
+
             float angle = (float)(_rng.NextDouble() * Math.PI * 2.0);
-            Vector3 pos = player.transform.position
-                        + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * ArrivalRange;
+            Vector3 pos = anchor + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * ArrivalRange;
+
+            CameOutAtHome = atHome;
+
+            if (atHome)
+                Debug.Log("[ICanShowYouTheWorld] The Breaker comes out by the house, " +
+                          Mathf.RoundToInt(Vector3.Distance(pos, player.transform.position)) +
+                          "m from you.");
 
             var inst = UnityEngine.Object.Instantiate(prefab, pos, Quaternion.identity);
             if (inst == null) return false;
@@ -134,7 +186,7 @@ namespace ICanShowYouTheWorld.RunMode
             }
 
             // Pale and cold-lit, like the Herald: this is not one of the forest's any more.
-            try { CreatureDressing.Apply(inst, CreatureDressing.Herald()); }
+            try { CreatureDressing.ApplyWhenSettled(inst, CreatureDressing.Herald()); }
             catch (Exception ex) { Debug.LogWarning("[ICanShowYouTheWorld] The Breaker's look: " + ex.Message); }
 
             // SetHuntPlayer, not a target: it comes looking, and keeps looking.

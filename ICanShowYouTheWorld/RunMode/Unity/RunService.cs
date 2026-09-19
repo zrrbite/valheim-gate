@@ -683,6 +683,22 @@ namespace ICanShowYouTheWorld.RunMode
         /// thing arriving unannounced reads as a random spawn rather than as an event. Arriving at
         /// night only, because a troll walking out of the trees is a different thing in the dark.
         /// </summary>
+        /// <summary>
+        /// When the Gatherer may come through, or negative infinity before the forest has moved.
+        /// </summary>
+        /// <remarks>
+        /// See PollGatherer: the raid and the arrival were simultaneous and the arrival was lost in
+        /// it. Session state on purpose - a reload between the two costs the player nothing but a
+        /// repeat of the announcement on the next night.
+        /// </remarks>
+        private float _gathererDueAt = float.NegativeInfinity;
+
+        /// <summary>
+        /// How long the forest gets to itself before its oldest splinter arrives. Long enough for
+        /// the player to be committed to the fight, short enough that it is plainly the same event.
+        /// </summary>
+        private const float GathererDelayAfterRaidSeconds = 45f;
+
         private void PollBreaker()
         {
             if (_breaker == null || !ActIsMeadows || _challenges == null) return;
@@ -705,9 +721,19 @@ namespace ICanShowYouTheWorld.RunMode
 
             try
             {
-                if (_breaker.TryArrive(player))
+                // The claimed bed, which is what Homeward already treats as home and what the
+                // questline made them build. Null when there is none, and then the troll comes for
+                // the player as it always did.
+                Vector3? home = null;
+                var profile = Game.instance?.GetPlayerProfile();
+                if (profile != null && profile.HaveCustomSpawnPoint()) home = profile.GetCustomSpawnPoint();
+
+                if (_breaker.TryArrive(player, home))
                 {
                     Announce($"{TheBreaker.Name} is here.");
+
+                    if (_breaker.CameOutAtHome)
+                        Message("It came out by the house. Trolls do not go around things.");
 
                     // The allies of convenience, said plainly so the player does not read it as a
                     // bug when the forest stops chasing them. They are not helping; there is simply
@@ -728,7 +754,7 @@ namespace ICanShowYouTheWorld.RunMode
                 t.Current.Def.Kind == ChallengeKind.KillPrefab &&
                 t.Current.Def.Param == TheGatherer.KillName);
 
-            if (!wanted) { _gathererForetold = false; return; }
+            if (!wanted) { _gathererForetold = false; _gathererDueAt = float.NegativeInfinity; return; }
 
             // Foretold ONCE, the moment its step opens — even by day, when it will not come yet.
             // The Herald's fall and the arrival can be hours apart, and a named enemy nobody has
@@ -737,6 +763,7 @@ namespace ICanShowYouTheWorld.RunMode
             if (!_gathererForetold)
             {
                 _gathererForetold = true;
+                _gathererDueAt = float.NegativeInfinity;
                 Announce($"{TheGatherer.Name} knows what you have taken.");
                 Message("It gathers only in the dark. Be ready when night falls.");
             }
@@ -749,16 +776,33 @@ namespace ICanShowYouTheWorld.RunMode
             // shape coming through the trees is a different event at night.
             if (!IsNight) return;
 
+            // The raid FIRST, and the Gatherer a while after it.
+            //
+            // Both used to land on the same tick, and the oldest splinter walked in wearing the same
+            // shape as thirty of its children (owner: "I almost didnt see the gatherer in the huge
+            // battle. Maybe he spawns too soon? Delay him a bit?"). The forest arriving first gives
+            // the fight a shape it did not have: the raid is the weather, and the thing the raid was
+            // announcing comes through it once the player already has their hands full.
+            //
+            // The delay is session state, not run state. Being caught by a reload between the raid
+            // and the arrival means the arrival simply happens on the next night the step is still
+            // wanted, which is the same forgiveness every other staged encounter here has.
+            if (float.IsNegativeInfinity(_gathererDueAt))
+            {
+                _gathererDueAt = Time.time + GathererDelayAfterRaidSeconds;
+
+                Announce("The forest is moving. All of it.");
+                _raids.Trigger(SagaRaids.ForestMoving, player.transform.position);
+                return;
+            }
+
+            if (Time.time < _gathererDueAt) return;
+
             try
             {
                 if (_gatherer.TryArrive(player, _lights?.Lost ?? 0))
                 {
                     Announce("Something heavy is coming through the trees.");
-
-                    // And not alone: the forest moves with its oldest splinter. The greydwarf
-                    // raid, forced here, is the act's climax fight given the scale the bible
-                    // describes — "the forest sends its children".
-                    _raids.Trigger(SagaRaids.ForestMoving, player.transform.position);
 
                     // The arrival reads out the race: what the hunt ended at, and what that has
                     // made of the thing arriving. The player has already watched both numbers —
@@ -1165,7 +1209,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // forty metres away in a night forest, which is exactly where couriers live.
                 // The point light is the part that does the work: it announces one through the
                 // trees, the way a thing carrying stolen light ought to.
-                CreatureDressing.Apply(candidate.gameObject, CreatureDressing.Courier());
+                CreatureDressing.ApplyWhenSettled(candidate.gameObject, CreatureDressing.Courier());
                 MakeCourierPassive(candidate);
 
                 _couriers.Add(czdo.m_uid);
@@ -1932,6 +1976,10 @@ namespace ICanShowYouTheWorld.RunMode
             _boonEffects.Tick(dt);
             TickBossVigor(dt);
 
+            // Named creatures are dressed two frames after they spawn; this is what gets them
+            // there. See CreatureDressing for why it cannot be done at spawn.
+            CreatureDressing.Tick();
+
             HandleBoonOfferInput();
             HandleBoonActivationInput();
             HandleDevInput();
@@ -2375,6 +2423,11 @@ namespace ICanShowYouTheWorld.RunMode
             // Keypad 9 is not a boon: Homeward is a run mechanic earned from bosses, so it sits
             // beside the boon keys rather than among them.
             if (Input.GetKeyDown(KeyCode.Keypad9)) TryHomeward();
+
+            // PageDown, because the keypad is full. It is a GM binding (cycle prefab backward) that
+            // InputManager.Gate makes dead during a run, which is exactly the reuse the key-scoping
+            // rule allows - and the HUD names it, which is the condition attached to that rule.
+            else if (Input.GetKeyDown(KeyCode.PageDown)) TryCorpseGate();
         }
 
         private void TryActivateHeldBoon(string boonId)
@@ -3066,6 +3119,8 @@ namespace ICanShowYouTheWorld.RunMode
 
             try
             {
+                PollCorpse(Player.m_localPlayer);
+
                 var profile = Game.instance?.GetPlayerProfile();
                 if (profile != null && profile.HaveCustomSpawnPoint())
                     _challenges.ReportMeasure(ChallengeKind.PlayerState, "SpawnPointSet", 1f);
@@ -3322,6 +3377,94 @@ namespace ICanShowYouTheWorld.RunMode
         /// the world spawn instead would be a worse outcome than refusing: they would lose the
         /// charge and end up somewhere they never chose.
         /// </summary>
+        /// <summary>
+        /// Where the player last died, while their things are still out there. Zero when there is
+        /// nothing to go back for.
+        /// </summary>
+        /// <remarks>
+        /// Session state, not run state, and the reason is the same as Homeward's cooldown: being
+        /// sent back by a reload is harmless, and persisting it would invite a save-scum check for
+        /// no gain. PlayerProfile has its own m_deathPoint and no way to clear it, so it would keep
+        /// answering "yes, there is a corpse" for the rest of the run - a free teleport to an
+        /// arbitrary spot, which is precisely the travel economy Homeward is careful about.
+        /// </remarks>
+        private Vector3? _corpseAt;
+
+        /// <summary>When the corpse gate is free again.</summary>
+        private float _corpseGateReadyAt;
+
+        /// <summary>True while there is a corpse to go back to. The HUD asks.</summary>
+        public bool CorpseWaiting => _corpseAt.HasValue;
+
+        /// <summary>Seconds until the corpse gate returns, or zero when it is ready.</summary>
+        public float CorpseGateCooldown => Mathf.Max(0f, _corpseGateReadyAt - Time.time);
+
+        /// <summary>
+        /// How close counts as having arrived. Reaching the spot is the trip; what the player does
+        /// with the tombstone once they are standing on it is their business.
+        /// </summary>
+        private const float CorpseReachedRange = 12f;
+
+        /// <summary>
+        /// Remembers where the player fell, and forgets it once they are standing there.
+        /// </summary>
+        private void PollCorpse(Player player)
+        {
+            if (!_corpseAt.HasValue || player == null) return;
+
+            if (Vector3.Distance(player.transform.position, _corpseAt.Value) <= CorpseReachedRange)
+                _corpseAt = null;
+        }
+
+        /// <summary>
+        /// Gates the player back to where they died, on a cooldown.
+        /// </summary>
+        /// <remarks>
+        /// Owner: "Would it be nice with a 'port to corpse' on cooldown like we have with numpad9
+        /// gate home?" - and it is the same shape for the same reason. What it removes is not a
+        /// decision but a repetition: the walk back to a corpse is the walk you just made, with
+        /// nothing left to find out along it, and the death has already been charged for in heat and
+        /// lost skill. No charges, unlike Homeward, because there is nothing to earn it with - a
+        /// death is not an achievement.
+        ///
+        /// It refuses rather than wandering when there is nothing out there, and it forgets the
+        /// corpse the moment the player is standing on it (see PollCorpse) so it cannot become a
+        /// permanent teleport to a place they once died.
+        /// </remarks>
+        private void TryCorpseGate()
+        {
+            if (!_active || _frozen) return;
+
+            if (!_corpseAt.HasValue)
+            {
+                Message("Nothing of yours is lying anywhere.");
+                return;
+            }
+
+            if (CorpseGateCooldown > 0f)
+            {
+                Message($"The way back opens again in {FormatCountdown(CorpseGateCooldown)}.");
+                return;
+            }
+
+            try
+            {
+                var teleport = ModBootstrap.GetService<ITeleportService>();
+                if (teleport == null) return;
+
+                // Lifted clear of the ground, as Homeward and Waystone are, for the reason they are:
+                // arriving inside the terrain is how a teleport turns into a death.
+                teleport.TeleportTo(_corpseAt.Value + Vector3.up * 2f);
+
+                _corpseGateReadyAt = Time.time + Mathf.Max(0f, _cfg.RunCorpseGateCooldownMinutes) * 60f;
+                Message($"Back to where you fell. Again in {FormatCountdown(CorpseGateCooldown)}.");
+            }
+            catch (Exception ex)
+            {
+                LogOnce("corpse-gate", ex);
+            }
+        }
+
         private void TryHomeward()
         {
             if (!_active || _frozen) return;
@@ -4027,6 +4170,8 @@ namespace ICanShowYouTheWorld.RunMode
 
             // The saga's recipes, dreams and raids are run-only: outside a run the game is vanilla.
             _recipes.Remove();
+            CreatureDressing.Forget();
+            _corpseAt = null;
             _dreams.Remove();
             _raids.Reset();
 
@@ -5556,6 +5701,12 @@ namespace ICanShowYouTheWorld.RunMode
 
                 if (c == Player.m_localPlayer)
                 {
+                    // Where the pack is now. Taken here rather than from PlayerProfile.m_deathPoint
+                    // because that field has no clear and would keep answering "there is a corpse"
+                    // for the rest of the run - see _corpseAt.
+                    _corpseAt = c.transform.position;
+                    _corpseGateReadyAt = 0f;
+
                     RemoveHeat(_cfg.RunDeathHeatPenalty);
 
                     // RemoveLatest raises Lost, which unapplies the effect.
@@ -5563,6 +5714,8 @@ namespace ICanShowYouTheWorld.RunMode
                     Message(lost != null
                         ? $"Death: -{_cfg.RunDeathHeatPenalty:0.#} heat, lost {lost.Def.Display}."
                         : $"Death: -{_cfg.RunDeathHeatPenalty:0.#} heat.");
+
+                    Message("Your things are where you fell. [PgDn] takes you back once it is ready.");
 
                     SaveState();
                     return;

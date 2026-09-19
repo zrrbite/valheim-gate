@@ -17,7 +17,7 @@ Standing context for the Windows side:
 
 ---
 
-## 2026-09-19 - THE TEST LIST for 1.0.15-run.2026-09-19n
+## 2026-09-19 - THE TEST LIST for 1.0.15-run.2026-09-19o
 
 Ten builds stacked up in one afternoon, so this is all of them as ONE pass, ordered by when you
 meet each thing rather than by build number. The per-build TASK entries below keep the reasoning;
@@ -31,7 +31,7 @@ replaced. Quit Valheim and run `.\dist\windows\Install-Mod.ps1 -ModOnly`, then r
 - [ ] Launch and **do not open Credits**. There should be **no popup at all** - that is the change
       in `...19k`. Silence is success.
 - [ ] Under the menu's own version line, a single gold line at 70% size and **not overlapping**:
-      `SAGA v1.0.15-run.2026-09-19n`. That line is now the ONLY proof the mod loaded, so if it is
+      `SAGA v1.0.15-run.2026-09-19o`. That line is now the ONLY proof the mod loaded, so if it is
       missing, the mod is not in.
 - [ ] Load the character carrying **Thor's bow**. Still there. Save, quit to desktop, come back:
       still there. No `Failed to find item prefab` in the log.
@@ -71,6 +71,21 @@ replaced. Quit Valheim and run `.\dist\windows\Install-Mod.ps1 -ModOnly`, then r
 - [ ] **And announces them ONCE.** Save, quit to the menu, load back in: no raven repeating a
       recipe you already have. Same for a world reload, which rebuilds ObjectDB and re-registers
       every recipe - that is the case the guard exists for.
+- [ ] **Starred greydwarves are their own colour again.** Fight the Gatherer, then go and look at
+      ordinary starred Greydwarf_Elites afterwards. None of them should be wearing its gold. This is
+      the bug behind "some greydwarfs had the very bright model".
+- [ ] **The Gatherer is 35% bigger than its children** and arrives about **45 seconds AFTER** the
+      raid, not with it. You should be in the fight before it walks in.
+- [ ] **The Breaker comes out by the house** when you are within 140m of your claimed bed - and the
+      line says so only when it actually did. Expect it to walk through what you built.
+- [ ] **Thor's bow is 58 pierce + 32 lightning** and wears the Huntsman's model, not the plank bow's.
+      Check the log line `Saga item created: Saga_ThorsBow from ...` to see which mesh resolved.
+- [ ] **The Stormward wears the serpentscale shield's model.** Same log line, same question.
+- [ ] **Sub-objective counts read down a column now**: `3/4  Hunt 4 Boar`, bright gold, left-aligned.
+      Two clauses of different name lengths should line up with each other.
+- [ ] **Die on purpose.** A line says your things are where you fell, the HUD shows
+      `Where you fell  [PgDn]`, and `PageDown` gates you back. It goes on a 4-minute cooldown, and
+      the offer DISAPPEARS once you have walked within 12m of the spot.
 - [ ] **Hear the raven out** - Hugin lands and states the errand.
 - [ ] **Hunt a deer by daylight** - nothing rises, and the line says why.
 - [ ] **Keep a watch after dark** - three whispers. The strip should tell you to wait for dark, and
@@ -116,6 +131,111 @@ default is **2.5** - the file wins over the code, so you have been playing a mon
 regen. Thirty-four newer settings are absent from it entirely and running on code defaults, which
 is correct behaviour but means they cannot be TUNED without adding the lines by hand. Ask and I
 will either add the keys or make `Load()` re-save so no future setting is invisible.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
+---
+
+## 2026-09-19 - TASK: 1.0.15-run.2026-09-19o - a play report, worked through
+
+Seven notes from the run. One of them turned out to be two bugs wearing each other's clothes.
+
+### The bright greydwarves and the invisible Gatherer are the SAME bug
+
+"some greydwarfs had the very bright model when it wasn't even courier time yet" and "I almost didnt
+see the gatherer in the huge battle" have one cause, and it is in `CreatureDressing`. The class was
+already careful about the obvious hazard - it writes `renderer.materials`, never `sharedMaterials`,
+with a comment saying why. What it did not account for is WHEN it runs. Every named creature is
+dressed immediately after `Instantiate`, which is before Unity calls `LevelEffects.Start`, and that
+method (read out of this build's IL) does this:
+
+```
+transform.localScale = (setup.m_scale, ...)                       // our ScaleMultiplier, gone
+key = Utils.GetPrefabName(character) + level
+if (m_materials.TryGetValue(key, out cached))
+    mainRender.sharedMaterials[0] = cached                        // our colour, gone
+else
+    mainRender.sharedMaterials[0] = new Material(sharedMaterials[0])   // a copy of OUR gold
+    ... hue/saturation/value/emissive ...
+    m_materials[key] = that                                      // cached, FOR THE PREFAB
+```
+
+`m_materials` is `static`. The Gatherer is `SetLevel(2..3)`, so if it was the first starred
+`Greydwarf_Elite` of the session, Valheim copied our gold into its cache and handed it to every
+starred elite that spawned afterwards - for the rest of the process. The Gatherer stopped being the
+only gold thing in the forest, and any scale we gave it had been discarded a frame earlier.
+
+`CreatureDressing.ApplyWhenSettled` is the fix: the look lands two frames after the spawn, once
+LevelEffects has taken its scale and seeded its cache from the vanilla material. Nothing re-runs the
+setup afterwards (`OnLevelSet` fires on a level CHANGE, and the level is set before `Start`
+subscribes), so what we write last stays. All five dressing sites use it, and `RunService.Tick` drives
+the two-frame queue.
+
+With the multiplier now actually working, the Gatherer is `ScaleMultiplier = 1.35f`.
+
+### The Gatherer also arrived at the wrong moment
+
+The raid and the arrival were on the same tick, so the oldest splinter walked in alongside thirty of
+its children. The forest now moves first and the Gatherer comes through 45 seconds later, into a
+fight the player is already committed to. Session state, so a reload between the two costs only a
+repeated announcement.
+
+### The Breaker comes out by the house
+
+"would it be sweet if we spawned it near our house so that it risks ruining everything?" - yes, and a
+troll is the only thing in Act I that takes buildings down. Within 140m of the claimed bed it arrives
+34m from the HOUSE instead of 34m from the player. Bounded on purpose: spawned at a house 900m away it
+would walk for the full fifteen minutes and never be seen. `CameOutAtHome` exists so the line about
+the house is said only on the nights it is true.
+
+### Thor's bow was worse than a quest drop
+
+"Finebow does 50 dmg, but thor a lot less pierce?" Correct, and worse than it looks: the bow INHERITED
+its pierce from whatever prefab the fallback chain resolved, so the saga's signature weapon had no
+number of its own. Cut from the 32-pierce Finewood bow, it was then outclassed by the 52-pierce
+Huntsman that `mq-herald` hands over four steps later.
+
+Every channel is now SET, not inherited: **58 pierce (+6/level), 32 lightning (+6/level)**, and poison,
+fire, frost and spirit explicitly zeroed so a fallback prefab cannot leak its own damage into a weapon
+named for the storm.
+
+### The models
+
+"The storm shield/thor bow models are a bit simple" - they were the plainest mesh in each class. Now
+that no stat is inherited, the source prefab is purely which model the item wears, so: the bow wears
+`BowHuntsman` and the Stormward wears `ShieldSerpentscale`, each with a fallback chain. Watch the
+`Saga item created: ... from X` log line to see which resolved.
+
+This is a mesh swap, not a bespoke model. A real look of their own needs an AssetBundle built in Unity
+6000.0.x - a decision, not a detail. The cheaper middle step is a tint and a glow, the same trick
+`CreatureDressing` plays on creatures; it needs one dev-probe run on the two items to learn their
+shader property names, since a wrong name there fails SILENTLY.
+
+### The x/y counts
+
+`  . Hunt 4 Boar   3/4` put the only figure that moves at a ragged right edge, muted, at the size of
+everything else. It is now a fixed-width left column in bright gold - `3/4  Hunt 4 Boar` - so two
+clauses of different name lengths line up and the column can be read down. Same in the HUD strip,
+which is the copy read mid-fight.
+
+### Port to corpse
+
+`PageDown`, four-minute cooldown, no charges - a death is not an achievement. It refuses when there is
+nothing out there, and it FORGETS the corpse once the player has been within 12m of it, so it cannot
+decay into a permanent teleport to a place they once died. Deliberately not
+`PlayerProfile.m_deathPoint`, which has no clear and would answer "yes, there is a corpse" for the
+rest of the run.
+
+### Answered, not built
+
+**"Im not sure there was a 'locate dark forest' step?"** There is: `bf-arrive`,
+`ChallengeKind.ReachBiome` on `BlackForest`, and it is the FIRST step of Act II - so it only appears
+once Eikthyr is down. You had not got there.
+
+**Storm armour, one piece per act.** Not built; see the reply. It is a good idea with one real
+question in it, and that question is what the answer should be decided on.
 
 ### RESULTS (Windows side appends here)
 

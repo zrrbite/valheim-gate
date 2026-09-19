@@ -57,6 +57,10 @@ namespace ICanShowYouTheWorld.Services
         bool HomewardReady { get; }
         float HomewardCooldown { get; }
 
+        /// <summary>True while the player has things lying where they died. Gated back with PageDown.</summary>
+        bool CorpseWaiting { get; }
+        float CorpseGateCooldown { get; }
+
         /// <summary>
         /// Where Eikthyr's Herald is ("north-east, 180m") while its questline step is in play;
         /// null otherwise.

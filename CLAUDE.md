@@ -178,7 +178,8 @@ listeners are never both live:
    GM command dead while a run is live. So a GM key is free for the saga to reuse.
 2. **Saga bindings** are read straight from `RunService.Tick`: `Keypad1-3` pick from an
    offer (and the activation handler returns early while an offer is up), `Keypad4-8`,
-   `0`, `Insert`, `+` and `-` activate held boons, `Keypad9` is Homeward.
+   `0`, `Insert`, `+` and `-` activate held boons, `Keypad9` is Homeward, and `PageDown`
+   gates back to where you died.
 3. **Dev bindings** are read from that same handler, so the two layers ARE in one mode and
    a modifier is the only thing that can separate them — but only where there is a second
    layer to separate. Dev owns `Keypad * / . Enter`, `Delete`, `Home` and `PageUp` BARE,

@@ -28,6 +28,32 @@ namespace ICanShowYouTheWorld.RunMode
     /// every greydwarf in the world gold. So this touches <c>renderer.materials</c>, which Unity
     /// instantiates per renderer — this creature only.
     ///
+    /// That was necessary and NOT sufficient, and the way it failed is worth keeping. Every named
+    /// creature is dressed immediately after Instantiate, which is BEFORE Unity calls
+    /// <c>LevelEffects.Start</c> — and read that method's IL in order:
+    ///
+    ///     transform.localScale = (setup.m_scale, ...)            // our ScaleMultiplier, gone
+    ///     key = Utils.GetPrefabName(character) + level
+    ///     if (m_materials.TryGetValue(key, out cached))
+    ///         mainRender.sharedMaterials[0] = cached             // our colour, gone
+    ///     else
+    ///         mainRender.sharedMaterials[0] = new Material(mainRender.sharedMaterials[0])
+    ///         ... hue/saturation/value/emissive ...
+    ///         m_materials[key] = that                            // OUR colour, cached for the PREFAB
+    ///
+    /// So for any dressed creature with a star — which is all of them; the Gatherer is
+    /// SetLevel(2..3) — the scale multiplier was silently discarded, and if it was the first
+    /// starred one of its prefab in the session, Valheim copied OUR gold into its static cache and
+    /// handed it to every starred Greydwarf_Elite that spawned afterwards. Both halves of one play
+    /// report: "some greydwarfs had the very bright model when it wasn't even courier time yet" and
+    /// "I almost didnt see the gatherer in the huge battle" — the Gatherer was not big, and its
+    /// colour was no longer its own.
+    ///
+    /// Hence <see cref="ApplyWhenSettled"/>, which every caller uses: the look is applied two frames
+    /// after the spawn, once LevelEffects has taken its own scale and seeded its cache from the
+    /// VANILLA material. Nothing re-runs the setup afterwards — OnLevelSet only fires on a level
+    /// CHANGE, and the level is set before Start subscribes — so what we write last, stays.
+    ///
     /// Where a real asset pipeline would still be needed: a different SILHOUETTE. Everything here
     /// changes colour, size and light, so a Gatherer is an unmistakable greydwarf rather than a
     /// new creature. Swapping the mesh needs an AssetBundle built in Unity 6000.0.x, shipped
@@ -82,11 +108,66 @@ namespace ICanShowYouTheWorld.RunMode
             public float LightIntensity = 1.5f;
         }
 
+        /// <summary>A look owed to a creature, and the frame it was owed on.</summary>
+        private struct Pending
+        {
+            public GameObject Target;
+            public Look Look;
+            public int Frame;
+        }
+
+        private static readonly System.Collections.Generic.List<Pending> _pending =
+            new System.Collections.Generic.List<Pending>();
+
+        /// <summary>
+        /// How many frames to wait before dressing. Two, not one: Unity runs Start for an object
+        /// created during another script's Update before its own first Update, and "before" is a
+        /// promise about ordering rather than about frames. One spare frame costs nothing at 34m
+        /// and removes the need to be clever about Unity's execution order.
+        /// </summary>
+        private const int SettleFrames = 2;
+
+        /// <summary>
+        /// Dresses a creature once Valheim's own LevelEffects has finished with it. THE entry point
+        /// — see the class summary for what happens to a look applied any earlier.
+        /// </summary>
+        public static void ApplyWhenSettled(GameObject creature, Look look)
+        {
+            if (creature == null || look == null) return;
+
+            _pending.Add(new Pending { Target = creature, Look = look, Frame = Time.frameCount });
+        }
+
+        /// <summary>
+        /// Every frame, from RunService.Tick. Dresses whatever has settled and drops whatever died
+        /// on the way (a named creature can be killed inside two frames by a dev key, and a
+        /// destroyed GameObject compares equal to null, which is the reading wanted here).
+        /// </summary>
+        public static void Tick()
+        {
+            for (int i = _pending.Count - 1; i >= 0; i--)
+            {
+                var entry = _pending[i];
+
+                if (entry.Target == null) { _pending.RemoveAt(i); continue; }
+                if (Time.frameCount - entry.Frame < SettleFrames) continue;
+
+                _pending.RemoveAt(i);
+                Apply(entry.Target, entry.Look);
+            }
+        }
+
+        /// <summary>Drops everything owed. Called when a run ends, so a look cannot outlive it.</summary>
+        public static void Forget() => _pending.Clear();
+
         /// <summary>
         /// Applies a look. Never throws: a creature that is the wrong colour is a cosmetic
         /// disappointment, and one that threw on spawn is a broken act.
+        ///
+        /// Private on purpose since 2026-09-19: called directly it runs before LevelEffects and
+        /// loses to it. Callers want <see cref="ApplyWhenSettled"/>.
         /// </summary>
-        public static void Apply(GameObject creature, Look look)
+        private static void Apply(GameObject creature, Look look)
         {
             if (creature == null || look == null) return;
 
@@ -239,6 +320,13 @@ namespace ICanShowYouTheWorld.RunMode
 
             return new Look
             {
+                // Bigger than its children, and it took ApplyWhenSettled to make this line work at
+                // all: LevelEffects SETS localScale from the star setup, so a multiplier applied
+                // before it was simply overwritten. Half the reason the owner could not pick it out
+                // of its own raid ("I almost didnt see the gatherer in the huge battle") was that
+                // every size and colour we gave it was being undone a frame later.
+                ScaleMultiplier = 1.35f,
+
                 Hue = 0.08f,
                 Saturation = -0.25f,
                 Value = -0.2f + fed * 0.25f,

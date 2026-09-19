@@ -215,6 +215,15 @@ namespace ICanShowYouTheWorld.RunMode
         private GUIStyle _titleStyle;
         private GUIStyle _subtitleStyle;
 
+        /// <summary>Indent of a sub-objective row, and the width its count column gets.</summary>
+        private const float SubIndent = 26f;
+
+        /// <summary>
+        /// Wide enough for "100/100" at this font. Fixed, because a column that resizes per row is
+        /// not a column and the counts stop lining up - which was the original complaint.
+        /// </summary>
+        private const float SubCountColumn = 56f;
+
         /// <summary>The Hud whose tip list we have already added to; guards against adding twice.</summary>
         private Hud _tippedHud;
 
@@ -930,6 +939,30 @@ namespace ICanShowYouTheWorld.RunMode
                 GUILayout.EndHorizontal();
             }
 
+            // The way back to a corpse, shown only while there IS one. Its key has to be named
+            // here: PageDown is a key the saga borrows from the cheat mod, and the rule that makes
+            // borrowing safe carries the condition that the saga says which key it took.
+            if (run.CorpseWaiting)
+            {
+                GUILayout.BeginHorizontal();
+                GUILayout.FlexibleSpace();
+
+                if (run.CorpseGateCooldown > 0f)
+                {
+                    GUI.contentColor = RunTheme.TextMuted;
+                    int secs = Mathf.CeilToInt(run.CorpseGateCooldown);
+                    GUILayout.Label($"Where you fell {secs / 60}:{secs % 60:00}", RunTheme.Small);
+                }
+                else
+                {
+                    GUI.contentColor = RunTheme.AccentGold;
+                    GUILayout.Label("Where you fell  [PgDn]", RunTheme.Small);
+                }
+
+                GUI.contentColor = Color.white;
+                GUILayout.EndHorizontal();
+            }
+
             GUILayout.Space(4f);
 
             // --- Main questline: pinned above the scroll, like the timer. It is the one thing on
@@ -1195,10 +1228,27 @@ namespace ICanShowYouTheWorld.RunMode
                     float p = quest.SubProgress != null && s < quest.SubProgress.Count ? quest.SubProgress[s] : 0f;
                     bool subDone = p >= sub.Target;
 
+                    // The COUNT first, in its own fixed-width column, and brighter than the label.
+                    //
+                    // It used to trail the label - "  . Hunt 4 Boar   3/4" - which put the only
+                    // number that changes at a ragged right edge, at the same size and the same
+                    // muted colour as everything else on the panel. Two clauses of different name
+                    // lengths and the figures no longer even lined up with each other (owner: "the
+                    // x/y steps (e.g. 3/4 boar) is a bit difficult to see or not very apparent").
+                    // A left-aligned column of counts can be read down, which is the whole job.
+                    GUILayout.BeginHorizontal();
+                    GUILayout.Space(SubIndent);
+
+                    GUI.contentColor = subDone ? RunTheme.CompleteGreen : RunTheme.AccentGoldBright;
+                    GUILayout.Label(subDone ? "✓" : $"{p:0}/{sub.Target:0}",
+                        RunTheme.Small, GUILayout.Width(SubCountColumn));
+
                     GUI.contentColor = subDone ? RunTheme.CompleteGreen : RunTheme.TextMuted;
-                    GUILayout.Label(subDone ? $"     ✓ {sub.Label}" : $"     · {sub.Label}   {p:0}/{sub.Target:0}",
-                        RunTheme.Small);
+                    GUILayout.Label(sub.Label, RunTheme.Small);
+
                     GUI.contentColor = Color.white;
+                    GUILayout.FlexibleSpace();
+                    GUILayout.EndHorizontal();
                 }
             }
 
@@ -1364,9 +1414,11 @@ namespace ICanShowYouTheWorld.RunMode
                         bool subDone = p >= sub.Target;
                         string text = subDone
                             ? $"  ✓ {sub.Label}"
-                            : $"  · {sub.Label} ({p:0}/{sub.Target:0})";
+                            : $"  {p:0}/{sub.Target:0}  {sub.Label}";
 
-                        GUI.contentColor = subDone ? RunTheme.CompleteGreen : RunTheme.TextMuted;
+                        // Bright for the unfinished ones here too: this strip is the version read
+                        // mid-fight, which is exactly when a muted fraction is no use.
+                        GUI.contentColor = subDone ? RunTheme.CompleteGreen : RunTheme.AccentGoldBright;
                         GUILayout.Label(text, RunTheme.Small);
                         GUI.contentColor = Color.white;
                     }

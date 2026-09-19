@@ -249,7 +249,7 @@ namespace ICanShowYouTheWorld.RunMode
             // because a two-star deer at night was, visually, a deer. Applied AFTER SetLevel:
             // LevelEffects sets its own scale and colours from the star count, and it would
             // otherwise overwrite this on the same frame.
-            CreatureDressing.Apply(inst, CreatureDressing.Herald());
+            CreatureDressing.ApplyWhenSettled(inst, CreatureDressing.Herald());
 
             _herald = zdo.m_uid;
             return true;
