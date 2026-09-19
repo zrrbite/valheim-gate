@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-09-19 at `1.0.15-run.2026-09-19c`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-09-19 at `1.0.15-run.2026-09-19d`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -21,7 +21,7 @@ Everything below is what that file tells it.
 
 - Branch **`feature/run-mode`**, not merged, deliberately — the mode is still
   being tuned in play.
-- Latest tag **`1.0.15-run.2026-09-19c`**; builds are date-based since 2026-08-31
+- Latest tag **`1.0.15-run.2026-09-19d`**; builds are date-based since 2026-08-31
   (`Scripts/nextversion.sh`). The game moved to **1.0.12 on 2026-09-12** and to
   **1.0.15 on 2026-09-19**; both times the mod was rebuilt and installed on Windows
   the same day. **1.0.15 needed no source change** — all 316 member references from
@@ -623,7 +623,27 @@ rather than anything the saga would want to say.
    value stays safe next to `ApplyBaseline`, the lesson this mode has paid for three times.
    `runSkillBoonMultiplier` (3) is config.
 
-Waiting on the owner's play-test of `1.0.15-run.2026-09-19c` — see the TASK entry in
+**`...-19d` made the rescued lights real** (owner: "Thors bow is a bit simple to craft. Can we
+make some of the light we collect a part of the recipe?"). A light was a number on a scoreboard;
+a recipe needs an ItemDrop, so the number became an object - "Rescued light", cloned from the
+Mistlands Wisp, which is already a caught light in item form. One per light credited, at the two
+places a light is credited and nowhere else. Thor's bow now asks for three.
+
+Three things that shaped it:
+
+- **The forfeit path grants nothing.** It advances the race step precisely because the race was
+  lost, and "the lights are gone, and the trophies with them" would be a lie if the pack filled
+  up anyway. The scoreboard and the pack are allowed to diverge: `Taken` is what the run rescued
+  and never goes down, the item is what you still have.
+- **It cannot lock the chain**, which is why a won thing could go on it at all. The Gatherer frees
+  `Clamp(lightsLost, 2, 6)` lights on death, so a forfeited race (8 lost) frees six - losing every
+  light moves where they must be taken from rather than putting the bow out of reach.
+- **The bench will not list the bow until the player HOLDS a light**, because Valheim only offers
+  recipes whose every ingredient has been seen. That is a cliff right after paying the shade, so
+  the step's hint says it outright. `SagaItemDefinition` also gained `SourceFallbacks`, since a
+  game update that moved `Wisp` would otherwise take the bow's recipe down with it, silently.
+
+Waiting on the owner's play-test of `1.0.15-run.2026-09-19d` - see the TASK entry in
 [`../../HANDOFF_WINDOWS.md`](../../HANDOFF_WINDOWS.md). Beyond the entry point itself,
 still unverified from 12-13 September: Thor's bow on the bench after paying the shade
 and its flash on impact, the shade's greeting and its "[E] Speak" prompt, the saga

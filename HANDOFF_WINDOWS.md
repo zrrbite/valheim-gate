@@ -17,6 +17,41 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-19 - TASK: 1.0.15-run.2026-09-19d - the bow costs light now
+
+Installed here already (`-ModOnly`). One change, from your note that Thor's bow was too simple
+to craft.
+
+**The lights you rescue are an ITEM now.** "Rescued light", cloned from the Mistlands Wisp -
+which is already exactly this thing: a caught light, a material, with its own glow. One drops
+into your pack for every light you take back off the forest, and for every stray you find.
+
+**Thor's bow asks for three of them**, on top of 10 wood, 10 resin and 6 deer hide. The other
+three are what the Meadows give anybody; the light is the only ingredient that has to be won -
+and it comes from the HUNT track while the bow sits on the CRAFT one, so the two tracks finally
+ask something of each other.
+
+**One thing to expect, and it is the game's rule not ours:** the bench will not list the bow
+until you are HOLDING a light. Valheim only offers recipes whose every ingredient the player has
+seen at least once. So after paying the shade the bench may show nothing, and one light fixes it.
+The step's hint now says so outright.
+
+**Why this cannot lock the questline.** The Gatherer frees `Clamp(lightsLost, 2, 6)` lights when
+it dies, so the worse the race goes the more it is carrying - a forfeited race (8 lost) frees six.
+Lose every light and the bow is still craftable; you just have to take them off the thing that
+stole them, which is the better story anyway. Forfeiting does NOT grant items, deliberately: "the
+lights are gone, and the trophies with them" would be a lie if the pack filled up regardless.
+
+**What to watch for:** a "Rescued light" appearing each time you walk into one; the stack surviving
+a portal (it is weightless and teleportable on purpose); the bench listing Thor's bow once you hold
+one; and the three being consumed on the craft.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
+---
+
 ## 2026-09-19 — TASK: 1.0.15-run.2026-09-19c — four things from the run
 
 Installed here already (`-ModOnly`; the Patcher did not change). All four came out of your

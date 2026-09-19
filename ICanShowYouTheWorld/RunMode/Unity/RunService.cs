@@ -468,6 +468,7 @@ namespace ICanShowYouTheWorld.RunMode
                     // scoreboard, or the two numbers the player sees disagree.
                     _lights?.CreditTaken();
                     _challenges.ReportEvent(ChallengeKind.PlayerEvent, StolenLights.TakenEvent);
+                    GrantRescuedLight(1);
                     Message(_lights != null
                         ? $"A stray light, safe. The forest never had it. (you {_lights.Taken} — forest {_lights.Lost})"
                         : "A stray light, safe. The forest never had it.");
@@ -754,6 +755,8 @@ namespace ICanShowYouTheWorld.RunMode
 
                 for (int i = 0; i < taken; i++)
                     _challenges.ReportEvent(ChallengeKind.PlayerEvent, StolenLights.TakenEvent);
+
+                if (taken > 0) GrantRescuedLight(taken);
 
                 // The score rides in the messages ONLY while the race step is live. It kept
                 // announcing "you N — forest N" through the Herald and Gatherer fights (owner:
@@ -4898,6 +4901,25 @@ namespace ICanShowYouTheWorld.RunMode
             Message("The way opens again.");
         }
 
+        /// <summary>
+        /// Puts rescued lights in the pack - one per light actually taken back.
+        ///
+        /// Granted at the two places a light is CREDITED and nowhere else. Deliberately NOT on the
+        /// forfeit path: that advances the step precisely because the race was lost, and "the lights
+        /// are gone, and the trophies with them" would be a lie if the pack filled up anyway.
+        ///
+        /// The scoreboard and the pack answer different questions and are allowed to diverge - Taken
+        /// is what the run rescued, which never goes down; the item is the part you still have, and
+        /// spending three on a bow is the whole point of it existing.
+        /// </summary>
+        private void GrantRescuedLight(int count)
+        {
+            if (count <= 0) return;
+
+            try { GrantItem(SagaItems.RescuedLightPrefab, count); }
+            catch (Exception ex) { LogOnce("grant-light", ex); }
+        }
+
         private void GrantQuestSkills(ChallengeDefinition def)
         {
             if (def.Id == null || !QuestSkillRewards.TryGetValue(def.Id, out var skills) || skills == null) return;
@@ -7006,7 +7028,9 @@ namespace ICanShowYouTheWorld.RunMode
                 Id = "mq-bow", MainQuest = true, Kind = ChallengeKind.CollectItem, Param = SagaItems.ThorsBowName,
                 Target = 1, Display = "String Thor\u2019s bow at the workbench",
                 RewardText = "A quiver of flint arrows",
-                Hint = "The shade\u2019s recipe, at the workbench: 10 wood, 10 resin, 6 deer hide. The bench lists it as Thor\u2019s bow once it knows all three.",
+                Hint = "The shade\u2019s recipe, at the workbench: 10 wood, 10 resin, 6 deer hide, and 3 rescued lights. " +
+                       "The bench cannot list the bow until you are HOLDING a light \u2014 the game only offers recipes " +
+                       "whose every ingredient you have seen. Take them back off the forest, or off the Gatherer.",
                 Opening = "The herd paid for this in hide. String it, and owe them a clean shot.",
             },
             new ChallengeDefinition

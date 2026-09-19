@@ -16,6 +16,14 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>Prefab of the vanilla item to clone, e.g. "BowFineWood".</summary>
         public string SourcePrefab;
 
+        /// <summary>
+        /// Tried in turn if <see cref="SourcePrefab"/> does not resolve to an item, first match wins.
+        /// The same discipline the effect lists use: asset names are data the assembly cannot see,
+        /// and a saga item whose source moved in a game update is an item that silently stops
+        /// existing — along with any recipe that asks for it.
+        /// </summary>
+        public string[] SourceFallbacks;
+
         /// <summary>Name of the clone. This is what saves, drops and recipes refer to — never change it once shipped.</summary>
         public string PrefabName;
 
@@ -62,6 +70,20 @@ namespace ICanShowYouTheWorld.RunMode
         public const string ThorsBowPrefab = "Saga_ThorsBow";
         public const string ThorsBowName = "Thor’s bow";
 
+        public const string RescuedLightPrefab = "Saga_RescuedLight";
+        public const string RescuedLightName = "Rescued light";
+
+        /// <summary>
+        /// How many rescued lights Thor's bow asks for. Repeated in the step's Hint, which lies if
+        /// this changes alone.
+        ///
+        /// Three, and the reason it is safe to put a rescued light on the CHAIN is the Gatherer: it
+        /// frees Clamp(lightsLost, 2, 6) of them when it dies, so the worse the race goes the more it
+        /// is carrying — a forfeited race (8 lost) frees six. Losing the race cannot lock the bow
+        /// away; it only moves where the lights have to be taken from, which is the story anyway.
+        /// </summary>
+        public const int ThorsBowLightCost = 3;
+
         /// <summary>
         /// The bow's own damage, on top of the Finewood bow it is cut from (32 pierce). Raised from
         /// 20/+4 after the first play (owner: "we COULD increase the dmg just a bit").
@@ -86,6 +108,40 @@ namespace ICanShowYouTheWorld.RunMode
                 {
                     shared.m_damages.m_lightning = ThorsBowLightning;
                     shared.m_damagesPerLevel.m_lightning = ThorsBowLightningPerLevel;
+                },
+            },
+
+            // The light the player takes back off the forest, made into something they can hold.
+            //
+            // It exists so the bow can COST one (owner: "Thors bow is a bit simple to craft. Can we
+            // make some of the light we collect a part of the recipe?"). Until now a rescued light
+            // was a number on a scoreboard; a recipe needs an ItemDrop, so the number had to become
+            // an object.
+            //
+            // Cloned from the Mistlands' Wisp, which is exactly this thing already: a caught light,
+            // ItemType.Material, with a glow of its own and an icon that reads at a glance. The
+            // fallbacks are only there because the source is asset data — a game update that moved
+            // it would otherwise take the bow's recipe down with it, silently.
+            new SagaItemDefinition
+            {
+                SourcePrefab = "Wisp",
+                SourceFallbacks = new[] { "GreydwarfEye", "SurtlingCore" },
+                PrefabName = RescuedLightPrefab,
+                DisplayName = RescuedLightName,
+                Description = "A light the forest had already taken, carried back in the hand. It is " +
+                              "warm, and it is not yours — it belongs to a herd that will not get it " +
+                              "back. Spend it on something worth the theft.",
+                Tune = shared =>
+                {
+                    // Stack, so a good night's racing is one slot and not eleven. Weightless on
+                    // purpose: a light is not cargo, and the carry-weight validator would otherwise
+                    // have an opinion about a recipe that asks for three.
+                    shared.m_maxStackSize = 50;
+                    shared.m_weight = 0f;
+
+                    // Must survive a portal: the bench is at home and the hunt is not, and an
+                    // ingredient that cannot be carried through a portal is a walk, not a cost.
+                    shared.m_teleportable = true;
                 },
             },
         };
@@ -181,6 +237,40 @@ namespace ICanShowYouTheWorld.RunMode
             }
         }
 
+        /// <summary>Every source name a definition will accept, in order.</summary>
+        private static IEnumerable<string> Candidates(SagaItemDefinition def)
+        {
+            if (!string.IsNullOrEmpty(def.SourcePrefab)) yield return def.SourcePrefab;
+            if (def.SourceFallbacks == null) yield break;
+
+            foreach (var name in def.SourceFallbacks)
+                if (!string.IsNullOrEmpty(name)) yield return name;
+        }
+
+        /// <summary>
+        /// First candidate that resolves to something carrying an ItemDrop. The ItemDrop test is
+        /// what makes the fallback worth having: a name can resolve to a prefab that is not an item
+        /// at all, and stopping at the first mere existence would pick that and fail one step later.
+        /// </summary>
+        private static GameObject ResolveSource(SagaItemDefinition def, ObjectDB odb, ZNetScene scene,
+            out string resolvedName)
+        {
+            resolvedName = null;
+
+            foreach (var name in Candidates(def))
+            {
+                var candidate = odb.GetItemPrefab(name);
+                if (candidate == null && scene != null) candidate = scene.GetPrefab(name);
+                if (candidate == null) continue;
+                if (candidate.GetComponent<ItemDrop>() == null) continue;
+
+                resolvedName = name;
+                return candidate;
+            }
+
+            return null;
+        }
+
         private void EnsureClones(ObjectDB odb, ZNetScene scene)
         {
             if (_holder == null)
@@ -195,12 +285,13 @@ namespace ICanShowYouTheWorld.RunMode
                 GameObject existing;
                 if (_clones.TryGetValue(def.PrefabName, out existing) && existing != null) continue;
 
-                var source = odb.GetItemPrefab(def.SourcePrefab);
-                if (source == null && scene != null) source = scene.GetPrefab(def.SourcePrefab);
+                string sourceName;
+                var source = ResolveSource(def, odb, scene, out sourceName);
                 if (source == null)
                 {
                     ReportOnce(def.PrefabName + "-source",
-                        $"[ICanShowYouTheWorld] Saga item '{def.PrefabName}': source prefab '{def.SourcePrefab}' not found — item NOT created.");
+                        $"[ICanShowYouTheWorld] Saga item '{def.PrefabName}': no source prefab resolved from " +
+                        $"{string.Join(", ", Candidates(def))} — item NOT created.");
                     continue;
                 }
 
@@ -213,7 +304,7 @@ namespace ICanShowYouTheWorld.RunMode
                 {
                     UnityEngine.Object.Destroy(clone);
                     ReportOnce(def.PrefabName + "-drop",
-                        $"[ICanShowYouTheWorld] Saga item '{def.PrefabName}': '{def.SourcePrefab}' is not an item — item NOT created.");
+                        $"[ICanShowYouTheWorld] Saga item '{def.PrefabName}': '{sourceName}' is not an item — item NOT created.");
                     continue;
                 }
 
@@ -245,7 +336,7 @@ namespace ICanShowYouTheWorld.RunMode
                 drop.m_itemData.m_dropPrefab = clone;
 
                 _clones[def.PrefabName] = clone;
-                Debug.Log($"[ICanShowYouTheWorld] Saga item created: {def.PrefabName} from {def.SourcePrefab} (\"{def.DisplayName}\").");
+                Debug.Log($"[ICanShowYouTheWorld] Saga item created: {def.PrefabName} from {sourceName} (\"{def.DisplayName}\").");
             }
         }
 

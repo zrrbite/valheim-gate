@@ -77,8 +77,9 @@ namespace ICanShowYouTheWorld.RunMode
 
         /// <summary>
         /// The saga's recipes. Act I's is the proof: Thor's bow — the saga's own item, cut from the
-        /// Finewood bow with lightning added (see SagaItems) — from what the Meadows yield: wood,
-        /// the splinters' resin, the herd's hide, at the act's own top station, the workbench.
+        /// Finewood bow with lightning added (see SagaItems) — from what the Meadows yield (wood, the
+        /// splinters' resin, the herd's hide) and three lights taken back off the forest, at the act's
+        /// own top station, the workbench.
         /// Amounts are repeated in the quest step's Hint; change both or the hint lies.
         /// </summary>
         public static readonly SagaRecipeDefinition[] All =
@@ -89,7 +90,16 @@ namespace ICanShowYouTheWorld.RunMode
                 ResultPrefab = SagaItems.ThorsBowPrefab,
                 StationPrefab = "piece_workbench",
                 MinStationLevel = 1,
-                Resources = new[] { ("Wood", 10), ("Resin", 10), ("DeerHide", 6) },
+                // The lights are the point of the recipe now (owner: "Thors bow is a bit simple to
+                // craft"). Wood, resin and hide are what the Meadows yield to anyone; a rescued
+                // light is the only ingredient that has to be WON, and it comes from the hunt track
+                // while the bow sits on the craft one — the two tracks finally asking something of
+                // each other. See SagaItems.ThorsBowLightCost for why this cannot lock the chain.
+                Resources = new[]
+                {
+                    ("Wood", 10), ("Resin", 10), ("DeerHide", 6),
+                    (SagaItems.RescuedLightPrefab, SagaItems.ThorsBowLightCost),
+                },
                 RequiresStepDone = SagaNames.ShadeBringStepId,
             },
         };
