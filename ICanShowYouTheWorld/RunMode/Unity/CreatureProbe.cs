@@ -47,6 +47,38 @@ namespace ICanShowYouTheWorld.RunMode
         private const long MaxLogBytes = 4L * 1024 * 1024;
 
         /// <summary>
+        /// The prefab of whatever the player is holding, or null if their hands are empty.
+        /// </summary>
+        /// <remarks>
+        /// Added because the saga's ITEMS now have the same problem its creatures had: they wear a
+        /// vanilla mesh and the owner can see it ("The storm shield/thor bow models are a bit
+        /// simple"). The cheap answer is the one CreatureDressing already plays - a tint and a
+        /// self-lit emission - and it cannot be written from memory, because a shader property that
+        /// does not exist fails SILENTLY. Exactly the same reason this class exists at all.
+        ///
+        /// The PREFAB rather than the model in the player's hand, and that is the useful choice:
+        /// the prefab is the object SagaItems clones, so its renderers and materials are the ones
+        /// a tint would have to write to. Chasing VisEquipment's instantiated copy would measure
+        /// something we do not modify.
+        ///
+        /// The right hand first, then whatever counts as the current weapon - so probing a shield
+        /// means holding it and looking at nothing in particular.
+        /// </remarks>
+        public static GameObject FindHeldItemPrefab()
+        {
+            try
+            {
+                var player = Player.m_localPlayer;
+                if (player == null) return null;
+
+                // The public accessors: m_rightItem and m_leftItem are protected on Humanoid.
+                var item = player.RightItem ?? player.GetCurrentWeapon();
+                return item == null ? null : item.m_dropPrefab;
+            }
+            catch { return null; }
+        }
+
+        /// <summary>
         /// The creature the player is looking at.
         ///
         /// Deliberately NOT a physics raycast. A raycast needs a layer mask to avoid stopping on

@@ -102,6 +102,65 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         public const int StormwardLightCost = 3;
 
+        // ------------------------------------------------------------------ the Stormsworn set
+        //
+        // One piece per act, Acts II to V, each answering the thing that act kills people with.
+        // Requested as "a quest line to collect storm armor and limit to one per act", and the
+        // shape is the answer to the one real question in it: what are the pieces FOR?
+        //
+        // Five pieces of +armour would be a grind with a story on top, and a one-per-act limit
+        // would only pace the grind. So each piece instead resists its OWN act's named threat, the
+        // way the Stormward resists Eikthyr's lightning and the Breaker's weight. The set then is
+        // not a stat total but a record of what the run survived, and it is worth wearing into a
+        // later act precisely because of where it was made.
+        //
+        // The Stormward is the first piece of it, retroactively - lightning and blunt, Act I. What
+        // follows covers poison, frost and fire, and Valheim adds resistances across equipped items
+        // by itself, so the full kit IS the set bonus. No m_setStatusEffect: that wants a
+        // StatusEffect asset this build cannot verify, and an invisible set bonus is worse than an
+        // honest one made of parts.
+        //
+        // Deliberately no rescued lights in these recipes. Lights come from the deer hunt and the
+        // couriers - Acts I and II only (PollLights) - so a light cost in Act IV would be a step
+        // nobody could finish, and a CollectItem step that cannot be finished is a stalled act.
+        public const string StormHelmPrefab   = "Saga_StormHelm";
+        public const string StormChestPrefab  = "Saga_StormChest";
+        public const string StormLegsPrefab   = "Saga_StormLegs";
+        public const string StormCapePrefab   = "Saga_StormCape";
+
+        public const string StormHelmName  = "Stormsworn helm";
+        public const string StormChestName = "Stormsworn cuirass";
+        public const string StormLegsName  = "Stormsworn greaves";
+        public const string StormCapeName  = "Stormsworn mantle";
+
+        /// <summary>
+        /// One resistance and a tier-appropriate armour value, for a Stormsworn piece.
+        /// </summary>
+        /// <remarks>
+        /// Resistant, never VeryResistant or Immune: the saga does not hand out a fight that cannot
+        /// hurt you, and four pieces of Resistant already add up to something the player will feel.
+        /// The armour numbers sit a little above the tier the piece is cloned from, which is what
+        /// makes it worth the detour without making the act's own smithing pointless.
+        /// </remarks>
+        private static Action<ItemDrop.ItemData.SharedData> StormPiece(
+            float armor, float armorPerLevel, HitData.DamageType resist)
+        {
+            return shared =>
+            {
+                shared.m_armor = armor;
+                shared.m_armorPerLevel = armorPerLevel;
+
+                shared.m_damageModifiers = new List<HitData.DamageModPair>
+                {
+                    new HitData.DamageModPair
+                    {
+                        m_type = resist,
+                        m_modifier = HitData.DamageModifier.Resistant,
+                    },
+                };
+            };
+        }
+
         /// <summary>
         /// The bow's damage, SET rather than added to whatever the source prefab happened to carry.
         /// </summary>
@@ -228,6 +287,64 @@ namespace ICanShowYouTheWorld.RunMode
             // ItemType.Material, with a glow of its own and an icon that reads at a glance. The
             // fallbacks are only there because the source is asset data — a game update that moved
             // it would otherwise take the bow's recipe down with it, silently.
+            // --- The Stormsworn, Acts II to V. See the constants above for why each answers what it
+            //     answers, and why none of them asks for light.
+
+            new SagaItemDefinition
+            {
+                // Act II, the Black Forest. Blunt, because everything here swings: troll, brute, and
+                // the Elder's own roots. The Stormward already resists blunt, and the two stacking
+                // is the point - you arrive in troll country wearing two things made of trolls.
+                SourcePrefab = "HelmetBronze",
+                SourceFallbacks = new[] { "HelmetIron", "HelmetTrollLeather", "HelmetLeather" },
+                PrefabName = StormHelmPrefab,
+                DisplayName = StormHelmName,
+                Description = "Bronze over troll leather, beaten out at the forge the forest made you " +
+                              "build. Nothing in here goes around what it wants.",
+                Tune = StormPiece(14f, 2f, HitData.DamageType.Blunt),
+            },
+
+            new SagaItemDefinition
+            {
+                // Act III, the Swamp. Poison, which in the fen is not an attack but a climate -
+                // leeches, blobs, and a god made of the stuff.
+                SourcePrefab = "ArmorIronChest",
+                SourceFallbacks = new[] { "ArmorBronzeChest", "ArmorTrollLeatherChest", "ArmorLeatherChest" },
+                PrefabName = StormChestPrefab,
+                DisplayName = StormChestName,
+                Description = "Iron pulled out of standing water, where men who came before you left " +
+                              "it. What killed them is still in the air. It will not get through this.",
+                Tune = StormPiece(24f, 3f, HitData.DamageType.Poison),
+            },
+
+            new SagaItemDefinition
+            {
+                // Act IV, the Mountain. Frost, the one biome where the WEATHER is the enemy and the
+                // drakes are merely agreeing with it.
+                SourcePrefab = "ArmorWolfLegs",
+                SourceFallbacks = new[] { "ArmorIronLegs", "ArmorBronzeLegs", "ArmorLeatherLegs" },
+                PrefabName = StormLegsPrefab,
+                DisplayName = StormLegsName,
+                Description = "Silver and wolf, worked where the cold keeps everything it takes. You " +
+                              "will stop shivering long before the mountain stops trying.",
+                Tune = StormPiece(30f, 4f, HitData.DamageType.Frost),
+            },
+
+            new SagaItemDefinition
+            {
+                // Act V, the Plains. Fire - Yagluth's hand comes down burning, and the growths burn
+                // too. A mantle rather than a fourth plate: the cape slot is the one the vanilla
+                // tiers leave open, so the set finishes without asking the player to give up
+                // anything they already chose.
+                SourcePrefab = "CapeLox",
+                SourceFallbacks = new[] { "CapeWolf", "CapeTrollHide", "CapeDeerHide" },
+                PrefabName = StormCapePrefab,
+                DisplayName = StormCapeName,
+                Description = "Lox hide, cured in a country that burns. The last thing the storm gave " +
+                              "you, and the first thing it asked for nothing in return.",
+                Tune = StormPiece(12f, 2f, HitData.DamageType.Fire),
+            },
+
             new SagaItemDefinition
             {
                 SourcePrefab = "Wisp",

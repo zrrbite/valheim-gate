@@ -149,6 +149,62 @@ namespace ICanShowYouTheWorld.RunMode
                 TaughtLine = "It is down, and its hide is yours. Improve your bench, and it will show you " +
                              "what to bind the rest into."
             },
+
+            // --- The Stormsworn, one piece per act. See SagaItems for what each resists and why
+            //     none of them asks for light.
+            //
+            // Each is gated on the step of its own act that PROVES the player has the materials
+            // and the station: bronze forged, iron carried, silver carried, a berserker down. So
+            // the bench learns the shape at the moment the shape is makeable, which is the same
+            // rule Thor's bow follows and the reason the gate is a step rather than an item.
+
+            new SagaRecipeDefinition
+            {
+                Id = "storm-helm",
+                ResultPrefab = SagaItems.StormHelmPrefab,
+                StationPrefab = "forge",
+                MinStationLevel = 1,
+                Resources = new[] { ("Bronze", 8), ("TrollHide", 6), ("Coal", 10) },
+                RequiresStepDone = "bf-bronze",
+                TaughtLine = "You have made three things in bronze, so the forge will make a fourth. " +
+                             "This one is for what the forest swings.",
+            },
+
+            new SagaRecipeDefinition
+            {
+                Id = "storm-chest",
+                ResultPrefab = SagaItems.StormChestPrefab,
+                StationPrefab = "forge",
+                MinStationLevel = 2,
+                Resources = new[] { ("Iron", 12), ("Guck", 6), ("LeatherScraps", 10) },
+                RequiresStepDone = "sw-ironbar",
+                TaughtLine = "Iron out of standing water. Improve the forge and it will keep the fen " +
+                             "out of you, which is more than the men who left it managed.",
+            },
+
+            new SagaRecipeDefinition
+            {
+                Id = "storm-legs",
+                ResultPrefab = SagaItems.StormLegsPrefab,
+                StationPrefab = "forge",
+                MinStationLevel = 3,
+                Resources = new[] { ("Silver", 14), ("WolfPelt", 6), ("WolfFang", 4) },
+                RequiresStepDone = "mt-silver",
+                TaughtLine = "Silver, and the wolves that were standing on it. The mountain will go on " +
+                             "trying; you will stop noticing.",
+            },
+
+            new SagaRecipeDefinition
+            {
+                Id = "storm-cape",
+                ResultPrefab = SagaItems.StormCapePrefab,
+                StationPrefab = "piece_workbench",
+                MinStationLevel = 3,
+                Resources = new[] { ("LoxPelt", 4), ("Needle", 10), ("Silver", 6) },
+                RequiresStepDone = "pl-berserker",
+                TaughtLine = "The last of it. Lox hide, cured in a country that burns — and this piece " +
+                             "asks nothing back.",
+            },
         };
 
         /// <summary>The database the recipes were last registered on. Compared by reference only.</summary>

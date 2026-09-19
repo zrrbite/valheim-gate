@@ -17,7 +17,7 @@ Standing context for the Windows side:
 
 ---
 
-## 2026-09-19 - THE TEST LIST for 1.0.15-run.2026-09-19o
+## 2026-09-20 - THE TEST LIST for 1.0.15-run.2026-09-20
 
 Ten builds stacked up in one afternoon, so this is all of them as ONE pass, ordered by when you
 meet each thing rather than by build number. The per-build TASK entries below keep the reasoning;
@@ -31,7 +31,7 @@ replaced. Quit Valheim and run `.\dist\windows\Install-Mod.ps1 -ModOnly`, then r
 - [ ] Launch and **do not open Credits**. There should be **no popup at all** - that is the change
       in `...19k`. Silence is success.
 - [ ] Under the menu's own version line, a single gold line at 70% size and **not overlapping**:
-      `SAGA v1.0.15-run.2026-09-19o`. That line is now the ONLY proof the mod loaded, so if it is
+      `SAGA v1.0.15-run.2026-09-20`. That line is now the ONLY proof the mod loaded, so if it is
       missing, the mod is not in.
 - [ ] Load the character carrying **Thor's bow**. Still there. Save, quit to desktop, come back:
       still there. No `Failed to find item prefab` in the log.
@@ -86,6 +86,16 @@ replaced. Quit Valheim and run `.\dist\windows\Install-Mod.ps1 -ModOnly`, then r
 - [ ] **Die on purpose.** A line says your things are where you fell, the HUD shows
       `Where you fell  [PgDn]`, and `PageDown` gates you back. It goes on a 4-minute cooldown, and
       the offer DISAPPEARS once you have walked within 12m of the spot.
+- [ ] **The Stormsworn set exists from Act II on.** You cannot reach it in a short session, so the
+      cheap check is the LOG at run start: no `] Unknown` lines, and four
+      `Saga item created: Saga_Storm... from X` lines naming the mesh each piece resolved to.
+      If a source prefab did not resolve, the fallback chain says so there.
+- [ ] Also in the log, once you are in Act II: `Saga recipe registered: Saga_storm-helm -> ...`.
+      A `station prefab 'forge' has no CraftingStation` error would mean I guessed that name wrong -
+      it is the one name in this batch I could not verify from the codebase.
+- [ ] **`PageUp` now probes the item in your hands** when you are not looking at a creature. Hold
+      Thor's bow, press it, and check `ICSYTW_probe.txt` lists its renderers and shader properties.
+      That report is what the glow gets written from next.
 - [ ] **Hear the raven out** - Hugin lands and states the errand.
 - [ ] **Hunt a deer by daylight** - nothing rises, and the line says why.
 - [ ] **Keep a watch after dark** - three whispers. The strip should tell you to wait for dark, and
@@ -131,6 +141,67 @@ default is **2.5** - the file wins over the code, so you have been playing a mon
 regen. Thirty-four newer settings are absent from it entirely and running on code defaults, which
 is correct behaviour but means they cannot be TUNED without adding the lines by hand. Ask and I
 will either add the keys or make `Load()` re-save so no future setting is invisible.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
+---
+
+## 2026-09-20 - TASK: 1.0.15-run.2026-09-20 - the Stormsworn
+
+Built on "use your best judgement", so here is the judgement, which is the part worth arguing with.
+
+### What the pieces are FOR
+
+Five pieces of +armour would have been a grind with a story bolted on, and a one-per-act limit would
+only have paced the grind. So each piece answers the thing its OWN act kills people with:
+
+| Act | Piece | Answers | Cloned from | Gated on |
+|---|---|---|---|---|
+| I | Stormward (shield, already shipped) | Lightning, Blunt | ShieldSerpentscale | `mq-troll` |
+| II Black Forest | Stormsworn helm | Blunt | HelmetBronze | `bf-bronze` |
+| III Swamp | Stormsworn cuirass | Poison | ArmorIronChest | `sw-ironbar` |
+| IV Mountain | Stormsworn greaves | Frost | ArmorWolfLegs | `mt-silver` |
+| V Plains | Stormsworn mantle | Fire | CapeLox | `pl-berserker` |
+
+The set is then not a stat total but a record of what the run survived, and each piece is worth
+wearing into a later act precisely because of where it was made. The Stormward becomes the first
+piece of it retroactively, which is why the Act II step opens with "the storm gave you a shield.
+That was the first piece."
+
+Valheim adds resistances across equipped items by itself, so the full kit IS the set bonus. No
+`m_setStatusEffect`: that wants a StatusEffect asset this build cannot verify, and an invisible set
+bonus is worse than an honest one made of parts. All four are `Resistant`, never `VeryResistant` -
+four pieces already add up to something the player will feel, and the saga does not hand out a fight
+that cannot hurt you.
+
+### Two decisions with a failure mode behind them
+
+**No rescued lights in any of these recipes**, though the symmetry begs for it. Lights come from the
+deer hunt and the couriers, which `PollLights` restricts to Acts I and II - so a light cost in Act IV
+would be a `CollectItem` step nobody could finish, and an unfinishable step is a stalled act. The
+same reasoning that made Act I's bow safe makes this unsafe.
+
+**And no Guck in the Act V cape**, which the first draft had. Guck is a Swamp item and the cape is an
+Act V craft: asking for it there is asking the player to have hoarded two acts back. Needles are what
+the Plains drops.
+
+Each gate is a step that PROVES the materials and the station are in hand - bronze forged, iron
+carried, silver carried, a berserker down - so the bench learns the shape at the moment the shape is
+makeable. Hugin announces each one, through the `TaughtLine` machinery from `...19n`.
+
+### The probe now reads items
+
+`PageUp` falls back to the prefab of whatever is in your hands when you are looking at no creature.
+The PREFAB, not VisEquipment's instantiated copy, and that is the useful choice: the prefab is the
+object `SagaItems` clones, so its renderers and materials are the ones a tint would write to.
+
+That is the groundwork for the glow, which is the real answer to "the models are a bit simple" - a
+mesh swap is a different plain mesh, while a tint and a self-lit emission is the trick
+`CreatureDressing` already plays on creatures. It is not written yet because a shader property name
+that does not exist fails SILENTLY, which is the one class of bug this mode keeps paying play
+sessions to find. One probe run and it can be written from measurement.
 
 ### RESULTS (Windows side appends here)
 

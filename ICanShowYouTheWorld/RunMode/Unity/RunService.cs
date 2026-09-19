@@ -2338,10 +2338,14 @@ namespace ICanShowYouTheWorld.RunMode
                 // to a GM command that the run's input gate blocks rather than frees.
                 try
                 {
-                    var target = CreatureProbe.FindTarget();
+                    // The creature in view, or - looking at nothing - the thing in your hands.
+                    // The fallback is how the saga's own ITEMS get measured: a tint and a glow on
+                    // Thor's bow needs its shader property NAMES, and a wrong one there fails
+                    // silently rather than loudly. Same reason the probe exists for creatures.
+                    var target = CreatureProbe.FindTarget() ?? CreatureProbe.FindHeldItemPrefab();
                     if (target == null)
                     {
-                        DevMessage("DEV: no creature in view to probe.");
+                        DevMessage("DEV: nothing to probe - look at a creature, or hold an item.");
                     }
                     else
                     {
@@ -7909,6 +7913,17 @@ namespace ICanShowYouTheWorld.RunMode
                 Target = 3, Display = "Forge three things in bronze", RewardText = "Bronze for armour",
                 Hint = "Copper and tin smelted together, then forged at a workbench.",
             },
+            // The act's saga item, and the second piece of the Stormsworn. One per act from here to
+            // the Plains - see SagaItems for why each resists what its own act kills people with.
+            new ChallengeDefinition
+            {
+                Id = "bf-storm", MainQuest = true, Kind = ChallengeKind.CollectItem,
+                Param = SagaItems.StormHelmName, Target = 1,
+                Display = "Beat out the Stormsworn helm",
+                RewardText = "Coal and leather for what comes after",
+                Hint = "At the forge: 8 bronze, 6 troll hide, 10 coal. It answers everything here that swings.",
+                Opening = "The storm gave you a shield. That was the first piece. There is one waiting in every land left.",
+            },
             new ChallengeDefinition
             {
                 // The act where the run stops being about one base. A portal is the other half of
@@ -8139,6 +8154,15 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
+                Id = "sw-storm", MainQuest = true, Kind = ChallengeKind.CollectItem,
+                Param = SagaItems.StormChestName, Target = 1,
+                Display = "Rivet the Stormsworn cuirass",
+                RewardText = "Iron enough to finish it, and mead",
+                Hint = "An IMPROVED forge: 12 iron, 6 guck, 10 leather scraps. The fen stops getting into you.",
+                Opening = "Third piece. The men who left this iron in the water did not have one.",
+            },
+            new ChallengeDefinition
+            {
                 // The swamp's named horror, and the fight that proves the iron. Root armour is
                 // its drop, which is the swamp's own answer to the swamp.
                 //
@@ -8241,6 +8265,15 @@ namespace ICanShowYouTheWorld.RunMode
                 Hint = "Silver hides underground — the wishbone finds it. Dig where it rattles.",
                 Opening = "Nothing up here has moved in an age. Whatever the mountain was keeping, it is under your feet.",
             },
+            new ChallengeDefinition
+            {
+                Id = "mt-storm", MainQuest = true, Kind = ChallengeKind.CollectItem,
+                Param = SagaItems.StormLegsName, Target = 1,
+                Display = "Work the Stormsworn greaves",
+                RewardText = "Silver and a warm meal",
+                Hint = "A forge at level 3: 14 silver, 6 wolf pelt, 4 wolf fang. The cold stops mattering.",
+                Opening = "Fourth piece, and the cold is the easiest thing it will ever have to keep out.",
+            },
             // The golems and fenrings are clauses of "mt-cull" above now.
             new ChallengeDefinition
             {
@@ -8302,6 +8335,15 @@ namespace ICanShowYouTheWorld.RunMode
                 RewardText = "Yagluth's summons",
                 Hint = "Two-handed and unstoppable. Take the totem from what is left.",
                 Opening = "They are still keeping a quota. Nothing has been harvested here in an age, and nobody has told them that either.",
+            },
+            new ChallengeDefinition
+            {
+                Id = "pl-storm", MainQuest = true, Kind = ChallengeKind.CollectItem,
+                Param = SagaItems.StormCapeName, Target = 1,
+                Display = "Cure the Stormsworn mantle",
+                RewardText = "Provisions, and nothing asked back",
+                Hint = "A workbench at level 3: 4 lox pelt, 10 needles, 6 silver. The last piece of the set.",
+                Opening = "The last piece. Wear all of it into what is left — that is what it was for.",
             },
             new ChallengeDefinition
             {
@@ -8601,6 +8643,7 @@ namespace ICanShowYouTheWorld.RunMode
                 ["bf-sign"] = new[] { ("Wood", 30), ("Resin", 20) },
                 ["bf-haldor"] = new[] { ("Coins", 300) },
                 ["bf-bronze"] = new[] { ("Bronze", 10), ("ArrowBronze", 40) },
+                ["bf-storm"] = new[] { ("Coal", 20), ("LeatherScraps", 20), ("MeadHealthMedium", 3) },
                 ["bf-cull"] = new[] { ("ShieldBronzeBuckler", 1), ("ArrowBronze", 40), ("Resin", 30), ("MeadHealthMedium", 4) },
                 ["bf-brute"] = new[] { ("ArmorRootChest", 1), ("ArmorRootLegs", 1) },
                 // The seeds are the point, and since bf-find stopped paying them too they are now
@@ -8628,6 +8671,7 @@ namespace ICanShowYouTheWorld.RunMode
                 ["sw-scrap"] = new[] { ("Coal", 30), ("IronNails", 40) },
                 ["sw-fermenter"] = new[] { ("Honey", 20), ("Thistle", 20) },
                 ["sw-chart"] = new[] { ("Bronze", 10), ("BoneFragments", 20) },
+                ["sw-storm"] = new[] { ("Iron", 10), ("MeadHealthMedium", 4) },
                 ["sw-ironbar"] = new[] { ("Iron", 20), ("Coal", 30) },
                 ["sw-abom"] = new[] { ("MeadHealthMedium", 4), ("Sausages", 10) },
                 // Carries sw-karve's old payout as well — see the note beside sw-sail's definition.
@@ -8638,9 +8682,11 @@ namespace ICanShowYouTheWorld.RunMode
                 ["mt-cull"] = new[] { ("ArmorWolfChest", 1), ("ArmorWolfLegs", 1), ("ArrowFrost", 40), ("DragonTear", 2), ("DragonEgg", 3) },
                 ["mt-golem"] = new[] { ("Crystal", 10), ("SwordSilver", 1) },
                 ["mt-silver"] = new[] { ("Silver", 30), ("Coal", 30) },
+                ["mt-storm"] = new[] { ("Silver", 10), ("WolfMeatSkewer", 5) },
                 ["mt-moder"] = new[] { ("DragonTear", 5) },
 
                 ["pl-arrive"] = new[] { ("ArmorPaddedCuirass", 1), ("ArmorPaddedGreaves", 1) },
+                ["pl-storm"] = new[] { ("LoxPie", 5), ("MeadHealthMedium", 5) },
                 ["pl-cull"] = new[] { ("BlackMetal", 20), ("ArrowNeedle", 40), ("SwordBlackmetal", 1), ("LoxMeat", 10), ("CapeLox", 1) },
                 ["pl-berserker"] = new[] { ("GoblinTotem", 5) },
                 ["pl-windmill"] = new[] { ("Barley", 30), ("BarleyFlour", 20) },

@@ -249,7 +249,14 @@ answer, practised before it was taught. Act VII spends it.
 - **The Gatherer** — the oldest splinter, named, arrives fed by your failures,
   drops its hoard on death.
 - **The Stormward** — Act I's shield. Troll hide, deer hide and three rescued
-  lights; the storm goes around it.
+  lights; the storm goes around it. Also the FIRST piece of the Stormsworn.
+- **The Stormsworn** (2026-09-20) — one piece of armour per act, Acts II to V,
+  each answering what its own act kills people with: blunt in the forest, poison
+  in the fen, frost on the mountain, fire in the plains. Not a stat total but a
+  record of what the run survived — which is why a piece is worth wearing into
+  a later act, and why a skipped act leaves a hole in the set you can see.
+  Deliberately costs no rescued lights: lights are Acts I and II only, and a
+  craft nobody can finish is a stalled act.
 - **The Breaker** — a troll out of the forest. The one thing that breaks light
   instead of carrying it. Losable, timed, and the only fight the forest joins.
 - **Splinters** — greydwarves: deadwood animated by the Elder, starving
