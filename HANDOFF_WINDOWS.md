@@ -17,19 +17,22 @@ Standing context for the Windows side:
 
 ---
 
-## 2026-09-19 - THE TEST LIST for 1.0.15-run.2026-09-19j
+## 2026-09-19 - THE TEST LIST for 1.0.15-run.2026-09-19k
 
 Ten builds stacked up in one afternoon, so this is all of them as ONE pass, ordered by when you
 meet each thing rather than by build number. The per-build TASK entries below keep the reasoning;
 this is the list to play with.
 
-Installed already. Nothing here needs a pull.
+**`...19k` needs an install** - the game was running when it was built, so the DLL could not be
+replaced. Quit Valheim and run `.\dist\windows\Install-Mod.ps1 -ModOnly`, then relaunch.
 
 ### Before you load a character
 
-- [ ] Launch and **do not open Credits**. The version popup appears at the main menu on its own,
-      reading **v1.0.15-run.2026-09-19j**.
-- [ ] Under the menu's own version line: a gold **VALHEIM: THE SAGA** line with that build.
+- [ ] Launch and **do not open Credits**. There should be **no popup at all** - that is the change
+      in `...19k`. Silence is success.
+- [ ] Under the menu's own version line, a single gold line at 70% size and **not overlapping**:
+      `SAGA v1.0.15-run.2026-09-19k`. That line is now the ONLY proof the mod loaded, so if it is
+      missing, the mod is not in.
 - [ ] Load the character carrying **Thor's bow**. Still there. Save, quit to desktop, come back:
       still there. No `Failed to find item prefab` in the log.
 - [ ] Quit to the main menu from inside a world: exactly **one** popup per launch, and a GM hotkey
@@ -89,6 +92,30 @@ default is **2.5** - the file wins over the code, so you have been playing a mon
 regen. Thirty-four newer settings are absent from it entirely and running on code defaults, which
 is correct behaviour but means they cannot be TUNED without adding the lines by hand. Ask and I
 will either add the keys or make `Load()` re-save so no future setting is invisible.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
+---
+
+## 2026-09-19 - TASK: 1.0.15-run.2026-09-19k - the menu, tidied
+
+Two things from the first launch of the test run, both yours.
+
+**No popup on success.** It only appears if initialisation FAILED now. A dialog to dismiss on every
+launch is a toll for something that worked, and the menu's version line already says the mod is in.
+The failure popup is also more robust than it was: if the popup system is not live yet the notice
+is queued instead of dropped.
+
+**The overlapping text is fixed.** The cause was mine: the appended line read
+"VALHEIM: THE SAGA  v1.0.15-run.2026-09-19j" at full size, which is LONGER than the game's own
+"Version 1.0.15 (n-40)", so TMP wrapped it to a third line and the block overflowed its rect and
+drew over itself. It now reads `SAGA v1.0.15-run.2026-09-19k` on one line at 70% size - comfortably
+narrower than the line above it - and word wrapping is turned off on that label as belt and braces.
+
+Note the consequence: with the popup gone, **that line is the only proof the mod loaded**. If it is
+absent, the mod is not in - check the log for `Could not brand the menu version label`.
 
 ### RESULTS (Windows side appends here)
 

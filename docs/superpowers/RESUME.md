@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-09-19 at `1.0.15-run.2026-09-19j`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-09-19 at `1.0.15-run.2026-09-19k`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -21,7 +21,7 @@ Everything below is what that file tells it.
 
 - Branch **`feature/run-mode`**, not merged, deliberately — the mode is still
   being tuned in play.
-- Latest tag **`1.0.15-run.2026-09-19j`**; builds are date-based since 2026-08-31
+- Latest tag **`1.0.15-run.2026-09-19k`**; builds are date-based since 2026-08-31
   (`Scripts/nextversion.sh`). The game moved to **1.0.12 on 2026-09-12** and to
   **1.0.15 on 2026-09-19**; both times the mod was rebuilt and installed on Windows
   the same day. **1.0.15 needed no source change** — all 316 member references from
@@ -784,7 +784,19 @@ places ask about it (spawner, death hook, clock, recipe gate).
 
 Act I is 21 questline steps; saga questline heat 54.
 
-Waiting on the owner's play-test of `1.0.15-run.2026-09-19j` - see the TASK entry in
+**`...-19k` tidied the main menu**, both from the first launch of the test run. The success popup
+is gone (owner: "I guess we dont need to show the popup except if something fails when the mod is
+loaded") - it appears only on a failed initialisation now, and that path queues the notice rather
+than dropping it when the popup system is not yet live.
+
+And the badge overlapped itself, with a screenshot to prove it. The cause was the line being
+LONGER than the game's own "Version 1.0.15 (n-40)": TMP wrapped it to a third line and the block
+overflowed the label's rect and drew over itself. It is now `SAGA <build>` on one line at 70%,
+narrower than the line above, with word wrapping turned off as belt and braces. **With the popup
+gone that line is the only proof the mod loaded**, so keeping it short is a correctness
+requirement rather than taste.
+
+Waiting on the owner's play-test of `1.0.15-run.2026-09-19k` - see the TASK entry in
 [`../../HANDOFF_WINDOWS.md`](../../HANDOFF_WINDOWS.md). Beyond the entry point itself,
 still unverified from 12-13 September: Thor's bow on the bench after paying the shade
 and its flash on impact, the shade's greeting and its "[E] Speak" prompt, the saga

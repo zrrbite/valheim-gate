@@ -5,13 +5,16 @@ using UnityEngine;
 namespace ICanShowYouTheWorld
 {
     /// <summary>
-    /// "VALHEIM: THE SAGA" and the build version, appended to the game's own version line on
-    /// the main menu.
+    /// "SAGA" and the build version, appended to the game's own version line on the main menu.
     ///
     /// The mod loads itself at startup now, which is the point — and it also means there is
-    /// nothing to DO that proves it worked. The activation popup says so once and is then
-    /// dismissed forever; the log says so where nobody is looking. This is the standing answer
-    /// to "is it loaded?", in the one place on the menu where a version already lives.
+    /// nothing to DO that proves it worked. This is the standing answer to "is it loaded?", in
+    /// the one place on the menu where a version already lives.
+    ///
+    /// Since 2026-09-19 it is the ONLY answer: the activation popup was removed on the owner's
+    /// call ("I guess we dont need to show the popup except if something fails"), because a
+    /// dialog to dismiss on every launch is a toll for something that worked. That makes this
+    /// line load-bearing rather than decorative.
     ///
     /// Not an IMGUI overlay, deliberately: the game's label is already placed, already styled,
     /// already scaled to the resolution, and already where a player looks for a version. An
@@ -27,7 +30,17 @@ namespace ICanShowYouTheWorld
         // because this sits on the menu's artwork, not on the dark parchment the mid gold was
         // picked against.
         private const string Gold = "F7D65D";
-        private const string Title = "VALHEIM: THE SAGA";
+        /// <summary>
+        /// Short on purpose. The first version of this appended "VALHEIM: THE SAGA  v1.0.15-run..."
+        /// at full size, which is LONGER than the game's own "Version 1.0.15 (n-40)" — so TMP
+        /// wrapped it onto a third line and the block overflowed its rect and drew on top of
+        /// itself (owner, with a screenshot: "the mod-text in the bottom right is on top of each
+        /// other").
+        ///
+        /// The fix is not a bigger rect, which is not ours to resize: it is one line that cannot
+        /// wrap. "SAGA" plus the build, at 70%, is comfortably narrower than the line above it.
+        /// </summary>
+        private const string Title = "SAGA";
 
         private static object _label;          // the TMP_Text component, per FejdStartup
         private static PropertyInfo _textProp;
@@ -88,7 +101,24 @@ namespace ICanShowYouTheWorld
 
         private static string BadgeLine()
         {
-            return $"\n<color=#{Gold}>{Title}</color>  v{ModVersion.VERSION}";
+            return $"\n<size=70%><color=#{Gold}>{Title} v{ModVersion.VERSION}</color></size>";
+        }
+
+        /// <summary>Sets a property if this build of TMP has it. Silent either way.</summary>
+        private static void TrySet(object target, string property, object value)
+        {
+            try
+            {
+                var prop = target.GetType().GetProperty(property, BindingFlags.Instance | BindingFlags.Public);
+                if (prop == null || !prop.CanWrite) return;
+
+                object coerced = prop.PropertyType.IsEnum
+                    ? Enum.ToObject(prop.PropertyType, value)
+                    : Convert.ChangeType(value, prop.PropertyType);
+
+                prop.SetValue(target, coerced, null);
+            }
+            catch { /* the line is short enough without it */ }
         }
 
         private static bool Resolve(FejdStartup fejd)
@@ -108,6 +138,13 @@ namespace ICanShowYouTheWorld
 
             _label = label;
             _textProp = prop;
+
+            // Belt and braces for the wrap. The line is already short enough not to need it, but a
+            // longer version string one day would put the overlap straight back, and this costs one
+            // reflective set that is allowed to fail.
+            TrySet(label, "enableWordWrapping", false);
+            TrySet(label, "textWrappingMode", 0);   // TMP renamed it; 0 is NoWrap in both
+
             return true;
         }
     }

@@ -27,8 +27,8 @@ From this folder, in PowerShell:
 .\Install-Mod.ps1
 ```
 
-Then just start Valheim — since 2026-09-19 the mod loads itself at startup, and the
-version popup appears at the main menu on its own. **The installer prints the exact
+Then just start Valheim — since 2026-09-19 the mod loads itself at startup. There is no
+popup unless something failed; the main menu's version line is where it says so. **The installer prints the exact
 version the popup should read**, taken from the DLL it just installed, so it is right on
 every build rather than whatever was current when this page was written.
 
@@ -37,7 +37,7 @@ second line in gold —
 
 ```
 Version 1.0.15 (n-40)
-VALHEIM: THE SAGA  v1.0.15-run.2026-09-19
+SAGA v1.0.15-run.2026-09-19k
 ```
 
 That is the standing answer. The popup says the same thing once and is then dismissed

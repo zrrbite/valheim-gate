@@ -17,8 +17,8 @@ So: one minute here saves an evening.
 ## Do this
 
 1. Start Valheim. The mod loads itself at startup — no Credits visit needed. The main
-   menu's version line should carry a gold **VALHEIM: THE SAGA** line under it; that is
-   the quickest proof the mod is in, and it names the build.
+   menu's version line should carry a gold **SAGA <build>** line under it. With the success
+   popup gone that is the only proof the mod is in, and it names the build.
 2. Check the version popup says the tag you just installed.
 3. **Start a run** — the check runs at run start, not at game start.
 4. Alt-tab out and run the command below in PowerShell.

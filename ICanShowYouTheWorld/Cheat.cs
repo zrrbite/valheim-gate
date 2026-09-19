@@ -21,11 +21,16 @@ namespace ICanShowYouTheWorld
     {
         private static bool _initialized;
 
-        // The activation popup, waiting for somewhere to appear. UnifiedPopup.instance is
-        // assigned in its OnEnable, so a Push from the entry point can land before the
-        // component is live and be swallowed into a log error. CheatController.Update
-        // drains this on the first frame UnifiedPopup.IsAvailable() says yes — one code
-        // path, correct whichever method the Patcher injected into.
+        // A popup waiting for somewhere to appear. UnifiedPopup.instance is assigned in its
+        // OnEnable, so a Push from the entry point can land before the component is live and be
+        // swallowed into a log error; CheatController.Update drains this on the first frame
+        // UnifiedPopup.IsAvailable() says yes.
+        //
+        // FAILURES ONLY, since 2026-09-19 (owner: "I guess we dont need to show the popup except
+        // if something fails when the mod is loaded"). A dialog to dismiss on every launch is a
+        // toll for something that worked, and the menu's own version line now says the mod is
+        // loaded without asking for a click. A failure still gets one, because that is the case
+        // nobody should be able to miss.
         internal static string PendingPopup;
 
         public static void Run()
@@ -70,24 +75,30 @@ namespace ICanShowYouTheWorld
                 };
                 msgLines.AddRange(loaded);
 
-                // 5) Queue the popup for the first frame that can show one
-                PendingPopup = string.Join("\n", msgLines);
-                UnityEngine.Debug.Log($"[ICanShowYouTheWorld] Loaded mod v{version}.");
+                // 5) Report it where reporting belongs: the log, and the menu's version line.
+                // No popup on success — see PendingPopup.
+                UnityEngine.Debug.Log($"[ICanShowYouTheWorld] {string.Join(" | ", msgLines)}");
             }
             catch (Exception e)
             {
                 UnityEngine.Debug.LogError($"[ICanShowYouTheWorld] Initialization FAILED: {e}");
 
-                // The failure is the case that has to be impossible to miss, and it cannot
-                // rely on CheatController existing to show it.
+                // The failure is the case that has to be impossible to miss. Pushed directly when
+                // the popup system is already live, and QUEUED when it is not — but the queue is
+                // drained by CheatController, which a failed initialisation may never have created,
+                // so the direct attempt comes first and the queue is only the fallback.
                 try
                 {
+                    string notice = $"Mod failed to load:\n{e.Message}";
+
                     if (UnifiedPopup.IsAvailable())
                         UnifiedPopup.Push(new WarningPopup(
                             "ICanShowYouTheWorld",
-                            $"Mod failed to load:\n{e.Message}",
+                            notice,
                             () => UnifiedPopup.Pop()
                         ));
+                    else
+                        PendingPopup = notice;
                 }
                 catch { /* the game is more important than the notice */ }
             }

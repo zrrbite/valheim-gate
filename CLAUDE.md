@@ -260,14 +260,15 @@ game version. All installs must be on the same game version — the deploy
 scripts enforce this with a version guard (`Scripts/game_version.sh`, which
 reads the version out of the assembly's IL).
 
-**Activation** (all platforms): start Valheim. The mod loads itself at startup; a popup at
-the main menu reports the version. Visiting Credits is no longer required (and does
-nothing but log a line).
+**Activation** (all platforms): start Valheim. The mod loads itself at startup and says so on
+the main menu's own version line. Visiting Credits is no longer required (and does nothing but
+log a line). There is **no popup on success** — only if initialisation failed.
 
-**Is it loaded?** The main menu's own version line carries a gold `VALHEIM: THE SAGA` line
-with the build under it (`MenuBadge.cs`, appended to `FejdStartup.m_versionLabel` by
-reflection — the mod does not reference TextMeshPro). The popup answers once and is then
-gone; this answers whenever anyone asks.
+**Is it loaded?** The main menu's own version line carries a gold `SAGA <build>` line under it
+(`MenuBadge.cs`, appended to `FejdStartup.m_versionLabel` by reflection — the mod does not
+reference TextMeshPro). Since the success popup was removed this is the ONLY answer, which is
+why the line is kept SHORTER than the game's own: a longer one wraps, and a wrapped one
+overflows the label's rect and draws on top of itself.
 
 ### Steam Deck (Linux)
 
