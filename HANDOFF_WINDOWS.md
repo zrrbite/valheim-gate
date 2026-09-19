@@ -17,6 +17,52 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-19 — TASK: 1.0.15-run.2026-09-19 — the mod loads itself now
+
+Built and installed on this box already (full `.\Install-Mod.ps1`, not `-ModOnly` — the
+Patcher changed). Just play it.
+
+**Valheim updated to 1.0.15 today at 12:25** and Steam put a vanilla assembly back, which
+is why nothing loaded before this build. Unity is unchanged at 6000.0.75, and 1.0.15 broke
+nothing the mod calls: all 316 member references from the built DLL into the game's
+assemblies still resolve, and the rebuild needed no source change.
+
+**1. The mod loads at startup — do NOT open Credits.** That is the whole test. The version
+popup should appear at the main menu on its own and read **v1.0.15-run.2026-09-19**.
+
+Why it moved: a saga item is only known to the game while the mod is loaded, so loading a
+character before visiting Credits left Thor's bow an unresolved prefab name. Valheim drops
+it from the pack and the next save writes it gone, silently. The entry point is now
+`FejdStartup.Start()` as well as `OnCredits`.
+
+**What to check, in order:**
+
+1. Launch the game. Popup at the main menu, right version, without touching Credits.
+2. **Load the character carrying Thor's bow** — straight in, no Credits visit. The bow must
+   still be there. Then save, quit to desktop, come back, and check it is still there.
+   In `Player.log` there must be **no** `Failed to find item prefab`.
+3. **Quit to the main menu from inside a world.** The start scene reloads and calls the
+   entry point again, which should log a line and do nothing else — no second popup. Then
+   press a GM hotkey once and make sure it fires ONCE (a doubled command registry would
+   double-fire, which is what a lapsed guard would look like).
+4. **Open Credits deliberately.** A log line, no dialog, nothing breaks.
+5. Then the four builds still without a verdict from 12-13 September: Thor's bow on the
+   bench after paying the shade and the flash on impact, the shade's greeting and its
+   "[E] Speak" prompt, the saga dreams, and raids arriving as beats.
+
+The log line to grep for either way:
+
+```powershell
+Select-String -Path "$env:USERPROFILE\AppData\LocalLow\IronGate\Valheim\Player.log" `
+    -Pattern 'ICanShowYouTheWorld|Failed to find item prefab'
+```
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
+---
+
 ## 2026-08-18 — FROM MAC: diagnosis confirmed, alpha3 incoming — no action yet
 
 Your evidence cracked the case completely — the timeline reconstruction and

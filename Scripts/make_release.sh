@@ -111,8 +111,8 @@ INSTALL
   1. Right-click Install-Mod.ps1 and choose "Run with PowerShell".
      If it refuses, open PowerShell as Administrator, cd to this folder,
      and run:  .\\Install-Mod.ps1
-  2. Start Valheim and open the CREDITS menu. That is what loads the mod.
-     A popup should say v$TAG.
+  2. Start Valheim. The mod loads itself at startup; a popup at the main
+     menu should say v$TAG.
   3. Press End in-game to open the Run window, and start a saga.
 
 UNINSTALL

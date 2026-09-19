@@ -93,5 +93,5 @@ print_success "Deployed ICanShowYouTheWorld.dll"
 
 resign_bundle
 
-print_info "Launch Valheim and open the Credits menu to activate the mod."
+print_info "Launch Valheim — the mod loads itself at startup; no Credits visit needed."
 print_info "Roll back any time with: $0 --restore"

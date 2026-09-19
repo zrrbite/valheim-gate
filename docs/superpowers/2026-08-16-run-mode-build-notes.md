@@ -33,7 +33,8 @@ grant, or giving it back would confiscate what they earned.
 
 ## Smoke checklist (Martin, on the Mac)
 
-1. Launch Valheim → Credits → mod loads (log shows RunService registered).
+1. Launch Valheim → mod loads at startup (log shows RunService registered).
+   (Was "→ Credits →" until 2026-09-19, when the entry point moved to FejdStartup.Start.)
 2. `End` → lobby appears; F1 still shows GM windows (no run yet).
 3. Start Run → bosses pinned, timer strip top-center, F1 now shows Heat HUD,
    numpad GM keys dead (try Keypad0 — no god mode, no toast).

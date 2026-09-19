@@ -18,6 +18,14 @@ namespace Patcher
         static readonly string injPath = @"./ICanShowYouTheWorld.dll"; // todo: You might say that this is a stale reference, but it mostly woirks because it already has the required symbols. Maybe change this.
         static readonly string donePath = @"./patched/assembly_valheim.dll";
 
+        // Stamped into the patched assembly so a caller can tell WHICH entry point it was
+        // patched with. Scanning for "NotACheater" only answers "patched at all", which is
+        // why a mod-only install could leave a stale injection sitting in the game.
+        // THREE things look for this name and all three must agree:
+        //   this file, dist/windows/Install-Mod.ps1, Scripts/config.sh (check_injections).
+        // Change the entry point and you change the name — that is the point of it.
+        const string EntryPointMarker = "ICSYTW_EntryPoint_FejdStartup_Start";
+
         static void Main(string[] args)
         {
             // Optional overrides: Patcher.exe [input.dll] [output.dll] [mod.dll]
@@ -60,15 +68,16 @@ namespace Patcher
             var injType = inj.MainModule.Types.Single(t => t.Name == "NotACheater");
             var injMethod = injType.Methods.Single(m => m.Name == "Run");
             var appType = app.MainModule.Types.Single(t => t.Name == "FejdStartup");
-            var appMethod = appType.Methods.Single(m => m.Name == "OnCredits");
 
-            var ipl = appMethod.Body.GetILProcessor();
-            var firstInstruction = ipl.Body.Instructions[0];
-            var injectInstruction = ipl.Create(Mono.Cecil.Cil.OpCodes.Call, app.MainModule.ImportReference(injMethod.Resolve()));
-
-            Console.Write("Patching {0}->{1}.. ", appType.Name, appMethod.Name);
-            ipl.InsertBefore(firstInstruction, injectInstruction);
-            Console.WriteLine("done\n");
+            // Run() is called from Start, not only from OnCredits, because a saga item is
+            // only known to the game while the mod is loaded: load a character without
+            // visiting Credits and Thor's bow is an unresolved name, dropped from the pack,
+            // and the next save writes it gone. Start rather than Awake because every
+            // Awake in the menu scene has run by then — including UnifiedPopup's, which
+            // owns the version popup. OnCredits is kept: the second call is a no-op and it
+            // costs one instruction to leave the old door in the wall.
+            var startMethod = InjectEntryCall(app, appType, "Start", injMethod);
+            var creditsMethod = InjectEntryCall(app, appType, "OnCredits", injMethod);
 
             // Second injection: Character.OnDeath -> GameEvents.CharacterDied(this)
             var charType = app.MainModule.Types.Single(t => t.Name == "Character");
@@ -84,15 +93,59 @@ namespace Patcher
                 app.MainModule.ImportReference(evMethod.Resolve())));
             Console.WriteLine("done");
 
-            Console.WriteLine("Instructions:\n");
-            foreach (var instruction in appMethod.Body.Instructions)
-                Console.WriteLine($"\t{instruction.Offset:X2}: {instruction.OpCode} \"{instruction.Operand}\"");
+            StampEntryPointMarker(app);
 
-            Console.WriteLine("\n");
+            Dump(startMethod);
+            Dump(creditsMethod);
+
             Console.WriteLine("Writing patched library to {0}", outPath);
             app.Write(outPath);
 
             Console.WriteLine("Have fun!");
+        }
+
+        /// <summary>
+        /// Insert a parameterless static call at the very start of one of the game's methods.
+        /// Index 0 is the true method entry for all of our targets — no prologue, nothing
+        /// branching to it — and the lookup is .Single so a renamed method throws here,
+        /// while the patcher is watching, rather than producing a quietly dead mod.
+        /// </summary>
+        static MethodDefinition InjectEntryCall(AssemblyDefinition app, TypeDefinition appType,
+            string methodName, MethodDefinition injMethod)
+        {
+            var appMethod = appType.Methods.Single(m => m.Name == methodName && !m.HasParameters);
+            var ipl = appMethod.Body.GetILProcessor();
+
+            Console.Write("Patching {0}->{1}.. ", appType.Name, appMethod.Name);
+            ipl.InsertBefore(ipl.Body.Instructions[0],
+                ipl.Create(Mono.Cecil.Cil.OpCodes.Call, app.MainModule.ImportReference(injMethod.Resolve())));
+            Console.WriteLine("done");
+
+            return appMethod;
+        }
+
+        /// <summary>
+        /// Add an empty type whose NAME is the whole payload. Deliberately bare: no members,
+        /// no attributes, no reference to anything outside the module, so there is nothing
+        /// for the game's own reflection to trip over and nothing new to resolve at load.
+        /// </summary>
+        static void StampEntryPointMarker(AssemblyDefinition app)
+        {
+            if (app.MainModule.Types.Any(t => t.Name == EntryPointMarker)) return;
+
+            Console.Write("Stamping {0}.. ", EntryPointMarker);
+            app.MainModule.Types.Add(new TypeDefinition(
+                "", EntryPointMarker,
+                TypeAttributes.Class | TypeAttributes.NotPublic | TypeAttributes.Sealed | TypeAttributes.Abstract,
+                app.MainModule.TypeSystem.Object));
+            Console.WriteLine("done");
+        }
+
+        static void Dump(MethodDefinition method)
+        {
+            Console.WriteLine("\n{0} instructions:\n", method.Name);
+            foreach (var instruction in method.Body.Instructions)
+                Console.WriteLine($"\t{instruction.Offset:X2}: {instruction.OpCode} \"{instruction.Operand}\"");
         }
     }
 }

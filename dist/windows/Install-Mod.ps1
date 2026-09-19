@@ -299,6 +299,18 @@ function Test-Patched {
     return ([Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($Dll))).Contains('NotACheater')
 }
 
+# 'NotACheater' answers "patched at all" and nothing more — an assembly patched by an
+# older Patcher, at an entry point that has since MOVED, passes that test perfectly.
+# The Patcher therefore stamps a marker type naming the entry point, and this is what
+# tells a current patch from a stale one. THREE things share the name and all three must
+# agree: Patcher/Program.cs, this file, Scripts/config.sh (check_injections).
+$EntryPointMarker = 'ICSYTW_EntryPoint_FejdStartup_Start'
+
+function Test-EntryPointCurrent {
+    param([string]$Dll)
+    return ([Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($Dll))).Contains($EntryPointMarker)
+}
+
 # ---- Locate the install -------------------------------------------------
 
 if (-not $ManagedPath) { $ManagedPath = Find-ValheimManaged }
@@ -360,10 +372,15 @@ if ($ModOnly) {
         Write-Info 'A mod-only copy would never be called. Run a full install: .\Install-Mod.ps1'
         exit 1
     }
+    if (-not (Test-EntryPointCurrent $installed)) {
+        Write-Err 'The installed assembly was patched by an OLDER Patcher — the mod entry point has moved.'
+        Write-Info 'A mod-only copy would leave the game calling the old one. Run a full install: .\Install-Mod.ps1'
+        exit 1
+    }
     Assert-GameVersionMatches $modSource $installed
     Copy-Item $modSource $modTarget -Force
     Write-Ok 'Updated ICanShowYouTheWorld.dll (assembly left as-is).'
-    Write-Info 'Restart Valheim and open Credits to load the new build.'
+    Write-Info 'Restart Valheim to load the new build — the mod loads itself at startup.'
     exit 0
 }
 
@@ -438,7 +455,14 @@ if (-not $patchedText.Contains('CharacterDied')) {
     Write-Info 'Nothing was installed; the game folder is untouched.'
     exit 1
 }
-Write-Ok 'Verified both injections present (entry point + death hook).'
+if (-not $patchedText.Contains($EntryPointMarker)) {
+    Write-Err "Patched assembly is missing the $EntryPointMarker stamp — your Patcher.exe predates the startup entry point."
+    Write-Info 'The mod would then only load from the Credits menu, and a saga item can be lost.'
+    Write-Info 'Pull the repo again so dist\windows\patcher\Patcher.exe is current, and retry.'
+    Write-Info 'Nothing was installed; the game folder is untouched.'
+    exit 1
+}
+Write-Ok 'Verified all injections present (startup entry point + credits + death hook).'
 
 # ---- Install ------------------------------------------------------------
 
@@ -449,11 +473,11 @@ Copy-Item $modSource $modTarget -Force
 Write-Ok 'Installed ICanShowYouTheWorld.dll'
 
 Write-Host ''
-Write-Info 'Start Valheim and open the Credits menu to activate the mod.'
+Write-Info 'Start Valheim. The mod loads itself at startup — no Credits menu visit needed.'
 
 $modVersion = Get-ModVersion $modTarget
 if ($modVersion) {
-    Write-Info "The popup should read v$modVersion."
+    Write-Info "The popup at the main menu should read v$modVersion."
 } else {
     # Never state a version we did not read — a wrong one is worse than none.
     Write-Warn2 'Could not read the version from the installed DLL; the popup should match the tag you pulled.'

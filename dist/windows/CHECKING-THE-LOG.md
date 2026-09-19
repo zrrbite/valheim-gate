@@ -16,7 +16,7 @@ So: one minute here saves an evening.
 
 ## Do this
 
-1. Start Valheim, open the **Credits** menu (that's what loads the mod).
+1. Start Valheim. The mod loads itself at startup — no Credits visit needed.
 2. Check the version popup says the tag you just installed.
 3. **Start a run** — the check runs at run start, not at game start.
 4. Alt-tab out and run the command below in PowerShell.

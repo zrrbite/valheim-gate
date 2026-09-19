@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-08-30 at `0.221.12-run.alpha82`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-09-19 at `1.0.15-run.2026-09-19`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -21,17 +21,25 @@ Everything below is what that file tells it.
 
 - Branch **`feature/run-mode`**, not merged, deliberately — the mode is still
   being tuned in play.
-- Latest tag **`0.221.12-run.alpha82`** when this was written; builds are
-  date-based since 2026-08-31 (`Scripts/nextversion.sh`), and the game moved to
-  **1.0.12 / Unity 6000.0.75 on 2026-09-12** — the mod was rebuilt and installed
-  on Windows that day (`1.0.12-run.2026-09-12`); the Deck and the Mac still need
-  their own patch-and-deploy for 1.0.12.
-- Engine tests: `Tests/run_tests.sh`, 514 assertions, all passing.
-- Game version 1.0.12, Unity 6000.0.75 (was 0.221.12 / 6000.0.61 until
-  2026-09-12). Windows is the play machine and can now BUILD too
-  (`Scripts/build_windows.sh`, Visual Studio's MSBuild); the Mac is the
-  test/build machine; the Deck travels (and is **stale** — it still has an
-  older patched assembly and needs a re-patch before use).
+- Latest tag **`1.0.15-run.2026-09-19`**; builds are date-based since 2026-08-31
+  (`Scripts/nextversion.sh`). The game moved to **1.0.12 on 2026-09-12** and to
+  **1.0.15 on 2026-09-19**; both times the mod was rebuilt and installed on Windows
+  the same day. **1.0.15 needed no source change** — all 316 member references from
+  the built DLL into the game's assemblies still resolved, and Unity stayed at
+  6000.0.75. The Deck and the Mac are now TWO game versions behind and each needs its
+  own download → patch → upload before use.
+- **The entry point moved on 2026-09-19**: `NotACheater.Run()` is injected into
+  `FejdStartup.Start()` (and still into `OnCredits`, where it is a no-op). The mod
+  loads itself at startup; "open Credits first" is no longer a rule anybody has to
+  remember, and no longer a way to lose Thor's bow.
+- Engine tests: `Tests/run_tests.sh`, 555 assertions, all passing. The script now
+  falls back to Visual Studio's Roslyn `csc.exe` when `mcs`/`mono` are absent, so the
+  suite runs on the Windows box too.
+- Game version 1.0.15, Unity 6000.0.75 (was 0.221.12 / 6000.0.61 until 2026-09-12,
+  then 1.0.12). Windows is the play machine and BUILDS everything now
+  (`Scripts/build_windows.sh` for the mod, and the Patcher too since 2026-09-19); the
+  Mac is the other build machine; the Deck travels. **Both the Mac and the Deck are
+  stale** — 0.221.12-era patched assemblies, and the old entry point.
 
 ### Confirmed in play
 
@@ -206,10 +214,14 @@ git push origin feature/run-mode && git push origin 0.221.12-run.alphaN+1
 Scripts/deploy_local.sh
 ```
 
-On Windows: `git pull` → `.\Install-Mod.ps1` → the Credits menu → the popup
-must read the tag you just pushed. **The version popup is the whole point of
-tagging every alpha** — it is the only way to be certain which build is being
-played.
+On Windows: `git pull` → `.\Install-Mod.ps1` → the popup at the main menu must read
+the tag you just pushed. **The version popup is the whole point of tagging every
+build** — it is the only way to be certain which one is being played. Since the entry
+point moved it appears on its own, with no Credits visit.
+
+`-ModOnly` is the fast path for a mod-only change, and it now refuses an assembly
+patched by an older Patcher (it looks for the `ICSYTW_EntryPoint_FejdStartup_Start`
+stamp). **Whenever the Patcher itself changed, run the full install.**
 
 ## What the mode is, as of alpha43
 
@@ -533,29 +545,47 @@ it there first.
   mesh and a UI, and both want an AssetBundle built in Unity 6000.0.x. Until
   then the tracker is the book.
 
-## Next session, first thing (2026-09-12, owner: "we'll revisit when I get back")
+## Done 2026-09-19: the entry point, and Valheim 1.0.15
 
-**Move the mod's entry point off the Credits menu.** The saga now has an item of
-its own (Thor's bow, `SagaItems`), and a saga item is only known to the game
-while the mod is loaded. The mod loads when the player opens Credits. Launch
-the game, load a character WITHOUT visiting Credits, and the pack loads with
-the bow's name unresolved — the bow is dropped from the inventory and the next
-save writes it that way. Gone, silently. Until today forgetting Credits cost
-nothing permanent; now it costs the bow.
+**The mod loads at startup now.** `NotACheater.Run()` is injected at the start of
+`FejdStartup.Start()` as well as `OnCredits`. The reason was Thor's bow: a saga item is
+only known to the game while the mod is loaded, so loading a character before visiting
+Credits left the bow an unresolved name — `Inventory.AddItem` logs
+`Failed to find item prefab`, drops it, and the next save writes the pack without it.
 
-The fix is the Patcher: inject `NotACheater.Run()` at game startup
-(`FejdStartup.Awake` or `Start`) instead of, or as well as, `OnCredits`. Then
-re-patch the assembly on EVERY machine — Windows via `Install-Mod.ps1` without
-`-ModOnly`, the Deck and the Mac via their download/patch/upload scripts —
-and update the "open Credits to activate" line everywhere it appears
-(CLAUDE.md, dist/windows/README.md, the installer's closing message). Check
-first that `Run()` is safe to call that early: it creates the persistent
-GameObject and the DI container, and nothing in it should need a world.
+What the change needed beyond the Patcher, all of it load-bearing:
 
-Until then the rule is: **Credits first, every launch, before loading a
-character.**
+- **`Start`, not `Awake`.** Every `Awake` in the menu scene has run by the time `Start`
+  does, including `UnifiedPopup`'s — and `UnifiedPopup.instance` is assigned in its
+  `OnEnable`, so a popup pushed too early is swallowed into a `ZLog` error. The
+  activation popup is now *queued* by `Run()` and shown by `CheatController.Update` on
+  the first frame `UnifiedPopup.IsAvailable()` says yes, which is correct from any
+  injection site.
+- **`Run()` catches everything.** `ModBootstrap` rethrows on failure. At `OnCredits`
+  that broke the credits screen; at `Start` it would break the main menu. A mod that
+  cannot load is the mod's problem.
+- **Re-entry logs, it does not pop.** Returning to the main menu from a world reloads
+  the start scene and runs `Start` again, so the second call is ordinary rather than
+  exceptional.
+- **The Patcher stamps `ICSYTW_EntryPoint_FejdStartup_Start`** — an empty marker type,
+  no members and no external references. A byte scan for `NotACheater` only answers
+  "patched at some point", which is exactly how an assembly patched before the move
+  would pass verification and still load the mod from the wrong place.
+  `Install-Mod.ps1 -ModOnly` and `Scripts/config.sh check_injections` both look for it.
+  Three places share that name; change the entry point and all three change.
+- **The Patcher can be built on Windows now.** It wants a NuGet restore, which is why
+  `build_windows.sh` never built it — but the four `Mono.Cecil*.dll` bundled in
+  `dist/windows/patcher/` are exactly the 0.11.4 the csproj HintPaths expect, so
+  dropping them into `packages/Mono.Cecil.0.11.4/lib/net40/` is the whole restore.
+  Worth remembering: `stage_windows.sh` copies `Patcher.exe` only *if* a local build
+  exists, so a Patcher change could otherwise ship behind a stale committed exe.
 
-Also waiting on the owner's play-test of tag `1.0.12-run.2026-09-12f`:
-Thor's bow on the bench after paying the shade, the flash on impact, and the
-bow surviving a relog. And the shade's prompt now reading "[E] Speak".
+**Still to do on the other machines:** the Deck and the Mac carry 0.221.12-era patched
+assemblies and must each be re-downloaded, re-patched with the new Patcher and
+re-uploaded. Until then they are on the old entry point and the old game.
 
+Waiting on the owner's play-test of `1.0.15-run.2026-09-19` — see the TASK entry in
+[`../../HANDOFF_WINDOWS.md`](../../HANDOFF_WINDOWS.md). Beyond the entry point itself,
+still unverified from 12-13 September: Thor's bow on the bench after paying the shade
+and its flash on impact, the shade's greeting and its "[E] Speak" prompt, the saga
+dreams, and raids arriving as beats.

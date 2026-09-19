@@ -3,7 +3,7 @@ In Valheim, teleport to your bind spot or anywhere on the map. Binaries are cros
 
 ## Architecture
 
-**ICanShowYouTheWorld** is a Valheim mod built using IL patching (Mono.Cecil) with a service-based architecture and dependency injection. The mod injects into Valheim's `FejdStartup.OnCredits()` method, allowing initialization when accessing the credits menu.
+**ICanShowYouTheWorld** is a Valheim mod built using IL patching (Mono.Cecil) with a service-based architecture and dependency injection. The mod injects into Valheim's `FejdStartup.Start()` method, so it loads itself when the game starts. (`FejdStartup.OnCredits()` is injected too, and is then a no-op — it was the only entry point until 2026-09-19, when a saga item that only exists while the mod is loaded made "open Credits first" a way to lose one.)
 
 ### Key Components
 
@@ -28,9 +28,9 @@ In Valheim, teleport to your bind spot or anywhere on the map. Binaries are cros
 
 ```
 Game Startup
-  → FejdStartup.OnCredits() [IL-patched entry point]
-    → NotACheater.Run() [Cheat.cs:25]
-      → ModBootstrap.Initialize() [Cheat.cs:42]
+  → FejdStartup.Start() [IL-patched entry point; OnCredits() too, as a no-op]
+    → NotACheater.Run() [Cheat.cs]
+      → ModBootstrap.Initialize()
         → ServiceContainer.Instance created
         → Configuration loaded from JSON (auto-creates defaults if missing)
         → ValheimGameAPI instantiated
@@ -109,33 +109,25 @@ _TL;DR_
      
   ```
    ➜  mono Patcher.exe
+Patching FejdStartup->Start.. done
 Patching FejdStartup->OnCredits.. done
+Patching Character->OnDeath.. done
+Stamping ICSYTW_EntryPoint_FejdStartup_Start.. done
 
-Instructions:
+Start instructions:
+
+	00: call "System.Void ICanShowYouTheWorld.NotACheater::Run()"
+	00: ldarg.0 ""
+	01: call "System.Void FejdStartup::SetupGui()"
+	07: call "System.Void FejdStartup::SetupObjectDB()"
+	...
+
+OnCredits instructions:
 
 	00: call "System.Void ICanShowYouTheWorld.NotACheater::Run()"
 	00: ldarg.0 ""
 	01: ldfld "UnityEngine.GameObject FejdStartup::m_creditsPanel"
-	06: ldc.i4.1 ""
-	07: callvirt "System.Void UnityEngine.GameObject::SetActive(System.Boolean)"
-	0C: ldarg.0 ""
-	0D: ldfld "UnityEngine.GameObject FejdStartup::m_mainMenu"
-	12: ldc.i4.0 ""
-	13: callvirt "System.Void UnityEngine.GameObject::SetActive(System.Boolean)"
-	18: ldstr "Screen"
-	1D: ldstr "Enter"
-	22: ldstr "Credits"
-	27: ldc.i4.0 ""
-	28: conv.i8 ""
-	29: call "System.Void Gogan::LogEvent(System.String,System.String,System.String,System.Int64)"
-	2E: ldarg.0 ""
-	2F: ldfld "UnityEngine.RectTransform FejdStartup::m_creditsList"
-	34: ldc.r4 "0"
-	39: ldc.r4 "0"
-	3E: newobj "System.Void UnityEngine.Vector2::.ctor(System.Single,System.Single)"
-	43: callvirt "System.Void UnityEngine.RectTransform::set_anchoredPosition(UnityEngine.Vector2)"
-	48: ret ""
-
+	...
 
 Writing patched library to ./patched/assembly_valheim.dll`
 ```
@@ -182,7 +174,7 @@ code ICanShowYouTheWorld.json  # or vim, nano, etc.
 scp ICanShowYouTheWorld.json deck@<steam-deck-ip>:~/.config/unity3d/IronGate/Valheim/
 ```
 
-After starting up the game go to the  Credits menu (If  the "Valheim" logo appears during game startup, the `assembly_valheim.dll` is compliant. Otherwise it may be corrupted somehow and you'll need to either repair or replace the patched version with your backup). This registers the patched assemblies / code to be called by the main game loop.
+Just start the game: the mod loads itself, and a popup at the main menu reports its version. (If the "Valheim" logo appears during startup, the `assembly_valheim.dll` is compliant. Otherwise it may be corrupted somehow and you'll need to either repair or replace the patched version with your backup.)
 
 Through SSH, example:
 ```

@@ -24,7 +24,7 @@ print_info "Destination: $DECK_HOST:$DECK_VALHEIM_MANAGED"
 # Upload
 if scp "$MOD_DLL" "$DECK_HOST:$DECK_VALHEIM_MANAGED/"; then
     print_success "Mod DLL uploaded successfully!"
-    print_info "Restart Valheim and go to Credits menu to activate the mod"
+    print_info "Restart Valheim — the mod loads itself at startup"
 else
     print_error "Upload failed!"
     exit 1

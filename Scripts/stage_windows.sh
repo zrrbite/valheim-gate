@@ -47,3 +47,4 @@ cp "$BUILT" "$DEST/ICanShowYouTheWorld.dll"
 
 echo "Staged $TAG into dist/windows/patcher/"
 echo "Commit and push, then on Windows: git pull; .\\Install-Mod.ps1 -ModOnly"
+echo "  (a FULL install, without -ModOnly, whenever the Patcher itself changed)"

@@ -28,7 +28,7 @@ Scripts/download.sh
 mono Patcher.exe
 
 # 3. Copy patched assembly to libraries
-# (Use Patcher/Scripts/copy.sh or manual copy)
+# (Use Patcher/Scripts/copy_valheim_assembly_to_plugin.sh or manual copy)
 
 # 4. Rebuild ICanShowYouTheWorld against new assembly
 # (Use vstool build command above)
@@ -67,7 +67,31 @@ Scripts/get_unity_version.sh  # Detects Unity version from game files
 ## Architecture
 
 ### IL Patching Entry Point
-The Patcher tool modifies `assembly_valheim.dll` to inject a call to `ICanShowYouTheWorld.NotACheater.Run()` at the beginning of `FejdStartup.OnCredits()`. This means the mod initializes when the player navigates to the Credits menu in-game.
+The Patcher tool modifies `assembly_valheim.dll` to inject a call to
+`ICanShowYouTheWorld.NotACheater.Run()` at the start of **`FejdStartup.Start()`** — the mod
+loads itself when the game starts, with no player action. The call into
+`FejdStartup.OnCredits()` is still injected as well; the second call is a no-op.
+
+**Why it moved (2026-09-19):** a saga item is only known to the game while the mod is
+loaded. Load a character without visiting Credits and Thor's bow is an unresolved prefab
+name — `Inventory.AddItem` logs `Failed to find item prefab`, drops it, and the next save
+writes the pack without it. Gone, silently. `Start` rather than `Awake` because every
+`Awake` in the menu scene has run by then, including `UnifiedPopup`'s, which owns the
+version popup. `Run()` catches everything for the same reason: an exception escaping it
+would now take the main menu with it.
+
+Two consequences worth knowing. `Start` runs again every time the player returns to the
+main menu from a world, so `Run()`'s re-entry path logs and returns rather than popping a
+dialog. And the activation popup is queued, not pushed: `UnifiedPopup.instance` is assigned
+in its `OnEnable`, so `CheatController.Update` shows the popup on the first frame
+`UnifiedPopup.IsAvailable()` says yes.
+
+The Patcher also stamps an empty marker type, `ICSYTW_EntryPoint_FejdStartup_Start`, into
+the patched assembly. A byte scan for `NotACheater` only answers "patched at some point",
+which is how an assembly patched before the entry point moved would pass verification and
+still load the mod only from Credits. **Three things share that marker name and all three
+must agree**: `Patcher/Program.cs`, `dist/windows/Install-Mod.ps1`, and
+`Scripts/config.sh`. `Install-Mod.ps1 -ModOnly` now refuses an assembly that lacks it.
 
 The patcher also modifies `Minimap.m_pins` from private to public static to allow mod access.
 
@@ -77,7 +101,7 @@ The mod now uses a modern service-based architecture with dependency injection:
 
 **Initialization Flow:**
 ```
-FejdStartup.OnCredits()
+FejdStartup.Start()          [and OnCredits(), which is then a no-op]
   → NotACheater.Run()
     → ModBootstrap.Initialize()
       → Creates ServiceContainer singleton
@@ -209,7 +233,7 @@ Extract both to the same folder and copy to:
 1. `libraries/` folder (for development/linking)
 2. Steam Deck `/home/deck/.local/share/Steam/steamapps/common/Valheim/valheim_Data/Managed/` (for runtime)
 
-Current Unity version: 6000.0.75 (Unity 6; 6000.0.58 from Valheim 0.221.6, 6000.0.61 since 0.221.12, 6000.0.75 since 1.0.12)
+Current Unity version: 6000.0.75 (Unity 6; 6000.0.58 from Valheim 0.221.6, 6000.0.61 since 0.221.12, 6000.0.75 since 1.0.12 — unchanged by 1.0.15)
 
 ## Deployment
 
@@ -220,7 +244,9 @@ game version. All installs must be on the same game version — the deploy
 scripts enforce this with a version guard (`Scripts/game_version.sh`, which
 reads the version out of the assembly's IL).
 
-**Activation** (all platforms): start Valheim and navigate to the Credits menu.
+**Activation** (all platforms): start Valheim. The mod loads itself at startup; a popup at
+the main menu reports the version. Visiting Credits is no longer required (and does
+nothing but log a line).
 
 ### Steam Deck (Linux)
 
@@ -284,6 +310,13 @@ far has changed something it calls (1.0.12: five signatures gained a trailing
 parameter, `PlayerProfile.m_playerStats` became an array, `Hoverable` gained
 `GetHoverOffset()`). The deploy scripts and the Windows installer refuse a mod
 whose version prefix does not match the game's version for this reason.
+
+**1.0.15 (2026-09-19) was the first exception**: all 316 member references from the built
+mod DLL into the game's assemblies still resolved, and the rebuild needed no source change.
+Checking that first is cheap and worth doing — read every `MemberReference` out of the built
+mod DLL with Cecil and look each one up in the new assemblies. It turns "what did they
+break this time" into a list before a single compile. (The one rename spotted in 1.0.15,
+`FejdStartup.PlayIntroCinematic` → `TryPlayIntroCinematic`, is not something the mod calls.)
 
 ### Complex scenario: Unity version change
 Check https://valheim.fandom.com/wiki/Version_History for Unity version updates

@@ -27,10 +27,15 @@ From this folder, in PowerShell:
 .\Install-Mod.ps1
 ```
 
-Then start Valheim and open the **Credits** menu — that's what activates the
-mod. **The installer prints the exact version the popup should read**, taken from
-the DLL it just installed, so it is right on every build rather than whatever was
-current when this page was written.
+Then just start Valheim — since 2026-09-19 the mod loads itself at startup, and the
+version popup appears at the main menu on its own. **The installer prints the exact
+version the popup should read**, taken from the DLL it just installed, so it is right on
+every build rather than whatever was current when this page was written.
+
+Opening the **Credits** menu still works and is now simply unnecessary. The move was not
+cosmetic: a saga item is only known to the game while the mod is loaded, so loading a
+character before visiting Credits used to drop Thor's bow out of the pack, permanently and
+without a word.
 
 **Picking up a mod change** (the common case — no Valheim update involved) only
 needs the mod DLL, which is identical on every platform:
@@ -72,7 +77,12 @@ the Linux one.
 
 **Patching always starts from the vanilla backup**, never from the installed
 file. Re-patching an already-patched assembly would inject the mod's entry
-point into `FejdStartup.OnCredits()` twice.
+point twice.
+
+The patched assembly carries a marker naming the entry point
+(`ICSYTW_EntryPoint_FejdStartup_Start`). `-ModOnly` refuses an assembly that lacks it,
+because an older Patcher's injection passes every other check while loading the mod from
+the wrong place.
 
 The mod DLL itself is pure IL and identical on every platform, so the one in
 `patcher\` is exactly what runs on the Deck and the Mac.
@@ -115,7 +125,8 @@ real vanilla back.
 - The mod can be built on this Windows box too: Visual Studio 2022's MSBuild
   builds `ICanShowYouTheWorld\ICanShowYouTheWorld.csproj` directly (the Patcher
   project needs a NuGet restore, but the bundled `Patcher.exe` does the same
-  job). The Mac shell scripts run under Git Bash, `Testsun_tests.sh` excepted
+  job). The Mac shell scripts run under Git Bash, `Tests
+un_tests.sh` excepted
   (it wants `mcs`/`mono`; Roslyn's `csc.exe` from the VS install compiles the
   same sources).
 - These binaries are refreshed by hand from the Mac. If the mod source has

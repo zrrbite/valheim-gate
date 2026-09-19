@@ -11,8 +11,17 @@
 #   .\dist\windows\Install-Mod.ps1              # after a Valheim update (re-patches too)
 #
 # This is the Mac's tag / setversion / build / stage loop with Visual Studio's MSBuild
-# in place of Mono's. Only the mod project is built: the Patcher project wants a NuGet
-# restore, and the bundled dist/windows/patcher/Patcher.exe does the same job.
+# in place of Mono's. Only the mod project is built here: the bundled
+# dist/windows/patcher/Patcher.exe does the Patcher's job, and the Patcher project wants
+# a NuGet restore this box has no nuget.exe for.
+#
+# When the PATCHER itself changed, build it too — the restore is four files:
+#   mkdir -p packages/Mono.Cecil.0.11.4/lib/net40
+#   cp dist/windows/patcher/Mono.Cecil*.dll packages/Mono.Cecil.0.11.4/lib/net40/
+#   "$MSBUILD" Patcher/Patcher.csproj -p:Configuration=Debug -v:minimal
+# (the bundled Cecil is exactly the 0.11.4 the csproj HintPaths ask for). stage_windows.sh
+# then picks the new Patcher.exe up — but only if that build exists, so check it changed.
+# A Patcher change also needs a FULL Install-Mod.ps1 run, not -ModOnly.
 #
 # After a VALHEIM UPDATE do this first, or the build compiles against the old game:
 #   1. Copy the game's unpatched assembly_valheim.dll, assembly_utils.dll,

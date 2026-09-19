@@ -73,8 +73,15 @@ check_dir_exists() {
 # the assembly's metadata string heap, so a plain string scan settles it.
 #
 # Checked separately, because the two failure modes need different advice:
-#   NotACheater   — the entry point injected into FejdStartup.OnCredits()
+#   NotACheater   — the entry point, injected into FejdStartup.Start() and OnCredits()
 #   CharacterDied — the Run Mode death hook injected into Character.OnDeath()
+#   the marker     — names WHICH entry point the Patcher used. 'NotACheater' alone says
+#                    only "patched at some point", so an assembly patched before the entry
+#                    point moved to Start() passes that test and still loads the mod only
+#                    from Credits. THREE things share this name and all three must agree:
+#                    Patcher/Program.cs, dist/windows/Install-Mod.ps1, and this file.
+ENTRY_POINT_MARKER="ICSYTW_EntryPoint_FejdStartup_Start"
+
 check_injections() {
     local dll="$1"
 
@@ -91,6 +98,13 @@ check_injections() {
         return 1
     fi
 
-    print_success "Verified both injections present (entry point + death hook)"
+    if ! strings -a "$dll" | grep -q "$ENTRY_POINT_MARKER"; then
+        print_error "Patched assembly has no $ENTRY_POINT_MARKER stamp: $dll"
+        print_info "Your Patcher predates the startup entry point — rebuild it and re-patch."
+        print_info "Otherwise the mod loads only from the Credits menu, and a saga item can be lost."
+        return 1
+    fi
+
+    print_success "Verified all injections present (startup entry point + credits + death hook)"
     return 0
 }

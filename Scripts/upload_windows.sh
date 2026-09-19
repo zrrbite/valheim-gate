@@ -42,4 +42,4 @@ win_scp_to "$MOD_DLL" "ICanShowYouTheWorld.dll"
 print_success "Uploaded ICanShowYouTheWorld.dll"
 
 print_warning "The game assembly has been replaced — Steam will overwrite it on update."
-print_info "Start Valheim and open the Credits menu to activate the mod."
+print_info "Start Valheim — the mod loads itself at startup; no Credits visit needed."

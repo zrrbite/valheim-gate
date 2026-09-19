@@ -19,55 +19,78 @@ namespace ICanShowYouTheWorld
 {
     public class NotACheater : MonoBehaviour
     {
-        private static GameObject cheatObject;
         private static bool _initialized;
+
+        // The activation popup, waiting for somewhere to appear. UnifiedPopup.instance is
+        // assigned in its OnEnable, so a Push from the entry point can land before the
+        // component is live and be swallowed into a log error. CheatController.Update
+        // drains this on the first frame UnifiedPopup.IsAvailable() says yes — one code
+        // path, correct whichever method the Patcher injected into.
+        internal static string PendingPopup;
 
         public static void Run()
         {
             //DumpAllRPCsToFile();
 
-            // If we've already run, notify the user and bail out
+            // Called from FejdStartup.Start as well as OnCredits, so the second and later
+            // calls are ordinary: every return to the main menu reloads the start scene and
+            // runs Start again. A popup here would fire on every quit-to-menu; a log line
+            // is what this is worth.
             if (_initialized)
             {
-                UnifiedPopup.Push(new WarningPopup(
-                    "ICanShowYouTheWorld",
-                    "Mod is already initialized!",
-                    () => UnifiedPopup.Pop()
-                ));
+                UnityEngine.Debug.Log("[ICanShowYouTheWorld] Already initialized — entry point called again, ignoring.");
                 return;
             }
             _initialized = true;
 
-            // Initialize the new service-based architecture
-            Core.ModBootstrap.Initialize();
-
-            // 1) Get version string
-            string version = ModVersion.VERSION;
-
-            // 2) Create the cheat GameObject
-            var cheatObject = new GameObject("ICanShowYouTheWorld");
-            GameObject.DontDestroyOnLoad(cheatObject);
-
-            // 3) Try adding each component, record successes
-            var loaded = new List<string>();
-            TryAddAndRecord<CheatController>(cheatObject, loaded);
-            TryAddAndRecord<UIManager>(cheatObject, loaded);
-
-            // 4) Build the final message: version + list
-            var msgLines = new List<string>
+            // Everything below runs inside the game's own startup now. An exception escaping
+            // here would take FejdStartup.Start with it and leave the player at a dead main
+            // menu, so nothing is allowed out: a mod that cannot load is the mod's problem.
+            try
             {
-                $"Loaded mod v{version}!"
-            };
-            msgLines.AddRange(loaded);
+                // Initialize the new service-based architecture
+                Core.ModBootstrap.Initialize();
 
-            string msg = string.Join("\n", msgLines);
+                // 1) Get version string
+                string version = ModVersion.VERSION;
 
-            // 5) Show single popup with results
-            UnifiedPopup.Push(new WarningPopup(
-                "ICanShowYouTheWorld",
-                msg,
-                () => UnifiedPopup.Pop()
-            ));
+                // 2) Create the cheat GameObject
+                var cheatObject = new GameObject("ICanShowYouTheWorld");
+                GameObject.DontDestroyOnLoad(cheatObject);
+
+                // 3) Try adding each component, record successes
+                var loaded = new List<string>();
+                TryAddAndRecord<CheatController>(cheatObject, loaded);
+                TryAddAndRecord<UIManager>(cheatObject, loaded);
+
+                // 4) Build the final message: version + list
+                var msgLines = new List<string>
+                {
+                    $"Loaded mod v{version}!"
+                };
+                msgLines.AddRange(loaded);
+
+                // 5) Queue the popup for the first frame that can show one
+                PendingPopup = string.Join("\n", msgLines);
+                UnityEngine.Debug.Log($"[ICanShowYouTheWorld] Loaded mod v{version}.");
+            }
+            catch (Exception e)
+            {
+                UnityEngine.Debug.LogError($"[ICanShowYouTheWorld] Initialization FAILED: {e}");
+
+                // The failure is the case that has to be impossible to miss, and it cannot
+                // rely on CheatController existing to show it.
+                try
+                {
+                    if (UnifiedPopup.IsAvailable())
+                        UnifiedPopup.Push(new WarningPopup(
+                            "ICanShowYouTheWorld",
+                            $"Mod failed to load:\n{e.Message}",
+                            () => UnifiedPopup.Pop()
+                        ));
+                }
+                catch { /* the game is more important than the notice */ }
+            }
         }
 
         public static void DumpAllRPCsToFile()
@@ -404,6 +427,8 @@ namespace ICanShowYouTheWorld
 
         void Update()
         {
+            DrainPendingPopup();
+
             inputManager.HandleInput();
             CheatCommands.HandlePeriodic();
 
@@ -413,6 +438,35 @@ namespace ICanShowYouTheWorld
             }
 
             runService?.Tick(Time.deltaTime);
+        }
+
+        /// <summary>
+        /// Show the activation popup the moment there is a popup system to show it in.
+        /// Two reference reads per frame until it fires, then nothing.
+        /// </summary>
+        private static void DrainPendingPopup()
+        {
+            if (NotACheater.PendingPopup == null) return;
+
+            try
+            {
+                if (!UnifiedPopup.IsAvailable()) return;
+
+                string msg = NotACheater.PendingPopup;
+                NotACheater.PendingPopup = null;
+                UnifiedPopup.Push(new WarningPopup(
+                    "ICanShowYouTheWorld",
+                    msg,
+                    () => UnifiedPopup.Pop()
+                ));
+            }
+            catch (Exception e)
+            {
+                // Never retry forever over a broken popup — the version is also in the
+                // lobby header, the run HUD and under the loading-screen title card.
+                NotACheater.PendingPopup = null;
+                UnityEngine.Debug.LogWarning($"[ICanShowYouTheWorld] Could not show the activation popup: {e.Message}");
+            }
         }
     }
 }
