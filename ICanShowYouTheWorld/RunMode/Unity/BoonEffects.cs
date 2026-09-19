@@ -324,7 +324,15 @@ namespace ICanShowYouTheWorld.RunMode
                     // the boon was a SILENT NO-OP that printed a GM warning, which is how it was
                     // finally caught: "I was choosing a boon and then it showed a message from
                     // my gm mod."
-                    try { WithLegacyGodModeBracket(() => PetBuff.BuffAllPets(false)); }
+                    //
+                    // quiet: true, because the GM readouts are addressed to somebody who typed a
+                    // command. A saga player who picked a boon and had no animals yet was told
+                    // "No baseline, nothing buffed" - a diagnostic reading as a broken quest
+                    // (owner: "the shephard quest says 'no baseline', which is confusing for a
+                    // player"). This class says nothing to the player by design; the boon grant is
+                    // announced where boons are announced, and the blessing finding an empty pen
+                    // is not news - RefreshShepherd blesses whatever is tamed later.
+                    try { WithLegacyGodModeBracket(() => PetBuff.BuffAllPets(false, quiet: true)); }
                     catch (Exception e) { Debug.LogWarning($"[ICanShowYouTheWorld] Shepherd: {e.Message}"); }
                     break;
 
@@ -422,7 +430,7 @@ namespace ICanShowYouTheWorld.RunMode
                     break;
 
                 case "shepherd":
-                    try { WithLegacyGodModeBracket(() => PetBuff.ResetPetBuffs()); }
+                    try { WithLegacyGodModeBracket(() => PetBuff.ResetPetBuffs(quiet: true)); }
                     catch (Exception e) { Debug.LogWarning($"[ICanShowYouTheWorld] Shepherd reset: {e.Message}"); }
                     break;
 
@@ -940,7 +948,7 @@ namespace ICanShowYouTheWorld.RunMode
         {
             if (!held) return;
 
-            try { WithLegacyGodModeBracket(() => PetBuff.BuffAllPets(false)); }
+            try { WithLegacyGodModeBracket(() => PetBuff.BuffAllPets(false, quiet: true)); }
             catch { /* a missed refresh is cosmetic; the next one catches it */ }
         }
 

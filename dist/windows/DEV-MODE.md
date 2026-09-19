@@ -27,35 +27,53 @@ It ships `false` and nothing in the mod ever turns it on by itself.
 
 ## The keys
 
-**Hold Shift.** Every dev key is Shift plus the key below, and that is the whole
-rule: a saga key is the player's, the same key with Shift is the tester's.
-
-It was not always so. Dev used to own nine bare keys, several of which the
-player's own boon actives wanted — and unlike the GM mod's bindings, which
-`InputManager.Gate` makes dead during a run, dev and the actives are read from
-the *same* handler in the same mode. A modifier is what separates two layers
-inside one mode.
+**Seven are bare. Two want a modifier.** Only `Keypad +` and `Keypad -` need
+one, because those two keys are also the player's — **Shaman's Mercy** and
+**Unseen** activate on a bare press. `Shift`, `Ctrl` or `Alt` all count; use
+whichever hand is free.
 
 | Key | Effect |
 |---|---|
-| `Shift` + `Keypad +` | Complete the current step on **every** unblocked track |
-| `Shift` + `Keypad -` | Push the clock forward **2 game hours** (press until "it is night") |
-| `Shift` + `Keypad *` | A chest's worth of materials, **into the stash** |
-| `Shift` + `Keypad .` | Drop a **deer's light** at your feet |
-| `Shift` + `Keypad /` | **God mode** + a fighter's kit **+75% speed** (toggle) |
-| `Shift` + `Keypad Enter` | **Gate to your claimed bed**, free, no cooldown |
-| `Shift` + `Delete` | **Slay everything hostile within 10m** |
-| `Shift` + `Home` | **Teleport to the map cursor** (the GM mod's own teleport) |
-| `Shift` + `PageUp` | **Dump what the creature in view is made of** to the log |
+| `mod` + `Keypad +` | Complete the current step on **every** unblocked track |
+| `mod` + `Keypad -` | Push the clock forward **2 game hours** (press until "it is night") |
+| `Keypad *` | A chest's worth of materials, **into the stash** |
+| `Keypad .` | Drop a **deer's light** at your feet |
+| `Keypad /` | **God mode** + a fighter's kit **+75% speed** (toggle) |
+| `Keypad Enter` | **Gate to your claimed bed**, free, no cooldown |
+| `Delete` | **Slay everything hostile within 10m** |
+| `Home` | **Teleport to the map cursor** (the GM mod's own teleport) |
+| `PageUp` | **Dump what the creature in view is made of** to the log |
 
-Two of those were missing from this page entirely before the keys were scoped;
-the table is now the code.
+Keys only work during an active run.
 
-Keys only work during an active run. Shift also makes the player sprint, which
-is harmless and the price of a modifier every keyboard has.
+The Run window's own DEV MODE banner prints this same table in short form, generated from
+`RunService.DevKeyHelp` — the one place the strings live. It went stale once, which is the
+whole reason this page's history below exists.
 
-Note that bare `Keypad +` and `Keypad -` are now the player's: **Shaman's Mercy**
-and **Unseen**.
+### Why it is not "Shift plus everything"
+
+It was, briefly, and it was wrong — though what actually bit was the help text, not the
+modifier: the banner still listed the bare keys, so the tester pressed them and reported
+the layer dead. A help line that is wrong is worse than no help line at all.
+
+The modifier itself was also over-applied. The reasoning behind the blanket modifier was
+sound as far as it went: unlike the GM mod's bindings, which `InputManager.Gate`
+makes dead during a run, dev and the player's actives are read from the *same*
+handler in the same mode, so a modifier is the only thing that can separate the
+two layers. What that argument does not justify is applying it to keys where
+there is no second layer — nothing in the saga binds `Keypad * / . Enter`,
+`Delete`, `Home` or `PageUp`, so a modifier there protected nothing and cost a
+tester their muscle memory ("the dev mode commands dont seem to work * / - +,
+etc.").
+
+The rule now states only what is true, which also means the surface where a
+missed modifier can hide a whole layer is two keys wide instead of nine.
+
+Every dev key now **also writes its line to `Player.log`**, prefixed
+`[ICanShowYouTheWorld] DEV:`. That is deliberate: when the Shift layer was
+reported broken the log could neither confirm nor deny a single press, so the
+fix had to be reasoned from the keymap rather than from evidence. Next time it
+is a grep.
 
 ## What each is for
 

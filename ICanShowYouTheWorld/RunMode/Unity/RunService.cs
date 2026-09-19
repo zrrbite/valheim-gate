@@ -1961,16 +1961,19 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>
         /// Testing shortcuts, behind <see cref="IConfiguration.RunDevMode"/>.
         ///
-        /// Keys nothing else uses — the numeric keypad's digits are all spoken for by boon offers,
-        /// boon activations and Homeward, so these live on the operators.
+        /// The keypad's digits are all spoken for by boon offers, boon activations and Homeward,
+        /// so these live on the operators and the Home/End cluster. Two of them are shared with a
+        /// boon and want a modifier - Shift, Ctrl or Alt, whichever is to hand:
         ///
-        ///   Keypad +   complete the step in play on every track
-        ///   Keypad -   push the clock forward two hours, for the night-gated hunt
-        ///   Keypad *   a chest's worth of materials
-        ///   Keypad .   drop a deer's light at your feet
-        ///   Keypad /     god mode + armory (toggle)
-        ///   Keypad Enter gate to the claimed bed, free
-        ///   Delete       slay everything hostile within 10m
+        ///   mod + Keypad +   complete the step in play on every track
+        ///   mod + Keypad -   push the clock forward two hours, for the night-gated hunt
+        ///   Keypad *         a chest's worth of materials
+        ///   Keypad .         drop a deer's light at your feet
+        ///   Keypad /         god mode + armory (toggle)
+        ///   Keypad Enter     gate to the claimed bed, free
+        ///   Delete           slay everything hostile within 10m
+        ///   Home             teleport to the map cursor (map open)
+        ///   PageUp           probe the creature in view
         ///
         /// The last one matters more than it looks: the light race is the hardest thing in the act
         /// to reach — kill a deer, at night, while a step is active — and testing the bar, the
@@ -2014,25 +2017,78 @@ namespace ICanShowYouTheWorld.RunMode
             _devSpeedOn = false;
         }
 
+        /// <summary>
+        /// The dev key list exactly as the HUD prints it.
+        /// </summary>
+        /// <remarks>
+        /// It lives HERE, three lines from the handler that reads those keys, because the drift
+        /// between the two cost a whole play session: the keys went behind a modifier and this
+        /// line did not, so the tester pressed them bare, got nothing, and reported the layer as
+        /// broken - "Oh we changed it to shift + ? I didnt know... Its just that the help text
+        /// didnt reflect that". The keys were working perfectly. Nothing on screen said how.
+        ///
+        /// The HUD renders whatever this array holds, one label per entry, so adding a dev key and
+        /// telling the tester about it are now edits to the same screenful of code. That is the
+        /// same medicine as BoonKeys, which exists because a boon that activated perfectly and
+        /// never named its key had already happened once.
+        /// </remarks>
+        public static readonly string[] DevKeyHelp =
+        {
+            "DEV MODE   *items   .light   /god+speed   Ent:home   Del:slay   Home:map-tp   PgUp:probe",
+            "Shift/Ctrl/Alt + [+] complete step   \u00b7   + [-] advance 2h   (bare + and - are the player's)",
+        };
+
+        /// <summary>
+        /// Shift, Ctrl or Alt - any of the three. Only the two dev keys the player's own boons
+        /// also use ask for one; see HandleDevInput for why the other seven do not.
+        /// </summary>
+        private static bool DevModifierHeld() =>
+            Input.GetKey(KeyCode.LeftShift)   || Input.GetKey(KeyCode.RightShift) ||
+            Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl) ||
+            Input.GetKey(KeyCode.LeftAlt)     || Input.GetKey(KeyCode.RightAlt);
+
+        /// <summary>
+        /// A dev report, on screen AND in the log.
+        /// </summary>
+        /// <remarks>
+        /// The log half earns its keep the first time a dev key is reported as not working:
+        /// "did it fire at all" becomes a grep rather than a guess. It was exactly what was
+        /// missing when the Shift layer was reported broken - the log could neither confirm nor
+        /// deny a single press, which is why the fix above had to reason from the keymap instead
+        /// of from evidence.
+        /// </remarks>
+        private void DevMessage(string text)
+        {
+            Message(text);
+            Debug.Log("[ICanShowYouTheWorld] " + text);
+        }
+
         private void HandleDevInput()
         {
             if (_cfg == null || !_cfg.RunDevMode || !_active || _frozen) return;
 
-            // SHIFT-held, every one of them. Keys are scoped per MODE already - GM bindings go
-            // through InputManager.Gate and are dead while a run is live, so the same key can mean
-            // one thing to the cheat mod and another to the saga. What was NOT scoped was the two
-            // layers inside saga mode: dev squatted on nine keys the player's own actives could
-            // otherwise use, all read from this same Tick. A modifier separates them, and the rule
-            // is now sayable in one line - a saga key is the player's, and the same key with Shift
-            // is the tester's.
-            if (!Input.GetKey(KeyCode.LeftShift) && !Input.GetKey(KeyCode.RightShift)) return;
+            // A modifier on TWO keys, not on nine.
+            //
+            // The first attempt put every dev key behind Shift, reasoning that dev and the
+            // player's actives share this handler and this mode, so a modifier was the only thing
+            // that could separate them. That is true of the two keys which actually collide and
+            // wrong about the other seven: nothing in the saga binds Keypad * / . Enter, Delete,
+            // Home or PageUp, so a modifier there bought nothing and cost a tester their muscle
+            // memory - the report was "the dev mode commands dont seem to work * / - +, etc."
+            //
+            // The rule now says only what is true. The two keys the player's own boons took -
+            // Keypad + for Shaman's Mercy, Keypad - for Unseen - want a modifier; the rest are
+            // bare. Shift, Ctrl and Alt are all accepted, because which one a tester reaches for
+            // is not worth being precious about, and a dev layer nobody can reach is a worse
+            // fault than an over-generous modifier.
+            bool mod = DevModifierHeld();
 
-            if (Input.GetKeyDown(KeyCode.KeypadPlus))
+            if (mod && Input.GetKeyDown(KeyCode.KeypadPlus))
             {
                 _challenges?.DevCompleteCurrent();
-                Message("DEV: current steps completed.");
+                DevMessage("DEV: current steps completed.");
             }
-            else if (Input.GetKeyDown(KeyCode.KeypadMinus))
+            else if (mod && Input.GetKeyDown(KeyCode.KeypadMinus))
             {
                 DevAdvanceClock();
             }
@@ -2044,7 +2100,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // where a pile of materials belongs; take out what the moment needs.
                 foreach (var entry in DevKit) _stash.Deposit(entry.prefab, entry.count, 1, 0);
                 SaveState();
-                Message($"DEV: {DevKit.Length} materials in the stash.");
+                DevMessage($"DEV: {DevKit.Length} materials in the stash.");
             }
             else if (Input.GetKeyDown(KeyCode.KeypadDivide))
             {
@@ -2066,12 +2122,12 @@ namespace ICanShowYouTheWorld.RunMode
                             // "make me untouchable", one for "fill my pockets", and the toggle
                             // gives the speed loan its natural way back.
                             DevApplySpeed(Player.m_localPlayer);
-                            Message("DEV: god mode ON \u2014 armory granted, +75% speed.");
+                            DevMessage("DEV: god mode ON \u2014 armory granted, +75% speed.");
                         }
                         else
                         {
                             DevRestoreSpeed();
-                            Message("DEV: god mode OFF, speed restored.");
+                            DevMessage("DEV: god mode OFF, speed restored.");
                         }
                     }
                 }
@@ -2099,7 +2155,7 @@ namespace ICanShowYouTheWorld.RunMode
                             killed++;
                         }
 
-                        Message($"DEV: {killed} nearby creature{(killed == 1 ? "" : "s")} slain.");
+                        DevMessage($"DEV: {killed} nearby creature{(killed == 1 ? "" : "s")} slain.");
                     }
                 }
                 catch (Exception ex) { LogOnce("dev-slay", ex); }
@@ -2114,7 +2170,7 @@ namespace ICanShowYouTheWorld.RunMode
                     var profile = Game.instance?.GetPlayerProfile();
                     if (profile == null || !profile.HaveCustomSpawnPoint())
                     {
-                        Message("DEV: no claimed bed to gate to.");
+                        DevMessage("DEV: no claimed bed to gate to.");
                     }
                     else
                     {
@@ -2122,7 +2178,7 @@ namespace ICanShowYouTheWorld.RunMode
                         // Lifted clear of the ground, same as the real Homeward: arriving inside
                         // the terrain is how a teleport becomes a death.
                         teleport?.TeleportTo(profile.GetCustomSpawnPoint() + Vector3.up * 2f);
-                        Message("DEV: home.");
+                        DevMessage("DEV: home.");
                     }
                 }
                 catch (Exception ex) { LogOnce("dev-home", ex); }
@@ -2143,8 +2199,8 @@ namespace ICanShowYouTheWorld.RunMode
                 try
                 {
                     var teleport = ModBootstrap.GetService<ITeleportService>();
-                    if (teleport == null) Message("DEV: no teleport service.");
-                    else if (!(_game?.IsMapOpen ?? false)) Message("DEV: open the map, then Home.");
+                    if (teleport == null) DevMessage("DEV: no teleport service.");
+                    else if (!(_game?.IsMapOpen ?? false)) DevMessage("DEV: open the map, then Home.");
                     else teleport.TeleportToMapCursor();
                 }
                 catch (Exception ex) { LogOnce("dev-teleport", ex); }
@@ -2166,12 +2222,12 @@ namespace ICanShowYouTheWorld.RunMode
                     var target = CreatureProbe.FindTarget();
                     if (target == null)
                     {
-                        Message("DEV: no creature in view to probe.");
+                        DevMessage("DEV: no creature in view to probe.");
                     }
                     else
                     {
                         string path = CreatureProbe.WriteReport(target);
-                        Message(path == null
+                        DevMessage(path == null
                             ? "DEV: probe failed — see the player log."
                             : $"DEV: probed {CreatureProbe.Describe(target)} → ICSYTW_probe.txt");
                     }
@@ -2195,7 +2251,7 @@ namespace ICanShowYouTheWorld.RunMode
                         _deer.Contest(at);
                     }
 
-                    Message("DEV: a light rises, and the forest answers.");
+                    DevMessage("DEV: a light rises, and the forest answers.");
                 }
             }
         }
@@ -2218,7 +2274,7 @@ namespace ICanShowYouTheWorld.RunMode
                 if (net == null) return;
 
                 net.SetNetTime(net.GetTimeSeconds() + TwoHours);
-                Message(IsNight ? "DEV: +2h — it is night." : "DEV: +2h — still light.");
+                DevMessage(IsNight ? "DEV: +2h — it is night." : "DEV: +2h — still light.");
             }
             catch (Exception ex)
             {
@@ -2229,6 +2285,11 @@ namespace ICanShowYouTheWorld.RunMode
         private void HandleBoonActivationInput()
         {
             if (_boons == null || _boons.CurrentOffer.Count > 0) return;
+
+            // A modifier held, in a dev session, means the tester is addressing the dev layer -
+            // which owns Keypad + and - there. Without this, Ctrl+KeypadPlus would complete the
+            // step AND try to cast Shaman's Mercy, and the cast would eat the charge.
+            if (DevMode && DevModifierHeld()) return;
 
             // Walked from BoonKeys rather than spelled out here, so the key the HUD PRINTS and the
             // key this READS cannot drift apart. Adding an active is one row in that table.
@@ -7027,44 +7088,16 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
-                Id = "mq-shelter", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "Builds",
-                Target = 6, Display = "Raise a roof (6 pieces)", RewardText = "Timber and stone to finish it",
-                Hint = "Roof pieces overhead — walls alone are not shelter.",
-            },
-            // The homestead steps (alpha26). Each one lands immediately before the step that
-            // already, silently, required it: TimeInBase only accrues while Player.IsSafeInHome,
-            // which needs real comfort — a roof AND a fire — and Sleep needs a bed. Both of those
-            // prerequisites used to be invisible, so a player who had not built a fire watched
-            // "Settle in" sit at zero with nothing telling them why.
-            //
-            // They measure with ChallengeKind.BuildPiece, which asks the host whether the player
-            // has built a piece carrying a given COMPILED component (Fireplace, Bed, Container) —
-            // never a prefab name, which is asset data this build cannot verify and which fails
-            // silently when wrong. See PieceCategories.
-            new ChallengeDefinition
-            {
-                Id = "mq-fire", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Fire",
-                Target = 1, Display = "Build a fire", RewardText = "Hide for a bed, flint for arrowheads",
-                Hint = "A campfire. Not under a wooden floor, or it burns.",
-            },
-            new ChallengeDefinition
-            {
-                // Straight after the fire, because that is what it goes on. Nothing in the chain
-                // taught cooking before this, which left the single biggest lever on health and
-                // stamina as something the player had to know about from outside the run.
-                Id = "mq-cook", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Cooking",
-                Target = 1, Display = "Build a cooking station", RewardText = "Meat to cook on it",
-                Hint = "A cooking station goes ON a fire, not beside it.",
-            },
-            new ChallengeDefinition
-            {
-                // FIRST on the hearth track. It arrived sixth and by then the foraging was long
+                // FIRST on the hearth track, ahead of the roof, and that ORDER is the point of
+                // where this block sits in the file: within a track, source order is play order.
+                // It arrived sixth and by then the foraging was long
                 // done — ItemsPickedUp is measured from when the step APPEARS, so a late one
                 // asks for fifty more berries at the point berries stopped being interesting
                 // (owner: "it arrives a little late, so there's not much incentive").
                 //
-                // Here it feeds the step directly after it: three different foods at once is
-                // berries, mushrooms and something cooked.
+                // What it gathers is spent four steps later, on the proper meal: three different
+                // foods at once is berries, mushrooms and something cooked, and the cooking
+                // station arrives in between.
                 // Twelve, not thirty, and the word is NEW on purpose (owner: "the forage step
                 // doesn't always work, in meadows. Weird.").
                 //
@@ -7087,6 +7120,48 @@ namespace ICanShowYouTheWorld.RunMode
                 Param = "ItemsPickedUp", Target = 12, Display = "Forage the meadows (12 new finds)",
                 RewardText = "Seeds and a full larder",
                 Hint = "Twelve things you have not held yet — berries, mushrooms, flint, feathers, resin. More of the same does not count.",
+            },
+            new ChallengeDefinition
+            {
+                Id = "mq-shelter", MainQuest = true, Track = HearthTrackId,
+                Kind = ChallengeKind.StatDelta, Param = "Builds",
+                Target = 6, Display = "Raise a roof (6 pieces)", RewardText = "Timber and stone to finish it",
+                Hint = "Roof pieces overhead — walls alone are not shelter.",
+            },
+            // The homestead steps (alpha26), all of them on the HEARTH track. Each one lands
+            // immediately before the step that already, silently, required it: TimeInBase only
+            // accrues while Player.IsSafeInHome, which needs real comfort — a roof AND a fire —
+            // and Sleep needs a bed. Both of those prerequisites used to be invisible, so a player
+            // who had not built a fire watched "Settle in" sit at zero with nothing telling them why.
+            //
+            // The explicit Track is why that ordering still holds. Routing by Kind put the roof,
+            // the fire, the cooking station, the bed and the chest on CRAFT while "Settle in" and
+            // "Sleep through the night" sat on HEARTH — so the prerequisite and the step needing it
+            // were on DIFFERENT tracks, which is the same invisible-prerequisite bug back again by
+            // another route, and the homestead work had visibly left the track named after it
+            // (owner: "the build roof etc dont seem to be in the hearth track anymore"). A hearth
+            // is a roof, a fire, a pot, a bed and a box; CRAFT keeps the tools and the weapons.
+            //
+            // They measure with ChallengeKind.BuildPiece, which asks the host whether the player
+            // has built a piece carrying a given COMPILED component (Fireplace, Bed, Container) —
+            // never a prefab name, which is asset data this build cannot verify and which fails
+            // silently when wrong. See PieceCategories.
+            new ChallengeDefinition
+            {
+                Id = "mq-fire", MainQuest = true, Track = HearthTrackId,
+                Kind = ChallengeKind.BuildPiece, Param = "Fire",
+                Target = 1, Display = "Build a fire", RewardText = "Hide for a bed, flint for arrowheads",
+                Hint = "A campfire. Not under a wooden floor, or it burns.",
+            },
+            new ChallengeDefinition
+            {
+                // Straight after the fire, because that is what it goes on. Nothing in the chain
+                // taught cooking before this, which left the single biggest lever on health and
+                // stamina as something the player had to know about from outside the run.
+                Id = "mq-cook", MainQuest = true, Track = HearthTrackId,
+                Kind = ChallengeKind.BuildPiece, Param = "Cooking",
+                Target = 1, Display = "Build a cooking station", RewardText = "Meat to cook on it",
+                Hint = "A cooking station goes ON a fire, not beside it.",
             },
             new ChallengeDefinition
             {
@@ -7116,7 +7191,8 @@ namespace ICanShowYouTheWorld.RunMode
                 // Claiming, not just building — that is what makes a bed yours, and what "sleep
                 // through the night" and Homeward both actually depend on. The step used to check
                 // only that one had been placed (owner: "a quest to claim the bed").
-                Id = "mq-bed", MainQuest = true, Kind = ChallengeKind.PlayerState, Param = "SpawnPointSet",
+                Id = "mq-bed", MainQuest = true, Track = HearthTrackId,
+                Kind = ChallengeKind.PlayerState, Param = "SpawnPointSet",
                 Target = 1, Display = "Build a bed and claim it", RewardText = "Timber and resin for the rest of the house",
                 Hint = "Place it under a roof, then interact to claim it as your spawn.",
             },
@@ -7154,7 +7230,8 @@ namespace ICanShowYouTheWorld.RunMode
                 // Last of the homestead steps, and the only one nothing downstream depends on —
                 // it sits here because somewhere to put the spoils is what you want BEFORE a hunt,
                 // and its reward feeds the hunt directly.
-                Id = "mq-chest", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Chest",
+                Id = "mq-chest", MainQuest = true, Track = HearthTrackId,
+                Kind = ChallengeKind.BuildPiece, Param = "Chest",
                 Target = 1, Display = "Build a chest", RewardText = "A full quiver before the hunt",
             },
             new ChallengeDefinition

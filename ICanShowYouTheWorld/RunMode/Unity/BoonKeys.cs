@@ -21,8 +21,9 @@ namespace ICanShowYouTheWorld.RunMode
     /// the test runner. The boon's IDENTITY is pure; which key a keyboard presses for it is not.
     ///
     /// Keys are scoped per MODE, which is what makes reuse safe: the GM mod's bindings go through
-    /// InputManager.Gate and are dead while a run is live, and the dev keys sit behind Shift
-    /// because they share this handler and this mode. See CLAUDE.md.
+    /// InputManager.Gate and are dead while a run is live. The dev layer shares this handler and
+    /// this mode, so where it wants a key from this table — KeypadPlus and KeypadMinus, and only
+    /// those two — it takes it with a modifier held. See CLAUDE.md and RunService.HandleDevInput.
     /// </summary>
     internal static class BoonKeys
     {

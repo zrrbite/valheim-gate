@@ -105,7 +105,18 @@ static class DamageHelpers
         private const float GROUP_MULT = 1.2f;
         private const float PET_RADIUS = 10f;
 
-        private static void ComputeGroupBaseline()
+        /// <summary>
+        /// Finds the weakest tamed weapon in range and makes it the group's zero point.
+        /// </summary>
+        /// <param name="quiet">
+        /// Suppresses every player-facing line. Set by the saga's Shepherd boon, which calls this
+        /// through BuffAllPets on every heat change: the GM readouts are diagnostics addressed to
+        /// somebody who typed a command, and a saga player who typed nothing read
+        /// "No baseline, nothing buffed" as a fault in their quest (owner: "the shephard quest
+        /// says 'no baseline', which is confusing for a player"). The same failure as the GM
+        /// warning this same boon leaked once before - see BoonEffects' Shepherd case.
+        /// </param>
+        private static void ComputeGroupBaseline(bool quiet = false)
         {
             GroupBaselineValid = false;
             float bestScore = -1f;
@@ -161,6 +172,8 @@ static class DamageHelpers
                 }
             }
 
+            if (quiet) return;
+
             if (GroupBaselineValid)
             {
                 // Debug print baseline
@@ -176,15 +189,23 @@ static class DamageHelpers
 
         private const float PET_SPEED_MULT = 1.3f;
 
-        public static void BuffAllPets(bool incrLevel = false)
+        /// <summary>
+        /// Blesses every tamed creature in range: health, speed, and weapon damage scaled from the
+        /// weakest of them.
+        /// </summary>
+        /// <param name="quiet">See <see cref="ComputeGroupBaseline"/> - set by the saga.</param>
+        /// <returns>How many creatures were touched. Zero is a legitimate answer, not a fault.</returns>
+        public static int BuffAllPets(bool incrLevel = false, bool quiet = false)
         {
-            if (!CheatCommands.RequireGodMode("Buff tamed")) return;
+            if (!CheatCommands.RequireGodMode("Buff tamed")) return 0;
 
-            ComputeGroupBaseline();
+            ComputeGroupBaseline(quiet);
             if (!GroupBaselineValid)
             {
-                CheatCommands.Show("No baseline, nothing buffed");
-                return;
+                // An empty pen, or a pen of animals carrying no weapons. Nothing is wrong: a boar
+                // has nothing for the damage half to scale. Silent for the saga either way.
+                if (!quiet) CheatCommands.Show("No baseline, nothing buffed");
+                return 0;
             }
 
             var boosted = DamageHelpers.Scaled(GroupBaseline, GROUP_MULT);
@@ -261,7 +282,10 @@ static class DamageHelpers
                 touched++;
             }
 
-            CheatCommands.Show("Buffed " + touched + " pets (x" + GROUP_MULT.ToString("0.0") + boosted.ToString() + ")");
+            if (!quiet)
+                CheatCommands.Show("Buffed " + touched + " pets (x" + GROUP_MULT.ToString("0.0") + boosted.ToString() + ")");
+
+            return touched;
         }
 
         public static void SetBaselinePetDmg()
@@ -401,7 +425,8 @@ static class DamageHelpers
             CheatCommands.Show($"Reset pet dmg on {changed} weapons (preserved active channels)");
         }
 
-        public static void ResetPetBuffs()
+        /// <summary>Puts every tamed weapon back. <paramref name="quiet"/> as above.</summary>
+        public static void ResetPetBuffs(bool quiet = false)
         {
             var list = new List<Character>();
             Character.GetCharactersInRange(Player.m_localPlayer.transform.position, PET_RADIUS, list);
@@ -459,7 +484,7 @@ static class DamageHelpers
                 touched++;
             }
 
-            CheatCommands.Show("Reset " + touched + " pets to original weapon dmg");
+            if (!quiet) CheatCommands.Show("Reset " + touched + " pets to original weapon dmg");
         }
     }
 

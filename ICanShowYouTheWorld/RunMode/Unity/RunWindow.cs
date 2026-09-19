@@ -1065,9 +1065,14 @@ namespace ICanShowYouTheWorld.RunMode
                 // dark red times a 72%-alpha parchment and produced something unreadable. Small
                 // in SIZE without being muted in colour is what this line actually wanted — it
                 // has to be readable and it has to stop dominating the panel it sits above.
+                //
+                // The text comes from RunService.DevKeyHelp rather than living here, because the
+                // copy that lived here went stale the moment two of the keys gained a modifier -
+                // and a help line that is wrong is worse than none, since the tester trusts it and
+                // concludes the feature is broken. See the remarks on that field.
                 GUI.contentColor = RunTheme.HeatRed;
-                GUILayout.Label("DEV MODE  +complete  -time  *items  .light  /god+speed  Ent:home  Del:slay  Home:map-tp  PgUp:probe",
-                    RunTheme.AlertSmall);
+                foreach (var line in RunService.DevKeyHelp)
+                    GUILayout.Label(line, RunTheme.AlertSmall);
                 GUI.contentColor = Color.white;
             }
 

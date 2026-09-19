@@ -179,12 +179,20 @@ listeners are never both live:
 2. **Saga bindings** are read straight from `RunService.Tick`: `Keypad1-3` pick from an
    offer (and the activation handler returns early while an offer is up), `Keypad4-8`,
    `0`, `Insert`, `+` and `-` activate held boons, `Keypad9` is Homeward.
-3. **Dev bindings** are the same keys **with Shift**, because dev and the actives ARE in
-   the same mode and the same handler — a modifier is the only thing that separates two
-   layers inside one mode. See `dist/windows/DEV-MODE.md`.
+3. **Dev bindings** are read from that same handler, so the two layers ARE in one mode and
+   a modifier is the only thing that can separate them — but only where there is a second
+   layer to separate. Dev owns `Keypad * / . Enter`, `Delete`, `Home` and `PageUp` BARE,
+   and needs `Shift`/`Ctrl`/`Alt` on `Keypad +` and `Keypad -` alone, because those two are
+   the player's (Shaman's Mercy, Unseen). See `dist/windows/DEV-MODE.md`.
 
-The rule, sayable in one line: a saga key is the player's, the same key with Shift is the
-tester's, and what the cheat mod does with either is its own business.
+The rule, sayable in one line: a saga key is the player's, a key the saga does not use is the
+tester's, a key they share goes to the tester only with a modifier, and what the cheat mod
+does with any of them is its own business.
+
+A blanket "Shift plus everything" was tried first and reverted: it put a modifier on seven
+keys that had nothing to collide with, and the first tester to reach for `Keypad *` found
+the whole layer missing. Dev keys now also log their line (`DEV:` in `Player.log`), because
+the report arrived with no way to tell a dead binding from an unheld modifier.
 
 **Controller setups**: every command is keyboard-only and numpad-heavy, so on
 a machine played with a gamepad (Steam Deck, or a couch Windows setup) the

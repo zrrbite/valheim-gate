@@ -17,7 +17,7 @@ Standing context for the Windows side:
 
 ---
 
-## 2026-09-19 - THE TEST LIST for 1.0.15-run.2026-09-19k
+## 2026-09-19 - THE TEST LIST for 1.0.15-run.2026-09-19m
 
 Ten builds stacked up in one afternoon, so this is all of them as ONE pass, ordered by when you
 meet each thing rather than by build number. The per-build TASK entries below keep the reasoning;
@@ -31,7 +31,7 @@ replaced. Quit Valheim and run `.\dist\windows\Install-Mod.ps1 -ModOnly`, then r
 - [ ] Launch and **do not open Credits**. There should be **no popup at all** - that is the change
       in `...19k`. Silence is success.
 - [ ] Under the menu's own version line, a single gold line at 70% size and **not overlapping**:
-      `SAGA v1.0.15-run.2026-09-19k`. That line is now the ONLY proof the mod loaded, so if it is
+      `SAGA v1.0.15-run.2026-09-19m`. That line is now the ONLY proof the mod loaded, so if it is
       missing, the mod is not in.
 - [ ] Load the character carrying **Thor's bow**. Still there. Save, quit to desktop, come back:
       still there. No `Failed to find item prefab` in the log.
@@ -41,12 +41,24 @@ replaced. Quit Valheim and run `.\dist\windows\Install-Mod.ps1 -ModOnly`, then r
 ### The keys - this is the one that will trip your muscle memory
 
 - [ ] `Keypad +` = **Shaman's Mercy** (burst heal). `Keypad -` = **Unseen** (20s, nothing sees you).
-- [ ] **`Shift` + `Keypad +`** is the dev step-skip now. EVERY dev key moved behind Shift; the full
-      table is in `dist/windows/DEV-MODE.md`.
+- [ ] **The Run window's DEV MODE banner is now two lines and names the modifier.** Read it - it is
+      the thing that was wrong, not the keys.
+- [ ] **Dev keys are bare again** except two. `Keypad *`, `/`, `.`, `Enter`, `Delete`, `Home` and
+      `PageUp` need NO modifier. Only the step-skip and the clock do, because those two share the
+      player's keys: **`Shift`/`Ctrl`/`Alt` + `Keypad +`** and **+ `Keypad -`**.
+- [ ] Every dev key now also writes its line to the log. After a session:
+      `Select-String -Path "$env:USERPROFILE\AppData\LocalLow\IronGate\Valheim\Player.log" -Pattern "DEV:"`
 - [ ] A boon offer card shows the key beside "active", e.g. `active  [+]`.
+- [ ] **Shepherd says nothing** when you pick it with no animals. No "No baseline, nothing buffed",
+      no "Buffed 0 pets" - the GM readouts are gone from the saga's path entirely.
 
 ### Act I, in chain order
 
+- [ ] **The HEARTH track holds the homestead again**: open the Run window and read the three
+      tracks. HEARTH must run *forage, roof, fire, cooking station, meal, bed, settle in, sleep,
+      comfort, chest*, then the fishing and the pen. CRAFT must be tools and gear only: *axe,
+      hammer, workbench, upgrade, the shade, Thor's bow, the Stormward*. The roof and the fire had
+      drifted onto CRAFT, which also put "Settle in" on a different track from the fire it needs.
 - [ ] **Hear the raven out** - Hugin lands and states the errand.
 - [ ] **Hunt a deer by daylight** - nothing rises, and the line says why.
 - [ ] **Keep a watch after dark** - three whispers. The strip should tell you to wait for dark, and
@@ -92,6 +104,64 @@ default is **2.5** - the file wins over the code, so you have been playing a mon
 regen. Thirty-four newer settings are absent from it entirely and running on code defaults, which
 is correct behaviour but means they cannot be TUNED without adding the lines by hand. Ask and I
 will either add the keys or make `Load()` re-save so no future setting is invisible.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
+---
+
+## 2026-09-19 - TASK: 1.0.15-run.2026-09-19m - three corrections from the first minutes
+
+All three were yours to find and mine to have caused.
+
+### The dev keys were never broken. The help text was.
+
+"Oh we changed it to shift + ? I didnt know... Its just that the help text didnt reflect that."
+That is the whole fault: the Run window's DEV MODE banner still read `+complete -time *items ...`
+after every one of those keys had moved behind Shift. The tester trusted the line, pressed the bare
+keys, got nothing, and correctly concluded the layer was broken.
+
+Two fixes, and the second is the one that matters.
+
+1. **The modifier is narrower.** A modifier only earns its place where there is a second layer to
+   separate, and nothing in the saga binds `Keypad * / . Enter`, `Delete`, `Home` or `PageUp`. Those
+   are bare again. Only `Keypad +` and `Keypad -` want `Shift`/`Ctrl`/`Alt` - any of the three -
+   because the player's Shaman's Mercy and Unseen own the bare press. The boon handler also stands
+   down while a modifier is held, so the step-skip cannot double as a cast that eats a charge.
+
+2. **The help text now lives beside the keys.** `RunService.DevKeyHelp` is the single source and the
+   HUD renders it, so adding a dev key and telling the tester about it are edits to the same
+   screenful of code. This is the same medicine as `BoonKeys`, which exists because a boon that
+   activated perfectly and never named its key had already happened once. Same failure, second
+   surface. Worth remembering that the pattern generalises: **anything the player has to press needs
+   its name generated from the thing that reads it.**
+
+And because the log could not tell a dead binding from an unheld modifier, **every dev key now logs
+its line** as well as showing it. Next time the question is a grep.
+
+### The hearth has its homestead back
+
+Five steps - the roof, the fire, the cooking station, the bed and the chest - carried no explicit
+`Track`, so `Split()` routed them by `Kind` and filed them under CRAFT. Worse than untidy: "Settle
+in" needs a roof AND a fire, "Sleep through the night" needs a bed, and those prerequisites had
+ended up on a DIFFERENT track from the steps requiring them. That is the invisible-prerequisite bug
+from alpha26 back by another route. The five now name HEARTH, and the foraging step moved ahead of
+the roof so it still opens the track (its `ItemsPickedUp` is measured from when it appears, so a
+late one asks for berries after berries have stopped being interesting).
+
+CRAFT is now tools and weapons: axe, hammer, workbench, upgrade, the shade, the bow, the shield.
+HEARTH is a roof, a fire, a pot, a meal, a bed, a night's sleep, comfort, a box, the fishing, the pen.
+
+### Shepherd stops talking like a cheat menu
+
+`PetBuff.BuffAllPets` printed "No baseline, nothing buffed" whenever the pen was empty or held only
+animals carrying no weapons - a GM diagnostic, shown to a player who had only picked a boon ("the
+shephard quest says 'no baseline', which is confusing for a player"). `BuffAllPets`,
+`ComputeGroupBaseline` and `ResetPetBuffs` take `quiet` now, and the saga passes it on all three
+paths: gain, refresh and loss. Same leak as the god-mode warning this boon produced once before, and
+the same fix shape - the legacy statics are fine to ride, but their *voice* belongs to whoever typed
+the command.
 
 ### RESULTS (Windows side appends here)
 
