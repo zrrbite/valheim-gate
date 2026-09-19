@@ -668,9 +668,11 @@ namespace ICanShowYouTheWorld.RunMode
         /// also means it can never be placed somewhere unloaded — the bug that made the Herald
         /// unfindable for two versions.
         /// </summary>
-        /// <summary>Act I's troll step. Three places ask about it: the spawner, the death hook
-        /// and the clock.</summary>
-        private const string BreakerStepId = "mq-troll";
+        /// <summary>
+        /// Act I's troll step. Four places ask about it now: the spawner, the death hook, the clock
+        /// and the shield's recipe gate — so the id lives in SagaNames with the rest of them.
+        /// </summary>
+        private const string BreakerStepId = SagaNames.BreakerStepId;
 
         private bool _breakerForetold;
 
@@ -7209,6 +7211,27 @@ namespace ICanShowYouTheWorld.RunMode
                        "The bench cannot list the bow until you are HOLDING a light \u2014 the game only offers recipes " +
                        "whose every ingredient you have seen. Take them back off the forest, or off the Gatherer.",
                 Opening = "The herd paid for this in hide. String it, and owe them a clean shot.",
+            },
+            new ChallengeDefinition
+            {
+                // Act I's last craft, and the answer to the god at the end of it (owner: "another
+                // craft quest before we take on this boss? A shield maybe. A very powerful shield").
+                //
+                // Thor's bow turns Eikthyr's storm outward; the Stormward turns it aside. A shield
+                // with a NAMED thing to answer is a different object from a shield with a bigger
+                // number, and lightning is what the god at the end of this act does.
+                //
+                // LAST on the craft track on purpose. Its recipe wants the Breaker's hide, and the
+                // Breaker is losable - so this is the one step in the act that a missed deadline can
+                // leave unfinished. That is allowed here and nowhere else: an unfinished craft track
+                // when the boss falls is the cost of rushing, and nothing sits behind this to be
+                // blocked by it. The hunt track, which ends at Eikthyr, is untouched either way.
+                Id = "mq-shield", MainQuest = true, Kind = ChallengeKind.CollectItem,
+                Param = SagaItems.StormwardName, Target = 1,
+                Display = "Bind the Stormward",
+                RewardText = "Mead, and arrows enough for a god",
+                Hint = "At an IMPROVED workbench: 20 wood, 20 resin, 10 troll hide, 10 deer hide and 3 rescued lights. The hide is the Breaker\u2019s \u2014 if it moved on, so did the shield.",
+                Opening = "The storm is his. Bind something that does not care.",
             },
             new ChallengeDefinition
             {

@@ -37,6 +37,13 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>The delivery step. The saga's bow recipe registers while this step is DONE.</summary>
         public const string ShadeBringStepId = "mq-shade-bring";
 
+        /// <summary>
+        /// Act I's troll. The shield's recipe registers while this step is DONE, and "done" includes
+        /// FAILED: a step that ran out its clock still advances its track, so the bench learns the
+        /// shape either way and the missing troll hide is what the loss actually costs.
+        /// </summary>
+        public const string BreakerStepId = "mq-troll";
+
         // Act VIII stand-ins (2026-09-12). Valheim 1.0's Deep North boss exists — the assembly has
         // GP_DeepNorth and a "frozen king" item token — but its prefab, altar location and defeat
         // key are asset data. These are deliberately un-guessed: a guess that happened to be right

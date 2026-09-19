@@ -17,6 +17,45 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-19 - TASK: 1.0.15-run.2026-09-19j - the Stormward
+
+Installed here already (`-ModOnly`). Act I's last craft step, and the saga's second item of its
+own.
+
+**Stormward**, a shield: block 60 (+8/level, blackmetal tier), deflection 40, a 2.5x timed-block
+bonus, **very resistant to lightning** and resistant to blunt. Thor's bow turns Eikthyr's storm
+outward; this turns it aside. A shield with a named thing to answer is a different object from a
+shield with a bigger number, and lightning is what the god at the end of this act does.
+
+**Recipe**, at an IMPROVED workbench (level 2): 20 wood, 20 resin, **10 troll hide**, 10 deer hide
+and **3 rescued lights**. It unlocks when the Breaker's step is done.
+
+**The troll hide is the join, and it is the point.** The Breaker is losable, so a missed deadline
+now costs you something you can hold: the recipe is on the bench and the hide is not. That is safe
+to allow because the shield is the LAST step on the CRAFT track - nothing waits behind it, and an
+unfinished craft track when the boss falls is the cost of rushing rather than a stalled act. The
+hunt track, which ends at Eikthyr, is untouched either way.
+
+Gating on a losable step is also safe for a subtler reason worth knowing: a failed step still
+ADVANCES its track, so `StepDone` answers true whether the troll died or walked away. The bench
+learns the shape either way.
+
+**Three rescued lights again**, the same price as the bow, deliberately: a player who raced badly
+can afford one of the two. That is a decision rather than a shortage.
+
+**What to watch for:** the recipe appearing after the troll (and needing a level-2 bench - it will
+not show at an unimproved one); the block actually holding against Eikthyr's lightning; and the
+case that matters most - miss the troll on purpose once and confirm the act still finishes, with
+only the shield lost.
+
+Act I is 21 questline steps now.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
+---
+
 ## 2026-09-19 - TASK: 1.0.15-run.2026-09-19i - the Breaker, and the forest on your side
 
 Installed here already (`-ModOnly`). The troll is Act I's mini-boss now, and one fight has

@@ -102,6 +102,27 @@ namespace ICanShowYouTheWorld.RunMode
                 },
                 RequiresStepDone = SagaNames.ShadeBringStepId,
             },
+            new SagaRecipeDefinition
+            {
+                // Act I's last craft. Gated on the TROLL step rather than on an item, because a
+                // gate on "have you got troll hide" would simply be invisible - this way the bench
+                // learns the shape the moment the Breaker is dealt with, and the hide is what the
+                // recipe then asks for.
+                //
+                // Safe to gate on a LOSABLE step: a failed step still advances its track, so
+                // StepDone answers true either way. Miss the troll and the recipe is there and the
+                // hide is not, which is the cost being visible rather than the chain being stuck.
+                Id = "stormward",
+                ResultPrefab = SagaItems.StormwardPrefab,
+                StationPrefab = "piece_workbench",
+                MinStationLevel = 2,
+                Resources = new[]
+                {
+                    ("Wood", 20), ("Resin", 20), ("TrollHide", 10), ("DeerHide", 10),
+                    (SagaItems.RescuedLightPrefab, SagaItems.StormwardLightCost),
+                },
+                RequiresStepDone = SagaNames.BreakerStepId,
+            },
         };
 
         /// <summary>The database the recipes were last registered on. Compared by reference only.</summary>

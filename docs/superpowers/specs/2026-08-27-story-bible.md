@@ -179,6 +179,18 @@ out loud, lean and furious through glutted. Kill it and everything it held
 goes free around its corpse, yours to gather at leisure: freed lights belong
 to nobody now, and their guttering is cleanup, not a loss.
 
+**The Stormward** (2026-09-19) is what the act's last craft makes of all of it:
+troll hide over a meadow frame, with three rescued lights bound under the boss.
+Thor's bow turns Eikthyr's storm outward; the shield turns it aside, and the
+pair is the point — the act ends with the god's own weather answered twice, by
+things the player made out of what they took.
+
+Its hide is the Breaker's, which is where the losable mini-boss finally costs
+something you can hold: miss the troll and the recipe is on the bench and the
+hide is not. That is allowed to stand because the shield is the LAST step of the
+craft track and nothing waits behind it. An unfinished craft track when the boss
+falls is the cost of rushing, not a stalled act.
+
 **The altar, then the god.** The freed hunt leads to Eikthyr's stones. You
 hang the trophies his own herd paid for and call him down. Whether he sees a
 defiler or the only one who fought the real thieves is deliberately never
@@ -236,6 +248,8 @@ answer, practised before it was taught. Act VII spends it.
 - **The Herald** — the herd's named guardian. Two stars, real bearings.
 - **The Gatherer** — the oldest splinter, named, arrives fed by your failures,
   drops its hoard on death.
+- **The Stormward** — Act I's shield. Troll hide, deer hide and three rescued
+  lights; the storm goes around it.
 - **The Breaker** — a troll out of the forest. The one thing that breaks light
   instead of carrying it. Losable, timed, and the only fight the forest joins.
 - **Splinters** — greydwarves: deadwood animated by the Elder, starving

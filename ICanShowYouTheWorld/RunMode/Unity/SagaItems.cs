@@ -70,6 +70,17 @@ namespace ICanShowYouTheWorld.RunMode
         public const string ThorsBowPrefab = "Saga_ThorsBow";
         public const string ThorsBowName = "Thor’s bow";
 
+        public const string StormwardPrefab = "Saga_Stormward";
+        public const string StormwardName = "Stormward";
+
+        /// <summary>
+        /// The shield's block, and the reason it is worth an act's last craft step. Blackmetal-tier
+        /// on a wooden frame, because what makes it is not the frame: it is what the hide came off
+        /// and what was bound into it.
+        /// </summary>
+        private const float StormwardBlock = 60f;
+        private const float StormwardBlockPerLevel = 8f;
+
         public const string RescuedLightPrefab = "Saga_RescuedLight";
         public const string RescuedLightName = "Rescued light";
 
@@ -83,6 +94,13 @@ namespace ICanShowYouTheWorld.RunMode
         /// away; it only moves where the lights have to be taken from, which is the story anyway.
         /// </summary>
         public const int ThorsBowLightCost = 3;
+
+        /// <summary>
+        /// The shield's own light cost. Three again, deliberately: the act's two saga items ask the
+        /// same price, so the choice between them is never about which is cheaper. A player who
+        /// raced badly can afford ONE of them, which is a decision rather than a shortage.
+        /// </summary>
+        public const int StormwardLightCost = 3;
 
         /// <summary>
         /// The bow's own damage, on top of the Finewood bow it is cut from (32 pierce). Raised from
@@ -108,6 +126,55 @@ namespace ICanShowYouTheWorld.RunMode
                 {
                     shared.m_damages.m_lightning = ThorsBowLightning;
                     shared.m_damagesPerLevel.m_lightning = ThorsBowLightningPerLevel;
+                },
+            },
+
+            // Act I's last craft, and the answer to the god at the end of it.
+            //
+            // Thor's bow turns Eikthyr's storm outward; this turns it aside. The pair is the point
+            // (owner: "another craft quest before we take on this boss? A shield maybe. A very
+            // powerful shield") - and a shield with a NAMED weakness to answer is a different object
+            // from a shield with a bigger number. Lightning is what Eikthyr does.
+            //
+            // Blunt resistance comes from the troll: the hide in the recipe is the Breaker's, which
+            // is what gives the losable mini-boss a consequence you can hold. Miss the troll and the
+            // shield is what it costs you - expensive, visible, and survivable, because this is the
+            // LAST step on the craft track and an unfinished craft track is the price of rushing
+            // rather than a stalled act.
+            new SagaItemDefinition
+            {
+                SourcePrefab = "ShieldWood",
+                SourceFallbacks = new[] { "ShieldBronzeBuckler", "ShieldBanded", "ShieldWoodTower" },
+                PrefabName = StormwardPrefab,
+                DisplayName = StormwardName,
+                Description = "Troll hide over a meadow frame, with three rescued lights bound under " +
+                              "the boss. The storm goes around it. The herd paid for the light; the " +
+                              "forest paid for the hide.",
+                Tune = shared =>
+                {
+                    shared.m_blockPower = StormwardBlock;
+                    shared.m_blockPowerPerLevel = StormwardBlockPerLevel;
+                    shared.m_deflectionForce = 40f;
+                    shared.m_deflectionForcePerLevel = 5f;
+
+                    // Parry window worth using, which is the difference between a wall and a tool.
+                    shared.m_timedBlockBonus = 2.5f;
+
+                    // The named answer. VeryResistant rather than Immune: the saga does not hand out
+                    // a fight that cannot hurt you, and Eikthyr still has hooves.
+                    shared.m_damageModifiers = new List<HitData.DamageModPair>
+                    {
+                        new HitData.DamageModPair
+                        {
+                            m_type = HitData.DamageType.Lightning,
+                            m_modifier = HitData.DamageModifier.VeryResistant,
+                        },
+                        new HitData.DamageModPair
+                        {
+                            m_type = HitData.DamageType.Blunt,
+                            m_modifier = HitData.DamageModifier.Resistant,
+                        },
+                    };
                 },
             },
 

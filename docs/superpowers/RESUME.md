@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-09-19 at `1.0.15-run.2026-09-19i`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-09-19 at `1.0.15-run.2026-09-19j`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -21,7 +21,7 @@ Everything below is what that file tells it.
 
 - Branch **`feature/run-mode`**, not merged, deliberately — the mode is still
   being tuned in play.
-- Latest tag **`1.0.15-run.2026-09-19i`**; builds are date-based since 2026-08-31
+- Latest tag **`1.0.15-run.2026-09-19j`**; builds are date-based since 2026-08-31
   (`Scripts/nextversion.sh`). The game moved to **1.0.12 on 2026-09-12** and to
   **1.0.15 on 2026-09-19**; both times the mod was rebuilt and installed on Windows
   the same day. **1.0.15 needed no source change** — all 316 member references from
@@ -305,10 +305,10 @@ Two rules the content follows, both learned the hard way:
   therefore have **no** build step — no distinctively mountain-built piece has a
   compiled class, and filler would be worse than an extra fight.
 
-Questline heat across the saga is **53** (20+9+8+8+8) — roughly ×3.2 enemy damage
+Questline heat across the saga is **54** (21+9+8+8+8) — roughly ×3.2 enemy damage
 by the Plains before any random task, and far steeper than anything played.
 
-**Act I**, 19 questline steps, all of it doable without leaving the Meadows (the hunt track opens with the raven's errand, a daylight kill that yields nothing, and a night watch - see the `...-19h` note below): craft an axe
+**Act I**, 21 questline steps, all of it doable without leaving the Meadows (the hunt track opens with the raven's errand, a daylight kill that yields nothing, and a night watch - see the `...-19h` note below): craft an axe
 → craft a hammer → build a workbench → hunt 5 boar → raise a roof (6 pieces) →
 **build a fire** → **build a cooking station** → kill 6 greylings → **build a
 bed** → settle in (2 min at home) → sleep through the night → **build a chest**
@@ -762,7 +762,29 @@ those are the Elder's key and would have let a player enter Act II holding its f
 
 Act I is 20 questline steps, Act II is 9, saga questline heat unchanged at 53.
 
-Waiting on the owner's play-test of `1.0.15-run.2026-09-19i` - see the TASK entry in
+**`...-19j` added the Stormward** (owner: "another craft quest before we take on this boss? A
+shield maybe. A very powerful shield"). Act I's last craft step and the saga's second item of its
+own: block 60 (+8/level), deflection 40, a 2.5x timed-block bonus, VeryResistant to lightning and
+Resistant to blunt. Thor's bow turns Eikthyr's storm outward and this turns it aside; a shield with
+a named thing to answer is a different object from a shield with a bigger number.
+
+Two structural decisions in it:
+
+- **Its hide is the Breaker's**, which is where the losable mini-boss finally costs something the
+  player can hold. Safe only because the shield is the LAST step of the CRAFT track: nothing waits
+  behind it, and an unfinished craft track when the boss falls is the documented cost of rushing.
+  The hunt track, which ends at Eikthyr, cannot be touched by it.
+- **Gating a recipe on a losable step is safe**, which is not obvious: a failed step still ADVANCES
+  its track, so `StepDone` answers true whether the troll died or walked away. The bench learns the
+  shape either way and the missing hide is the loss.
+
+Three rescued lights, the same price as the bow, so a player who raced badly can afford one of the
+two - a decision rather than a shortage. `SagaNames.BreakerStepId` now holds the step id, since four
+places ask about it (spawner, death hook, clock, recipe gate).
+
+Act I is 21 questline steps; saga questline heat 54.
+
+Waiting on the owner's play-test of `1.0.15-run.2026-09-19j` - see the TASK entry in
 [`../../HANDOFF_WINDOWS.md`](../../HANDOFF_WINDOWS.md). Beyond the entry point itself,
 still unverified from 12-13 September: Thor's bow on the bench after paying the shade
 and its flash on impact, the shade's greeting and its "[E] Speak" prompt, the saga
