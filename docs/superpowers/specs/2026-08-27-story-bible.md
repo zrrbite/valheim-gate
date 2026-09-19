@@ -139,6 +139,29 @@ completes, and pays nothing. The trophies are lost and must be hunted plain.
 Expensive, visible, survivable. The saga does not end runs over a race; it
 just refuses to reward a lost one.
 
+**The Breaker** (moved here from Act II, 2026-09-19) is the exception that
+proves the act's rule. Every other creature in this story converges on a light
+out of hunger and CARRIES it home; the troll is what a splinter becomes when
+the harvest never reaches it — too big for the Elder's table, never fed, and
+long past collecting. It does not want the light. It breaks it.
+
+It arrives after the race, once, at night, and it is the saga's first
+**losable** step: fifteen run-minutes, and if it is not down the chain moves on
+paying nothing. A troll is weather, not a garrison. Missing one is a thing that
+can happen to you, which is exactly what a deadline needs to be.
+
+**And for one fight, the forest is on your side.** The splinters are starving,
+not vicious — every greydwarf goes dark unless it is fed — and the thing
+destroying what they need is their enemy before it is yours. They are not made
+friendly and they do not forgive you afterwards:
+
+> *The forest turns on it. They are not helping you — there is just something
+> here they hate more. Stay clear of both.*
+
+Allies of convenience, and the player stands between two things that want them
+dead. (Mechanically this is the game's own faction rule rather than anything
+forced: see `TheBreaker`.)
+
 **The Herald** is the herd's guardian — the one deer that is an event, named,
 starred, found by real bearings because a hunt has a quarry where a rumour
 does not. While it stands the herd has a protector; its fall is the loudest
@@ -213,6 +236,8 @@ answer, practised before it was taught. Act VII spends it.
 - **The Herald** — the herd's named guardian. Two stars, real bearings.
 - **The Gatherer** — the oldest splinter, named, arrives fed by your failures,
   drops its hoard on death.
+- **The Breaker** — a troll out of the forest. The one thing that breaks light
+  instead of carrying it. Losable, timed, and the only fight the forest joins.
 - **Splinters** — greydwarves: deadwood animated by the Elder, starving
   always. They carry lights; they never destroy them.
 - **The wisp (item)** — a taken light, pocketed. Act VI's payoff in waiting.

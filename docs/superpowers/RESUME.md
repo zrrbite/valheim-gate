@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-09-19 at `1.0.15-run.2026-09-19h`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-09-19 at `1.0.15-run.2026-09-19i`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -21,7 +21,7 @@ Everything below is what that file tells it.
 
 - Branch **`feature/run-mode`**, not merged, deliberately — the mode is still
   being tuned in play.
-- Latest tag **`1.0.15-run.2026-09-19h`**; builds are date-based since 2026-08-31
+- Latest tag **`1.0.15-run.2026-09-19i`**; builds are date-based since 2026-08-31
   (`Scripts/nextversion.sh`). The game moved to **1.0.12 on 2026-09-12** and to
   **1.0.15 on 2026-09-19**; both times the mod was rebuilt and installed on Windows
   the same day. **1.0.15 needed no source change** — all 316 member references from
@@ -305,7 +305,7 @@ Two rules the content follows, both learned the hard way:
   therefore have **no** build step — no distinctively mountain-built piece has a
   compiled class, and filler would be worse than an extra fight.
 
-Questline heat across the saga is **53** (19+10+8+8+8) — roughly ×3.2 enemy damage
+Questline heat across the saga is **53** (20+9+8+8+8) — roughly ×3.2 enemy damage
 by the Plains before any random task, and far steeper than anything played.
 
 **Act I**, 19 questline steps, all of it doable without leaving the Meadows (the hunt track opens with the raven's errand, a daylight kill that yields nothing, and a night watch - see the `...-19h` note below): craft an axe
@@ -734,7 +734,35 @@ build shipped. Predicates that can be tested cannot rot quietly.
 **Numbers:** Act I goes to 19 questline steps, so +3 heat and +6 max health, and saga questline
 heat is 53. Heat remains untuned, so this nudges a curve nobody has felt as designed.
 
-Waiting on the owner's play-test of `1.0.15-run.2026-09-19h` - see the TASK entry in
+**`...-19i` moved the troll to Act I and gave one fight allies** (owner: "it would become amazing
+if we could have a troll as a mini boss too in the story... and maybe we'll have temporary allies
+for this fight", then "I definitely think we should move the troll to act 1. Allies by convenience.
+I'd have to dodge not to get aggro etc").
+
+The troll was already a mini-boss - `bf-troll`, Act II, timed and losable - so this MOVED it rather
+than adding a second one. The fiction was always Act I's: the one thing that breaks light instead
+of carrying it. In the Black Forest the player meets it after a whole act of ordinary trolls; in
+the Meadows it arrives while a troll is still the largest thing they have ever seen. It sits after
+the race, keeps the fifteen-minute clock, and is spawned beside the player at night because the
+Meadows have no trolls (`TheBreaker`, modelled on `TheGatherer`).
+
+**The allies are the game's own faction rule, and this is the part worth remembering.**
+`BaseAI.IsEnemy`, read out of this build's IL: a ForestMonster is hostile to every faction except
+AnimalsVeg, Boss and its own. So moving the troll OFF ForestMonsters is the entire mechanism - one
+field, no reflection, and nothing re-applied every tick against an AI that would re-pick its own
+target a second later. `Character.Faction.Demon` leaves nothing on its side: not the forest, not
+the wildlife, not the player's raised skeletons, and not the player.
+
+Deliberately NOT friendly and NOT tamed. The greydwarves still want the player dead and simply want
+the troll dead more, which was the owner's own framing. Nothing persists: the ZDO is
+non-persistent and the faction change lives on one instance.
+
+Rewards moved with the step and were re-pointed at the Meadows - the AncientSeeds came out, since
+those are the Elder's key and would have let a player enter Act II holding its finale.
+
+Act I is 20 questline steps, Act II is 9, saga questline heat unchanged at 53.
+
+Waiting on the owner's play-test of `1.0.15-run.2026-09-19i` - see the TASK entry in
 [`../../HANDOFF_WINDOWS.md`](../../HANDOFF_WINDOWS.md). Beyond the entry point itself,
 still unverified from 12-13 September: Thor's bow on the bench after paying the shade
 and its flash on impact, the shade's greeting and its "[E] Speak" prompt, the saga

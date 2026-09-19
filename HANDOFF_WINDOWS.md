@@ -17,6 +17,47 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-19 - TASK: 1.0.15-run.2026-09-19i - the Breaker, and the forest on your side
+
+Installed here already (`-ModOnly`). The troll is Act I's mini-boss now, and one fight has
+temporary allies.
+
+**The troll moved from Act II to Act I**, as you asked. It is placed after the race: you have just
+spent a night watching the forest CARRY lights away, and now something comes through that does not
+want them at all. It keeps everything that made it good in Act II - named, announced, and the
+saga's first LOSABLE step at fifteen run-minutes. A troll is weather, not a garrison.
+
+It is SPAWNED, because the Meadows have no trolls - beside you, at night, like the Gatherer, so it
+can never land somewhere unloaded. Unstarred on purpose: a troll against flint is already the
+hardest thing in the act.
+
+**The allies of convenience come from the game's own rule, not from forcing the AI.** I read
+`BaseAI.IsEnemy` out of this build's IL: a ForestMonster is hostile to every faction except
+AnimalsVeg, Boss and its own. So moving the troll off ForestMonsters is the entire mechanism -
+one field, no reflection, nothing re-applied every tick against an AI that re-picks its own target
+a second later. It is set to Demon, which leaves nothing in the world on its side: not the forest,
+not the wildlife, not your raised skeletons, and not you.
+
+They are NOT friendly and NOT tamed. They still want you dead; they want the troll dead more, and
+standing between the two is your problem - which is what you asked for.
+
+**Rewards re-pointed for the Meadows:** troll hide, deer trophies it had broken and was carrying,
+coin and amber. The AncientSeeds it used to pay are gone - those are the Elder's key and belong an
+act away, and handing them out here would let you walk into Act II holding its finale.
+
+**What to watch for:** the announcement before nightfall and the arrival line; greydwarves actually
+attacking it (that is the whole experiment); whether they also keep attacking YOU, which they
+should; whether the fight is survivable in Act I gear with the forest helping; and the fifteen-minute
+loss - let it run out once and it should walk away with a line rather than stand in your meadow.
+
+Act I is 20 questline steps now; Act II is 9. Saga questline heat is unchanged at 53.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
+---
+
 ## 2026-09-19 - TASK: 1.0.15-run.2026-09-19h - Act I, before the light
 
 Installed here already (`-ModOnly`). Three new beats on the HUNT track, between clearing the

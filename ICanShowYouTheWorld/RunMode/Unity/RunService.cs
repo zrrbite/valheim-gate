@@ -162,6 +162,7 @@ namespace ICanShowYouTheWorld.RunMode
         private SpiritChase _spirit;
         private StolenLights _lights;
         private TheGatherer _gatherer;
+        private TheBreaker _breaker;
         private ForestWatch _forest;
         private FenWatch _fen;
 
@@ -667,6 +668,55 @@ namespace ICanShowYouTheWorld.RunMode
         /// also means it can never be placed somewhere unloaded — the bug that made the Herald
         /// unfindable for two versions.
         /// </summary>
+        /// <summary>Act I's troll step. Three places ask about it: the spawner, the death hook
+        /// and the clock.</summary>
+        private const string BreakerStepId = "mq-troll";
+
+        private bool _breakerForetold;
+
+        /// <summary>
+        /// Brings the Breaker through, once, at night, while its step is the one in play.
+        ///
+        /// Foretold the moment the step opens even in daylight, for the Gatherer's reason: a named
+        /// thing arriving unannounced reads as a random spawn rather than as an event. Arriving at
+        /// night only, because a troll walking out of the trees is a different thing in the dark.
+        /// </summary>
+        private void PollBreaker()
+        {
+            if (_breaker == null || !ActIsMeadows || _challenges == null) return;
+
+            bool wanted = _challenges.Tracks.Any(t =>
+                t.Current != null && !t.Blocked && t.Current.Def.Id == BreakerStepId);
+
+            if (!wanted) { _breakerForetold = false; return; }
+
+            if (!_breakerForetold)
+            {
+                _breakerForetold = true;
+                Announce("Something came out of the forest, and it is not collecting.");
+                Message("That one was never fed. It stopped carrying light a long time ago, and " +
+                        "started breaking it.");
+            }
+
+            var player = Player.m_localPlayer;
+            if (player == null || !IsNight) return;
+
+            try
+            {
+                if (_breaker.TryArrive(player))
+                {
+                    Announce($"{TheBreaker.Name} is here.");
+
+                    // The allies of convenience, said plainly so the player does not read it as a
+                    // bug when the forest stops chasing them. They are not helping; there is simply
+                    // something here they hate more, and they will remember the player afterwards.
+                    Message("The forest turns on it. They are not helping you \u2014 there is just " +
+                            "something here they hate more. Stay clear of both.");
+                }
+            }
+            catch (Exception ex) { LogOnce("breaker", ex); }
+        }
+
         private void PollGatherer()
         {
             if (_gatherer == null || !ActIsMeadows || _challenges == null) return;
@@ -839,6 +889,7 @@ namespace ICanShowYouTheWorld.RunMode
             _spirit = new SpiritChase(_cfg, _rng);
             _lights = new StolenLights(_cfg);
             _gatherer = new TheGatherer(_cfg, _rng);
+            _breaker = new TheBreaker(_cfg, _rng);
             _forest = new ForestWatch(_cfg, _rng);
             _fen = new FenWatch(_cfg, _rng);
 
@@ -1554,6 +1605,7 @@ namespace ICanShowYouTheWorld.RunMode
                 _courierForetold = false;
                 _lights?.Reset();
                 _gatherer?.Reset();
+                _breaker?.Reset();
                 _forest?.Reset();
                 _fen?.Reset();
                 _unbaselinedSeen.Clear();
@@ -2379,6 +2431,7 @@ namespace ICanShowYouTheWorld.RunMode
             PollLights();
             PollLightForfeit();
             PollGatherer();
+            PollBreaker();
             PollCouriers();
             // AFTER the CollectItem measuring above, never before it. The exemption already keeps
             // a wanted item in the pack, so this is belt and braces — but an ordering that only
@@ -4860,6 +4913,14 @@ namespace ICanShowYouTheWorld.RunMode
                 Message($"Too late — {def.Display}. The moment has passed, and it pays nothing.");
                 Announce($"Step failed on the clock: {def.Id}");
 
+                // A troll is weather, not a garrison. A missed deadline takes it away rather than
+                // leaving it standing in a meadow with nothing left to earn.
+                if (def.Id == BreakerStepId)
+                {
+                    _breaker?.Leave();
+                    Message("It has moved on. The meadows are quieter, and poorer for it.");
+                }
+
                 // Saved immediately for the same reason a completion is: the questline has moved,
                 // and a crash before the next autosave would otherwise hand the step back.
                 SaveState();
@@ -5440,6 +5501,12 @@ namespace ICanShowYouTheWorld.RunMode
                         if (_fen.OnCharacterDied(c)) Message("The swamp does not let go of its dead.");
                     }
                     catch (Exception ex) { LogOnce("fen-watch", ex); }
+                }
+
+                if (_breaker != null && ActIsMeadows && _breaker.OnCharacterDied(c))
+                {
+                    Message("It will break nothing else. The forest drifts away from the body " +
+                            "without a look at you.");
                 }
 
                 if (_gatherer != null && ActIsMeadows)
@@ -7286,6 +7353,33 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
+                // Act I's mini-boss, MOVED HERE from Act II on the owner's call: "I definitely think
+                // we should move the troll to act 1." It is the right call. The fiction was always
+                // Act I's — the one thing in this story that BREAKS light instead of carrying it —
+                // and in the Black Forest the player meets it after a whole act of trolls being
+                // ordinary. Here it arrives while a troll is still the largest thing they have seen.
+                //
+                // Placed after the race on purpose: the player has just spent a night watching the
+                // forest CARRY lights away, and now something comes through that does not want them
+                // at all.
+                //
+                // It is SPAWNED, because the Meadows have no trolls — see TheBreaker, which also
+                // holds the faction trick that puts the greydwarves on your side for one fight.
+                //
+                // Still the saga's first LOSABLE step, which is why it was worth moving rather than
+                // copying. Everything before it is a matter of when, never whether, and a questline
+                // in which nothing can be missed has no tension in it, only length. Fifteen
+                // run-minutes — frozen runs do not tick, and it survives a resume, so quitting is
+                // not a way to buy more of it.
+                Id = "mq-troll", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Troll",
+                Target = 1, Display = "Put down the Breaker",
+                RewardText = "Its hide, and the trophies it was carrying",
+                TimeLimitSeconds = 900f,
+                Hint = "Fifteen minutes, then it has moved on. It will take your house down with it \u2014 fight it away from anything you built, and let the forest do its share.",
+                Opening = "The forest sent nothing for this one. It comes for the light itself, and it does not collect.",
+            },
+            new ChallengeDefinition
+            {
                 // Act I's climax before the boss, and the one deer that is an event rather than a
                 // counter. Param is SYNTHETIC — the Herald is an ordinary Deer wearing a name, so
                 // matching on "Deer" would let any deer finish this. The host reports this name only
@@ -7579,33 +7673,6 @@ namespace ICanShowYouTheWorld.RunMode
                 Param = StolenLights.TakenEvent, Target = 4, Display = "Rob the couriers (4 lights)",
                 RewardText = "What the Elder was owed",
                 Hint = "Starred and named, hurrying through the dark. The brand is the cargo \u2014 cut them down.",
-            },
-            new ChallengeDefinition
-            {
-                // The one thing in the forest that BREAKS light instead of carrying it.
-                //
-                // Every other creature here converges on a light out of hunger and carries it home
-                // — that is the rule the story bible sets, and nothing may read as vandalism. The
-                // troll is the exception that proves it: too big for the Elder's table, never fed,
-                // and long past collecting. It is what a splinter becomes when the harvest never
-                // reaches it.
-                // The saga's first LOSABLE step. Everything until now was a matter of when, never
-                // whether — and a questline in which nothing can be missed has no tension in it,
-                // only length. Fifteen run-minutes, and if the troll is not down the step pays
-                // nothing and the chain moves on without it.
-                //
-                // This step in particular, because its fiction is already a passing thing: a troll
-                // is weather, not a garrison. It comes through and it goes. Missing one is a thing
-                // that can happen to you, which is exactly what a deadline needs to be believable.
-                //
-                // The clock is RUN time — a frozen run does not tick — and it survives a resume,
-                // so quitting is not a way to buy more of it.
-                Id = "bf-troll", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "Troll",
-                Target = 1, Display = "Kill a Troll",
-                RewardText = "Its hoard, its hide, and the only seeds the Elder will answer to",
-                TimeLimitSeconds = 900f,
-                Hint = "Fifteen minutes, then it has moved on. It will take your house down with it — fight it away from anything you built.",
-                Opening = "That one was never fed. It stopped carrying light a long time ago, and started breaking it. It will not stay in this part of the forest for long.",
             },
             new ChallengeDefinition
             {
@@ -8222,7 +8289,12 @@ namespace ICanShowYouTheWorld.RunMode
                 // enough for real armour rather than a sample, plus what the thing had been
                 // sitting on. A troll should feel like the richest thing in the Black Forest,
                 // which it now is by a distance.
-                ["bf-troll"] = new[] { ("TrollHide", 20), ("AncientSeed", 3), ("Coins", 150), ("Ruby", 2), ("Amber", 5) },
+                // Moved from Act II with the step. Re-pointed at what a MEADOWS troll should pay:
+                // the hide (the act's only real armour), deer trophies it had already broken and
+                // was carrying, and coin. NO AncientSeed — those are the Elder's key and belong an
+                // act away; handing them out here would let a player walk into Act II holding its
+                // finale.
+                ["mq-troll"] = new[] { ("TrollHide", 20), ("TrophyDeer", 3), ("Coins", 150), ("Amber", 5) },
                 ["bf-elder"] = new[] { ("CryptKey", 1) },
 
                 // Acts III-V, thin like their chains. Each pays the next step's tedious part and
