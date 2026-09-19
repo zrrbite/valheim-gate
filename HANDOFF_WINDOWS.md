@@ -17,6 +17,85 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-19 - THE TEST LIST for 1.0.15-run.2026-09-19j
+
+Ten builds stacked up in one afternoon, so this is all of them as ONE pass, ordered by when you
+meet each thing rather than by build number. The per-build TASK entries below keep the reasoning;
+this is the list to play with.
+
+Installed already. Nothing here needs a pull.
+
+### Before you load a character
+
+- [ ] Launch and **do not open Credits**. The version popup appears at the main menu on its own,
+      reading **v1.0.15-run.2026-09-19j**.
+- [ ] Under the menu's own version line: a gold **VALHEIM: THE SAGA** line with that build.
+- [ ] Load the character carrying **Thor's bow**. Still there. Save, quit to desktop, come back:
+      still there. No `Failed to find item prefab` in the log.
+- [ ] Quit to the main menu from inside a world: exactly **one** popup per launch, and a GM hotkey
+      fires **once**, not twice.
+
+### The keys - this is the one that will trip your muscle memory
+
+- [ ] `Keypad +` = **Shaman's Mercy** (burst heal). `Keypad -` = **Unseen** (20s, nothing sees you).
+- [ ] **`Shift` + `Keypad +`** is the dev step-skip now. EVERY dev key moved behind Shift; the full
+      table is in `dist/windows/DEV-MODE.md`.
+- [ ] A boon offer card shows the key beside "active", e.g. `active  [+]`.
+
+### Act I, in chain order
+
+- [ ] **Hear the raven out** - Hugin lands and states the errand.
+- [ ] **Hunt a deer by daylight** - nothing rises, and the line says why.
+- [ ] **Keep a watch after dark** - three whispers. The strip should tell you to wait for dark, and
+      **no pack and no starred deer** should appear during it (the vigil is meant to be empty).
+- [ ] **Follow the pale light**, then **the race**. Every light taken drops a **Rescued light** into
+      your pack; check the stack survives a portal.
+- [ ] **The Breaker** - announced before nightfall, arrives at night. **The greydwarves attack it**,
+      and they **still attack you**. That three-way fight is the whole experiment.
+- [ ] **The Breaker, failed on purpose**: let the fifteen minutes run out once and confirm it walks
+      away with a line rather than standing in your meadow.
+- [ ] **Thor's bow** - the bench will not list it until you are HOLDING a light; needs 3. Lightning
+      flash on impact.
+- [ ] **The Stormward** - needs an **improved** workbench and 10 troll hide.
+- [ ] **The claim that matters most:** miss the troll, and confirm the act still finishes with only
+      the shield lost. Nothing else on any track may stall.
+- [ ] Herald, then the Gatherer, then the altar, then **Eikthyr** - and the shield should visibly
+      blunt his lightning.
+
+### Systems you brush against throughout
+
+- [ ] **No fishing bounty is ever dealt before you own a rod.**
+- [ ] **Windfall has 3 charges** and counts them down as you spend them.
+- [ ] **The stash is alphabetical**, and "Take" empties the row you clicked.
+- [ ] **Quick Study** (skills x9 while held) and **Bountiful** (drops x6 while held) appear in
+      offers and visibly work.
+- [ ] Still unverified from 12-13 September: the **shade's greeting** and its `[E] Speak` prompt,
+      the **saga dreams**, and **raids arriving as beats**.
+
+### Afterwards, in PowerShell
+
+```powershell
+Select-String -Path "$env:USERPROFILE\AppData\LocalLow\IronGate\Valheim\Player.log" `
+    -Pattern 'ICanShowYouTheWorld\] Unknown|Failed to find item prefab|Collect ''|Raven errand|Breaker'
+```
+
+`] Unknown` must be empty (the asset-name validator, all acts). `Collect '` prints the
+carry-weight readout per collect step. The other two are the new content reporting itself.
+
+### One caveat while judging the feel
+
+Your config file is from **25 August** and pins `runStaminaRegenRate` to **1.5**, where the current
+default is **2.5** - the file wins over the code, so you have been playing a month-old stamina
+regen. Thirty-four newer settings are absent from it entirely and running on code defaults, which
+is correct behaviour but means they cannot be TUNED without adding the lines by hand. Ask and I
+will either add the keys or make `Load()` re-save so no future setting is invisible.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
+---
+
 ## 2026-09-19 - TASK: 1.0.15-run.2026-09-19j - the Stormward
 
 Installed here already (`-ModOnly`). Act I's last craft step, and the saga's second item of its
