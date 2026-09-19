@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-09-19 at `1.0.15-run.2026-09-19k`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-09-20 at `1.0.15-run.2026-09-20`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -21,18 +21,42 @@ Everything below is what that file tells it.
 
 - Branch **`feature/run-mode`**, not merged, deliberately — the mode is still
   being tuned in play.
-- Latest tag **`1.0.15-run.2026-09-19k`**; builds are date-based since 2026-08-31
+- Latest tag **`1.0.15-run.2026-09-20`**; builds are date-based since 2026-08-31
   (`Scripts/nextversion.sh`). The game moved to **1.0.12 on 2026-09-12** and to
   **1.0.15 on 2026-09-19**; both times the mod was rebuilt and installed on Windows
   the same day. **1.0.15 needed no source change** — all 316 member references from
   the built DLL into the game's assemblies still resolved, and Unity stayed at
   6000.0.75. The Deck and the Mac are now TWO game versions behind and each needs its
   own download → patch → upload before use.
+- **Built 2026-09-19 evening to 2026-09-20**, all awaiting a play verdict. In the order
+  they were found, because several were each other's cause:
+  - `CreatureDressing.ApplyWhenSettled` — named creatures are dressed TWO FRAMES after
+    the spawn. Dressing at spawn ran before `LevelEffects.Start`, which sets `localScale`
+    (discarding our multiplier) and, on a cache miss, copies the renderer's current
+    material into a **static** dictionary keyed by prefab+level. The Gatherer is
+    `SetLevel(2..3)`, so it was handing its gold to every starred `Greydwarf_Elite` in the
+    session. One bug, two play reports. **Anything that dresses a creature must use
+    ApplyWhenSettled.**
+  - Saga items set every stat explicitly instead of inheriting from the source prefab. The
+    source is now purely which MESH the item wears. Thor's bow: 58 pierce, 32 lightning.
+  - The Stormsworn: one armour piece per act, Acts II to V, each resisting what its own act
+    kills people with. No rescued lights in those recipes — lights are Acts I and II only,
+    and a `CollectItem` step nobody can finish is a stalled act.
+  - Step hints are SPOKEN as a step opens, through a paced queue (Valheim's centre message
+    replaces itself, so two lines in one frame were one line plus a flicker).
+  - Recipe unlocks are announced by Hugin (`SagaRecipeDefinition.TaughtLine`), tracked
+    separately from registration because a world load re-registers everything.
+  - `PageDown` gates back to where you died; dev keys are bare again except `Keypad +/-`;
+    the dev help line is generated from `RunService.DevKeyHelp` beside the keys it describes.
+  - `nextversion.sh` takes the letter after the highest, not the first gap.
+- **One unverified guess**: the forge's prefab name in the three Stormsworn forge recipes is
+  `"forge"`. Nothing else in the repo references it. It fails loudly — look for
+  `station prefab 'forge' has no CraftingStation` in the log in Act II.
 - **The entry point moved on 2026-09-19**: `NotACheater.Run()` is injected into
   `FejdStartup.Start()` (and still into `OnCredits`, where it is a no-op). The mod
   loads itself at startup; "open Credits first" is no longer a rule anybody has to
   remember, and no longer a way to lose Thor's bow.
-- Engine tests: `Tests/run_tests.sh`, 564 assertions, all passing. The script now
+- Engine tests: `Tests/run_tests.sh`, 572 assertions, all passing. The script now
   falls back to Visual Studio's Roslyn `csc.exe` when `mcs`/`mono` are absent, so the
   suite runs on the Windows box too.
 - Game version 1.0.15, Unity 6000.0.75 (was 0.221.12 / 6000.0.61 until 2026-09-12,
