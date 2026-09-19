@@ -1953,6 +1953,15 @@ namespace ICanShowYouTheWorld.RunMode
         {
             if (_cfg == null || !_cfg.RunDevMode || !_active || _frozen) return;
 
+            // SHIFT-held, every one of them. Keys are scoped per MODE already - GM bindings go
+            // through InputManager.Gate and are dead while a run is live, so the same key can mean
+            // one thing to the cheat mod and another to the saga. What was NOT scoped was the two
+            // layers inside saga mode: dev squatted on nine keys the player's own actives could
+            // otherwise use, all read from this same Tick. A modifier separates them, and the rule
+            // is now sayable in one line - a saga key is the player's, and the same key with Shift
+            // is the tester's.
+            if (!Input.GetKey(KeyCode.LeftShift) && !Input.GetKey(KeyCode.RightShift)) return;
+
             if (Input.GetKeyDown(KeyCode.KeypadPlus))
             {
                 _challenges?.DevCompleteCurrent();
@@ -2156,22 +2165,19 @@ namespace ICanShowYouTheWorld.RunMode
         {
             if (_boons == null || _boons.CurrentOffer.Count > 0) return;
 
-            if (Input.GetKeyDown(KeyCode.Keypad4)) TryActivateHeldBoon("wind");
-            else if (Input.GetKeyDown(KeyCode.Keypad5)) TryActivateHeldBoon("ember");
-            else if (Input.GetKeyDown(KeyCode.Keypad6)) TryActivateHeldBoon("way");
-            else if (Input.GetKeyDown(KeyCode.Keypad7)) TryActivateHeldBoon("brother");
-            else if (Input.GetKeyDown(KeyCode.Keypad8)) TryActivateHeldBoon("windfall");
-            else if (Input.GetKeyDown(KeyCode.Keypad0)) TryActivateHeldBoon("bonecaller");
-            else if (Input.GetKeyDown(KeyCode.Insert)) TryActivateHeldBoon("menagerie");
-            // PgDn and Backspace rather than the next free numpad keys: every numpad symbol is a
-            // DEV binding (KeypadPlus/Minus/Multiply/Divide), and Keypad1-3 are the offer's own
-            // pick keys - putting an active on those would show "[1]" on a held boon and "[1] pick"
-            // on an offer at the same time. Unambiguous beat tidy.
-            else if (Input.GetKeyDown(KeyCode.PageDown)) TryActivateHeldBoon("shaman");
-            else if (Input.GetKeyDown(KeyCode.Backspace)) TryActivateHeldBoon("unseen");
+            // Walked from BoonKeys rather than spelled out here, so the key the HUD PRINTS and the
+            // key this READS cannot drift apart. Adding an active is one row in that table.
+            foreach (var binding in BoonKeys.Actives)
+            {
+                if (!Input.GetKeyDown(binding.Key)) continue;
+
+                TryActivateHeldBoon(binding.Id);
+                return;
+            }
+
             // Keypad 9 is not a boon: Homeward is a run mechanic earned from bosses, so it sits
             // beside the boon keys rather than among them.
-            else if (Input.GetKeyDown(KeyCode.Keypad9)) TryHomeward();
+            if (Input.GetKeyDown(KeyCode.Keypad9)) TryHomeward();
         }
 
         private void TryActivateHeldBoon(string boonId)
@@ -8139,12 +8145,12 @@ namespace ICanShowYouTheWorld.RunMode
             new BoonDefinition { Id = "brother", Display = "Packbrother", IsPassive = false, CooldownSeconds = 240f, Description = "Summon a wolf to fight for you. Two at a time." },
             // Testable from Act I: you tame a boar on the hearth track, so this has something to
             // work on long before a boss falls.
-            new BoonDefinition { Id = "menagerie", Display = "Menagerie", IsPassive = false, CooldownSeconds = 90f, Description = "Odin lends a beast \u2014 any beast. Cast again to trade it back. [Ins]" },
+            new BoonDefinition { Id = "menagerie", Display = "Menagerie", IsPassive = false, CooldownSeconds = 90f, Description = "Odin lends a beast \u2014 any beast. Cast again to trade it back." },
             new BoonDefinition { Id = "hearthlight", Display = "Hearthlight", IsPassive = true, Description = "A mending warmth follows you. You and your animals heal near it." },
             new BoonDefinition { Id = "shepherd", Display = "Shepherd", IsPassive = true, Weight = 3, Description = "Your tamed animals are stronger, tougher and faster. New ones too." },
             // Act II onward. Skeletons in the Meadows would be a Black Forest answer to a Meadows
             // problem, and the flavour belongs with the burial chambers.
-            new BoonDefinition { Id = "bonecaller", Display = "Bonecaller", IsPassive = false, CooldownSeconds = 180f, MinBosses = 1, Description = "Raise two skeletons to fight for you. [0]" },
+            new BoonDefinition { Id = "bonecaller", Display = "Bonecaller", IsPassive = false, CooldownSeconds = 180f, MinBosses = 1, Description = "Raise two skeletons to fight for you." },
             new BoonDefinition { Id = "mule",  Display = "Packmule",     IsPassive = true,  Description = "Carry 100 more weight." },
             new BoonDefinition { Id = "hearty", Display = "Hearty",      IsPassive = true,  Description = "+15 max health." },
             new BoonDefinition { Id = "tireless", Display = "Tireless",  IsPassive = true,  Description = "+25 max stamina, faster recovery, cheaper dodges." },
@@ -8204,8 +8210,8 @@ namespace ICanShowYouTheWorld.RunMode
             // is the whole point of BoonEffects: a boon is a legacy cheat with a cooldown and a
             // reason. A burst heal where Second Wind is a window, and an escape where the mode had
             // none at all.
-            new BoonDefinition { Id = "shaman", Display = "Shaman\u2019s Mercy", IsPassive = false, CooldownSeconds = 90f, Description = "Cast a healing burst where you stand. Heals you and your own. [PgDn]" },
-            new BoonDefinition { Id = "unseen", Display = "Unseen", IsPassive = false, CooldownSeconds = 150f, Description = "Nothing can see you for 20s. Walk away from anything. [Bksp]" },
+            new BoonDefinition { Id = "shaman", Display = "Shaman\u2019s Mercy", IsPassive = false, CooldownSeconds = 90f, Description = "Cast a healing burst where you stand. Heals you and your own." },
+            new BoonDefinition { Id = "unseen", Display = "Unseen", IsPassive = false, CooldownSeconds = 150f, Description = "Nothing can see you for 20s. Walk away from anything." },
         };
     }
 }

@@ -27,20 +27,35 @@ It ships `false` and nothing in the mod ever turns it on by itself.
 
 ## The keys
 
-All on the numpad's operator keys — the digits are taken by boon offers, boon
-activations and Homeward.
+**Hold Shift.** Every dev key is Shift plus the key below, and that is the whole
+rule: a saga key is the player's, the same key with Shift is the tester's.
+
+It was not always so. Dev used to own nine bare keys, several of which the
+player's own boon actives wanted — and unlike the GM mod's bindings, which
+`InputManager.Gate` makes dead during a run, dev and the actives are read from
+the *same* handler in the same mode. A modifier is what separates two layers
+inside one mode.
 
 | Key | Effect |
 |---|---|
-| `Keypad +` | Complete the current step on **every** unblocked track |
-| `Keypad -` | Push the clock forward **2 game hours** (press until "it is night") |
-| `Keypad *` | A chest's worth of materials, **into the stash** |
-| `Keypad .` | Drop a **deer's light** at your feet |
-| `Keypad /` | **God mode** + a fighter's kit **+75% speed** (toggle) |
-| `Keypad Enter` | **Gate to your claimed bed**, free, no cooldown |
-| `Delete` | **Slay everything hostile within 10m** |
+| `Shift` + `Keypad +` | Complete the current step on **every** unblocked track |
+| `Shift` + `Keypad -` | Push the clock forward **2 game hours** (press until "it is night") |
+| `Shift` + `Keypad *` | A chest's worth of materials, **into the stash** |
+| `Shift` + `Keypad .` | Drop a **deer's light** at your feet |
+| `Shift` + `Keypad /` | **God mode** + a fighter's kit **+75% speed** (toggle) |
+| `Shift` + `Keypad Enter` | **Gate to your claimed bed**, free, no cooldown |
+| `Shift` + `Delete` | **Slay everything hostile within 10m** |
+| `Shift` + `Home` | **Teleport to the map cursor** (the GM mod's own teleport) |
+| `Shift` + `PageUp` | **Dump what the creature in view is made of** to the log |
 
-Keys only work during an active run.
+Two of those were missing from this page entirely before the keys were scoped;
+the table is now the code.
+
+Keys only work during an active run. Shift also makes the player sprint, which
+is harmless and the price of a modifier every keyboard has.
+
+Note that bare `Keypad +` and `Keypad -` are now the player's: **Shaman's Mercy**
+and **Unseen**.
 
 ## What each is for
 

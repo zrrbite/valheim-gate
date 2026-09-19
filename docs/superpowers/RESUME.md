@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-09-19 at `1.0.15-run.2026-09-19f`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-09-19 at `1.0.15-run.2026-09-19g`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -21,7 +21,7 @@ Everything below is what that file tells it.
 
 - Branch **`feature/run-mode`**, not merged, deliberately — the mode is still
   being tuned in play.
-- Latest tag **`1.0.15-run.2026-09-19f`**; builds are date-based since 2026-08-31
+- Latest tag **`1.0.15-run.2026-09-19g`**; builds are date-based since 2026-08-31
   (`Scripts/nextversion.sh`). The game moved to **1.0.12 on 2026-09-12** and to
   **1.0.15 on 2026-09-19**; both times the mod was rebuilt and installed on Windows
   the same day. **1.0.15 needed no source change** — all 316 member references from
@@ -347,8 +347,8 @@ move stamina ×0.5, stamina regen ×2.5, all stamina costs ×0.75, free melee an
 tools (ranged pays 25%), and the Hunter's Eye tracker panel.
 
 **30 boons**, never offering one already held. Nine actives - Keypad 4-8 plus 0 and Insert
-(Second Wind, Emberskin, Waystone, Packbrother, Windfall, Bonecaller, Menagerie), and PgDn /
-Backspace (Shaman's Mercy, Unseen); the rest are passives, across seven kinds:
+(Second Wind, Emberskin, Waystone, Packbrother, Windfall, Bonecaller, Menagerie), plus
+`Keypad +` and `Keypad -` (Shaman's Mercy, Unseen); the rest are passives, across seven kinds:
 
 | Kind | Boons |
 |---|---|
@@ -685,7 +685,27 @@ left that knows to undo it.
 **Keys:** every numpad symbol is a DEV binding and Keypad1-3 are the offer's pick keys, so these
 went on PgDn and Backspace. Unambiguous beat tidy; both are one line to move.
 
-Waiting on the owner's play-test of `1.0.15-run.2026-09-19f` - see the TASK entry in
+**`...-19g` scoped the keys properly** (owner: "the keys could be bound to each game mode right?
+Home means something for the original cheat mod and something different for saga mode", "so it's
+OK to reuse?", "as long as the key is indicated by the saga mode"). Yes on all three, and the
+answers were not symmetrical:
+
+- **Across modes, reuse was already safe.** `InputManager.Gate` makes every GM command dead while
+  a run is live, and its own comment says it exists to resolve exactly the Keypad1-7 collision
+  with boon keys. A key may mean one thing to the cheat mod and another to the saga.
+- **Within saga mode it was NOT scoped**, and that is what pushed the two new actives onto PgDn
+  and Backspace: dev input and boon activation are read from the same handler, and dev held nine
+  bare keys. **Every dev key is now Shift + the same key**, which freed the numpad symbols, and
+  Shaman's Mercy and Unseen moved to `Keypad +` and `Keypad -`. `DEV-MODE.md` also gained the two
+  rows it had never documented (`Home`, `PageUp`).
+- **The key is now always shown**, because it is stated ONCE. It had been in three places - the
+  input chain, a switch in `RunWindow`, and a hand-written "[Ins]" tail on some descriptions -
+  which is how an active could work perfectly and never say what pressed it. `BoonKeys` (Unity
+  layer, because `KeyCode` is UnityEngine and RunMode's pure half compiles without Unity) is now
+  the definition: the input handler walks it, the HUD labels from it, and the offer card prints
+  "active  [+]" from it. One row per active, and the label cannot go missing.
+
+Waiting on the owner's play-test of `1.0.15-run.2026-09-19g` - see the TASK entry in
 [`../../HANDOFF_WINDOWS.md`](../../HANDOFF_WINDOWS.md). Beyond the entry point itself,
 still unverified from 12-13 September: Thor's bow on the bench after paying the shade
 and its flash on impact, the shade's greeting and its "[E] Speak" prompt, the saga

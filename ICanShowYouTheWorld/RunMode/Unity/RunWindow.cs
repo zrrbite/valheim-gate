@@ -1474,20 +1474,12 @@ namespace ICanShowYouTheWorld.RunMode
             return slotH + 4f;
         }
 
-        private static string ShortActivationKey(string boonId)
-        {
-            switch (boonId)
-            {
-                case "wind": return "[4]";
-                case "ember": return "[5]";
-                case "way": return "[6]";
-                case "brother": return "[7]";
-                case "windfall": return "[8]";
-                case "bonecaller": return "[0]";
-                case "menagerie": return "[Ins]";
-                default: return "";
-            }
-        }
+        /// <summary>
+        /// The activation key for a held boon, from the one table that also drives the input
+        /// handler (<see cref="BoonKeys"/>). It was a second copy of that list until an active was
+        /// added to one and not the other — a boon that worked and never said which key worked it.
+        /// </summary>
+        private static string ShortActivationKey(string boonId) => BoonKeys.Label(boonId);
 
         /// <summary>
         /// The right-hand status column of the held-boon list — a FIXED 104px
@@ -1830,7 +1822,13 @@ namespace ICanShowYouTheWorld.RunMode
                 GUILayout.Label(offer[i].Display, RunTheme.Body);
                 GUILayout.EndHorizontal();
 
-                GUILayout.Label(offer[i].IsPassive ? "passive" : "active", RunTheme.Small);
+                // An active says its key on the card, not just once it is held: the decision the
+                // offer asks for includes "have I got a finger free for this".
+                string offerKey = BoonKeys.Label(offer[i].Id);
+                GUILayout.Label(
+                    offer[i].IsPassive ? "passive"
+                        : string.IsNullOrEmpty(offerKey) ? "active" : "active  " + offerKey,
+                    RunTheme.Small);
                 if (!string.IsNullOrEmpty(offer[i].Description))
                     GUILayout.Label(offer[i].Description, RunTheme.Body);
                 GUILayout.EndVertical();

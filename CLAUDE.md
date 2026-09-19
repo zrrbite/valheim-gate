@@ -170,6 +170,22 @@ Commands are registered using the `CommandBinding` class which encapsulates:
 
 InputManager polls keyboard in Update() and dispatches to appropriate commands.
 
+**Keys are scoped per MODE, and reuse is deliberate.** The same physical key means
+different things in the cheat mod and in the saga, and that is safe because the two
+listeners are never both live:
+
+1. **GM bindings** go through `InputManager` and `InputManager.Gate`, which makes every
+   GM command dead while a run is live. So a GM key is free for the saga to reuse.
+2. **Saga bindings** are read straight from `RunService.Tick`: `Keypad1-3` pick from an
+   offer (and the activation handler returns early while an offer is up), `Keypad4-8`,
+   `0`, `Insert`, `+` and `-` activate held boons, `Keypad9` is Homeward.
+3. **Dev bindings** are the same keys **with Shift**, because dev and the actives ARE in
+   the same mode and the same handler — a modifier is the only thing that separates two
+   layers inside one mode. See `dist/windows/DEV-MODE.md`.
+
+The rule, sayable in one line: a saga key is the player's, the same key with Shift is the
+tester's, and what the cheat mod does with either is its own business.
+
 **Controller setups**: every command is keyboard-only and numpad-heavy, so on
 a machine played with a gamepad (Steam Deck, or a couch Windows setup) the
 commands need **Steam Input** remaps — bind controller inputs to the keyboard

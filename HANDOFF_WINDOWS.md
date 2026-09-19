@@ -17,6 +17,48 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-19 - TASK: 1.0.15-run.2026-09-19g - keys are per-mode, and the saga says them
+
+Installed here already (`-ModOnly`). Your two points, both taken.
+
+**Keys ARE scoped per mode, and reuse is fine.** That was already true for the cheat mod
+versus the saga: GM bindings go through `InputManager.Gate`, which makes every GM command dead
+while a run is live, and its own comment says it exists precisely to resolve the Keypad1-7
+collision with boon keys. So `Home` meaning one thing to the cheat mod and another to the saga
+is the design, not a clash.
+
+What was NOT scoped was the two layers INSIDE saga mode. The dev keys and the boon actives are
+read from the same handler in the same mode, and dev had squatted on nine bare keys. So:
+
+**Every dev key is now Shift + the same key.** `Shift`+`Keypad +`, `Shift`+`Delete`, and so on -
+`dist/windows/DEV-MODE.md` has the full table, and it gained the two rows it had been missing
+(`Home` teleport, `PageUp` creature dump). The rule fits in a line: a saga key is the player's,
+the same key with Shift is the tester's.
+
+**Which freed the good keys**, so the two new actives moved onto the numpad with the rest:
+
+| Key | Boon |
+|---|---|
+| `Keypad +` | Shaman's Mercy |
+| `Keypad -` | Unseen |
+
+**And the saga now always indicates the key**, which was your condition. It had been stated in
+THREE places - the input handler, a switch in the HUD, and a hand-written "[Ins]" at the end of
+some descriptions - so an active could work perfectly and never tell you what pressed it. There
+is now one table, `BoonKeys`: the input handler walks it, the HUD labels from it, and the offer
+card reads "active  [+]" from it. Adding an active is one row, and forgetting to show its key is
+no longer possible. The hand-written keys came out of the four descriptions that had them.
+
+**What to watch for:** the offer card showing the key beside "active"; the held-boon strip showing
+it too; `Keypad +` healing rather than completing a step; and `Shift`+`Keypad +` still completing
+the step. Dev mode is on in your config, so that last one is testable immediately.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
+---
+
 ## 2026-09-19 - TASK: 1.0.15-run.2026-09-19f - two actives from the old mod
 
 Installed here already (`-ModOnly`). Both are GM commands you already had, given a cooldown and
