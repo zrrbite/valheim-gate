@@ -75,24 +75,25 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
-        /// Writes SkillGainRate as the baseline times a boon multiplier (1 for "no boon held").
+        /// Writes one rate key as a BASELINE times a boon multiplier (1 for "no boon held"). Used by
+        /// every boon whose effect is a world rate — Quick Study on SkillGainRate, Bountiful on
+        /// ResourceRate — and by the host's refresh after its own baseline pass.
         ///
-        /// Recomputed from the CONFIG value every time, never from the key's current contents. That
-        /// is what keeps this safe next to <see cref="ApplyBaseline"/>: two writers on one value
-        /// corrupt each other the moment either treats the other's output as its starting point, and
-        /// this mode has paid for that lesson three times. Here the pristine value is a config
-        /// constant, so there is nothing to snapshot and nothing to drift — call it in any order,
-        /// as often as you like, and the answer is the same.
+        /// <paramref name="baseRate"/> must be the pristine CONFIG value, never the key's current
+        /// contents. That is the whole safety of this method sitting beside <see cref="ApplyBaseline"/>:
+        /// two writers on one value corrupt each other the moment either treats the other's output as
+        /// its starting point, and this mode has paid for that lesson three times. Recomputed from the
+        /// baseline on every call, so order and repetition stop mattering entirely.
         ///
         /// The pre-run original is saved as usual, so RestoreAll still hands the world back exactly
         /// what it had.
         /// </summary>
-        public void ApplySkillGain(IConfiguration cfg, float boonMultiplier)
+        public void ApplyBoostedRate(GlobalKeys key, float baseRate, float boonMultiplier)
         {
             if (ZoneSystem.instance == null) return;
 
-            SaveOriginal(GlobalKeys.SkillGainRate);
-            SetRate(GlobalKeys.SkillGainRate, cfg.RunSkillGainRate * Mathf.Max(0.01f, boonMultiplier));
+            SaveOriginal(key);
+            SetRate(key, baseRate * Mathf.Max(0.01f, boonMultiplier));
             RefreshRates();
         }
 

@@ -1552,7 +1552,7 @@ namespace ICanShowYouTheWorld.RunMode
                 _discovered.Clear();
                 _pinnedActIndex = -1;
                 _worldModifiers.ApplyBaseline(_cfg);
-                RefreshSkillGain();   // baseline first, then whatever Quick Study adds on top
+                RefreshRateBoons();   // baseline first, then whatever a rate boon adds on top
                 // Free melee/tool stamina is baseline empowerment: the early game's stamina tax
                 // is tedium, not difficulty. Re-run on the poll tick for newly crafted gear.
                 _boonEffects.ApplyPugilist();
@@ -5223,7 +5223,7 @@ namespace ICanShowYouTheWorld.RunMode
             try { ApplyBoonEffect?.Invoke(def.Id); }
             catch (Exception ex) { LogOnce("boon-apply", ex); }
 
-            if (def.Id == SkillGainBoonId) RefreshSkillGain();
+            if (IsRateBoon(def.Id)) RefreshRateBoons();
         }
 
         private void OnBoonLost(BoonDefinition def)
@@ -5232,32 +5232,46 @@ namespace ICanShowYouTheWorld.RunMode
             catch (Exception ex) { LogOnce("boon-unapply", ex); }
 
             // A death penalty removes the newest boon, so this is a real path, not a tidy one.
-            if (def.Id == SkillGainBoonId) RefreshSkillGain();
+            if (IsRateBoon(def.Id)) RefreshRateBoons();
         }
 
-        /// <summary>Quick Study: the one boon whose effect is a world-modifier key.</summary>
+        /// <summary>
+        /// The boons whose whole effect is a world RATE, and nothing else.
+        ///
+        /// They are handled here rather than in BoonEffects because these keys belong to the WORLD,
+        /// and the world modifiers are the host's to write — guarded by world identity, with the
+        /// pre-run original stored in the run state. A boon reaching around that would be the one
+        /// write in the mode that could outlive the run.
+        /// </summary>
         private const string SkillGainBoonId = "study";
+        private const string ResourceBoonId = "bounty";
+
+        private static bool IsRateBoon(string id) => id == SkillGainBoonId || id == ResourceBoonId;
 
         /// <summary>
-        /// Writes the run's skill-gain rate: the configured baseline, multiplied when Quick Study is
-        /// held. Called after every ApplyBaseline and whenever that boon is gained or lost.
+        /// Writes every rate a boon can lift: the configured baseline, multiplied where that boon is
+        /// held. Called after every ApplyBaseline, and whenever one of them is gained or lost.
         ///
-        /// It lives here rather than in BoonEffects because the key belongs to the WORLD, and the
-        /// world modifiers are the host's to write — guarded by world identity, with the pre-run
-        /// original stored in the run state. A boon reaching around that would be the one write in
-        /// the mode that could outlive the run.
+        /// BOTH are rewritten on every call rather than only the one that changed. It costs two key
+        /// writes and buys the invariant that matters: the rates are a pure function of (config, held
+        /// boons), so nothing can drift whatever order anything ran in.
         /// </summary>
-        private void RefreshSkillGain()
+        private void RefreshRateBoons()
         {
             try
             {
-                bool held = _boons != null && _boons.Held != null &&
-                            _boons.Held.Any(h => h.Def != null && h.Def.Id == SkillGainBoonId);
+                _worldModifiers.ApplyBoostedRate(GlobalKeys.SkillGainRate, _cfg.RunSkillGainRate,
+                    Holds(SkillGainBoonId) ? _cfg.RunSkillBoonMultiplier : 1f);
 
-                _worldModifiers.ApplySkillGain(_cfg, held ? _cfg.RunSkillBoonMultiplier : 1f);
+                _worldModifiers.ApplyBoostedRate(GlobalKeys.ResourceRate, _cfg.RunResourceRate,
+                    Holds(ResourceBoonId) ? _cfg.RunResourceBoonMultiplier : 1f);
             }
-            catch (Exception ex) { LogOnce("skill-gain", ex); }
+            catch (Exception ex) { LogOnce("rate-boons", ex); }
         }
+
+        private bool Holds(string boonId) =>
+            _boons != null && _boons.Held != null &&
+            _boons.Held.Any(h => h.Def != null && h.Def.Id == boonId);
 
         private void OnCharacterDied(Character c)
         {
@@ -5908,9 +5922,10 @@ namespace ICanShowYouTheWorld.RunMode
             _worldModifiers.ImportOriginals(s.modifierKeys, s.modifierValues);
 
             _worldModifiers.ApplyBaseline(_cfg);
-            // AFTER the baseline, which writes the plain rate and would otherwise erase a held
-            // Quick Study — the boons were restored earlier in this method, so this reads them.
-            RefreshSkillGain();
+            // AFTER the baseline, which writes the plain rates and would otherwise erase a held
+            // Quick Study or Bountiful — the boons were restored earlier in this method, so this
+            // reads them.
+            RefreshRateBoons();
             _boonEffects.ApplyPugilist();   // baseline empowerment, same as StartRun
 
             // A resume must NOT re-snapshot: the character is already carrying the loans, so
@@ -8134,8 +8149,12 @@ namespace ICanShowYouTheWorld.RunMode
             // accelerated skills"). The other three hand you a level in one skill and are done;
             // this pays out in whatever you actually spend the run doing, which makes it a pick for
             // a long saga rather than for the next fight. It rides the world's own SkillGainRate on
-            // top of the baseline — see RefreshSkillGain.
+            // top of the baseline — see RefreshRateBoons.
             new BoonDefinition { Id = "study", Display = "Quick Study", IsPassive = true, Description = "Every skill rises far faster, in whatever you do." },
+            // The other half of the same idea, on the other baseline rate. Windfall doubles what is
+            // ALREADY in the pack, once; this multiplies what the land gives up for the rest of the
+            // run — a burst against a rate, which is why both are worth holding.
+            new BoonDefinition { Id = "bounty", Display = "Bountiful", IsPassive = true, Description = "Everything the land yields comes in far greater measure." },
 
             // --- Resistances (alpha34) ---
             //

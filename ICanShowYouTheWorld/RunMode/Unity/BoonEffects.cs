@@ -356,10 +356,11 @@ namespace ICanShowYouTheWorld.RunMode
                     break;
 
                 case "study":
-                    // Nothing to apply here. It rides the world's SkillGainRate key, which only the
-                    // host can write (and must re-write after its own baseline pass) — see
-                    // RunService.RefreshSkillGain. Listed so a reader looking for its effect finds
-                    // this note rather than concluding it was forgotten.
+                case "bounty":
+                    // Nothing to apply here. Both ride a world-modifier key — SkillGainRate and
+                    // ResourceRate — which only the host can write, and must re-write after its own
+                    // baseline pass: see RunService.RefreshRateBoons. Listed so a reader looking for
+                    // their effect finds this note rather than concluding it was forgotten.
                     break;
 
                 // wind/ember have no effect on gain — only on activation (Keypad4/5).

@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-09-19 at `1.0.15-run.2026-09-19d`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-09-19 at `1.0.15-run.2026-09-19e`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -21,7 +21,7 @@ Everything below is what that file tells it.
 
 - Branch **`feature/run-mode`**, not merged, deliberately — the mode is still
   being tuned in play.
-- Latest tag **`1.0.15-run.2026-09-19d`**; builds are date-based since 2026-08-31
+- Latest tag **`1.0.15-run.2026-09-19e`**; builds are date-based since 2026-08-31
   (`Scripts/nextversion.sh`). The game moved to **1.0.12 on 2026-09-12** and to
   **1.0.15 on 2026-09-19**; both times the mod was rebuilt and installed on Windows
   the same day. **1.0.15 needed no source change** — all 316 member references from
@@ -346,18 +346,24 @@ went from 10 to 14 across the two.
 move stamina ×0.5, stamina regen ×2.5, all stamina costs ×0.75, free melee and
 tools (ranged pays 25%), and the Hunter's Eye tracker panel.
 
-**22 boons (alpha34)**, never offering one already held. Five actives on
-Keypad 4-8 (Second Wind, Emberskin, Waystone, Packbrother, Windfall) and seventeen
-passives across six kinds:
+**28 boons**, never offering one already held. Actives on
+Keypad 4-8 plus 0 and Insert (Second Wind, Emberskin, Waystone, Packbrother, Windfall,
+Bonecaller, Menagerie); the rest are passives, across seven kinds:
 
 | Kind | Boons |
 |---|---|
 | Stats | Fleet-footed, Sharpened, Packmule, Hearty, **Tireless** |
-| Skills | Woodsman, Hunter, Warrior |
+| Skills | Woodsman, Hunter, Warrior, **Quick Study** (skill gain ×3 on the baseline) |
+| **Rates** | **Bountiful** (resource drops ×2 on the baseline) |
 | **Resistance** | Irongut (poison), Coldblooded (frost), Fire-blooded (fire) |
 | **On-kill** | Bloodthirst (heals), Relentless (stamina) |
 | **Risk** | Glass Cannon (+40% dmg, −30% HP), Reckless (+50% dmg, +25% taken) |
 | **Heat** | Slow Burn (heat rises 25% slower), Forge-fed (damage scales with heat) |
+| Pets | Shepherd, Hearthlight, and the tracker panel (Hunter's Eye) |
+
+Quick Study and Bountiful are the two that ride WORLD keys rather than player state, which is
+why they are handled in `RunService.RefreshRateBoons` and not in `BoonEffects` — see the
+`...-19e` note below.
 
 > **Why (owner, alpha33):** *"we need more boon types. There are like three sta
 > ones, and they seem a bit lack luster since we already regen quite fast."* It
@@ -643,7 +649,22 @@ Three things that shaped it:
   the step's hint says it outright. `SagaItemDefinition` also gained `SourceFallbacks`, since a
   game update that moved `Wisp` would otherwise take the bow's recipe down with it, silently.
 
-Waiting on the owner's play-test of `1.0.15-run.2026-09-19d` - see the TASK entry in
+**`...-19e` added Bountiful** (owner: "add a boon where you increase the drop multiplier") - a
+passive that multiplies the baseline resource rate by 2, so x6 while held. It is the counterpart
+to Windfall rather than a second copy: Windfall doubles what is already in the pack, once, while
+this multiplies what the land gives up for the rest of the run.
+
+Quick Study's plumbing was GENERALISED rather than copied, which is the part worth knowing:
+`WorldModifiers.ApplyBoostedRate(key, baseRate, boonMultiplier)` writes any one rate key, and
+`RunService.RefreshRateBoons` rewrites both rates on every call. The rates are therefore a pure
+function of (config, held boons) - which is the only honest way to have two writers on one world
+key, and the discipline the mode has paid for three times. Any further rate boon is now one line
+in the table, one id in `IsRateBoon`, and one call in `RefreshRateBoons`.
+
+The pool is **28 boons**. `runResourceBoonMultiplier` (2) and `runSkillBoonMultiplier` (3) are
+config.
+
+Waiting on the owner's play-test of `1.0.15-run.2026-09-19e` - see the TASK entry in
 [`../../HANDOFF_WINDOWS.md`](../../HANDOFF_WINDOWS.md). Beyond the entry point itself,
 still unverified from 12-13 September: Thor's bow on the bench after paying the shade
 and its flash on impact, the shade's greeting and its "[E] Speak" prompt, the saga

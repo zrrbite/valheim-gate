@@ -17,6 +17,33 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-19 - TASK: 1.0.15-run.2026-09-19e - Bountiful
+
+Installed here already (`-ModOnly`). One new boon, from your ask for a drop-multiplier one.
+
+**Bountiful** (passive): *"Everything the land yields comes in far greater measure."* It
+multiplies the run's baseline resource rate by 2, so x6 while held. `runResourceBoonMultiplier`
+in the config if 2 is the wrong number.
+
+It is deliberately the counterpart to Windfall rather than a second copy of it: Windfall doubles
+what is ALREADY in the pack, once, and Bountiful multiplies what the land gives up for the rest
+of the run. A burst against a rate - both are worth holding.
+
+The plumbing from Quick Study was generalised rather than copied: `WorldModifiers.ApplyBoostedRate`
+now writes any one rate key as baseline x boon, and `RunService.RefreshRateBoons` rewrites BOTH
+rates on every call. That costs two key writes and buys the invariant that matters - the rates are
+a pure function of (config, held boons), so nothing can drift whatever order anything ran in.
+
+**What to watch for:** the offer listing Bountiful; drops visibly multiplying while it is held
+(a tree is the quickest test); and the rate going back to plain x3 if a death takes the boon away.
+The pool is 28 boons now.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
+---
+
 ## 2026-09-19 - TASK: 1.0.15-run.2026-09-19d - the bow costs light now
 
 Installed here already (`-ModOnly`). One change, from your note that Thor's bow was too simple
