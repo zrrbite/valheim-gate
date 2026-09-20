@@ -19,143 +19,151 @@ Standing context for the Windows side:
 
 ## 2026-09-20 - THE TEST LIST for 1.0.15-run.2026-09-20b
 
-Ten builds stacked up in one afternoon, so this is all of them as ONE pass, ordered by when you
-meet each thing rather than by build number. The per-build TASK entries below keep the reasoning;
-this is the list to play with.
+Fourteen builds over two days, rewritten as ONE pass in the order you actually meet things. The
+per-build TASK entries below keep the reasoning; this is the list to play with.
 
-**`...19k` needs an install** - the game was running when it was built, so the DLL could not be
-replaced. Quit Valheim and run `.\dist\windows\Install-Mod.ps1 -ModOnly`, then relaunch.
+Installed already. Nothing here needs a pull.
 
-### The menu, which now comes to you
+### If you only do five things
 
-- [ ] **Load a character. The saga menu opens by itself** - you should not have to press `End`.
-- [ ] **"Not now" closes it** and it does NOT come back for that world. Die, respawn, walk about:
-      still no menu. It re-offers only when you load a world again.
-- [ ] Press `End` and it comes back, as before.
-- [ ] Start a run, then **abandon** it: no menu reappears immediately afterwards.
-- [ ] **The run window has two tabs now, `RUN` and `QUESTS`.** RUN keeps the numbers, the step in
-      play with its counts and bar, the tasks and the boons. SPLITS and HOMESTEAD have moved.
-- [ ] **QUESTS is the log**: each track shows what it has FINISHED - with the line that was said at
-      the time - then the step in play with its hint and what it pays, then "N more on this track".
-      Future steps are a count and never a list, on purpose.
-- [ ] Switching tabs must not shift the tab row itself, and no `Mismatched LayoutGroup` errors in the
-      log after clicking about.
+1. The saga menu **opens itself** when you load a character, and **"Not now"** keeps it away.
+2. The run window has **RUN / QUESTS tabs**, and QUESTS remembers what you have finished.
+3. **Dev keys work bare** again - `Keypad *` and `/` especially - and the DEV banner names the two
+   that want a modifier.
+4. The **HEARTH track holds the homestead** (roof, fire, pot, bed, chest), not CRAFT.
+5. Afterwards, the log greps at the bottom of this page. `] Unknown` must be empty.
 
-### Before you load a character
+### 1. At the main menu
 
-- [ ] Launch and **do not open Credits**. There should be **no popup at all** - that is the change
-      in `...19k`. Silence is success.
-- [ ] Under the menu's own version line, a single gold line at 70% size and **not overlapping**:
-      `SAGA v1.0.15-run.2026-09-20b`. That line is now the ONLY proof the mod loaded, so if it is
-      missing, the mod is not in.
+- [ ] Launch and **do not open Credits**. **No popup at all.** Silence is success.
+- [ ] Under the game's own version line, one gold line at 70% size, **not overlapping**:
+      `SAGA v1.0.15-run.2026-09-20b`. That line is the ONLY proof the mod loaded.
 - [ ] Load the character carrying **Thor's bow**. Still there. Save, quit to desktop, come back:
-      still there. No `Failed to find item prefab` in the log.
-- [ ] Quit to the main menu from inside a world: exactly **one** popup per launch, and a GM hotkey
-      fires **once**, not twice.
+      still there, and no `Failed to find item prefab` in the log.
 
-### The keys - this is the one that will trip your muscle memory
+### 2. The menu now comes to you
+
+- [ ] **The saga menu opens by itself** on loading a character. You should not have to press `End`.
+- [ ] **"Not now" closes it and it stays closed for that world.** Die, respawn, walk about: still no
+      menu. It re-offers only when you load a world again.
+- [ ] `End` still brings it back by hand.
+- [ ] Start a run, then **abandon** it: the menu does not immediately reappear.
+
+### 3. The run window, which is now two pages
+
+- [ ] Tabs read **`RUN`** and **`QUESTS`**. The selected one is gold.
+- [ ] **RUN** keeps the numbers, the step in play with its count, bar and clause list, TASKS and
+      BOONS. SPLITS and HOMESTEAD are gone from it.
+- [ ] **QUESTS** shows, per track: what it has **finished** - each with the line that was said at the
+      time - then the step in play with its **hint** and what it **pays**, then `N more on this
+      track`. Future steps are a count and never a list, deliberately.
+- [ ] The tab row **does not move** when you switch pages, and the log has no
+      `Mismatched LayoutGroup` after clicking about.
+- [ ] **Sub-objective counts read down a column**: `3/4  Hunt 4 Boar`, bright gold, left-aligned.
+      Two clauses of different name lengths should line up with each other.
+
+### 4. The keys
 
 - [ ] `Keypad +` = **Shaman's Mercy** (burst heal). `Keypad -` = **Unseen** (20s, nothing sees you).
-- [ ] **The Run window's DEV MODE banner is now two lines and names the modifier.** Read it - it is
-      the thing that was wrong, not the keys.
-- [ ] **Dev keys are bare again** except two. `Keypad *`, `/`, `.`, `Enter`, `Delete`, `Home` and
-      `PageUp` need NO modifier. Only the step-skip and the clock do, because those two share the
-      player's keys: **`Shift`/`Ctrl`/`Alt` + `Keypad +`** and **+ `Keypad -`**.
-- [ ] Every dev key now also writes its line to the log. After a session:
-      `Select-String -Path "$env:USERPROFILE\AppData\LocalLow\IronGate\Valheim\Player.log" -Pattern "DEV:"`
-- [ ] A boon offer card shows the key beside "active", e.g. `active  [+]`.
-- [ ] **Shepherd says nothing** when you pick it with no animals. No "No baseline, nothing buffed",
-      no "Buffed 0 pets" - the GM readouts are gone from the saga's path entirely.
-
-### Act I, in chain order
-
-- [ ] **The HEARTH track holds the homestead again**: open the Run window and read the three
-      tracks. HEARTH must run *forage, roof, fire, cooking station, meal, bed, settle in, sleep,
-      comfort, chest*, then the fishing and the pen. CRAFT must be tools and gear only: *axe,
-      hammer, workbench, upgrade, the shade, Thor's bow, the Stormward*. The roof and the fire had
-      drifted onto CRAFT, which also put "Settle in" on a different track from the fire it needs.
-- [ ] **Every step now SPEAKS what it needs.** A step with a hint says it as it opens, not only in
-      the panel: the cooking station going ON the fire, the bed under a roof, settle-in wanting all
-      three at once. A step with both a story line and a hint says the story line first and the hint
-      about six seconds later - watch that the second does not wipe the first.
-- [ ] **Two lines never land in the same frame** any more. Finish something that advances two tracks
-      at once (the cull, usually) and confirm you get both lines in turn rather than a flicker.
-- [ ] **Hugin announces the recipes.** When the shade is paid, a raven says the bench knows the
-      shape and that it stays empty until you are CARRYING the lights. When the Breaker falls, a
-      raven says to improve the bench. This is the unlock that used to be completely silent.
-- [ ] **And announces them ONCE.** Save, quit to the menu, load back in: no raven repeating a
-      recipe you already have. Same for a world reload, which rebuilds ObjectDB and re-registers
-      every recipe - that is the case the guard exists for.
-- [ ] **Starred greydwarves are their own colour again.** Fight the Gatherer, then go and look at
-      ordinary starred Greydwarf_Elites afterwards. None of them should be wearing its gold. This is
-      the bug behind "some greydwarfs had the very bright model".
-- [ ] **The Gatherer is 35% bigger than its children** and arrives about **45 seconds AFTER** the
-      raid, not with it. You should be in the fight before it walks in.
-- [ ] **The Breaker comes out by the house** when you are within 140m of your claimed bed - and the
-      line says so only when it actually did. Expect it to walk through what you built.
-- [ ] **Thor's bow is 58 pierce + 32 lightning** and wears the Huntsman's model, not the plank bow's.
-      Check the log line `Saga item created: Saga_ThorsBow from ...` to see which mesh resolved.
-- [ ] **The Stormward wears the serpentscale shield's model.** Same log line, same question.
-- [ ] **Sub-objective counts read down a column now**: `3/4  Hunt 4 Boar`, bright gold, left-aligned.
-      Two clauses of different name lengths should line up with each other.
+- [ ] **Dev keys are bare again** except two: `Keypad *`, `/`, `.`, `Enter`, `Delete`, `Home` and
+      `PageUp` need NO modifier. Only the step-skip and the clock do, because those share the
+      player's keys - **`Shift`/`Ctrl`/`Alt` + `Keypad +`** and **+ `Keypad -`**.
+- [ ] The **DEV MODE banner is two lines and names the modifier.** It was the banner that was wrong
+      last time, not the keys.
+- [ ] A boon offer card shows its key beside "active", e.g. `active  [+]`.
 - [ ] **Die on purpose.** A line says your things are where you fell, the HUD shows
-      `Where you fell  [PgDn]`, and `PageDown` gates you back. It goes on a 4-minute cooldown, and
-      the offer DISAPPEARS once you have walked within 12m of the spot.
-- [ ] **The Stormsworn set exists from Act II on.** You cannot reach it in a short session, so the
-      cheap check is the LOG at run start: no `] Unknown` lines, and four
-      `Saga item created: Saga_Storm... from X` lines naming the mesh each piece resolved to.
-      If a source prefab did not resolve, the fallback chain says so there.
-- [ ] Also in the log, once you are in Act II: `Saga recipe registered: Saga_storm-helm -> ...`.
-      A `station prefab 'forge' has no CraftingStation` error would mean I guessed that name wrong -
-      it is the one name in this batch I could not verify from the codebase.
-- [ ] **`PageUp` now probes the item in your hands** when you are not looking at a creature. Hold
-      Thor's bow, press it, and check `ICSYTW_probe.txt` lists its renderers and shader properties.
-      That report is what the glow gets written from next.
+      `Where you fell  [PgDn]`, and `PageDown` gates you back. Four-minute cooldown, and the offer
+      DISAPPEARS once you have walked within 12m of the spot.
+- [ ] **`PageUp` probes the item in your hands** when you are not looking at a creature. Hold Thor's
+      bow, press it, and check `ICSYTW_probe.txt` lists its renderers and shader properties. That
+      report is what the item glow gets written from next.
+
+### 5. Act I, in chain order
+
+- [ ] **The HEARTH track holds the homestead.** Read the three tracks: HEARTH must run *forage,
+      roof, fire, cooking station, meal, bed, settle in, sleep, comfort, chest*, then the fishing and
+      the pen. CRAFT must be tools and gear only: *axe, hammer, workbench, upgrade, the shade, Thor's
+      bow, the Stormward*. The roof and fire had drifted onto CRAFT, which also put "Settle in" on a
+      different track from the fire it silently needs.
+- [ ] **Every step SPEAKS what it needs** as it opens - the cooking station going ON the fire, the
+      bed under a roof, settle-in wanting all three at once. A step with both a story line and a hint
+      says the story line first and the hint about six seconds later; **watch that the second does
+      not wipe the first.**
+- [ ] **Two lines never land in the same frame.** Finish something that advances two tracks at once
+      (the cull, usually): you should get both lines in turn rather than a flicker.
 - [ ] **Hear the raven out** - Hugin lands and states the errand.
 - [ ] **Hunt a deer by daylight** - nothing rises, and the line says why.
-- [ ] **Keep a watch after dark** - three whispers. The strip should tell you to wait for dark, and
-      **no pack and no starred deer** should appear during it (the vigil is meant to be empty).
+- [ ] **Keep a watch after dark** - three whispers. The strip tells you to wait for dark, and **no
+      pack and no starred deer** should appear during it. The vigil is meant to be empty.
 - [ ] **Follow the pale light**, then **the race**. Every light taken drops a **Rescued light** into
       your pack; check the stack survives a portal.
-- [ ] **The Breaker** - announced before nightfall, arrives at night. **The greydwarves attack it**,
-      and they **still attack you**. That three-way fight is the whole experiment.
+- [ ] **The Breaker** - announced before nightfall, arrives at night, and **comes out by the house**
+      when you are within 140m of your claimed bed. The line says so only when it actually did.
+      Expect it to walk through what you built.
+- [ ] **The greydwarves attack it, and they still attack you.** That three-way fight is the whole
+      experiment.
 - [ ] **The Breaker, failed on purpose**: let the fifteen minutes run out once and confirm it walks
       away with a line rather than standing in your meadow.
-- [ ] **Thor's bow** - the bench will not list it until you are HOLDING a light; needs 3. Lightning
+- [ ] **Hugin announces the recipes.** When the shade is paid, a raven says the bench knows the shape
+      and that it stays empty until you are CARRYING the lights. When the Breaker falls, a raven says
+      to improve the bench. This unlock used to be completely silent.
+- [ ] **And announces them ONCE.** Save, quit to the menu, load back in: no raven repeating a recipe
+      you already have. Same after a world reload, which rebuilds ObjectDB and re-registers
+      everything - that is the case the guard exists for.
+- [ ] **Thor's bow** - the bench will not list it until you are HOLDING a light; needs 3. It is now
+      **58 pierce + 32 lightning** and wears the **Huntsman's model**, not the plank bow's. Lightning
       flash on impact.
-- [ ] **The Stormward** - needs an **improved** workbench and 10 troll hide.
+- [ ] **The Stormward** - an **improved** workbench and 10 troll hide, and it wears the
+      **serpentscale shield's** model.
+- [ ] **The Gatherer is 35% bigger than its children** and arrives about **45 seconds AFTER** its
+      raid, not with it. You should be in the fight before it walks in.
+- [ ] **Starred greydwarves are their own colour again.** After the Gatherer fight, look at ordinary
+      starred Greydwarf_Elites: none of them should be wearing its gold.
 - [ ] **The claim that matters most:** miss the troll, and confirm the act still finishes with only
       the shield lost. Nothing else on any track may stall.
 - [ ] Herald, then the Gatherer, then the altar, then **Eikthyr** - and the shield should visibly
       blunt his lightning.
 
-### Systems you brush against throughout
+### 6. Act II and beyond - log checks, since you will not reach them tonight
 
+- [ ] At run start the log should carry **seven** `Saga item created: ... from X` lines: the bow, the
+      Stormward, the rescued light, and the four **Stormsworn** pieces. The `from X` names the mesh
+      each one resolved to, so a missing source prefab shows up there as a fallback.
+- [ ] In Act II: `Saga recipe registered: Saga_storm-helm -> ...`. A
+      `station prefab 'forge' has no CraftingStation` error means I guessed that name wrong - it is
+      the one name in this batch I could not verify from the codebase.
+- [ ] `bf-arrive` ("reach the Black Forest") is the FIRST step of Act II. You asked whether it
+      existed; it does, and it only appears once Eikthyr is down.
+
+### 7. Systems you brush against throughout
+
+- [ ] **Shepherd says nothing** when you pick it with no animals - no "No baseline, nothing buffed",
+      no "Buffed 0 pets". The GM readouts are gone from the saga's path.
 - [ ] **No fishing bounty is ever dealt before you own a rod.**
 - [ ] **Windfall has 3 charges** and counts them down as you spend them.
 - [ ] **The stash is alphabetical**, and "Take" empties the row you clicked.
-- [ ] **Quick Study** (skills x9 while held) and **Bountiful** (drops x6 while held) appear in
-      offers and visibly work.
-- [ ] Still unverified from 12-13 September: the **shade's greeting** and its `[E] Speak` prompt,
-      the **saga dreams**, and **raids arriving as beats**.
+- [ ] **Quick Study** (skills x9 while held) and **Bountiful** (drops x6 while held) appear in offers
+      and visibly work.
+- [ ] Still unverified from 12-13 September: the **shade's greeting** and its `[E] Speak` prompt, the
+      **saga dreams**, and **raids arriving as beats**.
 
-### Afterwards, in PowerShell
+### 8. Afterwards, in PowerShell
 
 ```powershell
 Select-String -Path "$env:USERPROFILE\AppData\LocalLow\IronGate\Valheim\Player.log" `
-    -Pattern 'ICanShowYouTheWorld\] Unknown|Failed to find item prefab|Collect ''|Raven errand|Breaker'
+    -Pattern 'ICanShowYouTheWorld\] Unknown|Failed to find item prefab|has no CraftingStation|Saga item created|Saga recipe|DEV:|Mismatched'
 ```
 
-`] Unknown` must be empty (the asset-name validator, all acts). `Collect '` prints the
-carry-weight readout per collect step. The other two are the new content reporting itself.
+`] Unknown` and `Mismatched` must both be **empty**. The rest is the new content reporting itself -
+and `DEV:` answers "did that key actually fire", which is the question the last report could not.
 
 ### One caveat while judging the feel
 
 Your config file is from **25 August** and pins `runStaminaRegenRate` to **1.5**, where the current
 default is **2.5** - the file wins over the code, so you have been playing a month-old stamina
-regen. Thirty-four newer settings are absent from it entirely and running on code defaults, which
-is correct behaviour but means they cannot be TUNED without adding the lines by hand. Ask and I
-will either add the keys or make `Load()` re-save so no future setting is invisible.
+regen. Thirty-five newer settings are absent from it entirely and running on code defaults, which is
+correct behaviour but means they cannot be TUNED without adding the lines by hand. Ask and I will
+either add the keys or make `Load()` re-save so no future setting is invisible.
 
 ### RESULTS (Windows side appends here)
 
