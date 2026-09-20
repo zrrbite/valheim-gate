@@ -17,6 +17,41 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-20 - TASK: the dev clock key also cycles the weather (`...20w`)
+
+"*It wont start raining, when i press cmd + - to advance time can you also make it rain?*" and "*can
+we make it thunder?*" Both, on the same key.
+
+`mod` + `Keypad -` now advances 2h **and steps the sky**: fair, then rain, then a storm, then fair
+again. Two gates in Act I wait on weather - Thjalfi on rain, the storm vigil on a thunderstorm - and
+neither could be tested by waiting patiently at a desk.
+
+**A cycle, not a switch**, and that is the part worth keeping. Forcing rain on and leaving it there
+would make the thunderstorm untestable and normal weather unreachable. Three presses walk through
+everything the act cares about and hand the sky back.
+
+**The environment is found, not named.** `EnvMan.m_environments` is public and `EnvSetup` carries
+`m_isWet`, so the game is asked which of its own environments are wet rather than this build guessing
+asset names - the mistake that cost an evening on the Obliterator and very nearly cost the shield its
+lightning. Only "is it a thunderstorm" falls back to matching the name, because there is no flag for
+thunder. Swamp and Ashlands rain are skipped for the plain-wet case: they would satisfy the gate, but
+making the Meadows look like the Swamp while testing a Meadows beat is a confusing way to be
+technically right.
+
+**And it writes the names down.** First press logs `Wet environments this build has (n): ...`, so the
+guessing ends permanently - same medicine as the Obliterator's prefab name.
+
+### Test it
+
+- [ ] **Press once**: `DEV: +2h. Weather forced to '<name>'` and it starts raining. Thjalfi appears.
+- [ ] **Press again**: a thunderstorm. The storm vigil should complete if you are outdoors with the
+      Stormward equipped.
+- [ ] **Press a third time**: `Weather released` and the sky goes back to its own devices.
+- [ ] The clock still advances 2h on every press - the message says both, so it cannot lie about one.
+- [ ] Note the logged environment list and paste it back; it belongs in the notes.
+
+---
+
 ## 2026-09-20 - TASK: Thjalfi stands on the shore, in the rain (`...20v`)
 
 "*It would be awesome if he could be on the coast. Is that possible?*" and "*he's only visible when

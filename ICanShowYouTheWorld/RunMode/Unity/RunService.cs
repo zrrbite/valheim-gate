@@ -2333,7 +2333,8 @@ namespace ICanShowYouTheWorld.RunMode
         {
             "DEV MODE   *items   .light   /god+speed   Ent:home   Del:slay",
             "Home:map-tp   PgUp:probe   Bksp:Storm-Anvil + bow + shield + the combine's makings",
-            "Shift/Ctrl/Alt + [+] complete step   \u00b7   + [-] advance 2h   (bare + and - are the player's)",
+            "Shift/Ctrl/Alt + [+] complete step   \u00b7   + [-] +2h AND cycle weather: fair/rain/storm",
+            "(bare + and - are the player's own boons)",
         };
 
         /// <summary>
@@ -2389,6 +2390,7 @@ namespace ICanShowYouTheWorld.RunMode
             else if (mod && Input.GetKeyDown(KeyCode.KeypadMinus))
             {
                 DevAdvanceClock();
+                DevCycleWeather();
             }
             else if (Input.GetKeyDown(KeyCode.KeypadMultiply))
             {
@@ -2700,6 +2702,133 @@ namespace ICanShowYouTheWorld.RunMode
             ("ArrowFlint", 100),
             (SagaItems.RescuedLightPrefab, 1),
         };
+
+        /// <summary>
+        /// Steps the forced weather: fair, then rain, then a storm, then fair again.
+        /// </summary>
+        /// <remarks>
+        /// Bolted onto the clock key because that is where it is wanted (owner: "It wont start
+        /// raining, when i press cmd + - to advance time can you also make it rain?"). Two gates in
+        /// this act now wait on the sky - Thjalfi on rain, the storm vigil on a thunderstorm - and
+        /// neither can be tested by waiting patiently at a desk.
+        ///
+        /// A CYCLE rather than a switch, and that is the part worth keeping. Forcing rain on and
+        /// leaving it there would make the thunderstorm untestable and normal weather unreachable, so
+        /// three presses walk through everything the act cares about and hand the sky back.
+        ///
+        /// The environment is FOUND, not named. EnvMan.m_environments is public and EnvSetup carries
+        /// m_isWet, so the game is asked which of its own environments are wet instead of this build
+        /// guessing at asset names - the mistake that cost an evening on the Obliterator and very
+        /// nearly cost the shield its lightning. Only "is it a thunderstorm" falls back to matching
+        /// the name, because there is no flag for thunder to read.
+        /// </remarks>
+        private void DevCycleWeather()
+        {
+            var env = EnvMan.instance;
+            if (env == null) return;
+
+            _devWeather = (_devWeather + 1) % 3;
+
+            try
+            {
+                LogWetEnvironmentsOnce(env);
+
+                if (_devWeather == 0)
+                {
+                    env.SetForceEnvironment(string.Empty);
+                    env.ForceInstantEnvironmentSwitch();
+                    DevMessage("DEV: +2h. Weather released \u2014 the sky is its own again.");
+                    return;
+                }
+
+                bool wantThunder = _devWeather == 2;
+                string name = FindEnvironment(env, wantThunder);
+                if (name == null)
+                {
+                    DevMessage("DEV: +2h. No " + (wantThunder ? "storm" : "wet") +
+                               " environment found to force \u2014 see the log.");
+                    Debug.LogWarning("[ICanShowYouTheWorld] DEV: no matching environment in EnvMan.m_environments.");
+                    return;
+                }
+
+                env.SetForceEnvironment(name);
+                env.ForceInstantEnvironmentSwitch();
+                DevMessage($"DEV: +2h. Weather forced to '{name}'.");
+            }
+            catch (Exception ex)
+            {
+                LogOnce("dev-weather", ex);
+            }
+        }
+
+        /// <summary>
+        /// The game's own name for a wet environment, or a thunderstorm when one is asked for.
+        /// </summary>
+        /// <remarks>
+        /// Swamp and Ashlands rain are skipped for the plain-wet case: they are wet, so they would
+        /// satisfy the gate, but forcing the Meadows to look like the Swamp while testing a Meadows
+        /// beat is a confusing way to be technically correct.
+        /// </remarks>
+        private static string FindEnvironment(EnvMan env, bool thunder)
+        {
+            var all = env.m_environments;
+            if (all == null) return null;
+
+            string fallback = null;
+
+            foreach (var setup in all)
+            {
+                if (setup == null || string.IsNullOrEmpty(setup.m_name) || !setup.m_isWet) continue;
+
+                bool isThunder = setup.m_name.IndexOf("thunder", StringComparison.OrdinalIgnoreCase) >= 0;
+                if (thunder && isThunder) return setup.m_name;
+                if (thunder) continue;
+
+                bool offBiome =
+                    setup.m_name.IndexOf("swamp", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    setup.m_name.IndexOf("ash", StringComparison.OrdinalIgnoreCase) >= 0;
+
+                if (fallback == null) fallback = setup.m_name;
+                if (!isThunder && !offBiome) return setup.m_name;
+            }
+
+            // A storm was asked for and none is named that way: any wet one still opens Thjalfi's
+            // door, which is better than reporting failure.
+            return fallback;
+        }
+
+        /// <summary>
+        /// Prints every wet environment the running game actually has, once.
+        /// </summary>
+        /// <remarks>
+        /// Written down for the same reason the Obliterator's prefab name was: these are asset names
+        /// this assembly cannot see, two quest gates now depend on them, and an evening was spent on
+        /// exactly this class of unknown. One line in the log ends the guessing permanently.
+        /// </remarks>
+        private void LogWetEnvironmentsOnce(EnvMan env)
+        {
+            if (_wetEnvsLogged) return;
+            _wetEnvsLogged = true;
+
+            try
+            {
+                var all = env.m_environments;
+                if (all == null) return;
+
+                var wet = all.Where(e => e != null && e.m_isWet && !string.IsNullOrEmpty(e.m_name))
+                             .Select(e => e.m_name)
+                             .ToArray();
+
+                Debug.Log($"[ICanShowYouTheWorld] Wet environments this build has ({wet.Length}): " +
+                          string.Join(", ", wet));
+            }
+            catch { }
+        }
+
+        private bool _wetEnvsLogged;
+
+        /// <summary>Where the dev weather cycle is: 0 fair, 1 wet, 2 storm. Not persisted.</summary>
+        private int _devWeather;
 
         private void DevAdvanceClock()
         {
