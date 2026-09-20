@@ -277,7 +277,7 @@ PAGE = u"""<title>Saga Atlas</title>
   <h1>Saga Atlas</h1>
   <p class="lede">Every questline in the saga, lane by lane, with the story each act is telling
   and an honest note on how finished it is.</p>
-  <p class="meta">Generated from RunService.cs at 1.0.15-run.2026-09-20aa &middot; 20 September 2026</p>
+  <p class="meta">Generated from RunService.cs at 1.0.15-run.2026-09-20ad &middot; 20 September 2026</p>
 
   <div class="tally">
     <div><b>__TOTAL__</b><span>quest steps</span></div>
@@ -386,6 +386,10 @@ __ACTS__
     <h2>The log</h2>
     <p>Two days of building, newest first. Every line shipped as its own installed build.</p>
     <ul class="log">
+      <li class="today"><span class="d">20 Sep</span><span>The Stormward takes both hands — a two-handed shield, which the game already had a type for</span></li>
+      <li class="today"><span class="d">20 Sep</span><span>Thjalfi stopped standing in crevasses; the anvil stopped guessing where to land</span></li>
+      <li class="today"><span class="d">20 Sep</span><span>&ldquo;Wait for dark&rdquo; stopped stealing the bearing&rsquo;s line — the strip says two things now</span></li>
+      <li class="today"><span class="d">20 Sep</span><span>The Storm-Anvil is the forge: both storm items move off the bench, and the screen quiets down</span></li>
       <li class="today"><span class="d">20 Sep</span><span>Thjalfi — a named ghost who raises the Storm-Anvil for stone and a light</span></li>
       <li class="today"><span class="d">20 Sep</span><span>Pool tasks for Thor&rsquo;s bow and the Stormward, gated on carrying them</span></li>
       <li class="today"><span class="d">20 Sep</span><span>First play: the anvil was never spawned, and the shield&rsquo;s lightning was invisible — both fixed</span></li>
@@ -417,8 +421,10 @@ __ACTS__
     <ul class="next">
       <li><b>Answered:</b> the Storm-Anvil&rsquo;s prefab is <code>incinerator</code>, printed by a running
       game at last. The mod still finds it by component, because a component search cannot go stale.</li>
-      <li>Thor&rsquo;s bow moved off the workbench onto the anvil — now that the anvil is a place you walk to,
-      this is what makes the walk matter.</li>
+      <li><b>Done:</b> Thor&rsquo;s bow and the Stormward both moved off the workbench onto the anvil, so the
+      walk to Thjalfi is what the whole craft lane now runs through.</li>
+      <li>Whether the two-handed Stormward changes Act I&rsquo;s pace: no bow, no torch and no weapon while it
+      is up, which is a real cost and may want the discharge tuned down rather than up.</li>
       <li>The Stormsworn bound at the anvil, one piece per act.</li>
       <li>The Stormward <em>reforged</em> in Act III with iron and ancient bark — not moved there, so Act I
       keeps the capstone craft it was built to have.</li>
