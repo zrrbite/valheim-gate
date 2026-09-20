@@ -145,7 +145,12 @@ namespace ICanShowYouTheWorld
             }
 
             // The GM windows are the sandbox; a run replaces them wholesale with the Heat HUD.
-            if (visible && !runActive)
+            //
+            // And a saga-only build has no sandbox at all. Checked here as well as at registration
+            // in Cheat.cs, deliberately: the bindings being absent is what makes GM unreachable,
+            // and this is what makes it invisible. Either alone would leave the other half of the
+            // door standing.
+            if (visible && !runActive && ModVersion.GmEnabled)
             {
                 trackWindow = GUILayout.Window(
                     0,

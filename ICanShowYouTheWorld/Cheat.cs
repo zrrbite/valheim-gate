@@ -401,6 +401,22 @@ namespace ICanShowYouTheWorld
 
             foreach (var cmd in commands)
             {
+                // A saga-only build does not REGISTER the GM bindings. Not gated, not hidden:
+                // absent, because the owner's requirement was that nobody else can reach them
+                // ("I dont want anyone to be able to reach the GM mod but me"). Skipping
+                // registration also empties CommandRegistry.All, which is what the GM window draws
+                // from - so there is nothing to list and nothing to press.
+                //
+                // Two keys survive in every flavour, and neither is a cheat: End opens the saga,
+                // and F1 reveals the run HUD and the stash during a run (see UIManager.OnGUI,
+                // which only draws the GM windows when this build has them).
+                //
+                // What is NOT switched off is CheatCommands itself. Run Mode's boons ride that
+                // pipeline through WithLegacyGodModeBracket, so the layer has to live in both
+                // flavours; this removes its doors, never its floor.
+                bool isModeKey = cmd.Key == KeyCode.End || cmd.Key == KeyCode.F1;
+                if (!ModVersion.GmEnabled && !isModeKey) continue;
+
                 // register in the global registry...
                 CommandRegistry.All.Add(cmd);
 

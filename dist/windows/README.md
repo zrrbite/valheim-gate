@@ -37,7 +37,13 @@ second line in gold —
 
 ```
 Version 1.0.15 (n-40)
-SAGA v1.0.15-run.2026-09-19k
+SAGA v1.0.15-run.2026-09-20c
+```
+
+A build that also carries the old GM cheat mod says so, and a saga-only one does not:
+
+```
+SAGA v1.0.15-run.2026-09-20c · GM
 ```
 
 That is the standing answer. The popup says the same thing once and is then dismissed

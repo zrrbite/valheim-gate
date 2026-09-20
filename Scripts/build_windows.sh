@@ -4,6 +4,8 @@
 #
 #   Scripts/build_windows.sh             # rebuild the current version and restage it
 #   Scripts/build_windows.sh --release   # new date tag first, then build and stage
+#   Scripts/build_windows.sh --saga-only # ...and bake OUT the GM cheat mod (see ModVersion.FLAVOUR)
+#   Scripts/build_windows.sh --release --saga-only
 #
 # then, in PowerShell:
 #
@@ -42,11 +44,25 @@ cd "$ROOT"
 MSBUILD="/c/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/MSBuild.exe"
 [[ -x "$MSBUILD" ]] || { echo "MSBuild not found at: $MSBUILD (Visual Studio 2022 Community?)"; exit 1; }
 
-if [[ "${1:-}" == "--release" ]]; then
+RELEASE=0
+SAGA_ONLY=""
+for arg in "$@"; do
+    case "$arg" in
+        --release)   RELEASE=1 ;;
+        --saga-only) SAGA_ONLY="--saga-only" ;;
+        *) echo "Unknown argument: $arg" >&2; exit 1 ;;
+    esac
+done
+
+if [[ $RELEASE -eq 1 ]]; then
     NEXT="$(Scripts/nextversion.sh)"
     git tag "$NEXT"
     echo "Tagged $NEXT"
-    Scripts/setversion.sh
+    Scripts/setversion.sh $SAGA_ONLY
+elif [[ -n "$SAGA_ONLY" ]]; then
+    # Not a release, but the flavour still has to be rewritten into Version.cs — the generated
+    # file is the only place it lives, and it is regenerated from the template every time.
+    Scripts/setversion.sh $SAGA_ONLY
 fi
 
 echo "Building..."

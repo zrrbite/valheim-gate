@@ -17,16 +17,18 @@ Standing context for the Windows side:
 
 ---
 
-## 2026-09-20 - THE TEST LIST for 1.0.15-run.2026-09-20b
+## 2026-09-20 - THE TEST LIST for 1.0.15-run.2026-09-20c
 
 Fourteen builds over two days, rewritten as ONE pass in the order you actually meet things. The
 per-build TASK entries below keep the reasoning; this is the list to play with.
 
-Installed already. Nothing here needs a pull.
+**`...20c` is staged but NOT installed** - you were playing when it was built, and replacing a
+DLL the game has open fails. When you are done: `.\dist\windows\Install-Mod.ps1 -ModOnly`.
 
 ### If you only do five things
 
-1. The saga menu **opens itself** when you load a character, and **"Not now"** keeps it away.
+1. The saga menu **opens itself** when you load a character, **"Not now"** keeps it away, and it
+   now has a **`GM` tab** with the cheat mod's key table on it.
 2. The run window has **RUN / QUESTS tabs**, and QUESTS remembers what you have finished.
 3. **Dev keys work bare** again - `Keypad *` and `/` especially - and the DEV banner names the two
    that want a modifier.
@@ -37,11 +39,21 @@ Installed already. Nothing here needs a pull.
 
 - [ ] Launch and **do not open Credits**. **No popup at all.** Silence is success.
 - [ ] Under the game's own version line, one gold line at 70% size, **not overlapping**:
-      `SAGA v1.0.15-run.2026-09-20b`. That line is the ONLY proof the mod loaded.
+      `SAGA v1.0.15-run.2026-09-20c · GM`. That line is the ONLY proof the mod loaded.
 - [ ] Load the character carrying **Thor's bow**. Still there. Save, quit to desktop, come back:
       still there, and no `Failed to find item prefab` in the log.
 
-### 2. The menu now comes to you
+### 2. The menu is now the general menu
+
+- [ ] Outside a run the menu has **`SAGA` and `GM` tabs** (this is a GM build; a saga-only one has
+      neither tab nor GM page).
+- [ ] **`GM` opens the old cheat windows** from a button, and the button says whether they are up.
+- [ ] The GM page lists **every GM key and what it does** - generated from the same registry the
+      input manager was built from, so it cannot drift. First time those keys have been written
+      down inside the game at all.
+- [ ] Start a run: **the GM tab is gone** for the duration, and GM keys stay dead.
+
+### 3. The menu comes to you
 
 - [ ] **The saga menu opens by itself** on loading a character. You should not have to press `End`.
 - [ ] **"Not now" closes it and it stays closed for that world.** Die, respawn, walk about: still no
@@ -49,7 +61,7 @@ Installed already. Nothing here needs a pull.
 - [ ] `End` still brings it back by hand.
 - [ ] Start a run, then **abandon** it: the menu does not immediately reappear.
 
-### 3. The run window, which is now two pages
+### 4. The run window, which is now two pages
 
 - [ ] Tabs read **`RUN`** and **`QUESTS`**. The selected one is gold.
 - [ ] **RUN** keeps the numbers, the step in play with its count, bar and clause list, TASKS and
@@ -62,7 +74,7 @@ Installed already. Nothing here needs a pull.
 - [ ] **Sub-objective counts read down a column**: `3/4  Hunt 4 Boar`, bright gold, left-aligned.
       Two clauses of different name lengths should line up with each other.
 
-### 4. The keys
+### 5. The keys
 
 - [ ] `Keypad +` = **Shaman's Mercy** (burst heal). `Keypad -` = **Unseen** (20s, nothing sees you).
 - [ ] **Dev keys are bare again** except two: `Keypad *`, `/`, `.`, `Enter`, `Delete`, `Home` and
@@ -78,7 +90,7 @@ Installed already. Nothing here needs a pull.
       bow, press it, and check `ICSYTW_probe.txt` lists its renderers and shader properties. That
       report is what the item glow gets written from next.
 
-### 5. Act I, in chain order
+### 6. Act I, in chain order
 
 - [ ] **The HEARTH track holds the homestead.** Read the three tracks: HEARTH must run *forage,
       roof, fire, cooking station, meal, bed, settle in, sleep, comfort, chest*, then the fishing and
@@ -124,7 +136,7 @@ Installed already. Nothing here needs a pull.
 - [ ] Herald, then the Gatherer, then the altar, then **Eikthyr** - and the shield should visibly
       blunt his lightning.
 
-### 6. Act II and beyond - log checks, since you will not reach them tonight
+### 7. Act II and beyond - log checks, since you will not reach them tonight
 
 - [ ] At run start the log should carry **seven** `Saga item created: ... from X` lines: the bow, the
       Stormward, the rescued light, and the four **Stormsworn** pieces. The `from X` names the mesh
@@ -135,7 +147,7 @@ Installed already. Nothing here needs a pull.
 - [ ] `bf-arrive` ("reach the Black Forest") is the FIRST step of Act II. You asked whether it
       existed; it does, and it only appears once Eikthyr is down.
 
-### 7. Systems you brush against throughout
+### 8. Systems you brush against throughout
 
 - [ ] **Shepherd says nothing** when you pick it with no animals - no "No baseline, nothing buffed",
       no "Buffed 0 pets". The GM readouts are gone from the saga's path.
@@ -147,7 +159,7 @@ Installed already. Nothing here needs a pull.
 - [ ] Still unverified from 12-13 September: the **shade's greeting** and its `[E] Speak` prompt, the
       **saga dreams**, and **raids arriving as beats**.
 
-### 8. Afterwards, in PowerShell
+### 9. Afterwards, in PowerShell
 
 ```powershell
 Select-String -Path "$env:USERPROFILE\AppData\LocalLow\IronGate\Valheim\Player.log" `
@@ -164,6 +176,71 @@ default is **2.5** - the file wins over the code, so you have been playing a mon
 regen. Thirty-five newer settings are absent from it entirely and running on code defaults, which is
 correct behaviour but means they cannot be TUNED without adding the lines by hand. Ask and I will
 either add the keys or make `Load()` re-save so no future setting is invisible.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
+---
+
+## 2026-09-20 - TASK: 1.0.15-run.2026-09-20c - the general menu, and a flavour baked into the DLL
+
+Both halves of what we agreed last night, built while you tested `...20b`. **Staged, not installed** -
+the game was open.
+
+### The flavour is a build-time constant, not a config flag
+
+You wanted GM absent rather than unreachable, and a config bool cannot give that: the recipient owns
+the config file. So it is baked in, by the machinery `Version.cs` already uses -
+`VersionTemplate.cs` gains `__FLAVOUR__` beside `__VERSION__`, and `Scripts/setversion.sh` fills it:
+
+```bash
+Scripts/build_windows.sh --release               # "gm"   - the saga plus the old cheat mod
+Scripts/build_windows.sh --release --saga-only   # "saga" - the saga alone
+```
+
+Not `#if` and two project configurations. Two reasons, the first decisive: the saga-only binary is
+the one you never play, so it is the one that would break silently. And the legacy `CheatCommands`
+pipeline must survive in BOTH flavours because Run Mode's boons ride it, so the conditional surface
+would have scattered across three files. One binary, one code path, one constant.
+
+**GM is the default.** You play every build and hand one out rarely, so the accident to avoid is
+silently crippling your own build.
+
+### Three guards, because the remaining accident is shipping the wrong DLL
+
+- The **badge** reads `SAGA v<build> - GM` in a GM build and says nothing extra in a saga one.
+- **`make_release.sh` reads the flavour back out of the DLL** and refuses to package a GM build
+  unless passed `--gm`. The zip is named for the flavour too, so one sitting in a downloads folder
+  still answers the question.
+- The value is read from the ARTEFACT, never taken on trust from whoever ran the build.
+
+That last one needed a fix worth recording. `ModVersion.FlavourMarker` exists solely to be
+greppable: the scripts decode the DLL as UTF-16 because .NET user strings live in the #US heap that
+way, but FIELD names are UTF-8 in #Strings - so there is nothing to anchor a search for "FLAVOUR" to,
+and "gm" and "saga" are far too common to match alone. My first attempt found nothing at all, silently.
+Round-tripped both ways before shipping: `--saga-only` then read back `saga`, restore then read back `gm`.
+
+### What saga-only actually switches off
+
+`Cheat.cs` does not **register** the GM bindings - `F1` and `End` survive, and neither is a cheat -
+so `CommandRegistry.All` is empty and there is nothing to press or to list. `UIManager` does not draw
+the GM windows. What it does NOT touch is `CheatCommands` itself, which both flavours need because
+the saga's boons ride that pipeline. Doors, not floor.
+
+### The general menu
+
+Outside a run the menu has `SAGA` and `GM` tabs, in a GM build only. The GM page is a door onto the
+windows that already exist plus - for the first time anywhere in the game - the cheat mod's key
+table, generated from `CommandRegistry.All`, the same list the input manager was registered from. A
+binding that exists is listed; one that was skipped is not. Third application of that principle after
+`BoonKeys` and `DevKeyHelp`, and it is here because this codebase has twice shipped a command nobody
+could discover.
+
+Narrower than your sentence in two places, both deliberate. The GM page keys on the BUILD FLAVOUR,
+not dev mode - those turned out to be different switches, and `runDevMode` keeps its own meaning as
+the tester's step-skips. And there is no GM tab during a run: the input gate exists because heat and
+score assume GM is dead, and a menu does not get to negotiate that.
 
 ### RESULTS (Windows side appends here)
 

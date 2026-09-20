@@ -99,9 +99,21 @@ namespace ICanShowYouTheWorld
             }
         }
 
+        /// <summary>
+        /// The badge, and the FLAVOUR after it in a GM build.
+        /// </summary>
+        /// <remarks>
+        /// The flavour suffix is not decoration: it is the guard on the one accident the build-time
+        /// GM switch can still cause, which is handing somebody the wrong DLL. Neither party could
+        /// otherwise tell, since a saga-only build looks exactly like a GM build until you press a
+        /// key that is no longer there. A saga-only build says nothing extra, so the line stays
+        /// short for the recipient - and it is the owner, who does not need protecting from the
+        /// word, who sees the longer one.
+        /// </remarks>
         private static string BadgeLine()
         {
-            return $"\n<size=70%><color=#{Gold}>{Title} v{ModVersion.VERSION}</color></size>";
+            string flavour = ModVersion.GmEnabled ? " \u00b7 GM" : string.Empty;
+            return $"\n<size=70%><color=#{Gold}>{Title} v{ModVersion.VERSION}{flavour}</color></size>";
         }
 
         /// <summary>Sets a property if this build of TMP has it. Silent either way.</summary>

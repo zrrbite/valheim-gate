@@ -1,5 +1,20 @@
 #!/usr/bin/env bash
+#
+#   Scripts/setversion.sh                # a GM build: the saga plus the old cheat mod
+#   Scripts/setversion.sh --saga-only    # the saga alone, for handing to somebody else
+#
+# The flavour is BAKED INTO THE DLL rather than read from config, because the config file
+# belongs to whoever has it and the point is that nobody but the owner can reach GM. See the
+# remarks on ModVersion.FLAVOUR.
+#
+# GM is the DEFAULT on purpose. The owner plays every build and hands one out rarely, so the
+# accident to avoid is silently crippling his own build, not silently shipping a GM one - and
+# that second accident is caught anyway: the menu badge prints the flavour, and
+# Scripts/make_release.sh reads it back out of the DLL before it will ship.
 set -e
+
+FLAVOUR="gm"
+[[ "${1:-}" == "--saga-only" ]] && FLAVOUR="saga"
 
 # 1) Compute project root (where your .git folder lives)
 ROOT="$(git rev-parse --show-toplevel)"
@@ -26,6 +41,6 @@ DEST="$DESTDIR/Version.cs"
 mkdir -p "$DESTDIR"
 
 # 5) Generate
-sed "s/__VERSION__/$VERSION/" "$TEMPLATE" > "$DEST"
+sed -e "s/__VERSION__/$VERSION/" -e "s/__FLAVOUR__/$FLAVOUR/" "$TEMPLATE" > "$DEST"
 
-echo "Wrote $DEST"
+echo "Wrote $DEST (flavour: $FLAVOUR)"

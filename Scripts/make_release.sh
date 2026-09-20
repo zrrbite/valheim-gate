@@ -14,8 +14,16 @@
 # perfectly correctly — which reads as a version bug and is a staging one. This
 # refuses to build a release unless all three match.
 #
-#   Scripts/make_release.sh              # release the current tag
+#   Scripts/make_release.sh              # release the current tag (must be a SAGA-ONLY build)
+#   Scripts/make_release.sh --gm           # ...allow a GM build to be released
 #   Scripts/make_release.sh --allow-dirty  # ...with uncommitted changes
+#
+# A release is a thing handed to somebody else, so it REFUSES a GM build unless asked twice.
+# The flavour is baked into the DLL (ModVersion.FLAVOUR) and read back out of it here rather
+# than taken on trust from whoever ran the build: the one accident the build-time switch can
+# still cause is shipping the wrong DLL, and this is the place to catch it.
+#
+# To make one:  Scripts/build_windows.sh --release --saga-only
 #
 set -euo pipefail
 
@@ -23,7 +31,14 @@ ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 
 ALLOW_DIRTY=0
-[[ "${1:-}" == "--allow-dirty" ]] && ALLOW_DIRTY=1
+ALLOW_GM=0
+for arg in "$@"; do
+    case "$arg" in
+        --allow-dirty) ALLOW_DIRTY=1 ;;
+        --gm)          ALLOW_GM=1 ;;
+        *) echo "Unknown argument: $arg" >&2; exit 1 ;;
+    esac
+done
 
 green() { printf '\033[0;32m✓\033[0m %s\n' "$1"; }
 info()  { printf '\033[0;34mℹ\033[0m %s\n' "$1"; }
@@ -63,10 +78,30 @@ PY
 BUILT="$ROOT/ICanShowYouTheWorld/bin/Debug/ICanShowYouTheWorld.dll"
 [[ -f "$BUILT" ]] || fail "No build output at $BUILT"
 
+# The same decode-and-grep as read_version, against ModVersion.FlavourMarker - which exists
+# precisely so there is something unique to search for. See the remarks on that constant.
+read_flavour() {
+    python3 - "$1" <<'PYEOF'
+import re, sys
+data = open(sys.argv[1], 'rb').read().decode('utf-16-le', 'ignore')
+m = re.search(r'ICSYTW_FLAVOUR_(gm|saga)', data)
+print(m.group(1) if m else '')
+PYEOF
+}
+
 BUILT_VERSION="$(read_version "$BUILT")"
 [[ "$BUILT_VERSION" == "$TAG" ]] \
     || fail "Built DLL says '$BUILT_VERSION' but the tag is '$TAG'. Run Scripts/setversion.sh and rebuild."
 green "DLL version matches the tag"
+
+FLAVOUR="$(read_flavour "$BUILT")"
+[[ -n "$FLAVOUR" ]] || fail "Could not read the flavour out of the DLL. Rebuild with Scripts/build_windows.sh."
+if [[ "$FLAVOUR" == "gm" && $ALLOW_GM -eq 0 ]]; then
+    fail "This is a GM build. A release goes to somebody else, so it wants a saga-only one:
+       Scripts/build_windows.sh --release --saga-only
+     Or pass --gm if you really mean to hand over the cheat mod."
+fi
+green "Flavour: $FLAVOUR"
 
 # Stage into dist/windows, which is what actually gets zipped.
 Scripts/stage_windows.sh > /dev/null
@@ -87,7 +122,9 @@ green "Payload complete"
 # ---- 3. Zip it ----------------------------------------------------------
 
 OUT_DIR="$ROOT/Release"
-NAME="ICanShowYouTheWorld-$TAG-windows"
+# The flavour is in the NAME as well as in the DLL, so a zip sitting in a downloads folder
+# still answers the question.
+NAME="ICanShowYouTheWorld-$TAG-$FLAVOUR-windows"
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 

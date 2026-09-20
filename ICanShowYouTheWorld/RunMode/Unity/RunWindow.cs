@@ -108,6 +108,9 @@ namespace ICanShowYouTheWorld.RunMode
         private const int TrackerMaxRows = 10;
         private const float LobbyWidth = 360f;
         private const float LobbyHeight = 280f;
+
+        /// <summary>Tall enough for the GM key table to be worth scrolling rather than squinting at.</summary>
+        private const float GmPageHeight = 460f;
         private const float OfferWidth = 460f;
         private const float OfferHeight = 200f;
         private const float StripWidth = 300f;
@@ -227,6 +230,9 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>A "Not now" click on the lobby, applied at the next Layout pass.</summary>
         private bool _pendingLobbyClose;
 
+        /// <summary>An "open/hide the GM windows" click, applied at the next Layout pass.</summary>
+        private bool _pendingGmToggle;
+
         /// <summary>The Hud whose tip list we have already added to; guards against adding twice.</summary>
         private Hud _tippedHud;
 
@@ -267,6 +273,39 @@ namespace ICanShowYouTheWorld.RunMode
         /// a second draggable panel is more clutter, differently arranged.
         /// </remarks>
         private HudPage _page = HudPage.Run;
+
+        /// <summary>Which page the menu shows when no run is running.</summary>
+        private enum LobbyPage
+        {
+            /// <summary>Begin, resume, discard — the saga's own door.</summary>
+            Saga,
+
+            /// <summary>The old cheat mod's door and its key table. GM builds only.</summary>
+            Gm,
+        }
+
+        /// <summary>
+        /// The page shown outside a run, making this window the mode's general menu rather than the
+        /// saga's lobby.
+        /// </summary>
+        /// <remarks>
+        /// Owner: "the 'run' menu... should be a sort of general menu. IF it's built with -Dev mode
+        /// we can access both the GM mod of old and the new Saga mode and we can use the menu to go
+        /// back and forth."
+        ///
+        /// Two things are deliberately narrower than that sentence. The GM page exists only in a GM
+        /// BUILD (ModVersion.GmEnabled), not with dev mode, because the two ended up being different
+        /// switches living in different places - dev mode is the tester's step-skips and kits, and
+        /// the flavour is baked into the DLL where nobody can edit it.
+        ///
+        /// And "back and forth" means outside a run only. There is no GM page during one: the input
+        /// gate exists because heat and score assume GM is dead, and a menu does not get to
+        /// negotiate that.
+        /// </remarks>
+        private LobbyPage _lobbyPage = LobbyPage.Saga;
+
+        /// <summary>The GM page's key table scrolls; a saga build never draws it.</summary>
+        private Vector2 _gmScroll;
 
         /// <summary>
         /// True while a run is in progress. UIManager asks before drawing the GM windows — they
@@ -321,7 +360,8 @@ namespace ICanShowYouTheWorld.RunMode
         public void ApplyPendingActions()
         {
             if (!_pendingStart && !_pendingAbandon && !_pendingDiscard &&
-                !_pendingDeposit && _pendingWithdraw < 0 && !_pendingLobbyClose) return;
+                !_pendingDeposit && _pendingWithdraw < 0 && !_pendingLobbyClose &&
+                !_pendingGmToggle) return;
             if (Event.current == null || Event.current.type != EventType.Layout) return;
 
             // Closing the lobby removes a window, so it waits for Layout with the rest. It touches
@@ -330,6 +370,15 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 _pendingLobbyClose = false;
                 Visible = false;
+            }
+
+            // Adds or removes the GM windows, so it waits for Layout with everything else that
+            // changes which windows exist.
+            if (_pendingGmToggle)
+            {
+                _pendingGmToggle = false;
+                try { UIManager.Instance?.ToggleVisible(); }
+                catch (Exception ex) { LogOnce("gm-toggle", ex); }
             }
 
             bool start = _pendingStart;
@@ -514,8 +563,15 @@ namespace ICanShowYouTheWorld.RunMode
                     if (Visible)
                     {
                         UpdateOfferFadeState(0);
+                        // The GM page carries a key table and wants the room; the saga page is
+                        // four buttons and does not. Height is the only thing that changes, so the
+                        // window does not appear to jump sideways when you switch tabs.
+                        float lobbyHeight = ModVersion.GmEnabled && _lobbyPage == LobbyPage.Gm
+                            ? GmPageHeight
+                            : LobbyHeight;
+
                         _lobbyRect = GUILayout.Window(LobbyWindowId, _lobbyRect, DrawLobby, GUIContent.none, RunTheme.Panel,
-                            GUILayout.Width(LobbyWidth), GUILayout.Height(LobbyHeight));
+                            GUILayout.Width(LobbyWidth), GUILayout.Height(lobbyHeight));
                     }
                 }
             }
@@ -1826,6 +1882,24 @@ namespace ICanShowYouTheWorld.RunMode
 
             GUILayout.BeginHorizontal();
             GUILayout.Label("VALHEIM: THE SAGA", RunTheme.Header);
+
+            // Only a GM build has anywhere else to go, so a saga build never draws a tab row it
+            // would be the only occupant of.
+            if (ModVersion.GmEnabled)
+            {
+                GUILayout.BeginHorizontal();
+                DrawLobbyTab("SAGA", LobbyPage.Saga);
+                DrawLobbyTab("GM", LobbyPage.Gm);
+                GUILayout.FlexibleSpace();
+                GUILayout.EndHorizontal();
+                GUILayout.Space(2f);
+
+                if (_lobbyPage == LobbyPage.Gm)
+                {
+                    DrawGmPage();
+                    return;
+                }
+            }
             GUILayout.FlexibleSpace();
             GUILayout.Label($"v{ModVersion.VERSION}", RunTheme.Small);
             GUILayout.EndHorizontal();
@@ -1920,6 +1994,93 @@ namespace ICanShowYouTheWorld.RunMode
             // injected hook cannot prove itself until something dies), so a lobby line would
             // either never appear or cry wolf. The real surface is RunService's in-run notice,
             // raised on the strip once the 60s grace window closes with the hook still silent.
+        }
+
+        private void DrawLobbyTab(string label, LobbyPage page)
+        {
+            bool active = _lobbyPage == page;
+
+            GUI.contentColor = active ? RunTheme.AccentGoldBright : RunTheme.TextMuted;
+            if (GUILayout.Button(active ? "\u2022 " + label : label, GUILayout.Width(84f)) && !active)
+                _lobbyPage = page;
+            GUI.contentColor = Color.white;
+        }
+
+        /// <summary>
+        /// The GM mod's door, and its key table.
+        /// </summary>
+        /// <remarks>
+        /// The table is generated from <see cref="CommandRegistry.All"/>, which is the list the
+        /// input manager was registered FROM - so a binding that exists is listed and a binding
+        /// that was skipped is not. That is the same medicine as BoonKeys and DevKeyHelp, and it is
+        /// applied here for the third time because this codebase has now twice shipped a command
+        /// nobody could discover and once shipped a help line that had gone stale.
+        ///
+        /// It is also the first time the GM mod's keys have been written down anywhere inside the
+        /// game.
+        ///
+        /// The button toggles the EXISTING cheat windows rather than re-implementing anything: the
+        /// whole point of a general menu is a second door onto what is already there.
+        /// </remarks>
+        private void DrawGmPage()
+        {
+            GUI.contentColor = RunTheme.TextMuted;
+            GUILayout.Label("The old sandbox. Nothing here is scored, and none of it is reachable " +
+                            "once a saga is running.", RunTheme.Small);
+            GUI.contentColor = Color.white;
+
+            GUILayout.Space(4f);
+
+            bool shown = CheatUiVisible;
+            if (GUILayout.Button(shown ? "Hide the GM windows  [F1]" : "Open the GM windows  [F1]"))
+                _pendingGmToggle = true;
+
+            GUILayout.Space(4f);
+            GUILayout.Label("KEYS", RunTheme.Header);
+
+            var all = CommandRegistry.All;
+            if (all == null || all.Count == 0)
+            {
+                GUILayout.Label("  none registered", RunTheme.Small);
+                return;
+            }
+
+            _gmScroll = GUILayout.BeginScrollView(_gmScroll, false, false,
+                GUIStyle.none, GUI.skin.verticalScrollbar, GUIStyle.none, GUILayout.ExpandHeight(true));
+            try
+            {
+                foreach (var cmd in all)
+                {
+                    if (cmd == null) continue;
+
+                    GUILayout.BeginHorizontal();
+
+                    GUI.contentColor = RunTheme.AccentGoldBright;
+                    GUILayout.Label(KeyLabel(cmd.Key), RunTheme.Small, GUILayout.Width(92f));
+
+                    GUI.contentColor = RunTheme.TextMuted;
+                    GUILayout.Label(cmd.Description ?? "", RunTheme.Small);
+
+                    GUI.contentColor = Color.white;
+                    GUILayout.FlexibleSpace();
+                    GUILayout.EndHorizontal();
+                }
+            }
+            finally { GUILayout.EndScrollView(); }
+        }
+
+        /// <summary>A KeyCode as a player would say it. "Keypad7" is not a key anybody names.</summary>
+        private static string KeyLabel(KeyCode key)
+        {
+            string name = key.ToString();
+
+            if (name.StartsWith("Keypad", StringComparison.Ordinal))
+                return "Num " + name.Substring("Keypad".Length);
+
+            if (name.StartsWith("Alpha", StringComparison.Ordinal))
+                return name.Substring("Alpha".Length);
+
+            return name;
         }
 
         // --- Tracker panel (the "Hunter's Eye" boon) ---

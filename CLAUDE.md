@@ -137,6 +137,41 @@ FejdStartup.Start()          [and OnCredits(), which is then a no-op]
 - **InputManager.cs** - Keyboard input polling and command dispatch
 - **CommandRegistry** - Global list of keyboard bindings using CommandBinding pattern
 
+### Build flavours: GM or saga-only
+
+The DLL is built one of two ways, and **which one is baked into it**, not configured:
+
+```bash
+Scripts/build_windows.sh --release               # "gm"   — the saga plus the old cheat mod
+Scripts/build_windows.sh --release --saga-only   # "saga" — the saga alone
+```
+
+`Scripts/setversion.sh` fills `__FLAVOUR__` in `VersionTemplate.cs` alongside `__VERSION__`, so
+`ModVersion.FLAVOUR` and `ModVersion.GmEnabled` are compile-time facts. **Deliberately not a
+config setting**: the requirement was that nobody but the owner can reach GM, and the config
+file belongs to whoever has it.
+
+`ModVersion.FlavourMarker` exists so the flavour can be read back OUT of the built DLL, the same
+decode-and-grep that reads the version. A bare `"gm"` cannot be: .NET user strings are UTF-16 in
+the #US heap while field NAMES are UTF-8 in #Strings, so there is nothing to anchor a search to —
+which is how the first attempt at this silently found nothing.
+
+What a saga-only build changes, and what it must not:
+
+- `Cheat.cs` does not **register** the GM bindings (only `F1` and `End` survive, and neither is a
+  cheat), so `CommandRegistry.All` is empty and there is nothing to press or to list.
+- `UIManager.OnGUI` does not draw the GM windows.
+- **`CheatCommands` itself stays alive in both flavours.** Run Mode's boons ride that pipeline
+  through `WithLegacyGodModeBracket`. This removes GM's doors, never its floor.
+
+Guards, because the remaining accident is shipping the wrong DLL: the main menu badge reads
+`SAGA v<build> · GM` in a GM build, and `Scripts/make_release.sh` reads the flavour out of the
+DLL and **refuses to package a GM build** unless passed `--gm`. The zip is named for the flavour.
+
+And the honest limit: Valheim ships its own cheats one launch option away (`-console`, then F5,
+then `devcommands`). This protects the saga's score from somebody who never asked for GM. It is
+not a lock.
+
 ### Configuration System
 
 Configuration is stored in JSON at:
@@ -175,7 +210,8 @@ different things in the cheat mod and in the saga, and that is safe because the 
 listeners are never both live:
 
 1. **GM bindings** go through `InputManager` and `InputManager.Gate`, which makes every
-   GM command dead while a run is live. So a GM key is free for the saga to reuse.
+   GM command dead while a run is live. So a GM key is free for the saga to reuse. In a
+   **saga-only build they are never registered at all** — see Build flavours above.
 2. **Saga bindings** are read straight from `RunService.Tick`: `Keypad1-3` pick from an
    offer (and the activation handler returns early while an offer is up), `Keypad4-8`,
    `0`, `Insert`, `+` and `-` activate held boons, `Keypad9` is Homeward, and `PageDown`
