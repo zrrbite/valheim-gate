@@ -17,7 +17,7 @@ Standing context for the Windows side:
 
 ---
 
-## 2026-09-20 - THE TEST LIST for 1.0.15-run.2026-09-20f
+## 2026-09-20 - THE TEST LIST for 1.0.15-run.2026-09-20g
 
 Fourteen builds over two days, rewritten as ONE pass in the order you actually meet things. The
 per-build TASK entries below keep the reasoning; this is the list to play with.
@@ -28,8 +28,8 @@ DLL the game has open fails. When you are done: `.\dist\windows\Install-Mod.ps1 
 ### If you only do seven things
 
 0. **The crafting list is alphabetical**, and **`End` frees the mouse** - no more TAB to click.
-1. **`mod` + `Keypad -` now skips to night** in one press, and says so when it arrives. The old
-   "+2h" reported the wrong answer every time - your log caught it.
+1. **`mod` + `Keypad -` is `+2h` per press again.** It says `DEV: +2h` immediately and then, a
+   second and a half later, whether it is night - which is the only part that was ever broken.
 2. The **BOOK** tab (was QUESTS) opens on the run's own account of itself, act by act.
 3. **Thor's bow forks.** Every arrow strikes 4m around where it lands.
 4. The saga menu **opens itself**, **"Not now"** keeps it away, and it has a **`GM` tab**.
@@ -41,7 +41,7 @@ DLL the game has open fails. When you are done: `.\dist\windows\Install-Mod.ps1 
 
 - [ ] Launch and **do not open Credits**. **No popup at all.** Silence is success.
 - [ ] Under the game's own version line, one gold line at 70% size, **not overlapping**:
-      `SAGA v1.0.15-run.2026-09-20f · GM`. That line is the ONLY proof the mod loaded.
+      `SAGA v1.0.15-run.2026-09-20g · GM`. That line is the ONLY proof the mod loaded.
 - [ ] Load the character carrying **Thor's bow**. Still there. Save, quit to desktop, come back:
       still there, and no `Failed to find item prefab` in the log.
 
@@ -85,9 +85,9 @@ DLL the game has open fails. When you are done: `.\dist\windows\Install-Mod.ps1 
 ### 5. The keys
 
 - [ ] `Keypad +` = **Shaman's Mercy** (burst heal). `Keypad -` = **Unseen** (20s, nothing sees you).
-- [ ] **`mod` + `Keypad -` skips straight to night**, in one press, and says `DEV: it is night.`
-      when it has arrived. Press it again while it is night and it winds back to daylight - which
-      "Hunt a deer by daylight" needs and the old key had no way to give you.
+- [ ] **`mod` + `Keypad -` advances 2 game hours per press**, as it used to. It now says `DEV: +2h`
+      at once and reports `it is night` / `still light` a moment afterwards, rather than reporting the
+      state it was in before the jump. Press until it says night.
 - [ ] **Dev keys are bare again** except two: `Keypad *`, `/`, `.`, `Enter`, `Delete`, `Home` and
       `PageUp` need NO modifier. Only the step-skip and the clock do, because those share the
       player's keys - **`Shift`/`Ctrl`/`Alt` + `Keypad +`** and **+ `Keypad -`**.
@@ -188,6 +188,32 @@ default is **2.5** - the file wins over the code, so you have been playing a mon
 regen. Thirty-five newer settings are absent from it entirely and running on code defaults, which is
 correct behaviour but means they cannot be TUNED without adding the lines by hand. Ask and I will
 either add the keys or make `Load()` re-save so no future setting is invisible.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
+---
+
+## 2026-09-20 - TASK: 1.0.15-run.2026-09-20g - the clock key goes back to +2h
+
+Owner: "Bring back the +2 hr thing. The new jump to night doesnt work and the previous thing was
+fine." Right on both counts, and the second one is mine to explain.
+
+The step was never the problem. The problem was the MESSAGE - it read `IsNight` in the same frame as
+the `SetNetTime` write, so it always reported the state before the jump. I replaced the whole key when
+only its readout was broken, and the replacement failed for the mirror image of the same reason:
+winding 60 net-seconds a frame is about an hour of game time per frame, so the loop blew through its
+own three-day cap inside two seconds of real time while EnvMan's SMOOTHED day fraction - lerped at
+0.01 a step - was still catching up with the first step. It then reported giving up, having moved the
+clock three days.
+
+So: `+2h` per press, and the readout split in two. The press says `DEV: +2h` immediately, because that
+is what it knows. What the sky is doing follows a second and a half later, once EnvMan has recomputed.
+
+Worth keeping as the lesson, since this is the third time in two days the same shape has appeared:
+**do not read state in the frame you wrote it** - and when a readout is wrong, fix the readout rather
+than the feature.
 
 ### RESULTS (Windows side appends here)
 

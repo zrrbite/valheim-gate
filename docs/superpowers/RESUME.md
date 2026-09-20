@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-09-20 at `1.0.15-run.2026-09-20f`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-09-20 at `1.0.15-run.2026-09-20g`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -21,7 +21,7 @@ Everything below is what that file tells it.
 
 - Branch **`feature/run-mode`**, not merged, deliberately — the mode is still
   being tuned in play.
-- Latest tag **`1.0.15-run.2026-09-20f`**; builds are date-based since 2026-08-31
+- Latest tag **`1.0.15-run.2026-09-20g`**; builds are date-based since 2026-08-31
   (`Scripts/nextversion.sh`). The game moved to **1.0.12 on 2026-09-12** and to
   **1.0.15 on 2026-09-19**; both times the mod was rebuilt and installed on Windows
   the same day. **1.0.15 needed no source change** — all 316 member references from
@@ -251,7 +251,12 @@ So: its own build, its own play-test, and behind `runDevMode` for the first outi
 
 ## Two shapes worth remembering from 2026-09-20
 
-**Do not read state in the frame you wrote it.** Twice in two days. `CreatureDressing` lost its scale
+**Do not read state in the frame you wrote it.** Three times in two days, and the third time it cost
+a working feature: the dev clock's "+2h" was replaced wholesale when only its READOUT was broken, and
+the replacement ("wind forward until the game says night") failed to the mirror image of the same lag -
+60 net-seconds a frame is an hour of game time a frame, so it blew through its own three-day cap in two
+seconds of real time while EnvMan's smoothed fraction was still catching up with the first step.
+Reverted at the owner's request. **When a readout is wrong, fix the readout, not the feature.** `CreatureDressing` lost its scale
 and colour because it wrote materials before `LevelEffects.Start` ran; the dev clock key reported
 "still light" twenty-six times because it read `EnvMan.s_isNight` in the same frame as its
 `SetNetTime`, and EnvMan only recomputes that in `FixedUpdate` from a fraction it lerps toward. Both

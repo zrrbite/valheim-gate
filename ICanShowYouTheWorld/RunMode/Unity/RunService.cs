@@ -2238,7 +2238,7 @@ namespace ICanShowYouTheWorld.RunMode
         public static readonly string[] DevKeyHelp =
         {
             "DEV MODE   *items   .light   /god+speed   Ent:home   Del:slay   Home:map-tp   PgUp:probe",
-            "Shift/Ctrl/Alt + [+] complete step   \u00b7   + [-] skip to night/day   (bare + and - are the player's)",
+            "Shift/Ctrl/Alt + [+] complete step   \u00b7   + [-] advance 2h   (bare + and - are the player's)",
         };
 
         /// <summary>
@@ -2463,91 +2463,69 @@ namespace ICanShowYouTheWorld.RunMode
             }
         }
 
-        /// <summary>True while the dev clock is winding toward the state asked for.</summary>
-        private bool _devSkipping;
-
-        /// <summary>What the skip is aiming at: night, or day.</summary>
-        private bool _devSkipToNight;
-
-        /// <summary>How much net time the skip has added, so it cannot wind forever.</summary>
-        private double _devSkipAdded;
-
-        /// <summary>Net seconds added per frame while skipping. Three in-game days is the cap.</summary>
-        private const double DevSkipStepSeconds = 60.0;
-        private const double DevSkipMaxSeconds = 5400.0;
+        /// <summary>
+        /// When to report what the sky is doing, or negative infinity when nothing is owed.
+        /// </summary>
+        private float _devClockReportAt = float.NegativeInfinity;
 
         /// <summary>
-        /// Winds the world clock to the OTHER half of the day - night if it is light, day if it is
-        /// dark - and says so when it gets there.
+        /// Pushes the world clock forward two game hours.
         /// </summary>
         /// <remarks>
-        /// It was "+2h per press", which reported the wrong thing every single time, and the play log
-        /// caught it: twenty-six consecutive `DEV: +2h - still light` lines. The clock was moving. The
-        /// MESSAGE was read in the same frame as the write, and EnvMan only recomputes s_isNight in
-        /// its FixedUpdate - from a day fraction it lerps toward with Mathf.LerpAngle at 0.01 per
-        /// step. So the answer printed was always the state BEFORE the jump, and the tester pressed
-        /// the key eleven times learning nothing, which is worse than a key that plainly does not
-        /// work.
+        /// A fixed step per press, which is what it was before and what the owner wants back: "Bring
+        /// back the +2 hr thing. The new jump to night doesnt work and the previous thing was fine."
+        /// The step was never the problem.
         ///
-        /// So the skip now spans frames and asks the GAME whether it has arrived, rather than doing
-        /// arithmetic on a day length and a fraction whose rescaling is EnvMan's business. Capped, so
-        /// a night that never comes - a broken EnvMan, a paused world - stops rather than winding the
-        /// clock into next week.
+        /// What WAS the problem, and is fixed here instead, is that it read `IsNight` in the same
+        /// frame as the write and so reported the state BEFORE the jump - twenty-six consecutive
+        /// "still light" lines in the play log while the clock moved perfectly well. The answer now
+        /// comes a second and a half later, from TickDevClock, by which time EnvMan's FixedUpdate has
+        /// recomputed s_isNight from a day fraction it lerps toward at 0.01 a step.
         ///
-        /// Toggling to DAY as well as to night is not a bonus: "Hunt a deer by daylight" is a step,
-        /// and a tester who has just skipped to night had no way back.
+        /// The replacement I tried - wind forward until the game says it is night - is what did not
+        /// work, and the reason is the same lag seen from the other side. Adding 60 net-seconds a
+        /// frame is about an hour of game time per frame, so the loop blew through its three-day cap
+        /// in a second and a half of real time while the SMOOTHED fraction was still catching up with
+        /// the first step. It then reported giving up, having moved the clock three days. A slow
+        /// chase would have worked and would also have been a worse test aid than a key you press
+        /// twice. Recorded so nobody rebuilds it.
         /// </remarks>
         private void DevAdvanceClock()
         {
-            if (_devSkipping)
-            {
-                // Pressed again mid-skip: stop where we are rather than queueing another.
-                _devSkipping = false;
-                DevMessage("DEV: clock stopped.");
-                return;
-            }
-
-            _devSkipToNight = !IsNight;
-            _devSkipping = true;
-            _devSkipAdded = 0.0;
-
-            DevMessage(_devSkipToNight ? "DEV: winding to night…" : "DEV: winding to daylight…");
-        }
-
-        /// <summary>
-        /// One frame of the dev clock skip. See <see cref="DevAdvanceClock"/>.
-        /// </summary>
-        private void TickDevClock()
-        {
-            if (!_devSkipping) return;
-
             try
             {
-                if (IsNight == _devSkipToNight)
-                {
-                    _devSkipping = false;
-                    DevMessage(_devSkipToNight ? "DEV: it is night." : "DEV: it is light.");
-                    return;
-                }
-
-                if (_devSkipAdded >= DevSkipMaxSeconds)
-                {
-                    _devSkipping = false;
-                    DevMessage("DEV: clock gave up — three days and no change.");
-                    return;
-                }
+                // Valheim's day is 1800 seconds, so an in-game hour is 75 of them.
+                const double TwoHours = 150.0;
 
                 var net = ZNet.instance;
-                if (net == null) { _devSkipping = false; return; }
+                if (net == null) return;
 
-                net.SetNetTime(net.GetTimeSeconds() + DevSkipStepSeconds);
-                _devSkipAdded += DevSkipStepSeconds;
+                net.SetNetTime(net.GetTimeSeconds() + TwoHours);
+
+                // Deliberately says only what it DID. What the sky is doing follows, once it is
+                // knowable; see the remarks.
+                DevMessage("DEV: +2h.");
+                _devClockReportAt = Time.time + DevClockReportDelaySeconds;
             }
             catch (Exception ex)
             {
-                _devSkipping = false;
                 LogOnce("dev-clock", ex);
             }
+        }
+
+        /// <summary>
+        /// Long enough for EnvMan to have recomputed. Its smoothing is 0.01 a fixed step, so a
+        /// two-hour jump settles well inside this.
+        /// </summary>
+        private const float DevClockReportDelaySeconds = 1.5f;
+
+        /// <summary>Says what the sky is doing, once that is a thing this frame can know.</summary>
+        private void TickDevClock()
+        {
+            if (float.IsNegativeInfinity(_devClockReportAt) || Time.time < _devClockReportAt) return;
+
+            _devClockReportAt = float.NegativeInfinity;
+            DevMessage(IsNight ? "DEV: it is night." : "DEV: still light.");
         }
 
         private void HandleBoonActivationInput()

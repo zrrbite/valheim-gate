@@ -35,7 +35,7 @@ whichever hand is free.
 | Key | Effect |
 |---|---|
 | `mod` + `Keypad +` | Complete the current step on **every** unblocked track |
-| `mod` + `Keypad -` | **Skip to night** (or back to daylight, if it is already night) |
+| `mod` + `Keypad -` | Push the clock forward **2 game hours** (press until it says "it is night") |
 | `Keypad *` | A chest's worth of materials, **into the stash** |
 | `Keypad .` | Drop a **deer's light** at your feet |
 | `Keypad /` | **God mode** + a fighter's kit **+75% speed** (toggle) |
@@ -69,12 +69,17 @@ etc.").
 The rule now states only what is true, which also means the surface where a
 missed modifier can hide a whole layer is two keys wide instead of nine.
 
-That key used to be "+2 hours per press" and reported the wrong thing every single time. The
-play log of 2026-09-20 caught it: twenty-six consecutive `DEV: +2h - still light` lines. The
-clock WAS moving; the message was read in the same frame as the write, and `EnvMan` only
-recomputes `s_isNight` in its `FixedUpdate`, from a day fraction it lerps toward slowly. So the
-answer printed was always the state before the jump. It now spans frames and asks the game
-whether it has arrived.
+That key reported the wrong thing for a long time, and the play log of 2026-09-20 caught it:
+twenty-six consecutive `DEV: +2h - still light` lines. The clock WAS moving; the message was
+read in the same frame as the write, and `EnvMan` only recomputes `s_isNight` in its
+`FixedUpdate`, from a day fraction it lerps toward at 0.01 a step. So the answer printed was
+always the state before the jump.
+
+The press now says only `DEV: +2h`, and what the sky is doing follows a second and a half
+later, once that is knowable. A "wind forward until it is night" version was tried and
+reverted at the owner's request - it blew through its own three-day cap inside two seconds
+of real time while the smoothed fraction was still catching up with the first step, then
+reported giving up having moved the clock three days.
 
 Every dev key now **also writes its line to `Player.log`**, prefixed
 `[ICanShowYouTheWorld] DEV:`. That is deliberate: when the Shift layer was
