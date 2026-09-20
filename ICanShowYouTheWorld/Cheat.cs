@@ -457,6 +457,11 @@ namespace ICanShowYouTheWorld
             DrainPendingPopup();
             MenuBadge.Tick();
 
+            // Beside the badge because it is the same screen and the same lifetime: both find
+            // FejdStartup, both go quiet the instant a world is loaded, and both are no-ops after
+            // their first early return.
+            MenuDice.Tick();
+
 
             inputManager.HandleInput();
             CheatCommands.HandlePeriodic();

@@ -1443,6 +1443,17 @@ namespace ICanShowYouTheWorld.RunMode
                     return false;
                 }
 
+                // EVERY pull, into Player.log, before the game touches anything. The anvil made
+                // coal out of a correct-looking bill and there was no way to tell which of the two
+                // sides was wrong (owner: "Hm it didnt give the bow, can you double check? its
+                // raining"): AttemptCraft matches SHARED NAMES and says nothing when it does not
+                // match, and the default path then turns the box to coal. The names on both sides
+                // are the only evidence, and neither was ever printed.
+                //
+                // This is the same defect class as Thjalfi's prices and the spawn-gating events: a
+                // string that names something, matches nothing, and fails silently.
+                DescribeAnvil(inc);
+
                 return innerUse == null || innerUse(s2, user, item);
             };
 
@@ -1454,6 +1465,94 @@ namespace ICanShowYouTheWorld.RunMode
                     ? text
                     : text + "\n" + AnvilName + ": the sky is quiet. Come back in the rain.";
             };
+        }
+
+        /// <summary>
+        /// Prints what this anvil knows and what is in its box, so a refused combine names itself.
+        /// </summary>
+        /// <remarks>
+        /// Deliberately prints the SHARED names on both sides and nothing else, because that is the
+        /// exact comparison <c>IncineratorConversion.AttemptCraft</c> makes:
+        /// <c>Inventory.CountItems(req.m_resItem.m_itemData.m_shared.m_name, -1, true)</c> divided by
+        /// the amount, minimum across requirements, zero if any requirement is unmet. Printing the
+        /// prefab names instead would have hidden the very mismatch this exists to find - a vanilla
+        /// item's shared name is a localisation token, and the saga's clones carry plain display text.
+        /// </remarks>
+        private void DescribeAnvil(Incinerator inc)
+        {
+            try
+            {
+                var box = inc.m_container != null ? inc.m_container.GetInventory() : null;
+
+                var line = new System.Text.StringBuilder();
+                line.Append("[ICanShowYouTheWorld] DEV: anvil pulled. In the box: ");
+
+                if (box == null)
+                {
+                    line.Append("(no container!)");
+                }
+                else if (box.GetAllItems().Count == 0)
+                {
+                    line.Append("(empty)");
+                }
+                else
+                {
+                    foreach (var held in box.GetAllItems())
+                    {
+                        if (held == null || held.m_shared == null) continue;
+                        line.Append($"'{held.m_shared.m_name}' x{held.m_stack}  ");
+                    }
+                }
+
+                Debug.Log(line.ToString());
+
+                if (inc.m_conversions == null)
+                {
+                    Debug.Log("[ICanShowYouTheWorld] DEV: this anvil knows NO conversions at all.");
+                    return;
+                }
+
+                foreach (var conv in inc.m_conversions)
+                {
+                    if (conv == null) continue;
+
+                    string result = conv.m_result != null && conv.m_result.m_itemData != null &&
+                                    conv.m_result.m_itemData.m_shared != null
+                        ? conv.m_result.m_itemData.m_shared.m_name
+                        : "(no result)";
+
+                    var wants = new System.Text.StringBuilder();
+                    int have = int.MaxValue;
+
+                    if (conv.m_requirements != null)
+                    {
+                        foreach (var req in conv.m_requirements)
+                        {
+                            if (req == null || req.m_resItem == null || req.m_resItem.m_itemData == null ||
+                                req.m_resItem.m_itemData.m_shared == null)
+                            {
+                                wants.Append("(broken requirement)  ");
+                                have = 0;
+                                continue;
+                            }
+
+                            string want = req.m_resItem.m_itemData.m_shared.m_name;
+                            int counted = box != null ? box.CountItems(want, -1, true) : 0;
+                            int sets = req.m_amount > 0 ? counted / req.m_amount : 0;
+                            if (sets < have) have = sets;
+
+                            wants.Append($"'{want}' {counted}/{req.m_amount}  ");
+                        }
+                    }
+
+                    Debug.Log($"[ICanShowYouTheWorld] DEV:   -> {result} (priority {conv.m_priority}, " +
+                              $"can make {(have == int.MaxValue ? 0 : have)}): {wants}");
+                }
+            }
+            catch (Exception ex)
+            {
+                ReportOnce("anvil-describe", "[ICanShowYouTheWorld] Could not describe the anvil: " + ex.Message);
+            }
         }
 
         private readonly HashSet<int> _gatedLevers = new HashSet<int>();

@@ -1212,16 +1212,56 @@ namespace ICanShowYouTheWorld.RunMode
 
                 foreach (var def in _openings.Observe(StepPredicates.Live(_challenges.Tracks)))
                 {
-                    // The opening (or the hint, when there is no opening), then the hint behind it.
-                    // A step with both gets both: the opening says what this is, the hint says what
-                    // it needs, and the hint used to live only in a panel nobody has open while
-                    // they are building.
+                    // ONE line per step, and it is the opening. The hint is written down instead.
+                    //
+                    // This is the second half of a fix whose first half shipped without it. Hints
+                    // were taken out of HasSomethingToSay, which stopped a hint-only step from
+                    // speaking - but a step with BOTH still queued two lines from right here, so the
+                    // longest hints in the game were still filling the screen (owner: "the hints
+                    // 'Block twice....' and 'At an IMPROVED workbench...' they take up the whole
+                    // screen").
+                    //
+                    // A hint is a shopping list: written to be RE-read, at the player's pace, which
+                    // is the opposite of what centre text does. It is already on the HUD's step row
+                    // and on the QUESTS page, and it now goes into the transcript as well, so the
+                    // HEARD page is a complete record of what the saga told you.
                     OweLine(StepOpenings.LineFor(def));
-                    if (!string.IsNullOrEmpty(def.Opening)) OweLine(def.Hint);
+                    RecordHint(def);
                 }
             }
             catch (Exception ex) { LogOnce("step-openings", ex); }
         }
+
+        /// <summary>
+        /// Files a step's hint where it can be re-read, and says once in the run where that is.
+        /// </summary>
+        /// <remarks>
+        /// The owner's suggestion was a "Rumour updated" notice on screen in place of the hint
+        /// itself. Not done per step, and the reason is the complaint it came from: three tracks can
+        /// open a step in the same second, so a notice per hint is three more lines of centre text -
+        /// the crowding again, only now saying nothing. Said ONCE per run instead, the first time
+        /// there is anything to read, which is the only time a player needs telling where to look.
+        ///
+        /// The hint still reaches the screen unprompted in one case: a step with no opening at all
+        /// speaks nothing, and LineFor returns null, so such a step announces itself only on the
+        /// step row. That is correct - a step whose only line is a shopping list is not news.
+        /// </remarks>
+        private void RecordHint(ChallengeDefinition def)
+        {
+            if (def == null || string.IsNullOrEmpty(def.Hint)) return;
+
+            SagaTranscript.Record(HintSpeaker, def.Hint);
+
+            if (_hintPointerSaid) return;
+            _hintPointerSaid = true;
+            OweLine("What a task needs is written down \u2014 press End, then HEARD.");
+        }
+
+        /// <summary>Who the HEARD page credits a hint to. Not a character; the saga itself.</summary>
+        private const string HintSpeaker = "Rumour";
+
+        /// <summary>Whether the run has already said where hints are kept.</summary>
+        private bool _hintPointerSaid;
 
         /// <summary>
         /// Occasional atmosphere while a dark step is in play, day or night.
