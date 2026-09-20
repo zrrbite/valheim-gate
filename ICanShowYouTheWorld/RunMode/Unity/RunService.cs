@@ -405,6 +405,26 @@ namespace ICanShowYouTheWorld.RunMode
         /// The Herald wins when both apply: it moves, it expires with the act, and it is the
         /// only one of the two you can lose.
         /// </summary>
+        /// <summary>
+        /// True when the sky is awake: rain, or a storm. The game's own test, which is what Thjalfi
+        /// stands in - see <see cref="Thjalfi"/> for why the pair of him and the shade are gated on
+        /// weather and dark respectively.
+        /// </summary>
+        private static bool IsRaining
+        {
+            get
+            {
+                try
+                {
+                    // Static, despite reading world state - the game keeps the answer in a static
+                    // field that FixedUpdate refreshes. Still guarded on the instance, because it is
+                    // that instance's update which puts a value there at all.
+                    return EnvMan.instance != null && EnvMan.IsWet();
+                }
+                catch { return false; }
+            }
+        }
+
         public string QuestBearing
         {
             get
@@ -450,7 +470,7 @@ namespace ICanShowYouTheWorld.RunMode
                 if (_thjalfi != null && ActIsMeadows && _challenges != null &&
                     StepPredicates.Thjalfi(_challenges.Tracks))
                 {
-                    string waiting = _thjalfi.Bearing(player);
+                    string waiting = _thjalfi.Bearing(player, IsRaining);
                     if (!string.IsNullOrEmpty(waiting)) return waiting;
                 }
 
@@ -3509,7 +3529,7 @@ namespace ICanShowYouTheWorld.RunMode
                           : Thjalfi.Phase.Done;
 
                 bool spoken, paid;
-                _thjalfi.Tick(player, phase, wanted, out spoken, out paid);
+                _thjalfi.Tick(player, phase, wanted, IsRaining, out spoken, out paid);
 
                 if (spoken)
                 {
@@ -8351,10 +8371,12 @@ namespace ICanShowYouTheWorld.RunMode
                 Id = "mq-thjalfi", MainQuest = true, Kind = ChallengeKind.PlayerEvent,
                 Param = SagaNames.ThjalfiFound, Target = 1,
                 Display = "Find the one who waits",
-                Hint = "Out past your fields, day or night \u2014 he does not keep the shade's hours. " +
-                       "Follow the bearing on the strip.",
-                Opening = "Something has been standing out there since before the herd, and it is not " +
-                          "one of the forest's. It has a name.",
+                Hint = "On the shore, facing the water \u2014 and only while it rains. He does not " +
+                       "keep the shade's hours and he will not come out in fair weather. The strip " +
+                       "carries a bearing to him once the sky turns.",
+                Opening = "When the rain comes there is someone standing at the water's edge. He has " +
+                          "been there since before the herd, he is not one of the forest's, and he has " +
+                          "a name.",
             },
             new ChallengeDefinition
             {
@@ -8366,8 +8388,9 @@ namespace ICanShowYouTheWorld.RunMode
                 Display = "Pay Thjalfi, and stand back",
                 RewardText = "Stone, coal, and a light back",
                 Hint = "Twenty stone and ONE rescued light, carried to him in your pack \u2014 a chest at " +
-                       "home is not your pack. The light does not come back. What he leaves takes exact " +
-                       "sets of things and gives back what it knows, and burns everything it does not.",
+                       "home is not your pack, and he is only there while it rains. The light does not " +
+                       "come back. What he leaves takes exact sets of things and gives back what it " +
+                       "knows, and burns everything it does not.",
                 Opening = "He wants paying, and what he does with it is the only reason he is still here.",
             },
             new ChallengeDefinition

@@ -17,6 +17,50 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-20 - TASK: Thjalfi stands on the shore, in the rain (`...20v`)
+
+"*It would be awesome if he could be on the coast. Is that possible?*" and "*he's only visible when
+its raining/turbulent weather*". Both, and neither needed new machinery.
+
+**The coast.** `WorldGenerator.GetHeight(x, z)` computes GENERATED terrain height for any point in the
+world with no zone loaded, where `ZoneSystem.GetSolidHeight` raycasts real colliders and so only
+answers for the two or three zones around the player. That is the whole trick: the shore can be found
+three hundred metres away before the player has ever walked there.
+
+24 rays out from the claimed bed, stepping 4 m, looking for where the ground crosses the waterline -
+the last land sample before the crossing IS the beach. Candidates are scored by how close the walk is
+to 95 m rather than by being nearest, so a homestead beside a pond does not get a ten metre
+pilgrimage. He is set 3 m back so he stands on the beach and not in the surf, and the seaward
+direction is kept so he **faces the water**; standing with his back to the sea would throw away most
+of the reason for putting him there.
+
+Falls back to the old dry-land ring when there is no water within 320 m, because a placed quest-giver
+in a field beats an unplaced one anywhere.
+
+**The weather.** `EnvMan.IsWet()` - the game's own test, true in rain and in a storm. He is dismissed
+the moment it dries up. This makes the pair of him and the shade symmetrical, which is worth more
+than it cost: **the shade wants dark, and he wants weather.** It also earns itself, since what he
+tends is a machine the sky powers.
+
+### The known risk
+
+`mq-thjalfi` now waits on rain, and the whole rest of the craft track sits behind it. Rain in the
+Meadows is frequent - several times an in-game day, unlike the thunderstorm the vigil waits on - so
+this should read as atmosphere rather than as a wall. **If it feels like waiting, say so**: the gate
+is one boolean and could become "rain OR night" or drop entirely.
+
+### Test it
+
+- [ ] **He is on a beach, facing the sea.** Log: `Thjalfi's shore: ... 95m from home`.
+- [ ] **In fair weather he is not there at all**, and the strip says *"He walks only when the sky is
+      awake. Wait for rain."* rather than giving a bearing to nothing.
+- [ ] **When it rains he appears**, and the bearing points at him.
+- [ ] **It dries up mid-conversation**: he goes. Nothing breaks.
+- [ ] **An inland homestead** still gets him - log says `found no coast in range; he waits inland`.
+- [ ] The altar he raises stays put whatever the weather. Only he is seasonal.
+
+---
+
 ## 2026-09-20 - TASK: Thjalfi, and the altar he raises (`...20u`)
 
 The Storm-Anvil is no longer something you build. **Somebody raises it for you, and you walk to it.**

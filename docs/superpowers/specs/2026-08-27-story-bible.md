@@ -316,10 +316,15 @@ answer, practised before it was taught. Act VII spends it.
   between them: nobody came to collect the shade, and somebody came for him and
   wrote it down. Neither ever mentions the other, and they must never be dressed
   alike — he is gold and larger, the shade is cold and dim.
-  He asks for twenty stone and ONE rescued light, carried in the pack. He stands
-  day and night, fifty-five to eighty-five metres from the claimed bed, and he
-  does NOT leave once the altar is up: the point of him is that the forge has
-  somebody at it.
+  He asks for twenty stone and ONE rescued light, carried in the pack, and he does
+  NOT leave once the altar is up: the point of him is that the forge has somebody
+  at it.
+  **He stands on the shore, facing the water, and only while it rains.** Both are
+  the owner's, and both earn themselves. The player arrived across water into the
+  world the drowned and the put-away are sent to, so the waterline is where a
+  debtor waits; and a man who tends a machine the sky powers should only be there
+  when the sky is awake. It also completes the pair: the hunter's shade wants
+  DARK, Thjalfi wants WEATHER, and neither can be found by simply walking about.
 - **The ravens** — Odin's audit. They witness beats; they never help.
 - **Heat** — the world noticing you burn. Score is how brightly you burned.
 - **Boons** — Odin's loans against the answer you owe. Death collects one.

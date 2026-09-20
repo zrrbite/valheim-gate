@@ -190,9 +190,21 @@ namespace ICanShowYouTheWorld.RunMode
         private const string GreetPay = "Twenty stone and one of their lights. Then I show you what I am for.";
         private const string GreetDone = "It is yours. Be exact with it.";
 
-        /// <summary>How far out he waits. Far enough to be a walk, near enough to be found.</summary>
-        private const float MinDistance = 55f;
-        private const float MaxDistance = 85f;
+        /// <summary>
+        /// How far out he waits. Far enough to be a walk, near enough to be found.
+        /// </summary>
+        /// <remarks>
+        /// These bound the SHORELINE search below, and the fallback ring if no coast is in range.
+        /// MaxSearch is much further than MaxDistance on purpose: a homestead well inland may have no
+        /// water for two hundred metres, and a long walk to the sea is a better answer than giving up
+        /// and putting him in a field.
+        /// </remarks>
+        private const float MinDistance = 45f;
+        private const float MaxDistance = 90f;
+        private const float MaxSearch = 320f;
+
+        /// <summary>The walk length the search aims for when several shores qualify.</summary>
+        private const float PreferredDistance = 95f;
 
         /// <summary>He is only CREATED once the player is near his spot, so he is never culled at birth.</summary>
         private const float SpawnRange = 70f;
@@ -203,6 +215,10 @@ namespace ICanShowYouTheWorld.RunMode
         private readonly System.Random _rng;
 
         private Vector3? _spot;
+
+        /// <summary>Which way the water lies from his spot, so he can stand looking out at it.</summary>
+        private Vector3 _seaward = Vector3.forward;
+
         private ThjalfiTalk _talk;
         private GameObject _body;
         private Phase? _greetedFor;
@@ -228,12 +244,18 @@ namespace ICanShowYouTheWorld.RunMode
         /// Call about once a second. Keeps him standing while he is wanted, and reports what the
         /// player did at him.
         /// </summary>
-        public void Tick(Player player, Phase phase, bool wanted, out bool spoken, out bool paid)
+        /// <param name="wet">
+        /// Whether the sky is awake. He is only here in rain or a storm (owner: "he's only visible
+        /// when its raining/turbulent weather") - which is the same shape as the shade's night gate
+        /// and makes the pair symmetrical: one wants dark, the other wants weather. It also earns
+        /// itself, since what he tends is a machine the sky powers.
+        /// </param>
+        public void Tick(Player player, Phase phase, bool wanted, bool wet, out bool spoken, out bool paid)
         {
             spoken = false;
             paid = false;
 
-            if (!wanted || player == null)
+            if (!wanted || !wet || player == null)
             {
                 if (Standing) Dismiss();
                 return;
@@ -258,9 +280,13 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>A coarse bearing to him, or null when there is nothing to say.</summary>
-        public string Bearing(Player player)
+        public string Bearing(Player player, bool wet)
         {
             if (player == null) return null;
+
+            // Said before any direction, for the same reason the shade's line is: a bearing to
+            // somebody who is not there yet reads as a bug rather than as a condition.
+            if (!wet) return "He walks only when the sky is awake. Wait for rain.";
 
             Vector3? position = Position() ?? _spot;
             if (position == null) return null;
@@ -329,7 +355,13 @@ namespace ICanShowYouTheWorld.RunMode
             try { pos.y = ZoneSystem.instance.GetSolidHeight(pos) + 0.3f; }
             catch { }
 
-            var inst = UnityEngine.Object.Instantiate(prefab, pos, Quaternion.identity);
+            // Looking out at the water. Standing with his back to the sea would throw away most of
+            // the reason for putting him on a shore at all.
+            Quaternion facing = _seaward.sqrMagnitude > 0.001f
+                ? Quaternion.LookRotation(new Vector3(_seaward.x, 0f, _seaward.z).normalized)
+                : Quaternion.identity;
+
+            var inst = UnityEngine.Object.Instantiate(prefab, pos, facing);
             if (inst == null) return;
 
             var ch = inst.GetComponent<Character>();
@@ -375,24 +407,111 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
-        /// Picks where he waits: a ring around home, on DRY LAND.
+        /// Picks where he waits: the nearest SHORELINE around home, facing the water.
         /// </summary>
         /// <remarks>
-        /// The dry-land check is not a nicety at this range. The shade stands seven to eleven metres
-        /// from the bed, where the worst a blind angle can do is put it behind a tree; Thjalfi stands
-        /// fifty-five to eighty-five, which on any coastal homestead is far enough to be in the water.
-        /// A quest-giver in the sea is a chain that cannot advance and a bearing that points at
-        /// nothing, so the angle is re-rolled until the ground is above the waterline.
+        /// The coast is the right place for him and it took no new machinery, only the right height
+        /// function. <c>WorldGenerator.GetHeight</c> computes GENERATED terrain height for any point
+        /// in the world without the zone being loaded, where <c>ZoneSystem.GetSolidHeight</c> raycasts
+        /// real colliders and therefore only answers for the two or three zones around the player.
+        /// So the shore can be found three hundred metres away, before the player has ever been there.
         ///
-        /// Sea level is 30 in Valheim's world space. If every attempt fails - a homestead on an
-        /// islet - the last one is used anyway rather than leaving him unplaced: a visible problem
-        /// beats an invisible one, and the bearing will at least say where the problem is.
+        /// The search walks rays outward from home and looks for the step where the ground crosses the
+        /// waterline; the last land sample before that crossing IS the beach. Candidates are scored by
+        /// how close their walk is to <see cref="PreferredDistance"/> rather than by being nearest, so
+        /// a homestead ten metres from a pond does not get a ten metre pilgrimage.
+        ///
+        /// He is then pulled back from the crossing by <see cref="ShoreInset"/> so he stands ON the
+        /// beach rather than in the surf, and the seaward direction is kept so he can face the water.
+        /// Standing with his back to the sea would throw away most of the reason to put him there.
+        ///
+        /// Falls back to the old dry-land ring when there is no water within MaxSearch - an inland
+        /// homestead in the middle of a large continent - because a placed quest-giver in a field
+        /// beats an unplaced one anywhere.
         /// </remarks>
         private Vector3 EnsureSpot(Player player)
         {
             if (_spot != null) return _spot.Value;
 
             Vector3 origin = Home(player) ?? player.transform.position;
+
+            if (TryFindShore(origin, out Vector3 shore, out Vector3 seaward))
+            {
+                _spot = shore;
+                _seaward = seaward;
+                Debug.Log($"[ICanShowYouTheWorld] Thjalfi's shore: {shore:0.0}, " +
+                          $"{Vector3.Distance(origin, shore):0}m from home.");
+                return _spot.Value;
+            }
+
+            _spot = DryRing(origin);
+            _seaward = (_spot.Value - origin).normalized;
+            Debug.Log("[ICanShowYouTheWorld] Thjalfi found no coast in range; he waits inland instead.");
+            return _spot.Value;
+        }
+
+        /// <summary>
+        /// Walks rays out from home and returns the best beach found, with the direction of the water.
+        /// </summary>
+        private static bool TryFindShore(Vector3 origin, out Vector3 shore, out Vector3 seaward)
+        {
+            shore = origin;
+            seaward = Vector3.forward;
+
+            var gen = WorldGenerator.instance;
+            if (gen == null) return false;
+
+            bool found = false;
+            float bestScore = float.MaxValue;
+
+            for (int i = 0; i < ShoreRays; i++)
+            {
+                float angle = (float)i / ShoreRays * Mathf.PI * 2f;
+                var dir = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
+
+                Vector3 lastLand = origin;
+                bool haveLand = false;
+
+                for (float d = MinDistance; d <= MaxSearch; d += ShoreStep)
+                {
+                    Vector3 at = origin + dir * d;
+
+                    float h;
+                    try { h = gen.GetHeight(at.x, at.z); }
+                    catch { return false; }   // A generator that throws will throw for every ray.
+
+                    if (h > Waterline)
+                    {
+                        lastLand = at;
+                        haveLand = true;
+                        continue;
+                    }
+
+                    // Crossed into water. The last land sample is the beach - if there was one, and
+                    // if it is far enough out to be a walk rather than the end of the garden.
+                    if (!haveLand) break;
+
+                    float distance = Vector3.Distance(origin, lastLand);
+                    if (distance < MinDistance) break;
+
+                    float score = Mathf.Abs(distance - PreferredDistance);
+                    if (score < bestScore)
+                    {
+                        bestScore = score;
+                        shore = lastLand - dir * ShoreInset;
+                        seaward = dir;
+                        found = true;
+                    }
+                    break;
+                }
+            }
+
+            return found;
+        }
+
+        /// <summary>The old behaviour, kept as the fallback: a ring around home, on dry land.</summary>
+        private Vector3 DryRing(Vector3 origin)
+        {
             Vector3 candidate = origin;
 
             for (int attempt = 0; attempt < DryLandAttempts; attempt++)
@@ -401,32 +520,26 @@ namespace ICanShowYouTheWorld.RunMode
                 float distance = MinDistance + (float)_rng.NextDouble() * (MaxDistance - MinDistance);
                 candidate = origin + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * distance;
 
-                if (IsDryLand(candidate)) break;
+                var gen = WorldGenerator.instance;
+                if (gen == null) break;
+
+                try { if (gen.GetHeight(candidate.x, candidate.z) > Waterline) break; }
+                catch { break; }
             }
 
-            _spot = candidate;
-            return _spot.Value;
+            return candidate;
         }
+
+        private const int ShoreRays = 24;
+        private const float ShoreStep = 4f;
+
+        /// <summary>How far back from the water's edge he stands, in metres.</summary>
+        private const float ShoreInset = 3f;
 
         private const int DryLandAttempts = 12;
 
         /// <summary>Sea level in Valheim's world space, with a margin so he is not ankle-deep.</summary>
         private const float Waterline = 31f;
-
-        private static bool IsDryLand(Vector3 at)
-        {
-            try
-            {
-                var zones = ZoneSystem.instance;
-                if (zones == null) return true;   // Cannot tell; do not spin.
-
-                return zones.GetSolidHeight(at) > Waterline;
-            }
-            catch
-            {
-                return true;
-            }
-        }
 
         /// <summary>The claimed bed, when there is one - so his walk is measured from home.</summary>
         private static Vector3? Home(Player player)
