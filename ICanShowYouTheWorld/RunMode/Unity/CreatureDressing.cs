@@ -411,5 +411,28 @@ namespace ICanShowYouTheWorld.RunMode
             LightColor = new Color(0.62f, 0.70f, 0.90f),
             LightIntensity = 1.0f,
         };
+
+        /// <summary>
+        /// Thjalfi: warmer and brighter than the shade, and bigger.
+        /// </summary>
+        /// <remarks>
+        /// Deliberately NOT the shade's cold blue. The shade is one of the herd's lights, pale and
+        /// borrowed; Thjalfi is somebody's servant who has been standing here since before the herd,
+        /// and the gold in him is the storm he tends rather than any light he took. Two ghosts that
+        /// looked alike would read as one repeated asset instead of two characters.
+        ///
+        /// Scaled up for the same reason the Gatherer is: a thing with a NAME should not be the same
+        /// size as the things without one.
+        /// </remarks>
+        public static Look Thjalfi() => new Look
+        {
+            Saturation = -0.25f,
+            Value = 0.35f,
+            Emission = new Color(0.95f, 0.78f, 0.35f),
+            LightRange = 9f,
+            LightColor = new Color(1.00f, 0.84f, 0.45f),
+            LightIntensity = 1.4f,
+            ScaleMultiplier = 1.2f,
+        };
     }
 }

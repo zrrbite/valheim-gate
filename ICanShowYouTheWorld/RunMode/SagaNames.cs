@@ -66,6 +66,10 @@ namespace ICanShowYouTheWorld.RunMode
         /// The "Saga" prefix keeps them clear of every PlayerStatType member name, since the host
         /// tries this list first and falls through to the real stats.
         /// </remarks>
+        /// <summary>Thjalfi's two events: first spoken to, and paid.</summary>
+        public const string ThjalfiFound = "ThjalfiFound";
+        public const string ThjalfiPaid = "ThjalfiPaid";
+
         public const string BowKillsStat = "SagaThorsBowKills";
         public const string StormAnswersStat = "SagaStormwardAnswers";
 

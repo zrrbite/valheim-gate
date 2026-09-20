@@ -159,6 +159,12 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>Act I's deer: stars, the Herald, and what a kill draws. See <see cref="DeerHerd"/>.</summary>
         private DeerHerd _deer;
         private HuntersShade _shade;
+
+        /// <summary>
+        /// Thjalfi, who raises the Storm-Anvil. Act I only, like the shade - but he stands day and
+        /// night, and the altar he leaves behind outlives him.
+        /// </summary>
+        private Thjalfi _thjalfi;
         private SpiritChase _spirit;
         private StolenLights _lights;
         private TheGatherer _gatherer;
@@ -439,6 +445,15 @@ namespace ICanShowYouTheWorld.RunMode
 
                 // The shade only while it is to be FOUND: once spoken to, the player knows where it
                 // stands, and the strip goes back to pointing at things that move.
+                // Thjalfi first: he is the only quest-giver in the act who is a WALK rather than a
+                // wait, and a bearing is the whole of how he is found.
+                if (_thjalfi != null && ActIsMeadows && _challenges != null &&
+                    StepPredicates.Thjalfi(_challenges.Tracks))
+                {
+                    string waiting = _thjalfi.Bearing(player);
+                    if (!string.IsNullOrEmpty(waiting)) return waiting;
+                }
+
                 if (_shade != null && ActIsMeadows && _challenges != null && StepPredicates.ShadeFind(_challenges.Tracks))
                 {
                     string shade = _shade.Bearing(player, IsNight);
@@ -979,6 +994,7 @@ namespace ICanShowYouTheWorld.RunMode
         {
             _deer = new DeerHerd(_cfg, _rng);
             _shade = new HuntersShade(_rng);
+            _thjalfi = new Thjalfi(_rng);
             _spirit = new SpiritChase(_cfg, _rng);
             _lights = new StolenLights(_cfg);
             _gatherer = new TheGatherer(_cfg, _rng);
@@ -1819,6 +1835,7 @@ namespace ICanShowYouTheWorld.RunMode
             _stormwardLastAttack = 0f;
             _stormwardSeen = false;
             _thorsBowKills = 0;
+            _anvilRaised = false;
             _splitLabels.Clear();
                 _splitTimes.Clear();
                 _accountedBossKeys.Clear();
@@ -1841,6 +1858,7 @@ namespace ICanShowYouTheWorld.RunMode
                 _stash.Clear();
                 _deer.Reset();
                 _shade?.Reset();
+                _thjalfi?.Reset();
                 _spirit?.Reset();
                 _strayOut = false;
                 _strayReadyAt = Time.time + 120f;
@@ -2913,6 +2931,7 @@ namespace ICanShowYouTheWorld.RunMode
             // Eikthyr, by which time the act has flipped. See PollShade.
             var shadePlayer = Player.m_localPlayer;
             if (shadePlayer != null) PollShade(shadePlayer);
+            if (shadePlayer != null && ActIsMeadows) PollThjalfi(shadePlayer);
             PollDiscoveries();
             PollPlayerState();
             ReassertDevGod();
@@ -3460,6 +3479,95 @@ namespace ICanShowYouTheWorld.RunMode
                 // Cosmetic to miss a poll; the next one will catch it.
             }
         }
+
+        /// <summary>
+        /// Keeps Thjalfi standing while he is wanted, and raises the Storm-Anvil when he is paid.
+        /// </summary>
+        /// <remarks>
+        /// The altar is instantiated HERE rather than inside Thjalfi, because this is the class that
+        /// can reach the prefab (through SagaItems, which finds it by its Incinerator component) and
+        /// the class that must claim it. Claiming matters: the built-piece scan tests
+        /// <c>Piece.IsCreator()</c> on purpose, to exclude world ruins and other players' houses, so
+        /// an altar raised by a ghost would satisfy nothing unless the ghost raises it in the player's
+        /// name. Which, in the fiction, is exactly what he is doing.
+        ///
+        /// He is NOT dismissed once it stands. The point of him is that the altar has somebody at it -
+        /// a place with a person in it, rather than a machine in a field - and his last line is only
+        /// reachable if he is still there to say it. He goes when the act does.
+        /// </remarks>
+        private void PollThjalfi(Player player)
+        {
+            if (_thjalfi == null || _challenges == null) return;
+
+            try
+            {
+                var tracks = _challenges.Tracks;
+
+                bool wanted = StepPredicates.Thjalfi(tracks) || _anvilRaised;
+                var phase = StepPredicates.ThjalfiPayment(tracks) ? Thjalfi.Phase.Pay
+                          : StepPredicates.ThjalfiFind(tracks) ? Thjalfi.Phase.Find
+                          : Thjalfi.Phase.Done;
+
+                bool spoken, paid;
+                _thjalfi.Tick(player, phase, wanted, out spoken, out paid);
+
+                if (spoken)
+                {
+                    _challenges.ReportEvent(ChallengeKind.PlayerEvent, SagaNames.ThjalfiFound);
+                    Message("He has been waiting a long time. He wants stone, and one of the lights.");
+                }
+
+                if (paid)
+                {
+                    _challenges.ReportEvent(ChallengeKind.PlayerEvent, SagaNames.ThjalfiPaid);
+                    RaiseStormAnvil(player);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogOnce("thjalfi", ex);
+            }
+        }
+
+        /// <summary>Puts the Storm-Anvil down at Thjalfi's feet, in the player's name.</summary>
+        private void RaiseStormAnvil(Player player)
+        {
+            var prefab = _items?.StormAnvilPrefab();
+            if (prefab == null)
+            {
+                Message("The sky did not answer. (No altar prefab \u2014 see the log.)");
+                Debug.LogError("[ICanShowYouTheWorld] Thjalfi was paid but no Incinerator prefab exists to raise.");
+                return;
+            }
+
+            Vector3 at = _thjalfi?.Position() ?? player.transform.position + player.transform.forward * 3f;
+            at += Vector3.right * 2.5f;   // Beside him, not inside him.
+            try { at.y = ZoneSystem.instance.GetSolidHeight(at); } catch { }
+
+            var raised = UnityEngine.Object.Instantiate(prefab, at, Quaternion.identity);
+            if (raised == null)
+            {
+                Debug.LogError("[ICanShowYouTheWorld] The Storm-Anvil would not instantiate.");
+                return;
+            }
+
+            var piece = raised.GetComponent<Piece>();
+            var profile = Game.instance?.GetPlayerProfile();
+            if (piece != null && profile != null)
+                piece.SetCreator(profile.GetPlayerID(), default(Splatform.PlatformUserID));
+
+            _anvilRaised = true;
+            SaveState();
+
+            Message("The sky comes down once, and leaves something standing. The Storm-Anvil is yours.");
+            Debug.Log($"[ICanShowYouTheWorld] Thjalfi raised the Storm-Anvil at {at:0.0}.");
+        }
+
+        /// <summary>
+        /// True once Thjalfi has raised the altar this run. Persisted, and it is what keeps him
+        /// standing beside it afterwards.
+        /// </summary>
+        private bool _anvilRaised;
 
         /// <summary>
         /// Counts a kill as Thor's bow's, when it provably was.
@@ -6894,6 +7002,7 @@ namespace ICanShowYouTheWorld.RunMode
             _stormwardLastAttack = 0f;
             _stormwardSeen = false;
             _thorsBowKills = 0;
+            _anvilRaised = false;
             _splitLabels.Clear();
             _splitTimes.Clear();
             _lights?.Restore(s.lightsTaken, s.lightsLost);
@@ -6904,6 +7013,7 @@ namespace ICanShowYouTheWorld.RunMode
             if (s.shadeRemarksSaid != null) foreach (var id in s.shadeRemarksSaid) _shadeRemarksSaid.Add(id);
             _stormwardAnswers = s.stormwardAnswers;
             _thorsBowKills = s.thorsBowKills;
+            _anvilRaised = s.anvilRaised;
             if (s.splitTimes != null) _splitTimes.AddRange(s.splitTimes);
 
             // Everything in the saved list is already accounted for: pre-existing kills and
@@ -7105,6 +7215,7 @@ namespace ICanShowYouTheWorld.RunMode
                 shadeRemarksSaid = _shadeRemarksSaid.ToList(),
                 stormwardAnswers = _stormwardAnswers,
                 thorsBowKills = _thorsBowKills,
+                anvilRaised = _anvilRaised,
                 splitLabels = _splitLabels.ToList(),
                 splitTimes = _splitTimes.ToList(),
                 activeChallengeIds = active.Select(a => a.Def.Id).ToList(),
@@ -8237,15 +8348,27 @@ namespace ICanShowYouTheWorld.RunMode
                 // BEFORE the shield on purpose: the shield can be combined here instead of tapped
                 // together at a bench, and this is where the player meets the thing that will make
                 // every lightning item after it.
+                Id = "mq-thjalfi", MainQuest = true, Kind = ChallengeKind.PlayerEvent,
+                Param = SagaNames.ThjalfiFound, Target = 1,
+                Display = "Find the one who waits",
+                Hint = "Out past your fields, day or night \u2014 he does not keep the shade's hours. " +
+                       "Follow the bearing on the strip.",
+                Opening = "Something has been standing out there since before the herd, and it is not " +
+                          "one of the forest's. It has a name.",
+            },
+            new ChallengeDefinition
+            {
+                // He raises it; you do not build it. The step stays a BuildPiece measure because that
+                // is what is TRUE - a Storm-Anvil comes to exist, in the player's name - and it keeps
+                // working if a later act ever lets somebody build one the vanilla way.
                 Id = "mq-anvil", MainQuest = true, Kind = ChallengeKind.BuildPiece,
                 Param = "StormAnvil", Target = 1,
-                Display = "Raise the Storm-Anvil",
+                Display = "Pay Thjalfi, and stand back",
                 RewardText = "Stone, coal, and a light back",
-                Hint = "In the hammer, near a workbench: 20 stone, 10 wood, 10 resin and ONE rescued " +
-                       "light. The light does not come back out. Afterwards it takes exact sets of things " +
-                       "and gives back what it knows \u2014 and burns everything it does not.",
-                Opening = "There is a way to make the sky do the work. It costs a light to build, " +
-                          "which should tell you what kind of thing it is.",
+                Hint = "Twenty stone and ONE rescued light, carried to him in your pack \u2014 a chest at " +
+                       "home is not your pack. The light does not come back. What he leaves takes exact " +
+                       "sets of things and gives back what it knows, and burns everything it does not.",
+                Opening = "He wants paying, and what he does with it is the only reason he is still here.",
             },
             new ChallengeDefinition
             {

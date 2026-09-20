@@ -340,6 +340,7 @@
     <Compile Include="RunMode\Unity\SagaRecipes.cs" />
     <Compile Include="RunMode\Unity\CraftingSort.cs" />
     <Compile Include="RunMode\Unity\HuntersShade.cs" />
+    <Compile Include="RunMode\Unity\Thjalfi.cs" />
     <Compile Include="RunMode\Unity\SagaItems.cs" />
     <Compile Include="RunMode\Unity\SagaDreams.cs" />
     <Compile Include="RunMode\Unity\SagaRaids.cs" />

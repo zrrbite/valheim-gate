@@ -294,17 +294,32 @@ answer, practised before it was taught. Act VII spends it.
   `IncineratorConversion { m_requirements, m_result, m_resultAmount, m_priority }`
   — an EverQuest-style combine shipped in the base game and used by nothing but
   coal. The saga appends to it, which is why no patch and no new asset is needed.
-  **Raised in Act I since 2026-09-20** (`mq-anvil`). The saga re-costs the piece
-  to 20 stone, 10 wood, 10 resin and ONE rescued light, which solves the Thunder
-  Stone problem the way the fishing rod solved Haldor: the saga supplies what the
-  Black Forest otherwise would. The light is the point — to raise the thing that
-  breaks light you give one up, and it is the only requirement that does not come
-  back when the altar is torn down. It is also the unlock, since Valheim shows a
-  piece once all its materials are known: the anvil appears in the hammer the
-  moment the shade hands over the light it kept.
+  **Raised by [[Thjalfi]] in Act I since 2026-09-20** (`mq-anvil`), not built. It
+  was briefly a hammer piece re-costed to Meadows materials, and that was the
+  wrong shape: a forge that works by weather has no business in a shed, and two
+  ways to get the same altar makes neither of them an occasion. So there is
+  exactly ONE in the Meadows, out under the sky at the end of a walk, with a
+  person standing next to it. He charges twenty stone and one rescued light — the
+  light is the point, since to raise the thing that breaks light you give one up.
+  Vanilla's own price is left alone, so from the Black Forest on, with a Thunder
+  Stone from the trader, anyone can build one the ordinary way.
   **Still to come**: Thor's bow moved off the workbench onto the anvil, the
   Stormsworn bound there, and the Stormward's Act III reforge. The lever's own
   hover text is a localisation token and will keep saying Obliterator.
+- **Thjalfi** (2026-09-20) — the only named speaking character in Act I, and the one
+  who raises the Storm-Anvil. In myth he broke the bone of Thor's goat for the
+  marrow and was taken as payment for it; here he is still payment, still
+  standing, tending a machine that breaks things with lightning. A debtor who
+  broke something, in a world that is itself a debt — he needed no invention, only
+  placing. He is not a god, which is the only reason he is allowed to speak.
+  He is NAMED where the hunter's shade is not, and that is the whole relationship
+  between them: nobody came to collect the shade, and somebody came for him and
+  wrote it down. Neither ever mentions the other, and they must never be dressed
+  alike — he is gold and larger, the shade is cold and dim.
+  He asks for twenty stone and ONE rescued light, carried in the pack. He stands
+  day and night, fifty-five to eighty-five metres from the claimed bed, and he
+  does NOT leave once the altar is up: the point of him is that the forge has
+  somebody at it.
 - **The ravens** — Odin's audit. They witness beats; they never help.
 - **Heat** — the world noticing you burn. Score is how brightly you burned.
 - **Boons** — Odin's loans against the answer you owe. Death collects one.

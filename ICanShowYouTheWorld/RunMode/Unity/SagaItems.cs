@@ -1130,12 +1130,11 @@ namespace ICanShowYouTheWorld.RunMode
                               $"(found by its Incinerator, not by name).");
                 }
 
-                EnsureAnvilInHammer(prefab);
                 TeachAltar(inc, result);
 
-                // Only now is the prefab pass done with. Both halves have to have landed: a
-                // conversion the lever can find, and a price the Meadows can pay.
-                _altarTaught = _altarConversionDone && _anvilRecosted;
+                // Done once the conversion is there. The price is no longer ours to set - Thjalfi
+                // charges for the altar now, and the piece keeps the cost the game shipped.
+                _altarTaught = _altarConversionDone;
             }
         }
 
@@ -1205,9 +1204,21 @@ namespace ICanShowYouTheWorld.RunMode
                 piece.m_description = AnvilDescription;
             }
 
-            RecostAnvil(piece);
+            // NOT re-costed any more, and NOT forced into the hammer. It was both for one day, while
+            // the altar was something the player put down themselves - and then it became something
+            // Thjalfi raises, which is better, and two ways to get the same altar makes neither of
+            // them an occasion. Vanilla's own price stands: in the Black Forest and after, with a
+            // Thunder Stone from the trader, anybody can build one the ordinary way. In the Meadows
+            // there is exactly one, and a person standing next to it.
+            //
+            // RecostAnvil and EnsureAnvilInHammer are kept, unused, because the decision they
+            // implement is one sentence from being reversed and the reasoning is worth more than the
+            // twenty lines.
         }
 
+        /// <summary>
+        /// UNUSED since Thjalfi took over raising the altar. Kept deliberately - see DressTheAnvil.
+        /// </summary>
         private void RecostAnvil(Piece piece)
         {
             if (_anvilRecosted) return;
@@ -1259,6 +1270,9 @@ namespace ICanShowYouTheWorld.RunMode
         /// when the Thunder Stone is acquired is asset behaviour this assembly cannot read. Adding it
         /// when absent answers the question without needing to know.
         /// </remarks>
+        /// <summary>
+        /// UNUSED since Thjalfi took over raising the altar. Kept deliberately - see DressTheAnvil.
+        /// </summary>
         private void EnsureAnvilInHammer(GameObject anvilPrefab)
         {
             if (_anvilInHammer || anvilPrefab == null) return;

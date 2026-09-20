@@ -43,6 +43,9 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>How many things Thor's bow has brought down this run.</summary>
         public int thorsBowKills;
 
+        /// <summary>True once Thjalfi has raised the Storm-Anvil; keeps him standing beside it.</summary>
+        public bool anvilRaised;
+
         public List<string> chronicle;
 
         public List<string> splitLabels;

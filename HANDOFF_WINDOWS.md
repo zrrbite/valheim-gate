@@ -17,6 +17,60 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-20 - TASK: Thjalfi, and the altar he raises (`...20u`)
+
+The Storm-Anvil is no longer something you build. **Somebody raises it for you, and you walk to it.**
+
+**Why Thjalfi.** Myth hands the saga this character almost finished: he broke the bone of Thor's goat
+to get at the marrow, and Thor took him as payment for it. So he is someone whose whole story is that
+he BROKE something and was collected for it. This is the world the put-away are put in, the
+Storm-Anvil is a machine that breaks things with lightning, and the saga's frame is Odin auditing a
+ledger. A debtor who broke something, tending an engine that breaks things, in a world that is itself
+a debt. Nothing had to be invented.
+
+He is not a god, which is what lets him talk at all - the bible's rule is that gods only speak when
+defeated. And he has a NAME, where the shade does not: the shade is anonymous because nobody came to
+collect it, and he is named because somebody did, and wrote it down. Neither of them ever mentions
+the other.
+
+**What changed**
+
+- New `Thjalfi.cs`, modelled on `HuntersShade` - Ghost prefab, tamed and parked, a child collider
+  carrying the interact, the rune panel for what he says and a bubble for him being there. Dressed
+  GOLD rather than the shade's cold blue, and 1.2x scale, so two ghosts do not read as one asset.
+- He stands **day and night**, unlike the shade, 55-85 m from your claimed bed. The shade is a thing
+  you catch after dark; he is a fixture you walk to. The strip carries a bearing to him.
+- **He picks dry land.** At that range a blind angle puts him in the sea on any coastal homestead,
+  which would be a chain that cannot advance and a bearing pointing at nothing. The spot is
+  re-rolled until the ground is above the waterline.
+- Two steps: `mq-thjalfi` (find him) and `mq-anvil` (pay him: **20 stone and 1 rescued light, in your
+  pack**). On payment he raises the altar beside himself, **in the player's name** - `Piece.SetCreator`
+  with the local profile's ID, because the built-piece scan tests `IsCreator()` on purpose.
+- **He stays.** The point of him is that the altar has somebody at it, rather than a machine standing
+  in a field. `_anvilRaised` is persisted precisely so he is still there after a reload.
+- **The buildable route is gone.** The piece is no longer re-costed and no longer forced into the
+  hammer, so in the Meadows there is exactly one Storm-Anvil and a person next to it. Vanilla's own
+  price stands, so from the Black Forest on, with a Thunder Stone, anyone can build one the ordinary
+  way. `RecostAnvil` and `EnsureAnvilInHammer` are kept unused - the decision is one sentence from
+  being reversed and the reasoning is worth more than the twenty lines.
+
+### Test it
+
+- [ ] **Advance to `mq-thjalfi`** (`mod` + `Keypad +` skips) and read the strip: a bearing, not a
+      riddle. Walk it.
+- [ ] **He is gold, larger than the shade, and standing in daylight.** Both ghosts on screen in one
+      run should not look like the same thing twice.
+- [ ] **Speak to him once** - the rune panel opens with his story, and `mq-thjalfi` completes.
+- [ ] **Try to pay him empty-handed**: he refuses and says what he wants. The hover shows `0/20 stone`.
+- [ ] **Pay him properly** - and note the pack/chest distinction is real, the items must be carried.
+      The altar appears beside him and `mq-anvil` completes because it is claimed in your name.
+- [ ] **He does not vanish** afterwards, and still has a line.
+- [ ] **Reload**: he is still standing at the altar.
+- [ ] **The hammer does NOT list a Storm-Anvil** in the Meadows any more. That is the point.
+- [ ] Log: `Thjalfi stands at ...` and `Thjalfi raised the Storm-Anvil at ...`.
+
+---
+
 ## 2026-09-20 - TASK: tasks for the bow and the shield (`...20t`)
 
 **STAGED, NOT INSTALLED** - you were playing when it was built. When you quit:
