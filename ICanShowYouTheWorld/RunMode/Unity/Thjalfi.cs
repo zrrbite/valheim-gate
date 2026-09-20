@@ -150,10 +150,22 @@ namespace ICanShowYouTheWorld.RunMode
         /// Both are Meadows-available and neither can stall a chain: stone is everywhere, and by the
         /// time this step is live the shade has already handed over a light and the races are paying.
         /// </remarks>
+        /// <remarks>
+        /// The tokens are SHARED NAMES, not prefab names, and that distinction cost a play-test:
+        /// <c>Inventory.CountItems</c> compares <c>m_shared.m_name</c>, which for a vanilla item is a
+        /// localisation token like <c>$item_stone</c>. Asking for "Stone" and "Saga_RescuedLight"
+        /// matched nothing, so he refused a pack holding fifty stone and a light ("I have 50 stone and
+        /// 1 rescued light in my inv, but Tjalfi doesnt accept it").
+        ///
+        /// The saga's own items are the exception and go in by DISPLAY name: a clone's shared name is
+        /// deliberately plain text rather than a "$" token, so that the localiser leaves it alone.
+        /// Hence one of each here, which is exactly the sort of inconsistency a validator should be
+        /// watching - and now does. See RunService.ValidateQuestPrices.
+        /// </remarks>
         public static readonly (string token, int amount, string label)[] Price =
         {
-            ("Stone", 20, "stone"),
-            (SagaItems.RescuedLightPrefab, 1, "light"),
+            ("$item_stone", 20, "stone"),
+            (SagaItems.RescuedLightName, 1, "light"),
         };
 
         public const string AskLine =

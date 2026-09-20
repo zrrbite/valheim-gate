@@ -5433,6 +5433,7 @@ namespace ICanShowYouTheWorld.RunMode
             // about during Act I, when there is still time to fix them.
             ValidateAssetNames(pool.Concat(AllActChains()));
             ValidateSpawnEvents();
+            ValidateQuestPrices();
         }
 
         /// <summary>
@@ -8231,6 +8232,58 @@ namespace ICanShowYouTheWorld.RunMode
 
         /// <summary>Every act's steps, for the name validator — Act V's names are worth checking in Act I.</summary>
         internal static IEnumerable<ChallengeDefinition> AllActChains() => Acts().SelectMany(a => a.AllSteps);
+
+        /// <summary>
+        /// Checks that every price a quest-giver asks for names an item the game actually has.
+        /// </summary>
+        /// <remarks>
+        /// These are SHARED NAMES rather than prefab names, because that is what
+        /// <c>Inventory.CountItems</c> compares - a localisation token like <c>$item_stone</c> for a
+        /// vanilla item, and plain display text for one of the saga's own clones. Two conventions in
+        /// one array, which is exactly how Thjalfi shipped asking for "Stone" and getting nothing: a
+        /// pack with fifty stone in it counted as zero, and the only symptom was a quest-giver
+        /// refusing payment for no stated reason.
+        ///
+        /// Impossible to catch by reading, easy to catch by asking. Every item in the ObjectDB knows
+        /// its own shared name, so a token that matches none of them is a typo, and saying so at run
+        /// start costs one pass over a list the game already holds.
+        /// </remarks>
+        private void ValidateQuestPrices()
+        {
+            try
+            {
+                var odb = ObjectDB.instance;
+                if (odb?.m_items == null) return;
+
+                var known = new HashSet<string>(
+                    odb.m_items
+                        .Where(go => go != null)
+                        .Select(go => go.GetComponent<ItemDrop>())
+                        .Where(d => d?.m_itemData?.m_shared != null)
+                        .Select(d => d.m_itemData.m_shared.m_name));
+
+                foreach (var (who, token, amount) in QuestPrices())
+                {
+                    if (known.Contains(token)) continue;
+
+                    Debug.LogError($"[ICanShowYouTheWorld] {who} asks for {amount} x '{token}', and NO item " +
+                                   "in the game has that shared name. They will refuse payment however " +
+                                   "much the player is carrying. Shared names are localisation tokens " +
+                                   "($item_stone) for vanilla items and plain display text for the saga's.");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogOnce("validate-prices", ex);
+            }
+        }
+
+        /// <summary>Every price every quest-giver asks, flattened for validation.</summary>
+        private static IEnumerable<(string who, string token, int amount)> QuestPrices()
+        {
+            foreach (var p in HuntersShade.Price) yield return (HuntersShade.Name, p.token, p.amount);
+            foreach (var p in Thjalfi.Price) yield return (Thjalfi.Name, p.token, p.amount);
+        }
 
         /// <summary>
         /// Events that keep a quest-giver STANDING, and which therefore must exist as a step.

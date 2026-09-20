@@ -17,6 +17,40 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-20 - TASK: Thjalfi refused payment - shared names, not prefab names (`...20y`)
+
+**STAGED, NOT INSTALLED** - you were playing. When you quit: `.\dist\windows\Install-Mod.ps1 -ModOnly`
+
+"*I have 50 stone and 1 rescued light in my inv, but Tjalfi doesnt accept it.*"
+
+`Inventory.CountItems` compares **`m_shared.m_name`** - the item's SHARED name, which for a vanilla
+item is a localisation token. The shade has always asked for `$item_flint` and `$item_leatherscraps`,
+which is why it works. Thjalfi asked for `"Stone"` and `"Saga_RescuedLight"`, which are PREFAB names
+and match nothing, so a pack holding fifty stone counted as zero and he refused with no stated reason.
+
+Now `$item_stone` and `Rescued light`. Note the deliberate inconsistency: the saga's own clones carry
+plain display text as their shared name rather than a "$" token, so the localiser leaves them alone.
+Two conventions in one array is precisely the sort of thing a person cannot see by reading.
+
+**So a second validator.** `ValidateQuestPrices()` runs at every run start, collects every shared name
+in the ObjectDB, and logs an error for any price token that matches none of them - naming the
+character, the amount and the token, and stating the convention. Every item in the game knows its own
+shared name; asking is one pass over a list the game already holds, and it turns an invisible refusal
+into a line in the log.
+
+That is the second validator in two builds, both for the same shape of defect: **a string that names
+something, matching nothing, failing silently.** The spawn-event one caught a vanishing quest-giver;
+this one catches a refused payment.
+
+### Test it
+
+- [ ] **He accepts 20 stone and 1 rescued light** from the pack, and raises the altar.
+- [ ] **The hover shows real progress** - `0/20 stone` climbing as you mine, not stuck at zero.
+- [ ] **No `NO item in the game has that shared name` error** at run start. If `$item_stone` turns out
+      to be wrong too, that line will say so by name instead of you finding out at the shore.
+
+---
+
 ## 2026-09-20 - TASK: Thjalfi vanished, and a HEARD page so nothing said is lost (`...20x`)
 
 ### The bug: "tjalfi disappeared once i found him and talked to him"
