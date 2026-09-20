@@ -3706,8 +3706,11 @@ namespace ICanShowYouTheWorld.RunMode
 
             if (!spoken)
             {
+                // Message, not Announce. Announce reaches the console and the log - neither of which
+                // a player is looking at - so on the frame no raven could be found, the line that
+                // tells you what you were actually sent here to do was delivered to nobody.
                 Debug.Log("[ICanShowYouTheWorld] Raven errand: no raven available, delivering it plainly.");
-                Announce(RavenErrand);
+                Message(RavenErrand);
             }
 
             _ravenErrandDone = true;
@@ -3741,6 +3744,13 @@ namespace ICanShowYouTheWorld.RunMode
                 // the bird's head; a label opens the parchment reader on top of the moment it is
                 // commenting on.
                 Raven.AddTempText($"icsytw_{_rngSeed}_{beat}", "Hugin", text, string.Empty, false);
+
+                // And into the record. Every other speaking part in the saga lands on the HEARD page
+                // and Hugin did not, which made HIS lines the only ones that could be lost for good -
+                // the act's opening errand and every recipe announcement among them. Recorded on the
+                // success path only, because the fallbacks below route through Message, which records
+                // for itself; the transcript dedupes on speaker AND text, so it would keep both.
+                SagaTranscript.Record("Hugin", text);
                 return true;
             }
             catch (Exception ex) { LogOnce("raven", ex); return false; }
