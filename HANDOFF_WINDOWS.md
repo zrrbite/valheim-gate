@@ -17,6 +17,40 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-20 - TASK: the storm eats the shield (`...20q`)
+
+"*Since the shield should trigger an aoe on attack maybe the durability should be low to start? Must
+be repaired often?*" — right that it should cost something, since the discharge was entirely free.
+Aimed slightly differently, and the difference is the whole point:
+
+**A low ceiling would tax BLOCKING.** Every ordinary parry against a greyling brings the repair trip
+nearer, and the shield ends up worst at the thing shields are for. **Wear per discharge taxes the
+POWER** — the part that is free and automatic. So each storm costs 12 durability out of 300
+(+60/level), and ordinary blocking drains at the normal rate.
+
+It also reads without a word of explanation: the durability bar drops visibly at the moment the
+lightning goes off. The storm eats the shield.
+
+Both numbers are SET rather than inherited, for the usual reason — the source prefab is an Ashlands
+tower shield whose ceiling is a late-game number, and inheriting it would have made the cost
+invisible. 300 against 12 is about twenty-five storms from full, plus block drain, so a heavy night
+sends you home to a bench. Which is where this saga wants you anyway.
+
+Charged in `PollStormward` rather than through a field on the attack, because `Attack` has no
+durability cost of its own — it can spend stamina, eitr and health, but not the weapon. That poll is
+already the one place that knows a discharge happened, so it is also the place that can bill it.
+
+### Test it
+
+- [ ] **Block twice, watch the shield's durability drop** by a visible chunk at the flash.
+- [ ] **Ordinary blocking drains it slowly**, at nothing like that rate.
+- [ ] **From full it takes roughly twenty-five storms** to need a bench. If that feels like a chore
+      rather than a rhythm, `StormwardDischargeWear` is a one-line dial and so is the ceiling.
+- [ ] **It does not go negative** and it does not break mid-block without the game's own warning.
+- [ ] A repaired shield discharges as before.
+
+---
+
 ## 2026-09-20 - TASK: review of the anvil work, three fixes (`...20p`)
 
 Reviewed the last three builds while nobody was playing them. Three things, two of which would

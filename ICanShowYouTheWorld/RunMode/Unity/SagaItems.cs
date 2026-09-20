@@ -127,6 +127,31 @@ namespace ICanShowYouTheWorld.RunMode
         private const float StormwardBlunt = 12f;
         private const float StormwardBluntPerLevel = 2f;
         private const float StormwardDischargeForce = 80f;
+
+        /// <summary>
+        /// What the shield is worth before it needs a bench, and what one discharge takes out of it.
+        /// </summary>
+        /// <remarks>
+        /// The discharge used to be entirely free, which the owner spotted: "since the shield should
+        /// trigger an aoe on attack maybe the durability should be low to start? Must be repaired
+        /// often?" Right that it should cost something, and the cost is put on the DISCHARGE rather
+        /// than on the shield's ceiling, because those two punish different play.
+        ///
+        /// A low ceiling taxes BLOCKING - every ordinary parry against a greyling brings the repair
+        /// trip nearer, and the shield ends up worst at the thing shields are for. Wear per discharge
+        /// taxes the POWER, which is the part that is free and automatic: the storm eats the shield.
+        /// It also reads correctly without a word of explanation, because the durability bar drops
+        /// visibly at the moment the lightning goes off.
+        ///
+        /// Both are set rather than inherited, for the usual reason - the source prefab is an
+        /// Ashlands tower shield and its ceiling is a late-game number that would have made the cost
+        /// invisible. 300 against 12 a discharge is about twenty-five storms from full, plus the
+        /// ordinary drain of blocking, so a heavy night sends you home. Which is where this saga
+        /// wants you anyway: the hearth is not decoration, and Homeward exists.
+        /// </remarks>
+        private const float StormwardDurability = 300f;
+        private const float StormwardDurabilityPerLevel = 60f;
+        public const float StormwardDischargeWear = 12f;
         private const float StormwardDischargeStagger = 4f;
 
         public const string RescuedLightPrefab = "Saga_RescuedLight";
@@ -333,6 +358,13 @@ namespace ICanShowYouTheWorld.RunMode
                     shared.m_blockPowerPerLevel = StormwardBlockPerLevel;
                     shared.m_deflectionForce = 40f;
                     shared.m_deflectionForcePerLevel = 5f;
+
+                    // Set, not inherited: an Ashlands tower shield's ceiling is a late-game number
+                    // and would have made the discharge's wear invisible. See StormwardDurability.
+                    shared.m_useDurability = true;
+                    shared.m_maxDurability = StormwardDurability;
+                    shared.m_durabilityPerLevel = StormwardDurabilityPerLevel;
+                    shared.m_useDurabilityDrain = 1f;
 
                     // Parry window worth using, which is the difference between a wall and a tool.
                     // Set explicitly because a tower shield's own value is 1 - no parry at all - and

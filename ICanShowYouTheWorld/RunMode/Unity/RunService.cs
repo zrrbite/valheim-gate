@@ -3442,6 +3442,13 @@ namespace ICanShowYouTheWorld.RunMode
                 {
                     _stormwardLastAttack = shield.m_lastAttackTime;
                     _stormwardAnswers++;
+
+                    // The storm eats the shield. Charged here rather than through a field on the
+                    // attack, because Attack has no durability cost of its own - it can spend
+                    // stamina, eitr and health, but not the weapon. Since this is already the one
+                    // place that knows a discharge HAPPENED, it is also the place that can bill it.
+                    shield.m_durability = Mathf.Max(0f, shield.m_durability - SagaItems.StormwardDischargeWear);
+
                     SaveState();
                 }
             }
@@ -8124,7 +8131,8 @@ namespace ICanShowYouTheWorld.RunMode
                 Display = "Let the Stormward answer (3)",
                 RewardText = "Coal for the anvil, and mead",
                 Hint = "Block twice inside five seconds and it gives the storm back \u2014 five metres, " +
-                       "everything but you and yours. Stand IN a fight rather than backing out of one.",
+                       "everything but you and yours. Stand IN a fight rather than backing out of one. " +
+                       "Each storm costs the shield, so watch its wear and keep a bench at home.",
                 Opening = "It keeps what it is hit with. Let something hit it twice, and stand still.",
             },
             new ChallengeDefinition
