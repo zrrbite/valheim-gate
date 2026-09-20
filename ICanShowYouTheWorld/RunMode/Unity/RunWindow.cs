@@ -273,6 +273,21 @@ namespace ICanShowYouTheWorld.RunMode
             /// member keeps its old name so the diff stays about the page rather than about renaming.
             /// </remarks>
             Quests,
+
+            /// <summary>
+            /// Every saga recipe and what it wants. Labelled FORGE.
+            /// </summary>
+            /// <remarks>
+            /// Added because a recipe was only ever visible one at a time, as the hint on whichever
+            /// step happened to be in play (owner: "I sometimes found myself wondering what the
+            /// recipes were"). A hint answers "what is next"; it cannot answer "what should I be
+            /// picking up", which is the question a player has while out in the world with a full
+            /// pack and no idea whether the six deer hide matter.
+            ///
+            /// Its own page rather than a section of the BOOK: the BOOK is what the run HAS been, in
+            /// the order it happened, and a shopping list read while standing in a forest is neither.
+            /// </remarks>
+            Forge,
         }
 
         /// <summary>
@@ -1176,6 +1191,7 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 if (_page == HudPage.Quests) DrawQuestLog(run);
                 else if (_page == HudPage.Heard) DrawHeard(run);
+                else if (_page == HudPage.Forge) DrawForge(run);
                 else DrawHudSections(run);
             }
             finally { GUILayout.EndScrollView(); }
@@ -1296,6 +1312,7 @@ namespace ICanShowYouTheWorld.RunMode
             DrawPageTab("RUN", HudPage.Run);
             DrawPageTab("BOOK", HudPage.Quests);
             DrawPageTab("HEARD", HudPage.Heard);
+            DrawPageTab("FORGE", HudPage.Forge);
 
             GUILayout.FlexibleSpace();
             GUILayout.EndHorizontal();
@@ -1517,6 +1534,68 @@ namespace ICanShowYouTheWorld.RunMode
         /// it separates Thjalfi and the shade SPEAKING from the saga narrating, and those are the
         /// lines worth going back for.
         /// </remarks>
+        /// <summary>
+        /// The FORGE page: every saga recipe, where it is made, and how close the pack is.
+        /// </summary>
+        /// <remarks>
+        /// Ordered ready-first, because the only reason to open this page mid-run is to find out
+        /// whether it is worth walking home. Unlearned recipes are shown with their bill and marked,
+        /// rather than hidden: a player cannot gather for a craft they are not allowed to read, and
+        /// not being able to read them is the complaint this page answers. What the quest still
+        /// withholds is the recipe's existence in the game, which is the quest's business.
+        /// </remarks>
+        private void DrawForge(IRunService run)
+        {
+            GUILayout.Label("FORGE", RunTheme.Header);
+
+            var cards = run.Recipes;
+            if (cards == null || cards.Count == 0)
+            {
+                GUILayout.Label("  Nothing is known yet.", RunTheme.Small);
+                return;
+            }
+
+            // Ready first, then closest to ready. A stable sort on a copy - the service hands out a
+            // cached list and sorting it in place would reorder what the next pass reads.
+            var ordered = new List<SagaRecipeCard>(cards);
+            ordered.Sort((a, b) =>
+            {
+                if (a.Ready != b.Ready) return a.Ready ? -1 : 1;
+                int byMet = (b.Bill.Count == 0 ? 0 : b.Met * 100 / b.Bill.Count)
+                          - (a.Bill.Count == 0 ? 0 : a.Met * 100 / a.Bill.Count);
+                return byMet != 0 ? byMet : string.Compare(a.Item, b.Item, StringComparison.Ordinal);
+            });
+
+            foreach (var card in ordered)
+            {
+                GUILayout.Space(6f);
+
+                GUILayout.BeginHorizontal();
+                GUI.contentColor = card.Ready ? RunTheme.CompleteGreen : RunTheme.TextParchment;
+                GUILayout.Label("  " + card.Item, RunTheme.Body);
+                GUI.contentColor = Color.white;
+
+                GUILayout.FlexibleSpace();
+
+                GUI.contentColor = card.Ready ? RunTheme.CompleteGreen : RunTheme.TextMuted;
+                GUILayout.Label(card.Ready ? "ready" : $"{card.Met} of {card.Bill.Count}", RunTheme.Small);
+                GUI.contentColor = Color.white;
+                GUILayout.EndHorizontal();
+
+                GUI.contentColor = RunTheme.TextMuted;
+                GUILayout.Label("    " + card.Station + (card.Known ? "" : "   \u2014   not learned yet"),
+                    RunTheme.Small);
+                GUI.contentColor = Color.white;
+
+                foreach (var part in card.Bill)
+                {
+                    GUI.contentColor = part.Met ? RunTheme.CompleteGreen : RunTheme.TextMuted;
+                    GUILayout.Label($"      {part.Have} / {part.Need}   {part.Name}", RunTheme.Small);
+                    GUI.contentColor = Color.white;
+                }
+            }
+        }
+
         private void DrawHeard(IRunService run)
         {
             GUI.contentColor = RunTheme.AccentGoldBright;

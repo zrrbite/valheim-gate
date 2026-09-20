@@ -27,6 +27,7 @@ static class TestMain
         HearthRecordsTests.Run();
         StepPredicateTests.Run();
         StepOpeningTests.Run();
+        SagaRecipeCardTests.Run();
         ActDefinitionTests.SeatingTests();
         ActDefinitionTests.CarryCapTests();
         RunStashTests.Run();

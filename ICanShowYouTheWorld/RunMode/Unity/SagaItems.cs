@@ -1589,6 +1589,134 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
+        /// Every saga recipe, with live have/need counts against the player's own pack.
+        /// </summary>
+        /// <remarks>
+        /// Read from the ANVIL'S OWN CONVERSIONS and from the registered bench recipes, never from a
+        /// second table written for the UI. That is the whole discipline here: a page that lists what
+        /// the game was told beats a page that lists what somebody meant to tell it, and the anvil
+        /// bug was two sessions of exactly that difference. If the conversions are wrong, this page is
+        /// wrong in the same way, which is what makes it worth reading.
+        ///
+        /// Counts come from the PLAYER's inventory rather than the anvil's box, because the question
+        /// this answers is "what should I be picking up", asked out in the world.
+        /// </remarks>
+        public List<SagaRecipeCard> DescribeRecipes(Func<string, bool> stepDone)
+        {
+            var cards = new List<SagaRecipeCard>();
+
+            try
+            {
+                var pack = Player.m_localPlayer != null ? Player.m_localPlayer.GetInventory() : null;
+
+                // --- the Storm-Anvil, from the prefab's own conversion list ---
+                var anvil = StormAnvilPrefab();
+                var inc = anvil != null ? anvil.GetComponent<Incinerator>() : null;
+
+                if (inc != null && inc.m_conversions != null)
+                {
+                    foreach (var conv in inc.m_conversions)
+                    {
+                        if (conv == null || conv.m_priority != AnvilPriority) continue;
+                        if (conv.m_result == null || conv.m_result.m_itemData == null ||
+                            conv.m_result.m_itemData.m_shared == null) continue;
+                        if (conv.m_requirements == null) continue;
+
+                        var card = new SagaRecipeCard
+                        {
+                            Item = Loc(conv.m_result.m_itemData.m_shared.m_name),
+                            Station = AnvilName + ", in rain or storm",
+                            Known = true,
+                        };
+
+                        foreach (var req in conv.m_requirements)
+                        {
+                            if (req == null || req.m_resItem == null || req.m_resItem.m_itemData == null ||
+                                req.m_resItem.m_itemData.m_shared == null) continue;
+
+                            string token = req.m_resItem.m_itemData.m_shared.m_name;
+                            card.Bill.Add(new SagaIngredient
+                            {
+                                Name = Loc(token),
+                                Need = req.m_amount,
+                                Have = pack != null ? pack.CountItems(token, -1, true) : 0,
+                            });
+                        }
+
+                        cards.Add(card);
+                    }
+                }
+
+                // --- the bench and forge recipes ---
+                foreach (var def in SagaRecipes.All)
+                {
+                    if (def == null || def.Resources == null) continue;
+
+                    var result = ItemPrefab(def.ResultPrefab);
+                    if (result == null || result.m_itemData == null || result.m_itemData.m_shared == null) continue;
+
+                    var card = new SagaRecipeCard
+                    {
+                        Item = Loc(result.m_itemData.m_shared.m_name),
+                        Station = StationWords(def),
+                        Known = string.IsNullOrEmpty(def.RequiresStepDone) ||
+                                (stepDone != null && stepDone(def.RequiresStepDone)),
+                    };
+
+                    foreach (var (prefab, amount) in def.Resources)
+                    {
+                        var drop = ItemPrefab(prefab);
+                        if (drop == null || drop.m_itemData == null || drop.m_itemData.m_shared == null) continue;
+
+                        string token = drop.m_itemData.m_shared.m_name;
+                        card.Bill.Add(new SagaIngredient
+                        {
+                            Name = Loc(token),
+                            Need = amount,
+                            Have = pack != null ? pack.CountItems(token, -1, true) : 0,
+                        });
+                    }
+
+                    cards.Add(card);
+                }
+            }
+            catch (Exception ex)
+            {
+                ReportOnce("describe-recipes",
+                    "[ICanShowYouTheWorld] Could not describe the saga's recipes: " + ex.Message);
+            }
+
+            return cards;
+        }
+
+        /// <summary>The station in words a player can act on, rather than a prefab name.</summary>
+        private static string StationWords(SagaRecipeDefinition def)
+        {
+            string where;
+            switch (def.StationPrefab)
+            {
+                case "piece_workbench": where = "Workbench"; break;
+                case "forge":           where = "Forge"; break;
+                case null:              where = "Anywhere"; break;
+                case "":                where = "Anywhere"; break;
+                default:                where = def.StationPrefab; break;
+            }
+
+            return def.MinStationLevel > 1 ? $"{where}, level {def.MinStationLevel}" : where;
+        }
+
+        /// <summary>Localises a shared name, and falls back to the token rather than throwing.</summary>
+        private static string Loc(string token)
+        {
+            try
+            {
+                var loc = Localization.instance;
+                return loc != null ? loc.Localize(token) : token;
+            }
+            catch { return token; }
+        }
+
+        /// <summary>
         /// A line for the lever's tooltip: what the box can make, or what it still wants.
         /// </summary>
         /// <remarks>

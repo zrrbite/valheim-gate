@@ -559,6 +559,38 @@ namespace ICanShowYouTheWorld.RunMode
             }
         }
 
+        /// <summary>
+        /// Every saga recipe with live counts, rebuilt at most a few times a second.
+        /// </summary>
+        /// <remarks>
+        /// CACHED, and not as an optimisation for its own sake: OnGUI runs more than once per frame -
+        /// a Layout pass and a Repaint pass at minimum - so a property the window reads while drawing
+        /// is called several times per frame, and this one walks the anvil's conversions and counts
+        /// the pack for each ingredient. The window must also see the SAME list in both passes, or
+        /// IMGUI's layout and repaint disagree about how many controls exist, which throws.
+        /// </remarks>
+        public System.Collections.Generic.IReadOnlyList<SagaRecipeCard> Recipes
+        {
+            get
+            {
+                if (!_active || _items == null) return EmptyRecipes;
+
+                if (_recipeCards != null && Time.time - _recipeCardsAt < RecipeCacheSeconds)
+                    return _recipeCards;
+
+                _recipeCardsAt = Time.time;
+                _recipeCards = _items.DescribeRecipes(
+                    id => _challenges != null && StepPredicates.StepDone(_challenges.Tracks, id));
+
+                return _recipeCards;
+            }
+        }
+
+        private static readonly List<SagaRecipeCard> EmptyRecipes = new List<SagaRecipeCard>();
+        private List<SagaRecipeCard> _recipeCards;
+        private float _recipeCardsAt = float.NegativeInfinity;
+        private const float RecipeCacheSeconds = 0.4f;
+
         /// <summary>Whether the world is in night. Static on EnvMan; false when it is not loaded.</summary>
         private static bool IsNight
         {

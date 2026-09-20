@@ -103,6 +103,15 @@ namespace ICanShowYouTheWorld.Services
         /// </summary>
         string QuestNotice { get; }
 
+        /// <summary>
+        /// Every saga recipe with live have/need counts, for the FORGE page. Empty outside a run.
+        /// </summary>
+        /// <remarks>
+        /// Read from the anvil’s own conversions and the registered bench recipes rather than
+        /// from a table written for the UI - see SagaItems.DescribeRecipes.
+        /// </remarks>
+        System.Collections.Generic.IReadOnlyList<RunMode.SagaRecipeCard> Recipes { get; }
+
         /// <summary>Max health lent by completions so far this run.</summary>
         float EarnedHealth { get; }
 

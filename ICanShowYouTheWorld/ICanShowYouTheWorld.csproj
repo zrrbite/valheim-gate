@@ -326,6 +326,7 @@
     <Compile Include="RunMode\RunStash.cs" />
     <Compile Include="RunMode\LoanLedger.cs" />
     <Compile Include="RunMode\HearthRecords.cs" />
+    <Compile Include="RunMode\SagaRecipeCard.cs" />
     <Compile Include="RunMode\StepPredicates.cs" />
     <Compile Include="RunMode\SagaTranscript.cs" />
     <Compile Include="RunMode\StepOpenings.cs" />
