@@ -114,8 +114,9 @@ namespace ICanShowYouTheWorld.RunMode
         /// Five metres is wider than Thor's bow's three, deliberately: the bow is aimed and this is
         /// not - it goes off where you are standing, when something has just hit you, and its job is
         /// to clear the ring of things pressed against the shield rather than to kill one chosen
-        /// target. Hence the force and stagger multipliers too. Being thrown off you IS the effect;
-        /// the damage is a bonus.
+        /// target. Hence the force and the stagger too: being thrown off you IS the effect, and the
+        /// damage is a bonus. The force is the item's own m_attackForce, set rather than inherited,
+        /// with the attack's multiplier left at one.
         ///
         /// The blunt is small and exists so the numbers on the item card are not a lie: the shield
         /// does have a physical hit, and it is the boss of the shield coming forward.
@@ -125,7 +126,7 @@ namespace ICanShowYouTheWorld.RunMode
         private const float StormwardLightningPerLevel = 5f;
         private const float StormwardBlunt = 12f;
         private const float StormwardBluntPerLevel = 2f;
-        private const float StormwardDischargeForce = 120f;
+        private const float StormwardDischargeForce = 80f;
         private const float StormwardDischargeStagger = 4f;
 
         public const string RescuedLightPrefab = "Saga_RescuedLight";
@@ -808,7 +809,15 @@ namespace ICanShowYouTheWorld.RunMode
                 m_hitFriendly = false,
 
                 m_damageMultiplier = 1f,
-                m_forceMultiplier = StormwardDischargeForce,
+
+                // Multiplier ONE, and the force set on the item instead. DoAreaAttack computes the
+                // knockback as the item's m_attackForce times this, and a shield's own attack force
+                // is whatever the source prefab happened to carry - which for a shield is very
+                // possibly zero, since vanilla shields never attack. A multiplier on zero is zero,
+                // so the knockback would silently not exist; a multiplier on a big inherited number
+                // would fire things into orbit. Same defect the bow had when its pierce was
+                // inherited, and the same fix: set the value, do not scale an unknown.
+                m_forceMultiplier = 1f,
                 m_staggerMultiplier = StormwardDischargeStagger,
 
                 // Free. It is paid for by the stamina the block itself cost, and by having had to be
@@ -832,6 +841,10 @@ namespace ICanShowYouTheWorld.RunMode
             }
 
             shared.m_attack = discharge;
+
+            // The knockback the discharge scales by. See m_forceMultiplier above for why this is set
+            // here rather than inferred from the source shield.
+            shared.m_attackForce = StormwardDischargeForce;
 
             // m_blockChargeEffects is DELIBERATELY left alone. Putting the same lightning on it was
             // the first instinct - feedback while the shield charges - and it is a lie: the first
@@ -966,6 +979,16 @@ namespace ICanShowYouTheWorld.RunMode
                 var result = shieldClone.GetComponent<ItemDrop>();
                 if (result == null) return;
 
+                // The PREFAB pass, retried until it has actually landed.
+                //
+                // It used to run once, from Ensure, gated on the scene reference changing - and that
+                // is a one-shot with no second chance. If the rescued light's clone was not ready on
+                // the frame it fired, the re-cost silently never happened, the piece kept the price
+                // the game shipped (a Thunder Stone from a trader two biomes away), and the only
+                // retry path was a live instance of a piece nobody could build. A chicken-and-egg
+                // failure that would have looked exactly like "the anvil is not in my hammer".
+                if (!_altarTaught) TeachAltarPrefab(ZNetScene.instance);
+
                 foreach (var inc in UnityEngine.Object.FindObjectsByType<Incinerator>(FindObjectsSortMode.None))
                 {
                     if (inc == null) continue;
@@ -1023,8 +1046,16 @@ namespace ICanShowYouTheWorld.RunMode
 
                 EnsureAnvilInHammer(prefab);
                 TeachAltar(inc, result);
+
+                // Only now is the prefab pass done with. Both halves have to have landed: a
+                // conversion the lever can find, and a price the Meadows can pay.
+                _altarTaught = _altarConversionDone && _anvilRecosted;
             }
         }
+
+        /// <summary>True once the prefab carries both the combine and the saga's price.</summary>
+        private bool _altarTaught;
+        private bool _altarConversionDone;
 
         /// <summary>
         /// What the saga calls the Obliterator.
@@ -1044,7 +1075,8 @@ namespace ICanShowYouTheWorld.RunMode
 
         private const string AnvilDescription =
             "The sky does the work. Put down what you have taken back, pull the lever, and see " +
-            "whether it comes up as something or as ash.";
+            "whether it comes up as something or as ash. Be exact: it knows a few shapes, and " +
+            "everything it does not recognise it burns.";
 
         /// <summary>
         /// What the Storm-Anvil costs to raise, in Act I materials only.
@@ -1169,7 +1201,11 @@ namespace ICanShowYouTheWorld.RunMode
             // Already knows it. Checked by RESULT rather than by a flag, so a reload, a rebuild and
             // a second pass over the same object all come to the same answer.
             foreach (var existing in inc.m_conversions)
-                if (existing != null && ReferenceEquals(existing.m_result, result)) return;
+                if (existing != null && ReferenceEquals(existing.m_result, result))
+                {
+                    _altarConversionDone = true;
+                    return;
+                }
 
             var reqs = new List<Incinerator.Requirement>();
             foreach (var (item, amount) in StormwardCombine)
@@ -1203,6 +1239,8 @@ namespace ICanShowYouTheWorld.RunMode
                 m_priority = 100,
                 m_requireOnlyOneIngredient = false,
             });
+
+            _altarConversionDone = true;
 
             Debug.Log($"[ICanShowYouTheWorld] Storm-altar combine registered: {reqs.Count} things in, " +
                       $"{StormwardName} out.");

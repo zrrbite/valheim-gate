@@ -8080,7 +8080,8 @@ namespace ICanShowYouTheWorld.RunMode
                 Display = "Raise the Storm-Anvil",
                 RewardText = "Stone, coal, and a light back",
                 Hint = "In the hammer, near a workbench: 20 stone, 10 wood, 10 resin and ONE rescued " +
-                       "light. The light does not come back out. What you put in, the sky strikes.",
+                       "light. The light does not come back out. Afterwards it takes exact sets of things " +
+                       "and gives back what it knows \u2014 and burns everything it does not.",
                 Opening = "There is a way to make the sky do the work. It costs a light to build, " +
                           "which should tell you what kind of thing it is.",
             },
@@ -8102,7 +8103,9 @@ namespace ICanShowYouTheWorld.RunMode
                 Param = SagaItems.StormwardName, Target = 1,
                 Display = "Bind the Stormward",
                 RewardText = "Mead, and arrows enough for a god",
-                Hint = "At an IMPROVED workbench: 20 wood, 20 resin, 10 troll hide, 10 deer hide and 3 rescued lights. The hide is the Breaker\u2019s \u2014 if it moved on, so did the shield.",
+                Hint = "At an IMPROVED workbench, or combined at the Storm-Anvil: 20 wood, 20 resin, " +
+                       "10 troll hide, 10 deer hide and 3 rescued lights. The hide is the Breaker\u2019s \u2014 if it " +
+                       "moved on, so did the shield. At the anvil be EXACT: it burns whatever it does not recognise.",
                 Opening = "The storm is his. Bind something that does not care.",
             },
             new ChallengeDefinition

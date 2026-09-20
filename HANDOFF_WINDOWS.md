@@ -17,6 +17,53 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-20 - TASK: review of the anvil work, three fixes (`...20p`)
+
+Reviewed the last three builds while nobody was playing them. Three things, two of which would
+have been reported as "it does not work".
+
+**1. The re-cost could permanently never happen.** `TeachAltarPrefab` ran from `Ensure`, gated on
+the ZNetScene reference changing - a ONE-SHOT with no second chance. If the rescued light's clone
+was not ready on the frame it fired, `RecostAnvil` returned without re-costing, and the only retry
+path was a live instance of a piece nobody could build, because the piece still wanted a Thunder
+Stone from a trader two biomes away. Chicken-and-egg, and it would have looked exactly like "the
+Storm-Anvil is not in my hammer". The prefab pass now retries from `TickStormAltar` until BOTH
+halves have landed - a conversion the lever can find, and a price the Meadows can pay.
+
+**2. The knockback was scaling an unknown.** `DoAreaAttack` computes force as the item's
+`m_attackForce` times the attack's `m_forceMultiplier`, and a shield's own attack force is whatever
+the source prefab carried - very possibly zero, since vanilla shields never attack. A multiplier of
+120 on zero is zero, so the knockback would silently not exist; on a large inherited number it
+would fire things into orbit. This is the same defect Thor's bow had when its pierce was inherited,
+and it takes the same fix: `m_attackForce` is now SET on the item (80) and the multiplier is 1.
+
+**3. The anvil burns what it does not recognise, and nothing said so.** Verified in the IL: after
+every conversion has had its go, the default path turns `NrOfItemsIncludingStacks() / m_defaultCost`
+of whatever is LEFT into coal. So a combine that is one troll hide short destroys the entire
+contents. That is correct vanilla behaviour for a machine called the Obliterator, but the saga is
+now inviting players to craft in it, so both the piece description and the two step hints say it
+outright: *be exact; it burns whatever it does not recognise.*
+
+### Also verified, no change needed
+
+- `Incinerate` does read `m_conversions`, via `IncineratorConversion.AttemptCraft`, matching on each
+  requirement's **display name** through `Inventory.CountItems` - so the saga's own cloned items work.
+- `Awake` sorts conversions by priority, which happens BEFORE the mod appends, so the priority 100
+  does nothing for an already-standing anvil. Harmless: the coal default is hardcoded to run after
+  all conversions, so an exact match always wins regardless of order.
+- `DoAreaAttack` skips the attacker's own GameObject twice - the player genuinely cannot be caught
+  in their own discharge.
+
+### One honest limitation of the dev key
+
+`Backspace` spawns the anvil through `SpawnService`, which never sets `Piece.m_creator` - and the
+built-piece scan requires `IsCreator()`, deliberately, so that world-generated ruins and other
+players' houses do not count. So **a dev-planted anvil tests the lever and the combine, but will not
+complete `mq-anvil`.** Use a real one for the step, or `mod` + `Keypad +` to force it. This is right
+rather than broken, and is the sort of thing worth knowing before reporting it.
+
+---
+
 ## 2026-09-20 - TASK: the Storm-Anvil is raised in Act I (`...20o`)
 
 "*So how do i test the obliterator in this act1?*" - and then the better answer: "*we need to give
