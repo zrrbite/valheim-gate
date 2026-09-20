@@ -1392,7 +1392,7 @@ namespace ICanShowYouTheWorld.RunMode
                     // Above the coal. The default conversion is what happens to anything with no rule
                     // of its own, and a shield's worth of troll hide going to coal because the table
                     // was read in the wrong order is the one outcome here that cannot be undone.
-                    m_priority = 100,
+                    m_priority = AnvilPriority,
                     m_requireOnlyOneIngredient = false,
                 });
 
@@ -1453,6 +1453,30 @@ namespace ICanShowYouTheWorld.RunMode
                 // This is the same defect class as Thjalfi's prices and the spawn-gating events: a
                 // string that names something, matches nothing, and fails silently.
                 DescribeAnvil(inc);
+
+                // And REFUSE, rather than let the default path eat a bill that was nearly right.
+                //
+                // This is the expensive half of the silent-mismatch bug. A conversion that cannot
+                // fire returns 0 and says nothing, and the default path immediately turns everything
+                // left in the box into coal - so the owner pulled the lever twice with a full,
+                // correct-looking bill in the box and paid for it twice, once at 40 items and once
+                // at 63 (the shield's whole bill, six coal, exactly 63/10).
+                //
+                // A rescued light in the box is the signal, and it is a good one: it is the scarcest
+                // thing in Act I, it is in BOTH bills, and nobody feeds one to a coal furnace by
+                // choice. Its presence means a combine was intended, so a combine that cannot fire
+                // is a mistake to report rather than an instruction to burn.
+                if (CombineIntendedButNotReady(inc, out string missing))
+                {
+                    try
+                    {
+                        MessageHud.instance?.ShowMessage(
+                            MessageHud.MessageType.Center,
+                            "The anvil will not take this. " + missing);
+                    }
+                    catch { }
+                    return false;
+                }
 
                 return innerUse == null || innerUse(s2, user, item);
             };
@@ -1541,7 +1565,10 @@ namespace ICanShowYouTheWorld.RunMode
                             int sets = req.m_amount > 0 ? counted / req.m_amount : 0;
                             if (sets < have) have = sets;
 
-                            wants.Append($"'{want}' {counted}/{req.m_amount}  ");
+                            // Prefab name AND shared name. They are different strings for every
+                            // vanilla item ("Wood" vs "$item_wood"), and only the pair shows whether
+                            // ItemPrefab handed back the object it was asked for.
+                            wants.Append($"[{req.m_resItem.name}] '{want}' {counted}/{req.m_amount}  ");
                         }
                     }
 
@@ -1552,6 +1579,83 @@ namespace ICanShowYouTheWorld.RunMode
             catch (Exception ex)
             {
                 ReportOnce("anvil-describe", "[ICanShowYouTheWorld] Could not describe the anvil: " + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// True when the box holds a rescued light but no conversion of ours can fire.
+        /// </summary>
+        /// <remarks>
+        /// Reads the anvil's OWN conversion list rather than <see cref="AnvilCombines"/>, so it
+        /// judges what the object will actually do rather than what the table intended - which is the
+        /// whole point when the two disagree.
+        ///
+        /// Only OUR conversions are considered, identified by their priority. A vanilla conversion
+        /// that can fire is none of this method's business.
+        /// </remarks>
+        private bool CombineIntendedButNotReady(Incinerator inc, out string missing)
+        {
+            missing = string.Empty;
+
+            try
+            {
+                var box = inc.m_container != null ? inc.m_container.GetInventory() : null;
+                if (box == null || inc.m_conversions == null) return false;
+
+                // No light in the box, no intent to combine: this is a coal furnace and the player
+                // may burn whatever they like in it.
+                if (box.CountItems(RescuedLightName, -1, true) <= 0) return false;
+
+                var shortfalls = new List<string>();
+
+                foreach (var conv in inc.m_conversions)
+                {
+                    if (conv == null || conv.m_priority != AnvilPriority) continue;
+                    if (conv.m_requirements == null || conv.m_requirements.Count == 0) continue;
+
+                    bool ready = true;
+                    var short_ = new List<string>();
+
+                    foreach (var req in conv.m_requirements)
+                    {
+                        if (req == null || req.m_resItem == null || req.m_resItem.m_itemData == null ||
+                            req.m_resItem.m_itemData.m_shared == null)
+                        {
+                            ready = false;
+                            short_.Add("a broken ingredient");
+                            continue;
+                        }
+
+                        string want = req.m_resItem.m_itemData.m_shared.m_name;
+                        int counted = box.CountItems(want, -1, true);
+                        if (counted >= req.m_amount) continue;
+
+                        ready = false;
+                        short_.Add($"{req.m_amount - counted} more {Localization.instance.Localize(want)}");
+                    }
+
+                    // Something in here CAN be made. Let the game get on with it.
+                    if (ready) return false;
+
+                    string name = conv.m_result != null && conv.m_result.m_itemData != null &&
+                                  conv.m_result.m_itemData.m_shared != null
+                        ? Localization.instance.Localize(conv.m_result.m_itemData.m_shared.m_name)
+                        : "something";
+
+                    shortfalls.Add($"{name} wants {string.Join(", ", short_.ToArray())}");
+                }
+
+                if (shortfalls.Count == 0) return false;
+
+                missing = string.Join("  \u2014  ", shortfalls.ToArray());
+                return true;
+            }
+            catch (Exception ex)
+            {
+                // Cannot judge: do NOT refuse. A guard that locks the forge on its own bug is worse
+                // than the loss it prevents.
+                ReportOnce("anvil-guard", "[ICanShowYouTheWorld] Could not check the anvil's box: " + ex.Message);
+                return false;
             }
         }
 
@@ -1570,6 +1674,17 @@ namespace ICanShowYouTheWorld.RunMode
             var go = odb != null ? odb.GetItemPrefab(name) : null;
             return go != null ? go.GetComponent<ItemDrop>() : null;
         }
+
+        /// <summary>
+        /// Priority on the saga's own conversions, and the mark that identifies them later.
+        /// </summary>
+        /// <remarks>
+        /// Above the coal, because the default conversion is what happens to anything with no rule of
+        /// its own. It doubles as the tag <see cref="CombineIntendedButNotReady"/> uses to tell our
+        /// conversions from vanilla's, which is why it is a named constant rather than a literal in
+        /// one place.
+        /// </remarks>
+        private const int AnvilPriority = 100;
 
         private const float AltarPollSeconds = 3f;
 
