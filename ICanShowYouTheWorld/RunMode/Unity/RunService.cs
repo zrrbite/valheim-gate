@@ -2701,7 +2701,16 @@ namespace ICanShowYouTheWorld.RunMode
             (SagaItems.ThorsBowPrefab, 1),
             (SagaItems.StormwardPrefab, 1),
             ("ArrowFlint", 100),
+
+            // A spare light beyond the combine's three, so the bow's bench recipe is visible too -
+            // the bench will not list it until a light has been HELD.
             (SagaItems.RescuedLightPrefab, 1),
+
+            // And Thjalfi's price, double, so paying him needs no mining trip. He asks twenty stone
+            // and one light; the light above covers the light. Granted here rather than in the
+            // combine kit because it buys a different thing: the combine kit tests the LEVER, and
+            // this tests the man.
+            ("Stone", 40),
         };
 
         /// <summary>

@@ -17,6 +17,29 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-20 - TASK: Backspace also pays for Thjalfi (`...20z`)
+
+One press now covers every test in the act. `Backspace` grants:
+
+| | |
+|---|---|
+| Storm-Anvil | planted in front of you |
+| 20 wood, 20 resin, 10 troll hide, 10 deer hide, 3 rescued lights | the **Stormward's full bill** - bench or combine |
+| **40 stone** + the spare light | **Thjalfi's price**, doubled, so paying him needs no mining trip |
+| Thor's bow, the Stormward, 100 flint arrows | the finished items, to judge without crafting first |
+
+The stone is new. It is in the saga-items kit rather than the combine kit because it buys a different
+thing: the combine kit tests the LEVER, and this tests the MAN.
+
+### The three keys, since they were asked for together
+
+- `Shift`/`Ctrl`/`Alt` + `Keypad +` - complete the current step
+- `Shift`/`Ctrl`/`Alt` + `Keypad -` - +2h AND step the sky: **press once for rain, twice for thunder,
+  three times to release it**
+- `Backspace` - the kit above
+
+---
+
 ## 2026-09-20 - TASK: Thjalfi refused payment - shared names, not prefab names (`...20y`)
 
 **STAGED, NOT INSTALLED** - you were playing. When you quit: `.\dist\windows\Install-Mod.ps1 -ModOnly`
