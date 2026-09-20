@@ -1485,9 +1485,15 @@ namespace ICanShowYouTheWorld.RunMode
             sw.m_onHover = () =>
             {
                 string text = innerHover != null ? innerHover() : string.Empty;
-                return SkyIsAwake()
-                    ? text
-                    : text + "\n" + AnvilName + ": the sky is quiet. Come back in the rain.";
+
+                if (!SkyIsAwake())
+                    return text + "\n" + AnvilName + ": the sky is quiet. Come back in the rain.";
+
+                // What the box holds up to, BEFORE the lever is touched. The shortfall was only
+                // readable after a refusal, which is one pull later than it is useful - and the
+                // refusal is itself a thing the player has to learn to trust. A tooltip is where a
+                // shopping list belongs, for the same reason quest hints stopped being shouted.
+                return text + AnvilReadout(inc);
             };
         }
 
@@ -1579,6 +1585,83 @@ namespace ICanShowYouTheWorld.RunMode
             catch (Exception ex)
             {
                 ReportOnce("anvil-describe", "[ICanShowYouTheWorld] Could not describe the anvil: " + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// A line for the lever's tooltip: what the box can make, or what it still wants.
+        /// </summary>
+        /// <remarks>
+        /// Only the saga's own conversions, found by priority, and only when there is something to
+        /// say - an empty box gets the vanilla tooltip and nothing else, because the anvil is still
+        /// a coal furnace and most pulls are not combines.
+        ///
+        /// The leftovers warning is not decoration. A successful craft still runs the default path
+        /// over whatever remains, so forty stone left in the box comes out as four coal. The piece
+        /// description says the anvil burns what it does not recognise; the tooltip is where that is
+        /// actually read.
+        /// </remarks>
+        private string AnvilReadout(Incinerator inc)
+        {
+            try
+            {
+                var box = inc.m_container != null ? inc.m_container.GetInventory() : null;
+                if (box == null || inc.m_conversions == null) return string.Empty;
+                if (box.GetAllItems().Count == 0) return string.Empty;
+
+                var ready = new List<string>();
+                var wanting = new List<string>();
+                int spoken = 0;
+
+                foreach (var conv in inc.m_conversions)
+                {
+                    if (conv == null || conv.m_priority != AnvilPriority) continue;
+                    if (conv.m_requirements == null || conv.m_requirements.Count == 0) continue;
+                    if (conv.m_result == null || conv.m_result.m_itemData == null ||
+                        conv.m_result.m_itemData.m_shared == null) continue;
+
+                    string name = Localization.instance.Localize(conv.m_result.m_itemData.m_shared.m_name);
+
+                    var missing = new List<string>();
+                    int held = 0;
+
+                    foreach (var req in conv.m_requirements)
+                    {
+                        if (req == null || req.m_resItem == null || req.m_resItem.m_itemData == null ||
+                            req.m_resItem.m_itemData.m_shared == null) continue;
+
+                        string want = req.m_resItem.m_itemData.m_shared.m_name;
+                        int counted = box.CountItems(want, -1, true);
+
+                        if (counted >= req.m_amount) { held++; continue; }
+                        missing.Add($"{req.m_amount - counted} {Localization.instance.Localize(want)}");
+                    }
+
+                    if (missing.Count == 0) { ready.Add(name); continue; }
+
+                    // Silent about a combine the player has not started. Listing every bill the
+                    // anvil knows would put the whole Act I craft tree in a tooltip.
+                    if (held == 0) continue;
+
+                    wanting.Add($"{name} wants {string.Join(", ", missing.ToArray())}");
+                    spoken++;
+                }
+
+                var line = new System.Text.StringBuilder();
+
+                foreach (var name in ready) line.Append($"\n{AnvilName}: ready to strike {name}.");
+                foreach (var want in wanting) line.Append($"\n{AnvilName}: {want}.");
+
+                // Only where it matters: something is in the box and no combine will take it.
+                if (ready.Count == 0)
+                    line.Append($"\n{AnvilName}: what it cannot forge, it burns.");
+
+                return line.ToString();
+            }
+            catch (Exception ex)
+            {
+                ReportOnce("anvil-readout", "[ICanShowYouTheWorld] Could not read the anvil's box: " + ex.Message);
+                return string.Empty;
             }
         }
 

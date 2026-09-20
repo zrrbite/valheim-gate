@@ -173,11 +173,21 @@ namespace ICanShowYouTheWorld.RunMode
         public const string NotYetLine =
             "Not yet. Ten flint, five scraps of leather. I have waited longer than this.";
 
+        /// <remarks>
+        /// Said ONCE, the moment the quiver is delivered. It used to end "your bench knows the shape
+        /// now", which was true until the bow moved to the Storm-Anvil and then flatly contradicted
+        /// <see cref="AfterLine"/> two lines later ("no bench will strike it"). A quest-giver that
+        /// sends the player to the wrong station is worse than one that says nothing: the bench will
+        /// sit there not offering the recipe, and nothing will explain why.
+        /// </remarks>
         public const string TaughtLine =
-            "Good. Now mark it: wood for the stave, resin to seal it, and the herd’s own hide for " +
-            "the wrap. Your bench knows the shape now.\n\n" +
+            "Good. Now mark it: wood for the stave, resin to seal it, the herd’s own hide for the " +
+            "wrap, and this flint of yours for what it looses.\n\n" +
+            "But no bench will strike it. It wants the sky, and there is one who waits on the shore " +
+            "when it rains who tends the only thing that can give it one. Take him a light — he will " +
+            "want one.\n\n" +
             "Men will call it Thor’s. Let them — the storm in it is the herd’s, and Eikthyr’s own, " +
-            "turned. String it well. What you loose from it, you owe the herd a clean shot.";
+            "turned. What you loose from it, you owe the herd a clean shot.";
 
         public const string AfterLine =
             "Wood, resin, the herd’s hide, and the flint you brought me. That is the shape of it, and it is yours now.\n\n" +
