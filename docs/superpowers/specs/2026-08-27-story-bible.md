@@ -262,6 +262,11 @@ answer, practised before it was taught. Act VII spends it.
 - **Splinters** — greydwarves: deadwood animated by the Elder, starving
   always. They carry lights; they never destroy them.
 - **The wisp (item)** — a taken light, pocketed. Act VI's payoff in waiting.
+- **The hunter's shade** — Act I's only speaking part, and one of the taken: it wears
+  the Ghost prefab, the same body the deer's lights use. It teaches Thor's bow, and
+  since 2026-09-20 it comes BACK - after the Breaker and after Eikthyr - to say
+  something about what you did with it. Both remarks are about someone else having
+  done the thing it never could, because it is a hunter who never loosed.
 - **The ravens** — Odin's audit. They witness beats; they never help.
 - **Heat** — the world noticing you burn. Score is how brightly you burned.
 - **Boons** — Odin's loans against the answer you owe. Death collects one.

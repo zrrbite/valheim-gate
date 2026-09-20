@@ -17,7 +17,7 @@ Standing context for the Windows side:
 
 ---
 
-## 2026-09-20 - THE TEST LIST for 1.0.15-run.2026-09-20i
+## 2026-09-20 - THE TEST LIST for 1.0.15-run.2026-09-20j
 
 Fourteen builds over two days, rewritten as ONE pass in the order you actually meet things. The
 per-build TASK entries below keep the reasoning; this is the list to play with.
@@ -41,7 +41,7 @@ DLL the game has open fails. When you are done: `.\dist\windows\Install-Mod.ps1 
 
 - [ ] Launch and **do not open Credits**. **No popup at all.** Silence is success.
 - [ ] Under the game's own version line, one gold line at 70% size, **not overlapping**:
-      `SAGA v1.0.15-run.2026-09-20i · GM`. That line is the ONLY proof the mod loaded.
+      `SAGA v1.0.15-run.2026-09-20j · GM`. That line is the ONLY proof the mod loaded.
 - [ ] Load the character carrying **Thor's bow**. Still there. Save, quit to desktop, come back:
       still there, and no `Failed to find item prefab` in the log.
 
@@ -139,6 +139,13 @@ DLL the game has open fails. When you are done: `.\dist\windows\Install-Mod.ps1 
       the one it hit. It must NEVER hurt you or a tamed animal.
 - [ ] **The shade hands you one Rescued light** with the recipe, so the bench shows Thor's bow at
       `0/3` the moment it is taught rather than showing nothing at all.
+- [ ] **The shade comes back twice.** After the Breaker falls, and again after Eikthyr, a line says
+      "The shade is standing by your bed again. It waits for dark." Go home after dark, and it is
+      there with a bubble and an `[E] Speak` - a rune panel, no price, nothing asked.
+- [ ] **Each visit is heard once.** Speak to it, then save, quit to the menu and resume: it should not
+      be standing there again with the same thing to say.
+- [ ] **The second visit happens in ACT II.** Eikthyr's death flips the act, so the shade has to stand
+      after the Meadows are behind you - it is attached to your bed, not to the biome.
 - [ ] **The Stormward** - an **improved** workbench and 10 troll hide, and it wears the
       **serpentscale shield's** model.
 - [ ] **The Gatherer is 35% bigger than its children** and arrives about **45 seconds AFTER** its
@@ -190,6 +197,38 @@ default is **2.5** - the file wins over the code, so you have been playing a mon
 regen. Thirty-five newer settings are absent from it entirely and running on code defaults, which is
 correct behaviour but means they cannot be TUNED without adding the lines by hand. Ask and I will
 either add the keys or make `Load()` re-save so no future setting is invisible.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
+---
+
+## 2026-09-20 - TASK: 1.0.15-run.2026-09-20j - the shade comes back
+
+It had two lines and was then finished, which is thin for the only speaking part in Act I. It now
+returns after the **Breaker** and after **Eikthyr**, and costs almost nothing: it already stands by the
+bed at night, already greets with a bubble, already opens a rune panel. So the feature is a phase, two
+strings, and a memory of what has been heard.
+
+Three things were worth getting right.
+
+**It is announced.** "The shade is standing by your bed again. It waits for dark." Without that line
+the beat would be unfindable: the shade stands by the BED, at night, and a player who has just killed
+Eikthyr two valleys away has no reason to go home and no way to know anything is waiting. A beat nobody
+can find is a beat that was not built, and this mode has paid for that lesson more than once today.
+
+**It is no longer act-limited.** `PollShade` used to be called from inside `PollDeerHerd`, which is Act
+I only - and Eikthyr's death FLIPS the act, so the second visit could never have happened. It has its
+own call site now. Its quest phases are still Act I's, because the tracks are; the shade is attached to
+the bed rather than the biome.
+
+**It is heard once, and remembers across a resume.** Ids in the run state, not text, so the lines can
+be rewritten later without a save forgetting that the visit happened.
+
+The remarks are a table keyed by the step they wait on, so the next one is a row. Both lines are in the
+register the others set - terse, second person, nothing the world does not back - and both are about
+someone else having done the thing it never could, because it is a hunter who never loosed.
 
 ### RESULTS (Windows side appends here)
 

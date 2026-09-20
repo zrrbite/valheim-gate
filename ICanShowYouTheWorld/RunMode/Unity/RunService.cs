@@ -269,6 +269,26 @@ namespace ICanShowYouTheWorld.RunMode
         /// starts. A saga that can only show you the act you are standing in is a quest list; one
         /// that keeps the whole run is a book, which is what was asked for.
         /// </remarks>
+        /// <summary>The shade's return visits already heard, by id. Persisted.</summary>
+        private readonly HashSet<string> _shadeRemarksSaid = new HashSet<string>();
+
+        /// <summary>The remark currently owed, or null. Announced once when it becomes owed.</summary>
+        private string _shadeRemarkOwed;
+
+        /// <summary>
+        /// Which step each of the shade's return visits waits on.
+        /// </summary>
+        /// <remarks>
+        /// A table rather than two if-statements, because the next one is a row. Order is the order
+        /// they are checked in, so a player who somehow finishes both before going home hears the
+        /// earlier beat first - which is the order they happened in.
+        /// </remarks>
+        private static readonly (string id, string stepId)[] ShadeRemarks =
+        {
+            (HuntersShade.RemarkBreaker, SagaNames.BreakerStepId),
+            (HuntersShade.RemarkEikthyr, "mq-eikthyr"),
+        };
+
         private readonly List<string> _chronicle = new List<string>();
 
         private readonly List<string> _splitLabels = new List<string>();
@@ -1764,6 +1784,8 @@ namespace ICanShowYouTheWorld.RunMode
                 _noArmorSeconds = 0f;
                 _noArmorChallengeIds.Clear();
                 _chronicle.Clear();
+            _shadeRemarksSaid.Clear();
+            _shadeRemarkOwed = null;
             _splitLabels.Clear();
                 _splitTimes.Clear();
                 _accountedBossKeys.Clear();
@@ -2735,6 +2757,11 @@ namespace ICanShowYouTheWorld.RunMode
             PollBuiltPieces();
             PollReachedBiomes();
             PollDeerHerd();
+
+            // Outside PollDeerHerd, which is Act I only: the shade's return visits are owed after
+            // Eikthyr, by which time the act has flipped. See PollShade.
+            var shadePlayer = Player.m_localPlayer;
+            if (shadePlayer != null) PollShade(shadePlayer);
             PollDiscoveries();
             PollPlayerState();
             ReassertDevGod();
@@ -3723,7 +3750,6 @@ namespace ICanShowYouTheWorld.RunMode
             if (player == null) return;
 
             _deer.UpgradeNearbyDeer(player.transform.position, DeerScanRadius);
-            PollShade(player);
 
             // The Herald exists only while its own step is current, and is re-spawned whenever it is
             // not standing — which is what makes it survive a logout, a zone unload, or a player who
@@ -3757,8 +3783,41 @@ namespace ICanShowYouTheWorld.RunMode
         private const float DeerScanRadius = 60f;
 
         /// <summary>
+        /// The shade's first unheard return visit whose beat has happened, or null.
+        /// </summary>
+        /// <remarks>
+        /// Announced once when it becomes owed, and that line is not decoration. The shade stands by
+        /// the BED, at night - so a player who has just killed Eikthyr two valleys away has no reason
+        /// to go home and no way to know anything is waiting. A beat nobody can find is a beat that
+        /// was not built, which this mode has paid for more than once.
+        /// </remarks>
+        private string OwedShadeRemark(IReadOnlyList<QuestTrack> tracks)
+        {
+            foreach (var entry in ShadeRemarks)
+            {
+                if (_shadeRemarksSaid.Contains(entry.id)) continue;
+                if (!StepPredicates.StepDone(tracks, entry.stepId)) continue;
+
+                if (_shadeRemarkOwed != entry.id)
+                {
+                    _shadeRemarkOwed = entry.id;
+                    Message("The shade is standing by your bed again. It waits for dark.");
+                }
+
+                return entry.id;
+            }
+
+            _shadeRemarkOwed = null;
+            return null;
+        }
+
+        /// <summary>
         /// Keeps the hunter's shade standing while its steps are live and it is night, and turns
-        /// what the player did at it into questline events. Act I only, like the herd.
+        /// what the player did at it into questline events.
+        ///
+        /// NOT act-limited any more: its quest phases are Act I's because the tracks are, but its
+        /// return visits are owed after the Breaker and after Eikthyr, and the second of those lands
+        /// once the act has already flipped. The shade is attached to the bed, not the biome.
         /// </summary>
         private void PollShade(Player player)
         {
@@ -3772,8 +3831,22 @@ namespace ICanShowYouTheWorld.RunMode
                           : StepPredicates.ShadeFind(tracks) ? HuntersShade.Phase.Find
                           : HuntersShade.Phase.Done;
 
-                bool spoken, delivered;
-                _shade.Tick(player, phase, wanted, IsNight, out spoken, out delivered);
+                // A return visit outranks "done", and makes the shade wanted again on its own. Never
+                // while its quest steps are still live: it has one thing to say at a time.
+                string remark = null;
+                if (!wanted)
+                {
+                    remark = OwedShadeRemark(tracks);
+                    if (remark != null)
+                    {
+                        wanted = true;
+                        phase = HuntersShade.Phase.Remark;
+                    }
+                }
+
+                bool spoken, delivered, remarked;
+                _shade.Tick(player, phase, wanted, IsNight, out spoken, out delivered, out remarked,
+                            HuntersShade.RemarkLine(remark));
 
                 if (spoken)
                 {
@@ -3784,6 +3857,12 @@ namespace ICanShowYouTheWorld.RunMode
                 {
                     _challenges.ReportEvent(ChallengeKind.PlayerEvent, SagaNames.ShadeDelivered);
                     Message("The shade is paid. Your bench knows a hunter's bow now.");
+                }
+                if (remarked && remark != null)
+                {
+                    _shadeRemarksSaid.Add(remark);
+                    _shadeRemarkOwed = null;
+                    SaveState();
                 }
             }
             catch (Exception ex)
@@ -6496,6 +6575,8 @@ namespace ICanShowYouTheWorld.RunMode
             _noArmorChallengeIds.Clear();
 
             _chronicle.Clear();
+            _shadeRemarksSaid.Clear();
+            _shadeRemarkOwed = null;
             _splitLabels.Clear();
             _splitTimes.Clear();
             _lights?.Restore(s.lightsTaken, s.lightsLost);
@@ -6503,6 +6584,7 @@ namespace ICanShowYouTheWorld.RunMode
 
             if (s.splitLabels != null) _splitLabels.AddRange(s.splitLabels);
             if (s.chronicle != null) _chronicle.AddRange(s.chronicle);
+            if (s.shadeRemarksSaid != null) foreach (var id in s.shadeRemarksSaid) _shadeRemarksSaid.Add(id);
             if (s.splitTimes != null) _splitTimes.AddRange(s.splitTimes);
 
             // Everything in the saved list is already accounted for: pre-existing kills and
@@ -6701,6 +6783,7 @@ namespace ICanShowYouTheWorld.RunMode
                 recordValues = _records.All.Select(r => r.Value).ToList(),
                 recordDetails = _records.All.Select(r => r.Detail).ToList(),
                 chronicle = _chronicle.ToList(),
+                shadeRemarksSaid = _shadeRemarksSaid.ToList(),
                 splitLabels = _splitLabels.ToList(),
                 splitTimes = _splitTimes.ToList(),
                 activeChallengeIds = active.Select(a => a.Def.Id).ToList(),

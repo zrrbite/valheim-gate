@@ -31,6 +31,12 @@ namespace ICanShowYouTheWorld.RunMode
         /// on resume is not one. It also has to outlive the act: tracks are re-seated when an act
         /// flips, so by Act III the chain that carried Act I is simply gone from memory.
         /// </remarks>
+        /// <summary>
+        /// Which of the shade's return visits have been heard. Ids, not text, so the lines can be
+        /// rewritten without a save forgetting that the visit happened.
+        /// </summary>
+        public List<string> shadeRemarksSaid;
+
         public List<string> chronicle;
 
         public List<string> splitLabels;

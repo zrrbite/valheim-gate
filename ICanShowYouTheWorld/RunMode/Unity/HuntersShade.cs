@@ -19,9 +19,15 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>Set by the owner every tick; drives the prompt and the reply.</summary>
         public HuntersShade.Phase Phase;
 
+        /// <summary>What it has to say this visit, when the phase is Remark. Set from Tick.</summary>
+        public string Remark;
+
         /// <summary>Raised by an interact, read and cleared by the owner's tick.</summary>
         public bool SpokenPending;
         public bool DeliveredPending;
+
+        /// <summary>Set when the player has heard this visit's remark, so it is said once.</summary>
+        public bool RemarkedPending;
 
         public bool Interact(Humanoid user, bool hold, bool alt)
         {
@@ -53,6 +59,13 @@ namespace ICanShowYouTheWorld.RunMode
                         }
                         return true;
                     }
+
+                    case HuntersShade.Phase.Remark:
+                        // A visit it came back FOR. Heard once, then the host stops owing it; see
+                        // RunService.PollShade.
+                        HuntersShade.Say(string.IsNullOrEmpty(Remark) ? HuntersShade.AfterLine : Remark);
+                        RemarkedPending = true;
+                        return true;
 
                     default:
                         HuntersShade.Say(HuntersShade.AfterLine);
@@ -130,7 +143,11 @@ namespace ICanShowYouTheWorld.RunMode
     /// </summary>
     internal sealed class HuntersShade
     {
-        public enum Phase { Find, Deliver, Done }
+        /// <summary>
+        /// What the shade is here for. <see cref="Remark"/> is a return visit rather than a step:
+        /// it stands because something happened that it has an opinion about, and it asks nothing.
+        /// </summary>
+        public enum Phase { Find, Deliver, Done, Remark }
 
         public const string Name = "A hunter’s shade";
         public const string Prefab = "Ghost";
@@ -165,6 +182,40 @@ namespace ICanShowYouTheWorld.RunMode
         public const string AfterLine =
             "Wood, resin, the herd’s hide. The bench knows it as Thor’s bow. Go and string it.";
 
+        /// <summary>
+        /// The return visits. Keyed by id so the host can remember which have been heard.
+        /// </summary>
+        /// <remarks>
+        /// The shade had two lines and was then finished, which is thin for the only speaking part in
+        /// the act (owner, asked for exactly this: "let's have the shade comment after the Breaker and
+        /// Eikthyr"). It costs no new machinery - it already stands by the bed at night, already
+        /// greets, already opens a rune panel - so the whole feature is a phase, a string, and a
+        /// memory of what has been said.
+        ///
+        /// Written in the register the other lines set: terse, second person, and nothing the world
+        /// does not back. It is a hunter who never loosed, so both remarks are about someone else
+        /// having done the thing it could not.
+        /// </remarks>
+        public const string RemarkBreaker = "breaker";
+        public const string RemarkEikthyr = "eikthyr";
+
+        public const string BreakerLine =
+            "You put it down. Good.\n\n" +
+            "It was one of theirs once — a splinter nothing ever came to collect, so it stopped " +
+            "carrying light and started breaking it. That is what the forest does to the ones it " +
+            "forgets. Something smaller forgot me, and it took longer.";
+
+        public const string EikthyrLine =
+            "You called him down, and he came, and he is gone.\n\n" +
+            "I hunted his herd a whole season and never once saw him. That is the difference between " +
+            "us and it is not skill — I never had a reason worth his coming. Keep the bow. The storm " +
+            "in it was his. Now it is only yours.";
+
+        /// <summary>The line for a remark id, or null for one this build does not know.</summary>
+        public static string RemarkLine(string id) =>
+            id == RemarkBreaker ? BreakerLine :
+            id == RemarkEikthyr ? EikthyrLine : null;
+
         /// <summary>How far from the bed the shade stands.</summary>
         private const float MinDistance = 7f;
         private const float MaxDistance = 11f;
@@ -191,6 +242,7 @@ namespace ICanShowYouTheWorld.RunMode
         private const string GreetFind = "You. Closer. I have waited long enough to be quiet about it.";
         private const string GreetDeliver = "Ten flint. Five scraps. Have you brought them?";
         private const string GreetDone = "The bench knows. Go and string it.";
+        private const string GreetRemark = "Stay a moment. I have been thinking about what you did.";
 
         public HuntersShade(System.Random rng)
         {
@@ -211,10 +263,12 @@ namespace ICanShowYouTheWorld.RunMode
         /// Call about once a second, in Act I. Keeps the shade standing while it is wanted and the
         /// sun is down, dismisses it otherwise, and reports what the player did at it.
         /// </summary>
-        public void Tick(Player player, Phase phase, bool wanted, bool night, out bool spoken, out bool delivered)
+        public void Tick(Player player, Phase phase, bool wanted, bool night,
+                         out bool spoken, out bool delivered, out bool remarked, string remark = null)
         {
             spoken = false;
             delivered = false;
+            remarked = false;
 
             if (!wanted || !night || player == null)
             {
@@ -227,6 +281,7 @@ namespace ICanShowYouTheWorld.RunMode
             if (_talk == null) return;
 
             _talk.Phase = phase;
+            _talk.Remark = remark;
             Greet(player, phase);
 
             if (_talk.SpokenPending)
@@ -238,6 +293,11 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 _talk.DeliveredPending = false;
                 delivered = true;
+            }
+            if (_talk.RemarkedPending)
+            {
+                _talk.RemarkedPending = false;
+                remarked = true;
             }
         }
 
@@ -258,7 +318,9 @@ namespace ICanShowYouTheWorld.RunMode
             try { if (TextViewer.instance != null && TextViewer.instance.IsVisible()) return; } catch { }
 
             _greetedFor = phase;
-            string line = phase == Phase.Find ? GreetFind : phase == Phase.Deliver ? GreetDeliver : GreetDone;
+            string line = phase == Phase.Find ? GreetFind
+                        : phase == Phase.Deliver ? GreetDeliver
+                        : phase == Phase.Remark ? GreetRemark : GreetDone;
             try
             {
                 var chat = Chat.instance;
