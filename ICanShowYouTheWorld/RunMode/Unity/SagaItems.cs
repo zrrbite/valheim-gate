@@ -34,6 +34,13 @@ namespace ICanShowYouTheWorld.RunMode
 
         /// <summary>Applied to the clone's OWN shared data once, after the copy.</summary>
         public Action<ItemDrop.ItemData.SharedData> Tune;
+
+        /// <summary>
+        /// Applied after <see cref="Tune"/>, for the part of an item that needs the scene's prefab
+        /// table - an effect list, a spawned object. Separate because <see cref="Tune"/> is a pure
+        /// function of numbers and is the one the tests can read.
+        /// </summary>
+        public Action<SagaItems, ItemDrop.ItemData.SharedData> TuneWithScene;
     }
 
     /// <summary>
@@ -80,6 +87,46 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         private const float StormwardBlock = 60f;
         private const float StormwardBlockPerLevel = 8f;
+
+        /// <summary>
+        /// The discharge: how many blocks the shield stores before it gives the storm back, and how
+        /// long it will hold them.
+        /// </summary>
+        /// <remarks>
+        /// Two, and five seconds, which together say something the shield could not say with one
+        /// number: it answers a FIGHT, not a tap. Block twice inside five seconds and it goes off;
+        /// take one hit from a passing boar and the charge is simply gone, because
+        /// <c>Humanoid.UpdateBlock</c> resets the count to zero (not down by one) once the decay time
+        /// passes with no block.
+        ///
+        /// Both are one-line dials. One charge makes it fire on every single block, which is louder
+        /// and was very nearly the choice ("something crazy"); three makes it a reward for standing
+        /// in a swarm. Five seconds is the honest limiter here, not the count.
+        /// </remarks>
+        private const int StormwardBlockCharges = 2;
+        private const float StormwardChargeDecaySeconds = 5f;
+
+        /// <summary>
+        /// What the discharge does. Radius in metres, and the lightning is the shield's own damage
+        /// so it scales with quality like any weapon's.
+        /// </summary>
+        /// <remarks>
+        /// Five metres is wider than Thor's bow's three, deliberately: the bow is aimed and this is
+        /// not - it goes off where you are standing, when something has just hit you, and its job is
+        /// to clear the ring of things pressed against the shield rather than to kill one chosen
+        /// target. Hence the force and stagger multipliers too. Being thrown off you IS the effect;
+        /// the damage is a bonus.
+        ///
+        /// The blunt is small and exists so the numbers on the item card are not a lie: the shield
+        /// does have a physical hit, and it is the boss of the shield coming forward.
+        /// </remarks>
+        private const float StormwardDischargeRadius = 5f;
+        private const float StormwardLightning = 26f;
+        private const float StormwardLightningPerLevel = 5f;
+        private const float StormwardBlunt = 12f;
+        private const float StormwardBluntPerLevel = 2f;
+        private const float StormwardDischargeForce = 120f;
+        private const float StormwardDischargeStagger = 4f;
 
         public const string RescuedLightPrefab = "Saga_RescuedLight";
         public const string RescuedLightName = "Rescued light";
@@ -259,16 +306,26 @@ namespace ICanShowYouTheWorld.RunMode
             // rather than a stalled act.
             new SagaItemDefinition
             {
-                // Serpentscale first, for the same reason the bow moved off Finewood: a shield
-                // this expensive should not be the starter plank with better numbers. Every stat is
-                // set below, so the source is the silhouette and nothing else.
-                SourcePrefab = "ShieldSerpentscale",
-                SourceFallbacks = new[] { "ShieldBronzeBuckler", "ShieldBanded", "ShieldWoodTower", "ShieldWood" },
+                // A TOWER shield, and the biggest one the game has (owner: "we need the model to be
+                // the biggest we have"). Every stat is set below, so the source prefab is purely
+                // which mesh it wears - and for a thing that now answers being hit with a five-metre
+                // storm, the silhouette should be the largest object a player can hold.
+                //
+                // Ordered biggest first, and the chain is long because a prefab name is asset data
+                // this assembly cannot verify; the log line "Saga item created: ... from X" says
+                // which one actually won, and that is the line to read if it looks wrong.
+                SourcePrefab = "ShieldFlametalTower",
+                SourceFallbacks = new[]
+                {
+                    "ShieldBlackmetalTower", "ShieldIronTower", "ShieldCarapace", "ShieldWoodTower",
+                    "ShieldSerpentscale", "ShieldBanded", "ShieldWood",
+                },
                 PrefabName = StormwardPrefab,
                 DisplayName = StormwardName,
                 Description = "Troll hide over a meadow frame, with three rescued lights bound under " +
-                              "the boss. The storm goes around it. The herd paid for the light; the " +
-                              "forest paid for the hide.",
+                              "the boss. The storm goes around it — and when it has gone around " +
+                              "twice, it comes back out. The herd paid for the light; the forest paid " +
+                              "for the hide.",
                 Tune = shared =>
                 {
                     shared.m_blockPower = StormwardBlock;
@@ -277,7 +334,45 @@ namespace ICanShowYouTheWorld.RunMode
                     shared.m_deflectionForcePerLevel = 5f;
 
                     // Parry window worth using, which is the difference between a wall and a tool.
+                    // Set explicitly because a tower shield's own value is 1 - no parry at all - and
+                    // this one is a tower shield now.
                     shared.m_timedBlockBonus = 2.5f;
+
+                    // THE DISCHARGE. The shield answers being hit with lightning (owner: "can we do
+                    // something crzy with it? lighting and aoe when someone hits it?").
+                    //
+                    // This is the game's OWN machinery, not a bolt-on: Humanoid.BlockAttack counts a
+                    // successful block into m_blockCharges when m_buildBlockCharges is set, and at
+                    // m_maxBlockCharges it calls m_shared.m_attack.StartWithoutAnimation and resets
+                    // the count. Valheim reserved this field for exactly this behaviour, so the
+                    // discharge arrives with the player as its attacker, which is the whole reason
+                    // to use it: friendly fire, tames, skill factors and the player's own immunity
+                    // all follow the normal hit path. A hand-rolled Aoe would have had no owner -
+                    // the same trap Thor's bow walked around by using Projectile.m_aoe.
+                    //
+                    // The attack itself needs the scene, so it is built in TuneWithScene below.
+                    shared.m_buildBlockCharges = true;
+                    shared.m_maxBlockCharges = StormwardBlockCharges;
+                    shared.m_blockChargeDecayTime = StormwardChargeDecaySeconds;
+
+                    // The discharge's damage IS the shield's damage: DoAreaAttack reads
+                    // m_weapon.GetDamage(), which is this, per-level scaling included. So these
+                    // numbers are also what the item card shows, and the card is not lying.
+                    shared.m_damages.m_lightning = StormwardLightning;
+                    shared.m_damagesPerLevel.m_lightning = StormwardLightningPerLevel;
+                    shared.m_damages.m_blunt = StormwardBlunt;
+                    shared.m_damagesPerLevel.m_blunt = StormwardBluntPerLevel;
+
+                    // Whatever the source shield carried, it does not carry here. Flametal is the
+                    // first choice and it burns things.
+                    shared.m_damages.m_fire = 0f;
+                    shared.m_damages.m_frost = 0f;
+                    shared.m_damages.m_poison = 0f;
+                    shared.m_damages.m_spirit = 0f;
+                    shared.m_damagesPerLevel.m_fire = 0f;
+                    shared.m_damagesPerLevel.m_frost = 0f;
+                    shared.m_damagesPerLevel.m_poison = 0f;
+                    shared.m_damagesPerLevel.m_spirit = 0f;
 
                     // The named answer. VeryResistant rather than Immune: the saga does not hand out
                     // a fight that cannot hurt you, and Eikthyr still has hooves.
@@ -295,6 +390,7 @@ namespace ICanShowYouTheWorld.RunMode
                         },
                     };
                 },
+                TuneWithScene = (items, shared) => items.GiveStormwardItsStorm(shared),
             },
 
             // The light the player takes back off the forest, made into something they can hold.
@@ -595,6 +691,9 @@ namespace ICanShowYouTheWorld.RunMode
                 try { def.Tune?.Invoke(shared); }
                 catch (Exception ex) { Debug.LogWarning($"[ICanShowYouTheWorld] Saga item '{def.PrefabName}' tuning failed: {ex.Message}"); }
 
+                try { def.TuneWithScene?.Invoke(this, shared); }
+                catch (Exception ex) { Debug.LogWarning($"[ICanShowYouTheWorld] Saga item '{def.PrefabName}' scene tuning failed: {ex.Message}"); }
+
                 // What a pack writes into the save is the drop prefab's NAME; it must be ours.
                 drop.m_itemData.m_dropPrefab = clone;
 
@@ -644,6 +743,165 @@ namespace ICanShowYouTheWorld.RunMode
 
             _registeredScene = scene;
         }
+
+        /// <summary>
+        /// Builds the Stormward's discharge - the area attack the game fires for us when the shield
+        /// has taken enough hits - and gives it the lightning to be seen by.
+        /// </summary>
+        /// <remarks>
+        /// An <c>Attack</c> is a plain serialisable class with a public constructor, so one can be
+        /// made here rather than stolen off a prefab. Checked in the IL before relying on it, along
+        /// with the two facts the whole design rests on:
+        ///
+        /// 1. <c>DoAreaAttack</c> skips the attacker's own GameObject twice - once on the collider
+        ///    and once on the resolved hit object - so the player cannot be caught in their own
+        ///    storm. With <c>m_hitFriendly</c> false, neither can their tames.
+        /// 2. It sets the player as the attacker via <c>HitData.SetAttacker</c> and reads the damage
+        ///    from <c>m_weapon.GetDamage()</c>, which is the shield's own.
+        ///
+        /// The one genuine hazard is that the three layer masks <c>DoAreaAttack</c> reads are private
+        /// STATICS, populated the first time any attack goes through <c>Attack.Start</c>. In practice
+        /// the player has swung something long before they own this shield - but "in practice" is how
+        /// a first discharge that hits nothing gets shipped, so <see cref="EnsureAttackMasks"/>
+        /// fills them itself if they are still zero.
+        /// </remarks>
+        internal void GiveStormwardItsStorm(ItemDrop.ItemData.SharedData shared)
+        {
+            EnsureAttackMasks();
+
+            var fx = Lightning();
+
+            var discharge = new Attack
+            {
+                m_attackType = Attack.AttackType.Area,
+
+                // No animation: the game calls StartWithoutAnimation for this, which goes straight to
+                // OnAttackTrigger. Nothing here plays a swing, and nothing needs to - the player is
+                // mid-block, and a shield that recoils by itself is the right read anyway.
+                m_attackAnimation = "",
+                m_attackChainLevels = 1,
+
+                // Centred on the player rather than thrown forward: whatever just hit the shield is
+                // in contact with it, and so is whatever else has crowded in behind.
+                m_attackRange = 0f,
+                m_attackOffset = 0f,
+                m_attackHeight = 1.2f,
+                m_attackRayWidth = StormwardDischargeRadius,
+
+                // One sphere. The extra character sweeps exist for long weapons reaching up and down
+                // a target, and here they would only re-test the same ring at two more heights.
+                m_attackRayWidthCharExtra = 0f,
+                m_attackHeightChar1 = 0f,
+                m_attackHeightChar2 = 0f,
+
+                // It clears the ring, so it must not stop at the first thing in it.
+                m_multiHit = true,
+                m_lowerDamagePerHit = false,
+
+                // Not the terrain and not your own animals. The storm is aimed at what is pressing
+                // on the shield, and a discharge that dug a hole in the ground every few blocks
+                // would rearrange the player's own doorway.
+                m_hitTerrain = false,
+                m_hitFriendly = false,
+
+                m_damageMultiplier = 1f,
+                m_forceMultiplier = StormwardDischargeForce,
+                m_staggerMultiplier = StormwardDischargeStagger,
+
+                // Free. It is paid for by the stamina the block itself cost, and by having had to be
+                // hit twice to earn it.
+                m_attackStamina = 0f,
+                m_attackEitr = 0f,
+                m_attackHealth = 0f,
+
+                // It is thunder. Things hear it.
+                m_attackHitNoise = 40f,
+
+                // No skill from it: BlockAttack already raises Blocking for the hit that caused this,
+                // and paying twice for one block would make the shield train itself.
+                m_raiseSkillAmount = 0f,
+            };
+
+            if (fx != null)
+            {
+                discharge.m_hitEffect = EffectListOf(fx);
+                discharge.m_triggerEffect = EffectListOf(fx);
+            }
+
+            shared.m_attack = discharge;
+
+            // m_blockChargeEffects is DELIBERATELY left alone. Putting the same lightning on it was
+            // the first instinct - feedback while the shield charges - and it is a lie: the first
+            // block would flash exactly like the second, so the player could not tell a stored hit
+            // from a discharge. A readout that cannot be distinguished from the thing it reports is
+            // worse than no readout, which this mode has paid to learn twice now (the dev clock, the
+            // stale dev-key banner). The discharge's own flash is the only lightning, and it means
+            // one thing.
+
+            Debug.Log($"[ICanShowYouTheWorld] Stormward discharge: {StormwardDischargeRadius}m, " +
+                      $"{StormwardLightning} lightning, every {StormwardBlockCharges} blocks" +
+                      (fx == null ? " (no lightning effect resolved)." : $", flash '{fx.name}'."));
+        }
+
+        private static EffectList EffectListOf(GameObject prefab) =>
+            new EffectList
+            {
+                m_effectPrefabs = new[]
+                {
+                    new EffectList.EffectData { m_prefab = prefab, m_enabled = true, m_variant = -1 },
+                },
+            };
+
+        /// <summary>
+        /// Makes sure <c>Attack</c>'s three layer masks are populated, since an area attack reads
+        /// them and they are zero until some attack has been through <c>Attack.Start</c>.
+        /// </summary>
+        /// <remarks>
+        /// The layer name lists are copied verbatim out of <c>Attack.Start</c>'s IL. They are private
+        /// statics, hence the reflection; if a game update renames a layer this writes the same wrong
+        /// answer the game would, which is the right kind of wrong.
+        /// </remarks>
+        private static void EnsureAttackMasks()
+        {
+            if (_masksChecked) return;
+            _masksChecked = true;
+
+            try
+            {
+                SetMaskIfZero("m_attackMask", new[]
+                {
+                    "Default", "static_solid", "Default_small", "piece", "piece_nonsolid", "character",
+                    "character_net", "character_ghost", "hitbox", "character_noenv", "vehicle",
+                });
+                SetMaskIfZero("m_attackMaskTerrain", new[]
+                {
+                    "Default", "static_solid", "Default_small", "piece", "piece_nonsolid", "terrain",
+                    "character", "character_net", "character_ghost", "hitbox", "character_noenv",
+                    "vehicle",
+                });
+                SetMaskIfZero("m_attackMaskCharacters", new[]
+                {
+                    "character", "character_net", "character_ghost", "hitbox", "character_noenv",
+                    "vehicle",
+                });
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[ICanShowYouTheWorld] Attack layer masks could not be primed: " + ex.Message);
+            }
+        }
+
+        private static void SetMaskIfZero(string field, string[] layers)
+        {
+            var f = typeof(Attack).GetField(field, BindingFlags.Static | BindingFlags.NonPublic);
+            if (f == null) return;
+            if (!(f.GetValue(null) is int current) || current != 0) return;
+
+            f.SetValue(null, LayerMask.GetMask(layers));
+            Debug.Log($"[ICanShowYouTheWorld] Primed Attack.{field} (the game had not built it yet).");
+        }
+
+        private static bool _masksChecked;
 
         private GameObject Lightning()
         {

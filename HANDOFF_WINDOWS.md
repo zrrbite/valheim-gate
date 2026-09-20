@@ -17,6 +17,60 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-20 - TASK: the Stormward answers being hit (`...20m`)
+
+"*can we do something crzy with it? lighting and aoe when someone hits it?*", then "*the shield IS
+the weapon, we need the model to be the biggest we have*", then - correctly - "*we dont have to let
+it attack, if it cant. Just make it big and react to dmg.*"
+
+**The game already had this feature and Valheim reserved a field for it.** `Humanoid.BlockAttack`
+counts a successful block into `m_blockCharges` when the blocker's `m_buildBlockCharges` is set,
+and on reaching `m_maxBlockCharges` it calls `m_shared.m_attack.StartWithoutAnimation(...)` and
+resets the count. So the discharge is the game's OWN attack path, which matters for one reason
+above all: it arrives with the player as its attacker. `DoAreaAttack` skips the attacker's own
+GameObject twice, `SetAttacker` is the player, and `m_hitFriendly = false` covers tames - so
+friendly fire, self-damage and skill factors all follow the normal rules. A hand-rolled `Aoe` would
+have had no owner, which is the trap Thor's bow walked around with `Projectile.m_aoe`.
+
+What it now is:
+
+- **The biggest model in the game.** Source prefab chain is tower shields first -
+  `ShieldFlametalTower`, `ShieldBlackmetalTower`, `ShieldIronTower`, then Carapace, then the old
+  Serpentscale and wooden ones. Names are asset data this assembly cannot verify; the log says
+  which one won. `m_timedBlockBonus` is set explicitly now, because a tower shield's own value is
+  1 - no parry at all.
+- **Two blocks inside five seconds and it discharges**: 5 m radius, 26 lightning (+5/level),
+  12 blunt, with heavy force and stagger. `m_blockChargeDecayTime` resets the count to ZERO, not
+  down by one, so a single tap from a passing boar never builds toward it. It answers a fight.
+- **The damage is the shield's own** `m_damages`, because `DoAreaAttack` reads
+  `m_weapon.GetDamage()`. So the item card is not lying about what it does.
+- **No charge-up flash.** That was the first instinct and it is a lie: the first block would look
+  exactly like the second, so the player could not tell a stored hit from a discharge. The
+  discharge's flash is the only lightning and it means one thing.
+- **The three layer masks `DoAreaAttack` reads are private statics**, zero until some attack has
+  gone through `Attack.Start`. The mod primes them itself if they are still zero, rather than
+  trusting that the player has swung something first.
+
+It is **still in Act I** on purpose - play with it there and move it to Act II later if it is too
+much for the Meadows. Moving it is a step id and a recipe gate, nothing more.
+
+### Test it
+
+- [ ] **The shield is huge.** Check the log line `Saga item created: Saga_Stormward from X` to see
+      which prefab it got - the first few names are guesses at Ashlands/Blackmetal tower shields.
+- [ ] **Block twice in quick succession and lightning goes off around you.** Things in a 5 m ring
+      take damage and get thrown back hard.
+- [ ] **It does not hurt you**, and it does not hurt a tamed boar standing next to you.
+- [ ] **One block, then wait six seconds, then block again: nothing.** The charge decayed.
+- [ ] **It still parries** - `m_timedBlockBonus` survived the move to a tower shield.
+- [ ] Log line `Stormward discharge: 5m, 26 lightning, every 2 blocks, flash '...'` at run start,
+      and if you see `Primed Attack.m_attackMask...` that is the mod filling in a mask the game had
+      not built yet - fine, and worth knowing it happened.
+- [ ] **The first discharge of a fresh session actually hits something.** That is the mask fix; if
+      it whiffs, the masks are the suspect.
+
+---
+
 ## 2026-09-20 - TASK: the BOOK becomes a book, and the GM tab gets its layout back (`...20l`)
 
 Two things from one report: "*like we're building a story, and that should be apparent to the

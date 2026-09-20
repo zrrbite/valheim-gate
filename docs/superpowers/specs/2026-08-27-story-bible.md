@@ -249,7 +249,16 @@ answer, practised before it was taught. Act VII spends it.
 - **The Gatherer** — the oldest splinter, named, arrives fed by your failures,
   drops its hoard on death.
 - **The Stormward** — Act I's shield. Troll hide, deer hide and three rescued
-  lights; the storm goes around it. Also the FIRST piece of the Stormsworn.
+  lights; the storm goes around it — and, since 2026-09-20, comes back out. Two
+  blocks inside five seconds and it discharges Eikthyr's own weather in a five
+  metre ring. It is the biggest object a player can hold, on purpose. Also the
+  FIRST piece of the Stormsworn.
+  **Possibly an Act II item**: it may be too much for the Meadows, and the owner
+  has flagged the move. Nothing in the fiction resists it — the shield is made
+  of the Breaker's hide and rescued lights, both of which Act I supplies, so a
+  move would mean the craft is finished in the forest rather than before the
+  god. The reason to keep it in Act I is that it answers Eikthyr; the reason to
+  move it is that the act is over once you can do this to a greydwarf pack.
 - **The Stormsworn** (2026-09-20) — one piece of armour per act, Acts II to V,
   each answering what its own act kills people with: blunt in the forest, poison
   in the fen, frost on the mountain, fire in the plains. Not a stat total but a
