@@ -277,7 +277,7 @@ PAGE = u"""<title>Saga Atlas</title>
   <h1>Saga Atlas</h1>
   <p class="lede">Every questline in the saga, lane by lane, with the story each act is telling
   and an honest note on how finished it is.</p>
-  <p class="meta">Generated from RunService.cs at 1.0.15-run.2026-09-20o &middot; 20 September 2026</p>
+  <p class="meta">Generated from RunService.cs at 1.0.15-run.2026-09-20p &middot; 20 September 2026</p>
 
   <div class="tally">
     <div><b>__TOTAL__</b><span>quest steps</span></div>
@@ -386,6 +386,7 @@ __ACTS__
     <h2>The log</h2>
     <p>Two days of building, newest first. Every line shipped as its own installed build.</p>
     <ul class="log">
+      <li class="today"><span class="d">20 Sep</span><span>Review of the anvil work: the re-cost retries, the knockback stops scaling an unknown</span></li>
       <li class="today"><span class="d">20 Sep</span><span>The Storm-Anvil is raised in Act I, for a light</span></li>
       <li class="today"><span class="d">20 Sep</span><span>The Storm-Anvil combine, and two beats so the shield quest is worth doing</span></li>
       <li class="today"><span class="d">20 Sep</span><span>The Stormward is huge, and answers being hit with lightning</span></li>
