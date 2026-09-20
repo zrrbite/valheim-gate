@@ -1856,6 +1856,7 @@ namespace ICanShowYouTheWorld.RunMode
             _stormwardSeen = false;
             _thorsBowKills = 0;
             _anvilRaised = false;
+            SagaTranscript.Clear();
             _splitLabels.Clear();
                 _splitTimes.Clear();
                 _accountedBossKeys.Clear();
@@ -5431,6 +5432,7 @@ namespace ICanShowYouTheWorld.RunMode
             // Every act's chain, not just the current one: Act V's creature names are worth knowing
             // about during Act I, when there is still time to fix them.
             ValidateAssetNames(pool.Concat(AllActChains()));
+            ValidateSpawnEvents();
         }
 
         /// <summary>
@@ -6021,6 +6023,9 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>
         /// The run's book, oldest first: act numeral, what was done, and the line that was said.
         /// </summary>
+        /// <summary>Everything said this run, oldest first. See SagaTranscript.</summary>
+        public IEnumerable<SagaTranscript.Line> Transcript => SagaTranscript.All;
+
         public IEnumerable<ChronicleEntry> Chronicle
         {
             get
@@ -7163,6 +7168,7 @@ namespace ICanShowYouTheWorld.RunMode
             _stormwardAnswers = s.stormwardAnswers;
             _thorsBowKills = s.thorsBowKills;
             _anvilRaised = s.anvilRaised;
+            SagaTranscript.Restore(s.transcript);
             if (s.splitTimes != null) _splitTimes.AddRange(s.splitTimes);
 
             // Everything in the saved list is already accounted for: pre-existing kills and
@@ -7365,6 +7371,7 @@ namespace ICanShowYouTheWorld.RunMode
                 stormwardAnswers = _stormwardAnswers,
                 thorsBowKills = _thorsBowKills,
                 anvilRaised = _anvilRaised,
+                transcript = SagaTranscript.Save(),
                 splitLabels = _splitLabels.ToList(),
                 splitTimes = _splitTimes.ToList(),
                 activeChallengeIds = active.Select(a => a.Def.Id).ToList(),
@@ -7569,6 +7576,17 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>On-screen HUD message. Silently does nothing when there is no local player.</summary>
         private void Message(string text)
         {
+            // Recorded before it is shown, and recorded UNWRAPPED: the transcript page has its own
+            // width, and the screen's 44-character breaks would read as ragged nonsense on a page.
+            // This is the one place every centre-screen line in the mode passes through, which is the
+            // whole reason keeping a transcript costs three lines rather than an audit of the file.
+            try
+            {
+                SagaTranscript.RunSeconds = ElapsedSeconds;
+                SagaTranscript.Record(null, text);
+            }
+            catch { /* A record of a line is worth less than the line. */ }
+
             try { _game?.ShowMessage(Wrapped(text), MessageType.Center); }
             catch { /* HUD messages are never worth failing a run over. */ }
         }
@@ -8214,6 +8232,55 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>Every act's steps, for the name validator — Act V's names are worth checking in Act I.</summary>
         internal static IEnumerable<ChallengeDefinition> AllActChains() => Acts().SelectMany(a => a.AllSteps);
 
+        /// <summary>
+        /// Events that keep a quest-giver STANDING, and which therefore must exist as a step.
+        /// </summary>
+        /// <remarks>
+        /// Each of these is reported by the host and tested for by <see cref="StepPredicates"/> to
+        /// decide whether somebody is wanted in the world. If no step in any act carries the param,
+        /// the predicate can never be true, and the character is dismissed the moment the previous
+        /// step completes - with nothing anywhere saying why.
+        ///
+        /// That is not hypothetical. Thjalfi shipped exactly like that for one build: reported,
+        /// predicated, and belonging to no step, because his payment step measured a piece category
+        /// instead. It reached the owner as "tjalfi disappeared once i found him and talked to him".
+        /// </remarks>
+        private static readonly string[] SpawnGatingEvents =
+        {
+            SagaNames.ShadeFound,
+            SagaNames.ShadeDelivered,
+            SagaNames.ThjalfiFound,
+            SagaNames.ThjalfiPaid,
+        };
+
+        /// <summary>
+        /// Checks that every spawn-gating event is carried by some step. Logged, not thrown: a run
+        /// that starts with a broken quest-giver is still worth more than one that will not start.
+        /// </summary>
+        private void ValidateSpawnEvents()
+        {
+            try
+            {
+                var used = new HashSet<string>(
+                    AllActChains()
+                        .Where(d => d != null && d.Kind == ChallengeKind.PlayerEvent && !string.IsNullOrEmpty(d.Param))
+                        .Select(d => d.Param));
+
+                foreach (var name in SpawnGatingEvents)
+                {
+                    if (used.Contains(name)) continue;
+
+                    Debug.LogError($"[ICanShowYouTheWorld] Event '{name}' gates a quest-giver's presence but " +
+                                   "NO step in any act carries it as a Param. Whoever it belongs to will " +
+                                   "vanish as soon as the step before them completes.");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogOnce("validate-spawn-events", ex);
+            }
+        }
+
         // --- Act I: the Meadows → Eikthyr arc ---
 
         /// <summary>
@@ -8509,11 +8576,22 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
-                // He raises it; you do not build it. The step stays a BuildPiece measure because that
-                // is what is TRUE - a Storm-Anvil comes to exist, in the player's name - and it keeps
-                // working if a later act ever lets somebody build one the vanilla way.
-                Id = "mq-anvil", MainQuest = true, Kind = ChallengeKind.BuildPiece,
-                Param = "StormAnvil", Target = 1,
+                // PAYING HIM is the step, not the piece appearing. It was a BuildPiece measure for
+                // one build, on the reasoning that "a Storm-Anvil comes to exist" is the truer fact -
+                // and that was wrong in a way that broke him: the thing keeping Thjalfi standing is
+                // StepPredicates.ThjalfiPayment, which looks for a live step whose Param is
+                // ThjalfiPaid. With the step measuring a piece category instead, no step in any chain
+                // carried that param, the predicate was never true, and he was dismissed the instant
+                // the Find step completed. Reported exactly so: "tjalfi disappeared once i found him
+                // and talked to him and went to the next step to pay him."
+                //
+                // The lesson is worth more than the fix. An event that is REPORTED and PREDICATED but
+                // never appears as a step's Param is silently dead wiring, and nothing said so: the
+                // build cannot know, and the unit tests compile RunMode/*.cs only - the act chains
+                // live in RunMode/Unity and are out of their reach. So the check went where it can
+                // run instead; see ValidateSpawnEvents, called at every run start.
+                Id = "mq-anvil", MainQuest = true, Kind = ChallengeKind.PlayerEvent,
+                Param = SagaNames.ThjalfiPaid, Target = 1,
                 Display = "Pay Thjalfi, and stand back",
                 RewardText = "Stone, coal, and a light back",
                 Hint = "Twenty stone and ONE rescued light, carried to him in your pack \u2014 a chest at " +

@@ -17,6 +17,60 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-20 - TASK: Thjalfi vanished, and a HEARD page so nothing said is lost (`...20x`)
+
+### The bug: "tjalfi disappeared once i found him and talked to him"
+
+Mine, and a clean example of a whole class. What keeps him standing is
+`StepPredicates.ThjalfiPayment`, which looks for a live step whose Param is `ThjalfiPaid`. His payment
+step measured a **piece category** instead (`BuildPiece`/`StormAnvil`), so **no step in any act carried
+that param**, the predicate could never be true, and he was dismissed the instant the Find step
+completed. The event was reported and predicated and belonged to nothing.
+
+Nothing said so, either. The build cannot know, and the unit tests compile `RunMode/*.cs` only - the
+act chains live in `RunMode/Unity` and are out of their reach.
+
+So two changes. `mq-anvil` is now a `PlayerEvent` on `ThjalfiPaid`, which is also the truer
+measure - **paying him** is the step, and the altar appearing is the consequence. And
+**`ValidateSpawnEvents()`** runs at every run start: for each event that gates a quest-giver's
+presence, it checks that some step somewhere carries it, and logs an error naming the character who
+would otherwise vanish. That check would have caught this before you ever walked out there.
+
+### The HEARD page
+
+"*We need to come up with a log of what the npcs say. Its impossible to keep up with the yellow text
+on screen. sometimes it gets overwritten by other hints.*"
+
+The run window has a third tab: **RUN | BOOK | HEARD**. Every line the saga says this run, newest
+first, with a run-time stamp, and the speaker's name where there is one - so Thjalfi and the shade
+talking is visibly separate from the saga narrating.
+
+It cost almost nothing because there was a choke point: every centre-screen line in the mode goes
+through `RunService.Message`, and both characters' speeches go through their own `Say`. Three call
+sites, one static sink (`SagaTranscript`), 200 lines kept, persisted with the run.
+
+Two decisions worth knowing. Lines are recorded **unwrapped** - the page has its own width, and the
+screen's 44-character breaks would read as ragged nonsense. And a repeat of the line just said is
+dropped, because several pollers re-announce the same notice while a condition holds, which on screen
+is invisible and in a transcript would be fifty identical rows burying everything else.
+
+`SagaTranscript` lives in `RunMode/` rather than `RunMode/Unity/` deliberately: it touches nothing in
+the game, so the tests can reach it. See the bug above for why that matters.
+
+### Test it
+
+- [ ] **Thjalfi stays** after you speak to him, and the step becomes "Pay Thjalfi, and stand back".
+- [ ] **Pay him**: the altar goes up, he remains, and `mq-anvil` completes.
+- [ ] **No `gates a quest-giver's presence` error** in the log at run start. If one appears, it names
+      the character and the event, and it is telling the truth.
+- [ ] **HEARD** fills as you play, newest at the top, stamped.
+- [ ] **The shade's and Thjalfi's speeches are in it**, attributed by name - the whole rune panel, so
+      you can re-read a paragraph you closed too fast.
+- [ ] **Save, quit, resume**: the transcript is still there.
+- [ ] A hint that repeats on screen appears **once**, not fifty times.
+
+---
+
 ## 2026-09-20 - TASK: the dev clock key also cycles the weather (`...20w`)
 
 "*It wont start raining, when i press cmd + - to advance time can you also make it rain?*" and "*can

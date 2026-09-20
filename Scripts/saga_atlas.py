@@ -277,7 +277,7 @@ PAGE = u"""<title>Saga Atlas</title>
   <h1>Saga Atlas</h1>
   <p class="lede">Every questline in the saga, lane by lane, with the story each act is telling
   and an honest note on how finished it is.</p>
-  <p class="meta">Generated from RunService.cs at 1.0.15-run.2026-09-20w &middot; 20 September 2026</p>
+  <p class="meta">Generated from RunService.cs at 1.0.15-run.2026-09-20x &middot; 20 September 2026</p>
 
   <div class="tally">
     <div><b>__TOTAL__</b><span>quest steps</span></div>

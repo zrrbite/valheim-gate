@@ -78,6 +78,12 @@ namespace ICanShowYouTheWorld.Services
         /// <summary>The run's book: what it has been through, in order. See RunService.Chronicle.</summary>
         System.Collections.Generic.IEnumerable<ChronicleEntry> Chronicle { get; }
 
+        /// <summary>
+        /// Everything the saga has said this run, oldest first - the record behind the BOOK's HEARD
+        /// page. Exists because centre-screen text erases itself and this mode says a great deal.
+        /// </summary>
+        System.Collections.Generic.IEnumerable<ICanShowYouTheWorld.RunMode.SagaTranscript.Line> Transcript { get; }
+
         /// <summary>True when the saga menu should open itself on entering a world. See RunService.</summary>
         bool WantsLobbyShown { get; }
 

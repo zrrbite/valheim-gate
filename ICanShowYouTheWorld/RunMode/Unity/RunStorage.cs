@@ -46,6 +46,9 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>True once Thjalfi has raised the Storm-Anvil; keeps him standing beside it.</summary>
         public bool anvilRaised;
 
+        /// <summary>Everything said this run, one packed string per line. See SagaTranscript.</summary>
+        public List<string> transcript;
+
         public List<string> chronicle;
 
         public List<string> splitLabels;

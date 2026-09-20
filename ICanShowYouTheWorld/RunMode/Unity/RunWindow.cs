@@ -250,6 +250,18 @@ namespace ICanShowYouTheWorld.RunMode
             Run,
 
             /// <summary>
+            /// Every line the saga has said this run, newest first. Labelled HEARD.
+            /// </summary>
+            /// <remarks>
+            /// Exists because the place these lines are SAID erases itself (owner: "Its impossible to
+            /// keep up with the yellow text on screen. sometimes it gets overwritten by other hints").
+            /// Separate from the BOOK rather than a section inside it, because the two want opposite
+            /// orders: the chronicle is a story and reads forwards, and this is a feed where the thing
+            /// you want is the line you just missed.
+            /// </remarks>
+            Heard,
+
+            /// <summary>
             /// What you have done, and the detail there was never room for. Labelled BOOK.
             /// </summary>
             /// <remarks>
@@ -1147,6 +1159,7 @@ namespace ICanShowYouTheWorld.RunMode
             try
             {
                 if (_page == HudPage.Quests) DrawQuestLog(run);
+                else if (_page == HudPage.Heard) DrawHeard(run);
                 else DrawHudSections(run);
             }
             finally { GUILayout.EndScrollView(); }
@@ -1266,6 +1279,7 @@ namespace ICanShowYouTheWorld.RunMode
 
             DrawPageTab("RUN", HudPage.Run);
             DrawPageTab("BOOK", HudPage.Quests);
+            DrawPageTab("HEARD", HudPage.Heard);
 
             GUILayout.FlexibleSpace();
             GUILayout.EndHorizontal();
@@ -1472,6 +1486,71 @@ namespace ICanShowYouTheWorld.RunMode
             GUI.contentColor = Color.white;
 
             GUILayout.Space(8f);
+        }
+
+        /// <summary>
+        /// Everything the saga has said this run, newest FIRST.
+        /// </summary>
+        /// <remarks>
+        /// Centre-screen text is the right place to say something and the wrong place to keep it, and
+        /// this mode says a great deal - openings, hints, race lines with the ledger, forfeits,
+        /// arrivals, and two characters with speeches that run to paragraphs.
+        ///
+        /// A stamp on every row, because "when in the run" is the only ordering a player can check
+        /// against their own memory. A speaker's name where there is one, which is most of the value:
+        /// it separates Thjalfi and the shade SPEAKING from the saga narrating, and those are the
+        /// lines worth going back for.
+        /// </remarks>
+        private void DrawHeard(IRunService run)
+        {
+            GUI.contentColor = RunTheme.AccentGoldBright;
+            GUILayout.Label("WHAT YOU HAVE HEARD", RunTheme.Header);
+            GUI.contentColor = Color.white;
+
+            GUI.contentColor = RunTheme.TextMuted;
+            GUILayout.Label("Newest first. The screen forgets; this does not.", RunTheme.Small);
+            GUI.contentColor = Color.white;
+            GUILayout.Space(6f);
+
+            var lines = run.Transcript;
+            var rows = lines == null ? new List<SagaTranscript.Line>() : lines.ToList();
+
+            if (rows.Count == 0)
+            {
+                GUI.contentColor = RunTheme.TextMuted;
+                GUILayout.Label("  Nothing has been said yet.", RunTheme.Small);
+                GUI.contentColor = Color.white;
+                return;
+            }
+
+            // Walked backwards: the source is oldest-first and a feed wants the other end. Cheap at
+            // the transcript's cap of two hundred.
+            for (int i = rows.Count - 1; i >= 0; i--)
+            {
+                var line = rows[i];
+
+                GUILayout.BeginHorizontal();
+
+                GUI.contentColor = RunTheme.TextMuted;
+                GUILayout.Label(SagaTranscript.Stamp(line.At), RunTheme.Small, GUILayout.Width(38f));
+
+                if (!string.IsNullOrEmpty(line.Speaker))
+                {
+                    GUI.contentColor = RunTheme.AccentGold;
+                    GUILayout.Label(line.Speaker, RunTheme.Small, GUILayout.Width(58f));
+                }
+                else
+                {
+                    GUILayout.Space(58f);
+                }
+
+                GUI.contentColor = RunTheme.TextParchment;
+                GUILayout.Label(line.Text, RunTheme.Small);
+
+                GUI.contentColor = Color.white;
+                GUILayout.EndHorizontal();
+                GUILayout.Space(3f);
+            }
         }
 
         /// <returns>The numeral of the last act it drew a chapter heading for, or null.</returns>

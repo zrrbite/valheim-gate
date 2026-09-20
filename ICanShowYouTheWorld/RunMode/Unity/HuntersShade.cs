@@ -370,6 +370,8 @@ namespace ICanShowYouTheWorld.RunMode
         {
             try
             {
+                SagaTranscript.Record(Name, text);
+
                 var viewer = TextViewer.instance;
                 if (viewer != null) viewer.ShowText(TextViewer.Style.Rune, Name, text, true);
             }
