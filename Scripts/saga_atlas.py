@@ -277,7 +277,7 @@ PAGE = u"""<title>Saga Atlas</title>
   <h1>Saga Atlas</h1>
   <p class="lede">Every questline in the saga, lane by lane, with the story each act is telling
   and an honest note on how finished it is.</p>
-  <p class="meta">Generated from RunService.cs at 1.0.15-run.2026-09-20r &middot; 20 September 2026</p>
+  <p class="meta">Generated from RunService.cs at 1.0.15-run.2026-09-20s &middot; 20 September 2026</p>
 
   <div class="tally">
     <div><b>__TOTAL__</b><span>quest steps</span></div>
@@ -386,6 +386,7 @@ __ACTS__
     <h2>The log</h2>
     <p>Two days of building, newest first. Every line shipped as its own installed build.</p>
     <ul class="log">
+      <li class="today"><span class="d">20 Sep</span><span>First play: the anvil was never spawned, and the shield&rsquo;s lightning was invisible — both fixed</span></li>
       <li class="today"><span class="d">20 Sep</span><span>The storm eats the shield — each discharge costs durability</span></li>
       <li class="today"><span class="d">20 Sep</span><span>Review of the anvil work: the re-cost retries, the knockback stops scaling an unknown</span></li>
       <li class="today"><span class="d">20 Sep</span><span>The Storm-Anvil is raised in Act I, for a light</span></li>
@@ -412,8 +413,8 @@ __ACTS__
   <section>
     <h2>What is next</h2>
     <ul class="next">
-      <li class="block"><b>The one fact still missing:</b> the Storm-Anvil&rsquo;s prefab name, which only a
-      running game can print. Everything about the anvil is currently found by component to work around it.</li>
+      <li><b>Answered:</b> the Storm-Anvil&rsquo;s prefab is <code>incinerator</code>, printed by a running
+      game at last. The mod still finds it by component, because a component search cannot go stale.</li>
       <li>Thor&rsquo;s bow moved off the workbench onto the anvil.</li>
       <li>The Stormsworn bound at the anvil, one piece per act.</li>
       <li>The Stormward <em>reforged</em> in Act III with iron and ancient bark — not moved there, so Act I

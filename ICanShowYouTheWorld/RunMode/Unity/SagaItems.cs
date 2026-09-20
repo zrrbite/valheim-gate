@@ -276,9 +276,17 @@ namespace ICanShowYouTheWorld.RunMode
         /// </remarks>
         private const float ThorsBowAoeRadius = 3f;
 
-        /// <summary>Candidate lightning effects, the Herald's list; the first that resolves is used.</summary>
+        /// <summary>Candidate lightning effects; the first that resolves is used, and the log says which.</summary>
+        /// <remarks>
+        /// A long list because these are asset names this assembly cannot verify, and the cost of a
+        /// miss is a weapon that does its damage invisibly - which is exactly how the shield was first
+        /// reported: "the shield didnt do lightning on impact, just acted as a normal shield."
+        /// </remarks>
         private static readonly string[] LightningPrefabs =
-            { "fx_eikthyr_stomp", "vfx_lightning", "fx_lightning", "fx_Eikthyr_stomp" };
+        {
+            "fx_eikthyr_stomp", "fx_Eikthyr_stomp", "vfx_eikthyr_stomp",
+            "lightningAOE", "fx_lightning", "vfx_lightning", "vfx_lightning_hit", "fx_lightning_hit",
+        };
 
         public static readonly SagaItemDefinition[] All =
         {
@@ -871,6 +879,7 @@ namespace ICanShowYouTheWorld.RunMode
                 discharge.m_hitEffect = EffectListOf(fx);
                 discharge.m_triggerEffect = EffectListOf(fx);
             }
+            _stormFlashDone = fx != null;
 
             shared.m_attack = discharge;
 
@@ -890,6 +899,44 @@ namespace ICanShowYouTheWorld.RunMode
                       $"{StormwardLightning} lightning, every {StormwardBlockCharges} blocks" +
                       (fx == null ? " (no lightning effect resolved)." : $", flash '{fx.name}'."));
         }
+
+        /// <summary>
+        /// Gives the Stormward's discharge its flash, once there is a scene to find one in.
+        /// </summary>
+        /// <remarks>
+        /// The item is cloned as early as the registries allow - deliberately, since a saga item in a
+        /// pack must resolve before the pack loads - and at that moment ZNetScene.instance can still
+        /// be null, which is what happened: <c>Ensure</c> creates clones as soon as the ObjectDB has
+        /// items, without waiting for the scene. So <c>Lightning()</c> returned null, the effect lists
+        /// were baked empty, and the discharge fired its damage with nothing to see. The log said so
+        /// in as many words - "(no lightning effect resolved)" - and nobody read it until the shield
+        /// was reported as behaving like an ordinary shield.
+        ///
+        /// Retried from the tick rather than fixed by delaying the clone, because the early clone is
+        /// load-bearing and the flash is not. An effect list is a field on a live object; it can be
+        /// filled in at any time before the first block.
+        /// </remarks>
+        private void EnsureStormFlash()
+        {
+            if (_stormFlashDone) return;
+
+            if (!_clones.TryGetValue(StormwardPrefab, out var clone) || clone == null) return;
+
+            var shared = clone.GetComponent<ItemDrop>()?.m_itemData?.m_shared;
+            if (shared?.m_attack == null) return;
+
+            var fx = Lightning();
+            if (fx == null) return;
+
+            shared.m_attack.m_hitEffect = EffectListOf(fx);
+            shared.m_attack.m_triggerEffect = EffectListOf(fx);
+            _stormFlashDone = true;
+
+            Debug.Log($"[ICanShowYouTheWorld] Stormward discharge flash: '{fx.name}' " +
+                      "(resolved after the item was made).");
+        }
+
+        private bool _stormFlashDone;
 
         private static EffectList EffectListOf(GameObject prefab) =>
             new EffectList
@@ -968,6 +1015,11 @@ namespace ICanShowYouTheWorld.RunMode
         // this assembly cannot verify, and the one time this codebase guessed one it spent an
         // evening on it. Whatever it is called, it is the thing with an Incinerator on it, and the
         // log says what that turned out to be.
+        //
+        // For the record, a running 1.0.15 printed it: the prefab is plain lowercase
+        // 'incinerator'. Written down because it is useful for console spawning and for reading old
+        // logs - NOT used in code, because the component search cannot go stale and a hardcoded
+        // name can.
 
         /// <summary>How many of each thing the altar asks for. Deliberately the bench recipe's cost.</summary>
         /// <remarks>
@@ -1010,6 +1062,8 @@ namespace ICanShowYouTheWorld.RunMode
 
                 var result = shieldClone.GetComponent<ItemDrop>();
                 if (result == null) return;
+
+                EnsureStormFlash();
 
                 // The PREFAB pass, retried until it has actually landed.
                 //

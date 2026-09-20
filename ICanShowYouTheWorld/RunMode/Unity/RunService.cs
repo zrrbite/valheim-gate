@@ -2573,14 +2573,31 @@ namespace ICanShowYouTheWorld.RunMode
                 return;
             }
 
-            var spawn = ModBootstrap.GetService<ISpawnService>();
-            if (spawn == null)
+            // Instantiated here rather than through ISpawnService, which opens with
+            // RequireGodMode and returns VOID - so with god mode off, as it is in a saga run, the
+            // spawn silently did nothing and this method cheerfully reported success. That is the
+            // failure the owner saw: "No obliterator was placed... I pressed backspace a few times",
+            // with a DEV line in the log claiming it had been planted. A call whose failure cannot be
+            // detected is not a call worth making.
+            var player2 = player;
+            Vector3 at = player2.transform.position + player2.transform.forward * 4f + Vector3.up * 0.5f;
+            if (Physics.Raycast(at + Vector3.up * 3f, Vector3.down, out var hit, 12f))
+                at.y = hit.point.y;
+
+            var planted = UnityEngine.Object.Instantiate(prefab, at, Quaternion.identity);
+            if (planted == null)
             {
-                DevMessage("DEV: no spawn service.");
+                DevMessage("DEV: the anvil would not instantiate.");
                 return;
             }
 
-            spawn.SpawnPrefabInFrontOfPlayer(prefab.name);
+            // Claim it, so the built-piece scan counts it and mq-anvil can complete. The scan tests
+            // IsCreator() on purpose - to exclude world ruins and other players' houses - and a dev
+            // key that plants an unclaimed one could test the lever but never the step.
+            var piece = planted.GetComponent<Piece>();
+            var profile = Game.instance?.GetPlayerProfile();
+            if (piece != null && profile != null)
+                piece.SetCreator(profile.GetPlayerID(), default(Splatform.PlatformUserID));
 
             // The combine's own bill, so the lever is the only thing left to do. Granted rather than
             // stashed: the altar takes what is in the player's pack.
@@ -2599,8 +2616,8 @@ namespace ICanShowYouTheWorld.RunMode
                 items++;
             }
 
-            DevMessage($"DEV: Storm-Anvil planted ('{prefab.name}'), {given} materials and {items} " +
-                       "saga items granted.");
+            DevMessage($"DEV: Storm-Anvil planted ('{prefab.name}') and claimed, {given} materials " +
+                       $"and {items} saga items granted.");
         }
 
         /// <summary>

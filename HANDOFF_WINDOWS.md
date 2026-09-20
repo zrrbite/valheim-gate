@@ -17,6 +17,55 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-20 - TASK: two real bugs from the first play, both found in the log (`...20s`)
+
+"*No obliterator was placed, check the logs. I pressed backspace a few times. The shield didnt do
+lightning on impact, just acted as a normal shield.*" Both causes were in `Player.log`, and the
+first one had been written down for hours before anyone read it.
+
+**And the fact this whole thread was missing:** the Obliterator's prefab is plain lowercase
+**`incinerator`**. Recorded in a comment for console spawning and for reading old logs; deliberately
+NOT used in code, because the component search cannot go stale and a hardcoded name can.
+
+### 1. Nothing was planted, and the mod said it had been
+
+`ISpawnService.SpawnPrefabInFrontOfPlayer` opens with `RequireGodMode(...)` and returns **void**. God
+mode is off in a saga run, so the spawn did nothing and `DevPlantStormAnvil` cheerfully logged
+`Storm-Anvil planted ('incinerator')`. A call whose failure cannot be detected is not a call worth
+making - and a log line that says a thing happened when it did not is the exact failure mode this
+project keeps paying for.
+
+Now instantiated directly, with a downward raycast to find the ground, and the result **checked**
+before anything is reported. It also calls `Piece.SetCreator` with the local profile's player ID, so
+the planted anvil is claimed - which means `mq-anvil` completes from it now, and the caveat in the
+last three entries is gone.
+
+### 2. The shield's damage was invisible, not absent
+
+The log said so in as many words: `Stormward discharge: 5m, 26 lightning, every 2 blocks (no
+lightning effect resolved)`. The discharge was firing; it had nothing to draw.
+
+Root cause: saga items are cloned as early as the ObjectDB allows - deliberately, so a saga item in a
+pack resolves before the pack loads - and at that moment `ZNetScene.instance` can still be null.
+`Lightning()` returns null without a scene, so the effect lists were baked EMPTY, once, permanently.
+Thor's bow was never affected because it resolves its flash per poll and simply retries.
+
+Fixed by retrying rather than by delaying the clone: the early clone is load-bearing and the flash is
+not. `EnsureStormFlash()` fills the effect lists from the tick the first time a scene exists. The
+candidate name list also grew from four to eight, because a miss here means a weapon that does its
+damage invisibly - which is precisely what was reported.
+
+### Test it
+
+- [ ] **`Backspace` plants a visible anvil** four metres in front of you, on the ground.
+- [ ] **`mq-anvil` completes from it**, now that it is claimed.
+- [ ] **Block twice: lightning is now SEEN.** Look for `Stormward discharge flash: '<name>'` in the
+      log - that line is the proof, and it names which effect prefab won.
+- [ ] If that line never appears, **all eight candidate names are wrong** and the next step is a probe
+      rather than another guess. Damage will still land; only the flash is missing.
+
+---
+
 ## 2026-09-20 - TASK: Backspace hands over the whole test (`...20r`)
 
 "*Can you make sure that both bow and shield and obliterator spawn on backspace? that'll give me a
