@@ -189,9 +189,29 @@ namespace ICanShowYouTheWorld.RunMode
         //
         // The Stormward is the first piece of it, retroactively - lightning and blunt, Act I. What
         // follows covers poison, frost and fire, and Valheim adds resistances across equipped items
-        // by itself, so the full kit IS the set bonus. No m_setStatusEffect: that wants a
-        // StatusEffect asset this build cannot verify, and an invisible set bonus is worse than an
-        // honest one made of parts.
+        // by itself, so the full kit IS the set bonus.
+        //
+        // This used to add "No m_setStatusEffect: that wants a StatusEffect asset this build cannot
+        // verify". Right about the principle - an invisible set bonus is worse than an honest one
+        // made of parts - and WRONG about the constraint, corrected here rather than quietly deleted
+        // because the wrong half was load-bearing on a decision.
+        //
+        // StatusEffect is a ScriptableObject, so SE_Stats (the stat-modifier subclass every vanilla
+        // food and set effect uses) can be made with CreateInstance at runtime. No asset, no
+        // AssetBundle, which is exactly the standing answer for this project. Two further facts from
+        // the IL, both of which shape the design rather than merely enabling it:
+        //
+        //   Humanoid.GetSetCount counts SIX slots - m_leftItem, m_rightItem, m_chestItem, m_legItem,
+        //   m_helmetItem, m_shoulderItem - so BOTH HANDS count, and this is an armour-and-weapon set
+        //   in vanilla with nothing to build.
+        //
+        //   But Thor's bow is a Bow and the Stormward is a TwoHandedWeaponLeft, and Valheim puts
+        //   both in m_leftItem. They share a slot and can never be worn together, and neither frees
+        //   m_rightItem. So the ceiling is FIVE worn pieces and m_setSize must be 5 - a 6 would be a
+        //   bonus that can never fire, which is the invisible feature the old note was refusing.
+        //
+        // The remaining unknown is whether a runtime StatusEffect needs registering in
+        // ObjectDB.m_StatusEffects to survive name hashing and network sync. See the set-bonus issue.
         //
         // Deliberately no rescued lights in these recipes. Lights come from the deer hunt and the
         // couriers - Acts I and II only (PollLights) - so a light cost in Act IV would be a step
