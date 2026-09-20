@@ -55,8 +55,24 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>True when this step has any line worth saying as it opens.</summary>
+        /// <summary>
+        /// True when a step has something worth INTERRUPTING the player for.
+        /// </summary>
+        /// <remarks>
+        /// Openings only. Hints were spoken too for one day and it crowded the screen badly (owner:
+        /// "there are too many large yelloe hints 'his trophies...', 'a cooking station...', its
+        /// really crowding") - three tracks advance in parallel, so several steps can open at once,
+        /// and every one of them was queuing two lines' worth of big yellow text.
+        ///
+        /// The distinction is the right one anyway. An OPENING is prose, written to be heard once at
+        /// the moment a thing becomes true. A HINT is a shopping list, written to be re-read - and it
+        /// is already on the HUD's step row and in the BOOK, where a list belongs.
+        ///
+        /// This is also only safe now that the HEARD page exists. Before it, not saying something was
+        /// the same as losing it.
+        /// </remarks>
         public static bool HasSomethingToSay(ChallengeDefinition def) =>
-            def != null && (!string.IsNullOrEmpty(def.Opening) || !string.IsNullOrEmpty(def.Hint));
+            def != null && !string.IsNullOrEmpty(def.Opening);
 
         /// <summary>
         /// The FIRST line a step says: its opening if it has one, otherwise its hint.
@@ -66,8 +82,6 @@ namespace ICanShowYouTheWorld.RunMode
         /// step that opens by telling you what to do has no moment left to be about anything.
         /// </summary>
         public static string LineFor(ChallengeDefinition def) =>
-            def == null ? null
-                : !string.IsNullOrEmpty(def.Opening) ? def.Opening
-                : def.Hint;
+            def == null ? null : def.Opening;
     }
 }

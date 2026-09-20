@@ -1021,19 +1021,38 @@ namespace ICanShowYouTheWorld.RunMode
         // logs - NOT used in code, because the component search cannot go stale and a hardcoded
         // name can.
 
-        /// <summary>How many of each thing the altar asks for. Deliberately the bench recipe's cost.</summary>
+        /// <summary>
+        /// Everything the Storm-Anvil knows how to make, and what each shape costs.
+        /// </summary>
         /// <remarks>
-        /// The same price by a different road, not a cheaper one. Until the Obliterator is something
-        /// Act I can reach, the bench has to stay open or the shield is unmakeable - so the altar is
-        /// an alternative, and an alternative that undercut the bench would simply retire it.
+        /// The anvil is the saga's forge now, not a second route to a bench recipe - both storm items
+        /// are struck here and nowhere else (owner: "Should the bow also be crafted here?" - yes, and
+        /// it makes the light economy the spine of the act: the shade gives the shape and a light,
+        /// Thjalfi takes a light and gives the forge, the forge gives both weapons).
         ///
-        /// When the altar becomes the point (see the story bible: it is to be Act I's third act-long
-        /// thread and the forge for every storm item after) this table is where the divergence goes:
-        /// things only the lightning can bind, which the bench then does not list at all.
+        /// THE ORDER AND THE BILLS BOTH MATTER, and getting either wrong destroys the player's
+        /// materials. Conversions are tried in list order and the Obliterator's default path turns
+        /// whatever is LEFT into coal, so:
+        ///
+        /// 1. Neither bill may be a subset of the other. The bow's was - wood, resin, deer hide and
+        ///    light are all in the shield's larger bill - so a player feeding the anvil a shield's
+        ///    worth would have had the BOW fire first, eat the wood, and watch ten troll hide burn.
+        ///    The bow therefore asks for FLINT, which the shield never does. That is also the better
+        ///    story: flint is what the shade asked for, for the quiver it never filled.
+        /// 2. The shield is listed first anyway, belt and braces: it is the larger bill, so it gets
+        ///    first refusal and cannot be starved by the smaller one.
         /// </remarks>
-        private static readonly (string item, int amount)[] StormwardCombine =
+        private static readonly (string result, (string item, int amount)[] bill, int lights)[] AnvilCombines =
         {
-            ("Wood", 20), ("Resin", 20), ("TrollHide", 10), ("DeerHide", 10),
+            (StormwardPrefab, new[]
+            {
+                ("Wood", 20), ("Resin", 20), ("TrollHide", 10), ("DeerHide", 10),
+            }, StormwardLightCost),
+
+            (ThorsBowPrefab, new[]
+            {
+                ("Wood", 10), ("Resin", 10), ("DeerHide", 6), ("Flint", 10),
+            }, ThorsBowLightCost),
         };
 
         private readonly HashSet<int> _alteredAltars = new HashSet<int>();
@@ -1058,11 +1077,6 @@ namespace ICanShowYouTheWorld.RunMode
 
             try
             {
-                if (!_clones.TryGetValue(StormwardPrefab, out var shieldClone) || shieldClone == null) return;
-
-                var result = shieldClone.GetComponent<ItemDrop>();
-                if (result == null) return;
-
                 EnsureStormFlash();
 
                 // The PREFAB pass, retried until it has actually landed.
@@ -1079,7 +1093,7 @@ namespace ICanShowYouTheWorld.RunMode
                 {
                     if (inc == null) continue;
                     if (!_alteredAltars.Add(inc.GetInstanceID())) continue;
-                    TeachAltar(inc, result);
+                    TeachAltar(inc);
                 }
             }
             catch (Exception ex)
@@ -1111,11 +1125,6 @@ namespace ICanShowYouTheWorld.RunMode
         private void TeachAltarPrefab(ZNetScene scene)
         {
             if (scene == null || scene.m_prefabs == null) return;
-            if (!_clones.TryGetValue(StormwardPrefab, out var shieldClone) || shieldClone == null) return;
-
-            var result = shieldClone.GetComponent<ItemDrop>();
-            if (result == null) return;
-
             foreach (var prefab in scene.m_prefabs)
             {
                 if (prefab == null) continue;
@@ -1130,9 +1139,9 @@ namespace ICanShowYouTheWorld.RunMode
                               $"(found by its Incinerator, not by name).");
                 }
 
-                TeachAltar(inc, result);
+                TeachAltar(inc);
 
-                // Done once the conversion is there. The price is no longer ours to set - Thjalfi
+                // Done once the conversions are there. The price is no longer ours to set - Thjalfi
                 // charges for the altar now, and the piece keeps the cost the game shipped.
                 _altarTaught = _altarConversionDone;
             }
@@ -1161,7 +1170,7 @@ namespace ICanShowYouTheWorld.RunMode
         private const string AnvilDescription =
             "The sky does the work. Put down what you have taken back, pull the lever, and see " +
             "whether it comes up as something or as ash. Be exact: it knows a few shapes, and " +
-            "everything it does not recognise it burns.";
+            "everything it does not recognise it burns. It will not answer at all under a quiet sky.";
 
         /// <summary>
         /// What the Storm-Anvil costs to raise, in Act I materials only.
@@ -1291,59 +1300,140 @@ namespace ICanShowYouTheWorld.RunMode
 
         private bool _anvilInHammer;
 
-        private void TeachAltar(Incinerator inc, ItemDrop result)
+        private void TeachAltar(Incinerator inc)
         {
             DressTheAnvil(inc);
+            GateLeverOnWeather(inc);
 
             if (inc.m_conversions == null)
                 inc.m_conversions = new List<Incinerator.IncineratorConversion>();
 
-            // Already knows it. Checked by RESULT rather than by a flag, so a reload, a rebuild and
-            // a second pass over the same object all come to the same answer.
-            foreach (var existing in inc.m_conversions)
-                if (existing != null && ReferenceEquals(existing.m_result, result))
+            int taught = 0;
+
+            foreach (var (resultPrefab, bill, lights) in AnvilCombines)
+            {
+                if (!_clones.TryGetValue(resultPrefab, out var clone) || clone == null) continue;
+
+                var result = clone.GetComponent<ItemDrop>();
+                if (result == null) continue;
+
+                // Already knows this shape. Checked by RESULT rather than by a flag, so a reload, a
+                // rebuild and a second pass over the same object all come to the same answer.
+                bool known = false;
+                foreach (var existing in inc.m_conversions)
+                    if (existing != null && ReferenceEquals(existing.m_result, result)) { known = true; break; }
+
+                if (known) { taught++; continue; }
+
+                var reqs = new List<Incinerator.Requirement>();
+                bool complete = true;
+
+                foreach (var (item, amount) in bill)
                 {
-                    _altarConversionDone = true;
-                    return;
+                    var drop = ItemPrefab(item);
+                    if (drop == null)
+                    {
+                        ReportOnce("altar-" + item,
+                            $"[ICanShowYouTheWorld] The Storm-Anvil wants '{item}' and the game has no such " +
+                            $"item \u2014 the {resultPrefab} combine is NOT registered.");
+                        complete = false;
+                        break;
+                    }
+                    reqs.Add(new Incinerator.Requirement { m_resItem = drop, m_amount = amount });
                 }
 
-            var reqs = new List<Incinerator.Requirement>();
-            foreach (var (item, amount) in StormwardCombine)
-            {
-                var drop = ItemPrefab(item);
-                if (drop == null)
+                if (!complete) continue;
+
+                if (lights > 0)
                 {
-                    ReportOnce("altar-" + item,
-                        $"[ICanShowYouTheWorld] The storm-altar wants '{item}' and the game has no such item — " +
-                        "the Stormward combine is NOT registered.");
-                    return;
+                    var lightDrop = _clones.TryGetValue(RescuedLightPrefab, out var lightClone) && lightClone != null
+                        ? lightClone.GetComponent<ItemDrop>()
+                        : null;
+                    if (lightDrop == null) continue;   // Not cloned yet; the next pass will have it.
+
+                    reqs.Add(new Incinerator.Requirement { m_resItem = lightDrop, m_amount = lights });
                 }
-                reqs.Add(new Incinerator.Requirement { m_resItem = drop, m_amount = amount });
+
+                inc.m_conversions.Add(new Incinerator.IncineratorConversion
+                {
+                    m_requirements = reqs,
+                    m_result = result,
+                    m_resultAmount = 1,
+
+                    // Above the coal. The default conversion is what happens to anything with no rule
+                    // of its own, and a shield's worth of troll hide going to coal because the table
+                    // was read in the wrong order is the one outcome here that cannot be undone.
+                    m_priority = 100,
+                    m_requireOnlyOneIngredient = false,
+                });
+
+                taught++;
+                Debug.Log($"[ICanShowYouTheWorld] Storm-Anvil combine registered: {reqs.Count} things in, " +
+                          $"{resultPrefab} out.");
             }
 
-            var lightDrop = _clones.TryGetValue(RescuedLightPrefab, out var lightClone) && lightClone != null
-                ? lightClone.GetComponent<ItemDrop>()
-                : null;
-            if (lightDrop != null)
-                reqs.Add(new Incinerator.Requirement { m_resItem = lightDrop, m_amount = StormwardLightCost });
+            _altarConversionDone = taught == AnvilCombines.Length;
+        }
 
-            inc.m_conversions.Add(new Incinerator.IncineratorConversion
+        /// <summary>
+        /// Makes the lever refuse when the sky is quiet.
+        /// </summary>
+        /// <remarks>
+        /// "The sky does the work" was only ever a line until this (owner: "i guess the anvil should
+        /// only work in the rain/thunder?"). Quite right, and it makes the altar a place with a
+        /// CONDITION rather than a station that happens to be outdoors.
+        ///
+        /// Done by wrapping <c>Switch.m_onUse</c>, which is a public delegate, rather than by removing
+        /// the conversions in fair weather. That alternative is the dangerous one and it is worth
+        /// saying why: with no conversion in the list the lever still works, and the default path
+        /// turns everything in the box to coal. A player who pulled it on a dry day would lose ten
+        /// troll hide and three rescued lights and be told nothing. Refusing BEFORE the game's own
+        /// handler runs consumes nothing at all.
+        ///
+        /// The hover text is wrapped too, so the refusal is legible before it happens rather than
+        /// after - the same discipline as the bearing that says "wait for rain" instead of pointing at
+        /// an empty shore.
+        /// </remarks>
+        private void GateLeverOnWeather(Incinerator inc)
+        {
+            var sw = inc.m_incinerateSwitch;
+            if (sw == null || !_gatedLevers.Add(sw.GetInstanceID())) return;
+
+            var innerUse = sw.m_onUse;
+            sw.m_onUse = (Switch s2, Humanoid user, ItemDrop.ItemData item) =>
             {
-                m_requirements = reqs,
-                m_result = result,
-                m_resultAmount = 1,
+                if (!SkyIsAwake())
+                {
+                    try
+                    {
+                        MessageHud.instance?.ShowMessage(
+                            MessageHud.MessageType.Center,
+                            "Nothing answers. The sky has to be awake for this.");
+                    }
+                    catch { }
+                    return false;
+                }
 
-                // Above the coal. The default conversion is what happens to anything with no rule of
-                // its own, and a shield's worth of troll hide going to coal because the table was
-                // read in the wrong order is the one outcome here that cannot be undone.
-                m_priority = 100,
-                m_requireOnlyOneIngredient = false,
-            });
+                return innerUse == null || innerUse(s2, user, item);
+            };
 
-            _altarConversionDone = true;
+            var innerHover = sw.m_onHover;
+            sw.m_onHover = () =>
+            {
+                string text = innerHover != null ? innerHover() : string.Empty;
+                return SkyIsAwake()
+                    ? text
+                    : text + "\n" + AnvilName + ": the sky is quiet. Come back in the rain.";
+            };
+        }
 
-            Debug.Log($"[ICanShowYouTheWorld] Storm-altar combine registered: {reqs.Count} things in, " +
-                      $"{StormwardName} out.");
+        private readonly HashSet<int> _gatedLevers = new HashSet<int>();
+
+        /// <summary>Rain or a storm, by the game's own test.</summary>
+        private static bool SkyIsAwake()
+        {
+            try { return EnvMan.instance != null && EnvMan.IsWet(); }
+            catch { return true; }   // Cannot tell: do not lock the player out of their own forge.
         }
 
         private ItemDrop ItemPrefab(string name)

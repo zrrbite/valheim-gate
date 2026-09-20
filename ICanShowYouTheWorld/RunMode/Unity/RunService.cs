@@ -470,7 +470,8 @@ namespace ICanShowYouTheWorld.RunMode
                 if (_thjalfi != null && ActIsMeadows && _challenges != null &&
                     StepPredicates.Thjalfi(_challenges.Tracks))
                 {
-                    string waiting = _thjalfi.Bearing(player, IsRaining);
+                    string waiting = _thjalfi.Bearing(
+                        player, IsRaining || !StepPredicates.ThjalfiFind(_challenges.Tracks));
                     if (!string.IsNullOrEmpty(waiting)) return waiting;
                 }
 
@@ -1047,7 +1048,19 @@ namespace ICanShowYouTheWorld.RunMode
         private float _lineCursor;
 
         /// <summary>Long enough to read a sentence and notice the next one is different.</summary>
-        private const float LineSpacingSeconds = 6f;
+        private const float LineSpacingSeconds = 9f;
+
+        /// <summary>
+        /// How many lines may be waiting at once.
+        /// </summary>
+        /// <remarks>
+        /// Three tracks can open a step in the same second, and a boss falling reseats all of them -
+        /// so without a cap the player can be handed a minute of uninterruptible narration. Past this
+        /// the oldest owed line is dropped rather than the newest refused, because what just happened
+        /// is always more relevant than what happened four steps ago, and nothing is lost either way:
+        /// the BOOK keeps the openings and the HEARD page keeps everything that was said.
+        /// </remarks>
+        private const int MaxOwedLines = 3;
 
         /// <summary>
         /// Queues a line behind whatever is already owed. Null and empty are ordinary.
@@ -1059,6 +1072,21 @@ namespace ICanShowYouTheWorld.RunMode
             float at = Mathf.Max(Time.time, _lineCursor);
             _owedLines.Add((at, text));
             _lineCursor = at + LineSpacingSeconds;
+
+            // Drop from the FRONT, and re-time what is left so the queue does not also inherit the
+            // old backlog's schedule.
+            if (_owedLines.Count > MaxOwedLines)
+            {
+                _owedLines.RemoveRange(0, _owedLines.Count - MaxOwedLines);
+
+                float when = Time.time;
+                for (int i = 0; i < _owedLines.Count; i++)
+                {
+                    _owedLines[i] = (when, _owedLines[i].text);
+                    when += LineSpacingSeconds;
+                }
+                _lineCursor = when;
+            }
         }
 
         /// <summary>
@@ -3667,8 +3695,14 @@ namespace ICanShowYouTheWorld.RunMode
                           : StepPredicates.ThjalfiFind(tracks) ? Thjalfi.Phase.Find
                           : Thjalfi.Phase.Done;
 
+                // The weather gates FINDING him, not knowing him. Once the Find step is behind the
+                // player he stands whatever the sky is doing - because the whole craft track now sits
+                // behind him, and a dry spell that stalls an act is a worse bargain than a mystery
+                // that happens once. The rain is the introduction, not the relationship.
+                bool metHim = phase != Thjalfi.Phase.Find;
+
                 bool spoken, paid;
-                _thjalfi.Tick(player, phase, wanted, IsRaining, out spoken, out paid);
+                _thjalfi.Tick(player, phase, wanted, IsRaining || metHim, out spoken, out paid);
 
                 if (spoken)
                 {
@@ -8596,21 +8630,6 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
-                // Completed by HOLDING the bow, however it was made. The bow is the saga's own item
-                // (SagaItems: the Finewood bow cloned, renamed, with lightning), so the match is on
-                // its display name — CollectItem compares m_shared.m_name, and a cloned item's is
-                // plain text rather than a "$" token. The amounts in the hint are repeated in
-                // SagaRecipes and must agree.
-                Id = "mq-bow", MainQuest = true, Kind = ChallengeKind.CollectItem, Param = SagaItems.ThorsBowName,
-                Target = 1, Display = "String Thor\u2019s bow at the workbench",
-                RewardText = "A quiver of flint arrows",
-                Hint = "The shade\u2019s recipe, at the workbench: 10 wood, 10 resin, 6 deer hide, and 3 rescued lights. " +
-                       "The bench cannot list the bow until you are HOLDING a light \u2014 the game only offers recipes " +
-                       "whose every ingredient you have seen. Take them back off the forest, or off the Gatherer.",
-                Opening = "The herd paid for this in hide. String it, and owe them a clean shot.",
-            },
-            new ChallengeDefinition
-            {
                 // The Storm-Anvil, raised in Act I and used for the rest of the saga.
                 //
                 // Vanilla calls it the Obliterator and gates it behind a Thunder Stone from Haldor,
@@ -8661,6 +8680,23 @@ namespace ICanShowYouTheWorld.RunMode
                        "come back. What he leaves takes exact sets of things and gives back what it " +
                        "knows, and burns everything it does not.",
                 Opening = "He wants paying, and what he does with it is the only reason he is still here.",
+            },
+            new ChallengeDefinition
+            {
+                // Completed by HOLDING the bow, however it was made. The bow is the saga's own item
+                // (SagaItems: the Finewood bow cloned, renamed, with lightning), so the match is on
+                // its display name — CollectItem compares m_shared.m_name, and a cloned item's is
+                // plain text rather than a "$" token. The amounts in the hint are repeated in
+                // SagaRecipes and must agree.
+                Id = "mq-bow", MainQuest = true, Kind = ChallengeKind.CollectItem, Param = SagaItems.ThorsBowName,
+                Target = 1, Display = "Strike Thor\u2019s bow at the Storm-Anvil",
+                RewardText = "A quiver of flint arrows",
+                Hint = "At the Storm-Anvil, in the rain: 10 wood, 10 resin, 6 deer hide, 10 FLINT and 3 " +
+                       "rescued lights, all in the box together, then pull the lever. The flint is the " +
+                       "shade\u2019s own asking, and it is what keeps the anvil from mistaking this for the " +
+                       "shield. No bench will strike it.",
+                Opening = "The herd paid for this in hide, and the sky will pay the rest. Owe them a "
+                          + "clean shot."
             },
             new ChallengeDefinition
             {

@@ -70,7 +70,7 @@ read_version() {
     python3 - "$1" <<'PY'
 import re, sys
 data = open(sys.argv[1], 'rb').read().decode('utf-16-le', 'ignore')
-m = re.search(r'\d+\.\d+\.\d+-run\.\d{4}-\d{2}-\d{2}[a-z]?|\d+\.\d+\.\d+-run\.alpha[0-9.]+|\d+\.\d+\.\d+-\d+', data)
+m = re.search(r'\d+\.\d+\.\d+-run\.\d{4}-\d{2}-\d{2}[a-z]{0,2}|\d+\.\d+\.\d+-run\.alpha[0-9.]+|\d+\.\d+\.\d+-\d+', data)
 print(m.group(0) if m else '')
 PY
 }

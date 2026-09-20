@@ -102,53 +102,6 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         public static readonly SagaRecipeDefinition[] All =
         {
-            new SagaRecipeDefinition
-            {
-                Id = "hunters-bow",
-                ResultPrefab = SagaItems.ThorsBowPrefab,
-                StationPrefab = "piece_workbench",
-                MinStationLevel = 1,
-                // The lights are the point of the recipe now (owner: "Thors bow is a bit simple to
-                // craft"). Wood, resin and hide are what the Meadows yield to anyone; a rescued
-                // light is the only ingredient that has to be WON, and it comes from the hunt track
-                // while the bow sits on the craft one — the two tracks finally asking something of
-                // each other. See SagaItems.ThorsBowLightCost for why this cannot lock the chain.
-                Resources = new[]
-                {
-                    ("Wood", 10), ("Resin", 10), ("DeerHide", 6),
-                    (SagaItems.RescuedLightPrefab, SagaItems.ThorsBowLightCost),
-                },
-                RequiresStepDone = SagaNames.ShadeBringStepId,
-                // Deliberately NOT a shopping list: the step's own Hint already recites the
-                // amounts, and it is spoken now too. The news here is the event, plus the one thing
-                // the bench itself will not tell you - that it stays empty until the lights are in
-                // your pack rather than in your stash.
-                TaughtLine = "The shade has given up the shape, and your bench knows it now. It will not " +
-                             "show you the bow until you are carrying the lights.",
-            },
-            new SagaRecipeDefinition
-            {
-                // Act I's last craft. Gated on the TROLL step rather than on an item, because a
-                // gate on "have you got troll hide" would simply be invisible - this way the bench
-                // learns the shape the moment the Breaker is dealt with, and the hide is what the
-                // recipe then asks for.
-                //
-                // Safe to gate on a LOSABLE step: a failed step still advances its track, so
-                // StepDone answers true either way. Miss the troll and the recipe is there and the
-                // hide is not, which is the cost being visible rather than the chain being stuck.
-                Id = "stormward",
-                ResultPrefab = SagaItems.StormwardPrefab,
-                StationPrefab = "piece_workbench",
-                MinStationLevel = 2,
-                Resources = new[]
-                {
-                    ("Wood", 20), ("Resin", 20), ("TrollHide", 10), ("DeerHide", 10),
-                    (SagaItems.RescuedLightPrefab, SagaItems.StormwardLightCost),
-                },
-                RequiresStepDone = SagaNames.BreakerStepId,
-                TaughtLine = "It is down, and its hide is yours. Improve your bench, and it will show you " +
-                             "what to bind the rest into."
-            },
 
             // --- The Stormsworn, one piece per act. See SagaItems for what each resists and why
             //     none of them asks for light.
@@ -157,6 +110,18 @@ namespace ICanShowYouTheWorld.RunMode
             // and the station: bronze forged, iron carried, silver carried, a berserker down. So
             // the bench learns the shape at the moment the shape is makeable, which is the same
             // rule Thor's bow follows and the reason the gate is a step rather than an item.
+
+            // GONE: the bench recipes for Thor’s bow and the Stormward.
+            //
+            // Both are struck at the Storm-Anvil now and nowhere else — see
+            // SagaItems.AnvilCombines. The bench kept them for one day, while the altar was
+            // optional, and that was the whole problem: a forge you can ignore is not a forge, it
+            // is a detour. The act’s two storm items now come out of a storm, at the end of a
+            // walk, from a machine a debtor raised for the price of one light.
+            //
+            // What the shade gives changed with them. It used to teach the BENCH a recipe; it now
+            // hands over the shape and says plainly that no bench will strike it — which is what
+            // introduces Thjalfi, and is a better clue than a compass bearing.
 
             new SagaRecipeDefinition
             {

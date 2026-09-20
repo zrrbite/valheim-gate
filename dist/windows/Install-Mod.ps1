@@ -97,7 +97,7 @@ function Get-ModVersion {
         # cosmetic — for the same reason the alpha pattern had to match its optional
         # .N. A regex that stops early prints a version that does not exist, which
         # defeats the entire point of checking the popup.
-        foreach ($pattern in @('\d+\.\d+\.\d+-run\.\d{4}-\d{2}-\d{2}[a-z]?', '\d+\.\d+\.\d+-run\.alpha\d+(?:\.\d+)?', '\d+\.\d+\.\d+-\d+')) {
+        foreach ($pattern in @('\d+\.\d+\.\d+-run\.\d{4}-\d{2}-\d{2}[a-z]{0,2}', '\d+\.\d+\.\d+-run\.alpha\d+(?:\.\d+)?', '\d+\.\d+\.\d+-\d+')) {
             $m = [regex]::Match($text, $pattern)
             if ($m.Success) { return $m.Value }
         }

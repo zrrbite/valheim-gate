@@ -38,14 +38,19 @@ static class StepOpeningTests
         owed = fresh.Observe(new[] { Step("a", "line A"), Step("c", "line C") });
         Check.That(owed.Count == 0, "and a step that comes back does not say its line twice");
 
-        // A HINT is something to say. It used to live only in the Run window, which a player
-        // mid-build is not looking at, and the hints exist because of failures already seen in play.
+        // A HINT IS NOT SPOKEN. It was, for one day, because hints exist for failures seen in play
+        // and the Run window is not where a player mid-build is looking. That crowded the screen
+        // badly: three tracks advance in parallel, so several steps open at once and each was queuing
+        // two lines of large centre text.
+        //
+        // The split is the honest one. An opening is prose, heard once when a thing becomes true; a
+        // hint is a shopping list, meant to be RE-read, and it is already on the HUD's step row and in
+        // the BOOK. It is only safe to stop saying it because the HEARD page now keeps everything that
+        // was said - before that page existed, not saying something was the same as losing it.
         var hinted = new StepOpenings();
         hinted.Observe(new[] { Step("seed") });
         owed = hinted.Observe(new[] { Step("seed"), Step("hint-only", null, "build it on the fire") });
-        Check.That(owed.Count == 1, "a step whose only line is a hint still speaks");
-        Check.That(StepOpenings.LineFor(owed[0]) == "build it on the fire",
-            "and the hint is the line, since there is no opening to lead with");
+        Check.That(owed.Count == 0, "a step whose only line is a hint stays quiet");
 
         // Both: the statement leads, the instruction follows. LineFor answers for the first only;
         // the pause before the second is the host's business, since it needs a clock.

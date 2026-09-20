@@ -46,7 +46,18 @@ fi
 # which every script that compares versions reads backwards - and so does anybody reading
 # a bug report. This happened once: a stray 'l' was deleted after 'm' had been tagged, the
 # next --release reused 'l', and the staged build claimed to predate the one installed.
+# The sequence runs b..z and then aa..zz, the way spreadsheet columns do. It used to stop
+# at z with "take the evening off", which was a fair joke until a day arrived that needed
+# more than twenty-six builds and the guard was the only thing standing in the way of a
+# play-test. Twenty-six is not a principle; it was the length of the alphabet.
+#
+# Note for anybody comparing versions: 'aa' sorts BEFORE 'z' as a string, so a lexical
+# comparison reads the second cycle as older. Nothing in this repo sorts versions - the
+# scripts compare them for equality, and the date in front is what orders builds - but do
+# not add such a sort without reading this line first.
 LETTERS=(b c d e f g h i j k l m n o p q r s t u v w x y z)
+for a in {a..z}; do for b in {a..z}; do LETTERS+=("${a}${b}"); done; done
+
 HIGHEST=-1
 for i in "${!LETTERS[@]}"; do
     if git rev-parse -q --verify "refs/tags/${PREFIX}${LETTERS[$i]}" >/dev/null; then
@@ -56,7 +67,7 @@ done
 
 NEXT=$((HIGHEST + 1))
 if (( NEXT >= ${#LETTERS[@]} )); then
-    echo "More than 26 builds of $PREFIX already exist. Take the evening off." >&2
+    echo "More than 702 builds of $PREFIX exist. Something is wrong other than diligence." >&2
     exit 1
 fi
 

@@ -180,7 +180,9 @@ namespace ICanShowYouTheWorld.RunMode
             "turned. String it well. What you loose from it, you owe the herd a clean shot.";
 
         public const string AfterLine =
-            "Wood, resin, the herd’s hide. The bench knows it as Thor’s bow. Go and string it.";
+            "Wood, resin, the herd’s hide, and the flint you brought me. That is the shape of it, and it is yours now.\n\n" +
+            "But no bench will strike it. I could not tell you that until you had earned the telling. It wants the sky.\n\n" +
+            "There is one who waits on the shore when it rains — taken in payment for something he broke, long before any of this. He tends the only thing in this world that can put a storm into a bow. Go to him, and take a light. He will want one.";
 
         /// <summary>
         /// The return visits. Keyed by id so the host can remember which have been heard.
@@ -241,7 +243,7 @@ namespace ICanShowYouTheWorld.RunMode
         // greets. The rune panel is for what it has to SAY; this is for it being there.
         private const string GreetFind = "You. Closer. I have waited long enough to be quiet about it.";
         private const string GreetDeliver = "Ten flint. Five scraps. Have you brought them?";
-        private const string GreetDone = "The bench knows. Go and string it.";
+        private const string GreetDone = "No bench will strike it. Find the one who waits in the rain.";
         private const string GreetRemark = "Stay a moment. I have been thinking about what you did.";
 
         public HuntersShade(System.Random rng)

@@ -46,7 +46,11 @@ Scripts/setversion.sh                  # writes the latest tag into Assets/Versi
 ```
 
 Builds are **date-based**: `<game version>-run.<YYYY-MM-DD>[letter]`. The letter is
-added from the second build of a day onward (`b`, `c`, …). This replaced an
+added from the second build of a day onward (`b`, `c`, …), and after `z` it runs
+`aa`, `ab`, … the way spreadsheet columns do — a single day has needed more than
+twenty-six builds. **`aa` sorts before `z` as a string**, so never add a lexical
+version comparison; nothing in the repo has one, and the date in front is what
+orders builds. This replaced an
 `alphaNN` counter that reached 95 and by then said nothing a date does not say
 better. The `<game version>` prefix is load-bearing — the deploy scripts guard on
 it and it records which Valheim API the DLL was compiled against.

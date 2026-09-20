@@ -17,6 +17,71 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-20 - TASK: the anvil is the forge, and the screen quiets down (`...20aa`)
+
+Four things, and the version letters ran out on the way.
+
+### Both storm items are struck at the Storm-Anvil, and nowhere else
+
+The bench recipes for Thor's bow AND the Stormward are gone. A forge you can ignore is not a forge,
+it is a detour. The craft track reorders to put the walk in the middle of the act:
+
+`shade-find` > **`mq-thjalfi`** > **`mq-anvil`** > **`mq-bow`** > `mq-shield` > `answer` > `vigil`
+
+Every step now hands the next one its reason: the shade gives the shape and a light, Thjalfi takes a
+light and gives the forge, the forge gives both weapons. The light economy is the spine.
+
+**The bow's bill gained FLINT, and that is a correctness fix rather than flavour.** Its old bill -
+wood, resin, deer hide, light - was a strict SUBSET of the shield's. Conversions are tried in list
+order and the Obliterator burns whatever is left, so a player feeding it a shield's worth would have
+had the bow fire first, eat the wood, and watch ten troll hide turn to coal. Flint is in the bow's
+bill and never the shield's, so neither can be mistaken for the other. It is also what the shade
+asked for, for the quiver it never filled.
+
+### The anvil only answers a live sky
+
+Wrapped `Switch.m_onUse`, which is a public delegate, so the lever REFUSES in fair weather and
+consumes nothing. The alternative - removing the conversions when dry - is the dangerous one: with no
+conversion in the list the lever still works and everything in the box becomes coal. The hover text is
+wrapped too, so the refusal is legible before it happens.
+
+### Thjalfi stays once you have MET him
+
+The rain gates FINDING him, not knowing him. The whole craft track now sits behind him, and a dry
+spell that stalls an act is a worse bargain than a mystery that happens once.
+
+### The screen stops crowding
+
+"*there are too many large yelloe hints... its really crowding*". **Hints are no longer spoken** -
+only openings. An opening is prose, heard once when a thing becomes true; a hint is a shopping list
+meant to be re-read, and it is already on the HUD step row and in the BOOK. Spacing went 6s to 9s, and
+at most three lines may be waiting - past that the OLDEST is dropped, because what just happened
+matters more than what happened four steps ago.
+
+This is only safe because the HEARD page exists. Before it, not saying something was losing it.
+
+### And the version letters
+
+`nextversion.sh` refused with "More than 26 builds already exist. Take the evening off." Fair, but 26
+was the length of the alphabet rather than a principle. It now runs `b..z` then `aa..zz`, spreadsheet
+style. **All four parsers updated** (`nextversion.sh`, `stage_windows.sh`, `make_release.sh`,
+`Install-Mod.ps1`) - CLAUDE.md warned that changing the shape means changing all of them, and it was
+right. Note `aa` sorts BEFORE `z` as a string; nothing in the repo sorts versions and CLAUDE.md now
+says not to add one.
+
+### Test it
+
+- [ ] **The hammer has no Storm-Anvil, and the bench has neither storm item.** Thjalfi is the only way.
+- [ ] **The shade's last line points at him** and says no bench will strike it.
+- [ ] **The anvil's lever refuses in fair weather** - and your materials are still in the box.
+- [ ] **In rain, the bow's bill works**: 10 wood, 10 resin, 6 deer hide, **10 flint**, 3 lights.
+- [ ] **Feed it the shield's bill instead: you get the shield**, not a bow, and nothing burns.
+- [ ] **Thjalfi does not vanish** when the rain stops, once you have spoken to him.
+- [ ] **Far fewer yellow lines.** Openings only, nine seconds apart, three at most queued.
+- [ ] Hints are still readable on the RUN page's step row and in the BOOK.
+
+---
+
 ## 2026-09-20 - TASK: Backspace also pays for Thjalfi (`...20z`)
 
 One press now covers every test in the act. `Backspace` grants:
