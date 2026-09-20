@@ -21,6 +21,15 @@ Everything below is what that file tells it.
 
 - Branch **`feature/run-mode`**, not merged, deliberately — the mode is still
   being tuned in play.
+- **The Saga Atlas** — one page with every questline in the saga, lane by lane across
+  all eight acts, plus the arc, the light economy and a build log:
+  <https://claude.ai/artifact/8EvSbu7GH5SQ1Fq9Md83ca>
+  Regenerate it with `python Scripts/saga_atlas.py` and REPUBLISH TO THAT SAME URL, so
+  the owner's link keeps working. The lanes are read out of `RunService.cs`, so the page
+  cannot drift from the code — but the per-act STATUS and the version in its meta line
+  are hand-written claims and go stale on their own.
+- **The Storm-Anvil test path** — the focused page for the shade/light/anvil chain:
+  <https://claude.ai/artifact/XdbeDYL6m7f2t5MioVmqJ9>
 - Latest tag **`1.0.15-run.2026-09-20o`**; builds are date-based since 2026-08-31
   (`Scripts/nextversion.sh`). The game moved to **1.0.12 on 2026-09-12** and to
   **1.0.15 on 2026-09-19**; both times the mod was rebuilt and installed on Windows
