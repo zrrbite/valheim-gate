@@ -291,14 +291,17 @@ answer, practised before it was taught. Act VII spends it.
   `IncineratorConversion { m_requirements, m_result, m_resultAmount, m_priority }`
   — an EverQuest-style combine shipped in the base game and used by nothing but
   coal. The saga appends to it, which is why no patch and no new asset is needed.
-  **The plan** (owner, 2026-09-20): make it a focal thread of Act I and the forge
-  for every lightning thing afterwards — the Stormward first, then Thor's bow
-  moved off the workbench, then the Stormsworn. Three things stand in the way and
-  all three are cheap: the Obliterator needs a Thunder Stone from Haldor, who
-  lives in the Black Forest (solved the way the fishing rod was — the saga hands
-  over the makings as a step reward, see `mq-fish`); its build cost is asset data
-  this assembly cannot read, so it has to be read off a running game; and the
-  lever's hover text is a localisation token that will keep saying Obliterator.
+  **Raised in Act I since 2026-09-20** (`mq-anvil`). The saga re-costs the piece
+  to 20 stone, 10 wood, 10 resin and ONE rescued light, which solves the Thunder
+  Stone problem the way the fishing rod solved Haldor: the saga supplies what the
+  Black Forest otherwise would. The light is the point — to raise the thing that
+  breaks light you give one up, and it is the only requirement that does not come
+  back when the altar is torn down. It is also the unlock, since Valheim shows a
+  piece once all its materials are known: the anvil appears in the hammer the
+  moment the shade hands over the light it kept.
+  **Still to come**: Thor's bow moved off the workbench onto the anvil, the
+  Stormsworn bound there, and the Stormward's Act III reforge. The lever's own
+  hover text is a localisation token and will keep saying Obliterator.
 - **The ravens** — Odin's audit. They witness beats; they never help.
 - **Heat** — the world noticing you burn. Score is how brightly you burned.
 - **Boons** — Odin's loans against the answer you owe. Death collects one.

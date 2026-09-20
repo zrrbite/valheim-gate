@@ -17,6 +17,58 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-20 - TASK: the Storm-Anvil is raised in Act I (`...20o`)
+
+"*So how do i test the obliterator in this act1?*" - and then the better answer: "*we need to give
+the player one, through a quest or otherwise. Recipe that requires items from act 1.*"
+
+Vanilla gates the Obliterator behind a Thunder Stone bought from Haldor, who lives in the Black
+Forest, so as shipped it cannot exist in the Meadows. The fishing rod had exactly this problem and
+exactly this answer: the saga supplies it.
+
+**The piece is re-costed to Act I materials**: 20 stone, 10 wood, 10 resin, and **one rescued
+light**. `Piece.m_resources` and `Piece.m_craftingStation` are both public, so this is a table, not a
+patch, and `m_craftingStation` is pointed at a workbench because whatever it wanted before was a
+later act's station by definition.
+
+The light is the design, not decoration. The Storm-Anvil is a machine that BREAKS light, and raising
+it costs one - the act's own question asked with the player's hand on it. It is the only requirement
+marked `m_recover = false`: tear the altar down and the light does not come back.
+
+It doubles as the unlock, which is the neat part. Valheim shows a piece once every material is a
+KNOWN one, so the anvil appears in the hammer at the moment the shade hands over the light it kept -
+no gate to write. And because whether vanilla even puts the piece in the hammer's table is asset
+behaviour this assembly cannot read, the mod adds it when absent and logs that it had to.
+
+**New step `mq-anvil`** on the craft track, between the bow and the shield. `BuildPiece` with the
+category `StormAnvil`, which tests for an `Incinerator` component - a compiled class, so it names no
+asset. That matters more here than anywhere else in that table, because the anvil's prefab name is
+the one fact about it nobody in this project knows.
+
+**And a dev key for the impatient**: `Backspace` plants a Storm-Anvil in front of you and grants the
+five things its combine wants, so the next action is pulling the lever. It plants by the prefab found
+through the component, so it works without knowing the name. Added to `DevKeyHelp`, which is now
+three lines - the banner is generated from that array, so it cannot drift.
+
+### Test it
+
+- [ ] **`Backspace` in dev mode**: an anvil appears and your pack fills. Pull the lever - a Stormward.
+- [ ] **The honest route**: after the shade gives you its light, open the hammer near a workbench.
+      **Storm-Anvil** should be listed, wanting 20 stone, 10 wood, 10 resin, 1 rescued light.
+- [ ] **Raise it and `mq-anvil` completes**, paying 40 stone, 20 coal and a light back.
+- [ ] **Tear it down: the light does NOT come back** (stone, wood and resin do).
+- [ ] **It is called Storm-Anvil** in the hammer and on hover. The LEVER's own text will still say
+      Obliterator - that string is a localisation token and is not ours.
+- [ ] **Combine the shield in it**: 20 wood, 20 resin, 10 troll hide, 10 deer hide, 3 rescued lights,
+      pull the lever. A Stormward, not coal.
+- [ ] **Random junk still becomes coal.** The saga's conversion is priority 100 and must fire only on
+      an exact match.
+- [ ] Log: `The storm-altar is '<prefab>'`, `Storm-Anvil re-costed: ...`, and possibly `The
+      Storm-Anvil was not in the hammer's table; added.` **Report that first line** - it is the asset
+      name this whole thread has been working around.
+
+---
+
 ## 2026-09-20 - TASK: the Storm-Anvil, and two beats for the shield quest (`...20n`)
 
 Four things, from one conversation about making the shield's Act I quest worth doing.

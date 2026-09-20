@@ -2286,7 +2286,8 @@ namespace ICanShowYouTheWorld.RunMode
         /// </remarks>
         public static readonly string[] DevKeyHelp =
         {
-            "DEV MODE   *items   .light   /god+speed   Ent:home   Del:slay   Home:map-tp   PgUp:probe",
+            "DEV MODE   *items   .light   /god+speed   Ent:home   Del:slay",
+            "Home:map-tp   PgUp:probe   Bksp:plant a Storm-Anvil + its makings",
             "Shift/Ctrl/Alt + [+] complete step   \u00b7   + [-] advance 2h   (bare + and - are the player's)",
         };
 
@@ -2490,6 +2491,10 @@ namespace ICanShowYouTheWorld.RunMode
                 }
                 catch (Exception ex) { LogOnce("dev-probe", ex); }
             }
+            else if (Input.GetKeyDown(KeyCode.Backspace))
+            {
+                DevPlantStormAnvil();
+            }
             else if (Input.GetKeyDown(KeyCode.KeypadPeriod))
             {
                 var player = Player.m_localPlayer;
@@ -2539,6 +2544,70 @@ namespace ICanShowYouTheWorld.RunMode
         /// chase would have worked and would also have been a worse test aid than a key you press
         /// twice. Recorded so nobody rebuilds it.
         /// </remarks>
+        /// <summary>
+        /// Plants a Storm-Anvil in front of the player and hands over exactly what it wants.
+        /// </summary>
+        /// <remarks>
+        /// The combine cannot otherwise be tested where it matters. The Obliterator needs a Thunder
+        /// Stone from Haldor, Haldor lives in the Black Forest, and the shield whose combine this is
+        /// belongs to Act I - so "does the anvil work" was a question the Meadows could not ask
+        /// ("so how do i test the obliterator in this act1?").
+        ///
+        /// One press gives the whole test: the altar, and the five things it asks for, so the next
+        /// action is pulling the lever. It plants by PREFAB found through the Incinerator component,
+        /// which means this works without anybody knowing what the piece is called.
+        ///
+        /// Dev-only and bare-keyed, like the other seven: Backspace collides with nothing the player
+        /// or the game uses in the field.
+        /// </remarks>
+        private void DevPlantStormAnvil()
+        {
+            var player = Player.m_localPlayer;
+            if (player == null) return;
+
+            var prefab = _items?.StormAnvilPrefab();
+            if (prefab == null)
+            {
+                DevMessage("DEV: no Incinerator prefab in the scene - no anvil to plant.");
+                return;
+            }
+
+            var spawn = ModBootstrap.GetService<ISpawnService>();
+            if (spawn == null)
+            {
+                DevMessage("DEV: no spawn service.");
+                return;
+            }
+
+            spawn.SpawnPrefabInFrontOfPlayer(prefab.name);
+
+            // The combine's own bill, so the lever is the only thing left to do. Granted rather than
+            // stashed: the altar takes what is in the player's pack.
+            int given = 0;
+            foreach (var (item, amount) in StormAnvilTestKit)
+            {
+                GrantItem(item, amount);
+                given++;
+            }
+
+            DevMessage($"DEV: Storm-Anvil planted ('{prefab.name}'), {given} materials granted.");
+        }
+
+        /// <summary>
+        /// What the Stormward's combine asks for, for the dev key above.
+        /// </summary>
+        /// <remarks>
+        /// Deliberately a SECOND list rather than a reference to SagaItems.StormwardCombine: this one
+        /// is a tester's convenience and the other is the recipe. If they drift, the test stops
+        /// working and somebody notices - whereas sharing them would let a broken combine be tested
+        /// with exactly the materials it was broken into wanting.
+        /// </remarks>
+        private static readonly (string item, int amount)[] StormAnvilTestKit =
+        {
+            ("Wood", 20), ("Resin", 20), ("TrollHide", 10), ("DeerHide", 10),
+            (SagaItems.RescuedLightPrefab, SagaItems.StormwardLightCost),
+        };
+
         private void DevAdvanceClock()
         {
             try
@@ -4059,6 +4128,10 @@ namespace ICanShowYouTheWorld.RunMode
                 // Act III. The cartography table is the swamp's real tool: it is the act where the
                 // map stops being scenery and starts being how you get anywhere.
                 ["MapTable"] = p => p.GetComponentInChildren<MapTable>(true) != null,
+                // The Storm-Anvil. Incinerator is a compiled class like all the rest, so this names
+                // no asset - which matters more here than anywhere else in this table, because the
+                // anvil's PREFAB name is the one fact about it nobody in this project knows.
+                ["StormAnvil"] = p => p.GetComponentInChildren<Incinerator>(true) != null,
             };
 
         /// <summary>
@@ -7987,6 +8060,32 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
+                // The Storm-Anvil, raised in Act I and used for the rest of the saga.
+                //
+                // Vanilla calls it the Obliterator and gates it behind a Thunder Stone from Haldor,
+                // who lives in the Black Forest - unreachable here. The saga re-costs the piece to
+                // Meadows materials plus ONE rescued light, which is both the price and the unlock:
+                // Valheim shows a piece once all its materials are known, so the anvil appears in the
+                // hammer the moment the shade hands over the light it kept.
+                //
+                // The light is the story. It is a machine that breaks light, and raising it costs one
+                // - the act's own question asked with the player's hand on the lever rather than
+                // narrated at them. It does not come back if you tear the altar down.
+                //
+                // BEFORE the shield on purpose: the shield can be combined here instead of tapped
+                // together at a bench, and this is where the player meets the thing that will make
+                // every lightning item after it.
+                Id = "mq-anvil", MainQuest = true, Kind = ChallengeKind.BuildPiece,
+                Param = "StormAnvil", Target = 1,
+                Display = "Raise the Storm-Anvil",
+                RewardText = "Stone, coal, and a light back",
+                Hint = "In the hammer, near a workbench: 20 stone, 10 wood, 10 resin and ONE rescued " +
+                       "light. The light does not come back out. What you put in, the sky strikes.",
+                Opening = "There is a way to make the sky do the work. It costs a light to build, " +
+                          "which should tell you what kind of thing it is.",
+            },
+            new ChallengeDefinition
+            {
                 // Act I's last craft, and the answer to the god at the end of it (owner: "another
                 // craft quest before we take on this boss? A shield maybe. A very powerful shield").
                 //
@@ -9083,6 +9182,10 @@ namespace ICanShowYouTheWorld.RunMode
                 // Coal, deliberately, and ahead of its use: the Storm-Anvil burns it and the saga is
                 // about to make that altar the place every lightning thing is bound. A reward that
                 // points at the next act is cheap and reads as foresight.
+                // The light back, which is not the light you spent - that one is in the altar. This is
+                // the saga paying for the lesson, the same way the shade's kept light paid for the
+                // bow's first ingredient.
+                ["mq-anvil"] = new[] { ("Stone", 40), ("Coal", 20), (SagaItems.RescuedLightPrefab, 1) },
                 ["mq-shield-answer"] = new[] { ("Coal", 20), ("MeadHealthMedium", 3) },
                 ["mq-storm-vigil"] = new[] { ("Amber", 5), ("Coal", 20), ("MeadHealthMedium", 2) },
                 ["mq-comfort"] = new[] { ("DeerHide", 10), ("Resin", 20), ("Wood", 30) },

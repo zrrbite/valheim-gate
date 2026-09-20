@@ -980,6 +980,25 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>The prefab pass, so an Obliterator built later is born knowing it.</summary>
+        /// <summary>
+        /// The Storm-Anvil's prefab, found by its component, or null.
+        /// </summary>
+        /// <remarks>
+        /// Exists so a tester can plant one without anybody having to know what the thing is called.
+        /// The name is asset data - the one fact this whole thread was missing - and finding the
+        /// object by the component it carries answers the question without needing it.
+        /// </remarks>
+        public GameObject StormAnvilPrefab()
+        {
+            var scene = ZNetScene.instance;
+            if (scene == null || scene.m_prefabs == null) return null;
+
+            foreach (var prefab in scene.m_prefabs)
+                if (prefab != null && prefab.GetComponent<Incinerator>() != null) return prefab;
+
+            return null;
+        }
+
         private void TeachAltarPrefab(ZNetScene scene)
         {
             if (scene == null || scene.m_prefabs == null) return;
@@ -1002,6 +1021,7 @@ namespace ICanShowYouTheWorld.RunMode
                               $"(found by its Incinerator, not by name).");
                 }
 
+                EnsureAnvilInHammer(prefab);
                 TeachAltar(inc, result);
             }
         }
@@ -1026,18 +1046,122 @@ namespace ICanShowYouTheWorld.RunMode
             "The sky does the work. Put down what you have taken back, pull the lever, and see " +
             "whether it comes up as something or as ash.";
 
-        private static void NameTheAnvil(Incinerator inc)
+        /// <summary>
+        /// What the Storm-Anvil costs to raise, in Act I materials only.
+        /// </summary>
+        /// <remarks>
+        /// The whole reason this exists (owner: "we need to give the player one, through a quest or
+        /// otherwise. Recipe that requires items from act 1"). Vanilla gates the Obliterator behind a
+        /// Thunder Stone bought from Haldor, who lives in the Black Forest - so as shipped it is
+        /// unreachable in the Meadows, and the saga's first act cannot be built on a thing its player
+        /// cannot have. The fishing rod had the same problem and the same answer.
+        ///
+        /// Stone, because an altar is stone. And ONE rescued light, which is the part that matters:
+        /// the Storm-Anvil is a machine that breaks light, and to raise it you give one up. That is
+        /// the act's own question - what you do with what you took - asked with the player's hand on
+        /// it, and it costs one third of what the shield wants rather than anything that could stall
+        /// a chain.
+        ///
+        /// It doubles as the unlock. Valheim shows a piece once every material is a KNOWN one, so the
+        /// anvil appears in the hammer exactly when the hunt has started paying out - which is the
+        /// moment the shade hands over its kept light.
+        /// </remarks>
+        private static readonly (string item, int amount)[] AnvilCost =
+        {
+            ("Stone", 20), ("Wood", 10), ("Resin", 10),
+        };
+
+        private const int AnvilLightCost = 1;
+
+        /// <summary>
+        /// Gives the Obliterator the saga's name, the saga's price, and a place in the hammer.
+        /// </summary>
+        private void DressTheAnvil(Incinerator inc)
         {
             var piece = inc.GetComponent<Piece>();
-            if (piece == null || piece.m_name == AnvilName) return;
+            if (piece == null) return;
 
-            piece.m_name = AnvilName;
-            piece.m_description = AnvilDescription;
+            if (piece.m_name != AnvilName)
+            {
+                piece.m_name = AnvilName;
+                piece.m_description = AnvilDescription;
+            }
+
+            RecostAnvil(piece);
         }
+
+        private void RecostAnvil(Piece piece)
+        {
+            if (_anvilRecosted) return;
+
+            var reqs = new List<Piece.Requirement>();
+            foreach (var (item, amount) in AnvilCost)
+            {
+                var drop = ItemPrefab(item);
+                if (drop == null)
+                {
+                    ReportOnce("anvil-" + item,
+                        $"[ICanShowYouTheWorld] The Storm-Anvil wants '{item}' and the game has no such " +
+                        "item — its price is left as the game shipped it.");
+                    return;
+                }
+                reqs.Add(new Piece.Requirement { m_resItem = drop, m_amount = amount, m_recover = true });
+            }
+
+            var light = _clones.TryGetValue(RescuedLightPrefab, out var lightClone) && lightClone != null
+                ? lightClone.GetComponent<ItemDrop>()
+                : null;
+            if (light == null) return;   // Not yet cloned; the next pass will have it.
+
+            // NOT recoverable. Tearing the altar down does not give the light back - it went into the
+            // thing, which is the only way that cost means anything.
+            reqs.Add(new Piece.Requirement { m_resItem = light, m_amount = AnvilLightCost, m_recover = false });
+
+            piece.m_resources = reqs.ToArray();
+
+            // A workbench, which the Meadows have. Whatever it asked for before was a later act's
+            // station by definition, since what it asked FOR was later-act materials.
+            var bench = ZNetScene.instance?.GetPrefab("piece_workbench")?.GetComponent<CraftingStation>();
+            if (bench != null) piece.m_craftingStation = bench;
+
+            _anvilRecosted = true;
+            Debug.Log($"[ICanShowYouTheWorld] Storm-Anvil re-costed: " +
+                      string.Join(", ", AnvilCost.Select(r => $"{r.amount} {r.item}")) +
+                      $", {AnvilLightCost} {RescuedLightName}.");
+        }
+
+        private bool _anvilRecosted;
+
+        /// <summary>
+        /// Makes sure the hammer can actually build it.
+        /// </summary>
+        /// <remarks>
+        /// Belt and braces, and the braces are the point: re-costing the piece only helps if the
+        /// piece is in the hammer's table to begin with, and whether vanilla puts it there or adds it
+        /// when the Thunder Stone is acquired is asset behaviour this assembly cannot read. Adding it
+        /// when absent answers the question without needing to know.
+        /// </remarks>
+        private void EnsureAnvilInHammer(GameObject anvilPrefab)
+        {
+            if (_anvilInHammer || anvilPrefab == null) return;
+
+            var hammer = ObjectDB.instance?.GetItemPrefab("Hammer")?.GetComponent<ItemDrop>();
+            var table = hammer?.m_itemData?.m_shared?.m_buildPieces;
+            if (table?.m_pieces == null) return;
+
+            _anvilInHammer = true;
+
+            if (table.m_pieces.Contains(anvilPrefab)) return;
+
+            table.m_pieces.Add(anvilPrefab);
+            Debug.Log("[ICanShowYouTheWorld] The Storm-Anvil was not in the hammer's table; added.");
+        }
+
+        private bool _anvilInHammer;
 
         private void TeachAltar(Incinerator inc, ItemDrop result)
         {
-            NameTheAnvil(inc);
+            DressTheAnvil(inc);
 
             if (inc.m_conversions == null)
                 inc.m_conversions = new List<Incinerator.IncineratorConversion>();
