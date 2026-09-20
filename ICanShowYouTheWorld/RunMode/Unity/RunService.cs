@@ -8905,9 +8905,14 @@ namespace ICanShowYouTheWorld.RunMode
                 Param = SagaItems.StormwardName, Target = 1,
                 Display = "Bind the Stormward",
                 RewardText = "Mead, and arrows enough for a god",
-                Hint = "At an IMPROVED workbench, or combined at the Storm-Anvil: 20 wood, 20 resin, " +
-                       "10 troll hide, 10 deer hide and 3 rescued lights. The hide is the Breaker\u2019s \u2014 if it " +
-                       "moved on, so did the shield. At the anvil be EXACT: it burns whatever it does not recognise.",
+                // NO WORKBENCH. The bench recipe was deleted when both storm items moved to the
+                // anvil, and this line kept sending the player to a station that would sit there not
+                // offering anything - the same defect as the shade's "your bench knows the shape now",
+                // found the same way: by the owner asking what the story was.
+                Hint = "At the Storm-Anvil, in the rain: 20 wood, 20 resin, 10 troll hide, 10 deer " +
+                       "hide and 3 rescued lights, all in the box together, then pull the lever. The " +
+                       "hide is the Breaker\u2019s \u2014 if it moved on, so did the shield. No bench will bind " +
+                       "it. Be EXACT: it burns whatever it does not recognise.",
                 Opening = "The storm is his. Bind something that does not care.",
             },
             new ChallengeDefinition

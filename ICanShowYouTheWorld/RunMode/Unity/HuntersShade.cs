@@ -211,11 +211,34 @@ namespace ICanShowYouTheWorld.RunMode
         public const string RemarkBreaker = "breaker";
         public const string RemarkEikthyr = "eikthyr";
 
+        /// <remarks>
+        /// The last three sentences are the STORMWARD'S PROVENANCE, and they are here rather than
+        /// anywhere else on purpose.
+        ///
+        /// Thor's bow has a teacher: the shade asks for a quiver, is paid, and hands over the shape.
+        /// The shield had NOBODY - it appeared as a step with an opening line and no character behind
+        /// it, which is why the owner had to ask where it came from ("What was the story behind
+        /// getting the shield recipe again?"). A player asking that about a thing they built is the
+        /// symptom of a craft with no author.
+        ///
+        /// The fix costs no machinery, because the right moment was already firing: the shade already
+        /// speaks after the Breaker falls, and the Breaker IS the hide. So the thing that stopped
+        /// carrying light and started breaking it becomes the thing that goes around your arm, said by
+        /// the one character who knows what being forgotten does to you.
+        ///
+        /// Worded as provenance rather than instruction, because the tracks run in PARALLEL and this
+        /// can be heard after the shield is already bound. "Keep the hide" reads correctly either way;
+        /// "go and make" would not.
+        /// </remarks>
         public const string BreakerLine =
             "You put it down. Good.\n\n" +
             "It was one of theirs once — a splinter nothing ever came to collect, so it stopped " +
             "carrying light and started breaking it. That is what the forest does to the ones it " +
-            "forgets. Something smaller forgot me, and it took longer.";
+            "forgets. Something smaller forgot me, and it took longer.\n\n" +
+            "Keep the hide. Whatever the sky did to that thing, it stopped caring a long age ago, and " +
+            "the hide is where it stopped caring. Bound over a meadow frame, with light under the " +
+            "boss, it will do the same for you — but no bench will bind it either. That wants the " +
+            "shore, and the rain, and three of your lights.";
 
         public const string EikthyrLine =
             "You called him down, and he came, and he is gone.\n\n" +
