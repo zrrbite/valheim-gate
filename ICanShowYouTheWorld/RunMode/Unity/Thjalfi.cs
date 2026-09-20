@@ -365,8 +365,23 @@ namespace ICanShowYouTheWorld.RunMode
                 return;
             }
 
+            // The MARGIN overload, for the reason written out in AltarSpot: GetSolidHeight(Vector3)
+            // raycasts from a thousand metres up and takes the FIRST collider, so at a cliff edge it
+            // returns the CLIFFTOP rather than the ground the spot was chosen for - and it reports a
+            // miss by handing back the y it was given, so there is no failure to see. That is how one
+            // session put him at y=51.9 on a spot the shore search had measured at 49.3, from which he
+            // fell about nineteen metres to the beach.
+            //
+            // Starting a few metres above the intended height cannot reach over a cliff, and it
+            // answers false instead of guessing. On false, keep the generated height: it is what the
+            // search chose and it is better than a number from the wrong geometry.
             Vector3 pos = spot;
-            try { pos.y = ZoneSystem.instance.GetSolidHeight(pos) + 0.3f; }
+            try
+            {
+                float ground;
+                if (ZoneSystem.instance.GetSolidHeight(pos, out ground, FootingRayMargin))
+                    pos.y = ground + 0.3f;
+            }
             catch { }
 
             // Looking out at the water. Standing with his back to the sea would throw away most of
@@ -528,6 +543,21 @@ namespace ICanShowYouTheWorld.RunMode
                     if (distance < MinDistance) break;
 
                     Vector3 stand = lastLand - dir * ShoreInset;
+
+                    // A BEACH IS NEAR SEA LEVEL. This was the hole in the two tests below: a cliff
+                    // edge dropping straight into open water passes both of them - the sea beyond
+                    // keeps being sea, and a clifftop is perfectly flat - so the search happily
+                    // reported a shore at y=49 in one play session. He was then placed on it, twenty
+                    // metres above the water, and fell.
+                    //
+                    // Height is the test the crossing cannot give you: the ray walk finds where the
+                    // GROUND crosses the waterline, and on a cliff that is the bottom of a drop the
+                    // last land sample knows nothing about.
+                    float standHeight;
+                    try { standHeight = gen.GetHeight(stand.x, stand.z); }
+                    catch { break; }
+
+                    if (strict && standHeight > Waterline + BeachHeadroom) break;
 
                     // A height crossing the waterline is not enough to make a beach. A crevasse
                     // between two cliffs crosses it, and so does a puddle - and the owner found him
@@ -735,6 +765,20 @@ namespace ICanShowYouTheWorld.RunMode
 
         /// <summary>Sea level in Valheim's world space, with a margin so he is not ankle-deep.</summary>
         private const float Waterline = 31f;
+
+        /// <summary>
+        /// How far above the waterline a candidate may still count as a beach, in metres.
+        /// </summary>
+        /// <remarks>
+        /// Generous enough for a sloping strand and a dune, tight enough to refuse a cliff. The case
+        /// this exists for measured 18 metres above the water, so anything under about ten separates
+        /// them comfortably; a shore that misses out on a legitimate steep bank falls through to the
+        /// relaxed pass, which does not apply this at all.
+        /// </remarks>
+        private const float BeachHeadroom = 8f;
+
+        /// <summary>How far above his chosen spot the footing ray starts. Small, so it stays local.</summary>
+        private const int FootingRayMargin = 5;
 
         /// <summary>The claimed bed, when there is one - so his walk is measured from home.</summary>
         private static Vector3? Home(Player player)
