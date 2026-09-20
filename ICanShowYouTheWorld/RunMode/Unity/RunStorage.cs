@@ -19,6 +19,20 @@ namespace ICanShowYouTheWorld.RunMode
         public float elapsedSeconds;
         public float heat;
         public List<string> defeatedBossKeys;
+        /// <summary>
+        /// The run's own record of what it went through, one entry per main-quest step finished.
+        /// </summary>
+        /// <remarks>
+        /// Encoded as "numeral|display|opening" rather than held as a list of objects, because this
+        /// DTO goes through Unity's JsonUtility and that cannot serialise a nested list - which is
+        /// why every other structure here is parallel lists or encoded strings.
+        ///
+        /// Persisted because the BOOK page is the record of a RUN, and a record that forgets itself
+        /// on resume is not one. It also has to outlive the act: tracks are re-seated when an act
+        /// flips, so by Act III the chain that carried Act I is simply gone from memory.
+        /// </remarks>
+        public List<string> chronicle;
+
         public List<string> splitLabels;
         public List<float> splitTimes;
 

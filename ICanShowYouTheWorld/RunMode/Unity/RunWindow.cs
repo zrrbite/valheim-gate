@@ -244,7 +244,17 @@ namespace ICanShowYouTheWorld.RunMode
             /// <summary>What you act on: the numbers, the step in play, the tasks, the boons.</summary>
             Run,
 
-            /// <summary>What you have done, and the detail there was never room for.</summary>
+            /// <summary>
+            /// What you have done, and the detail there was never room for. Labelled BOOK.
+            /// </summary>
+            /// <remarks>
+            /// Called QUESTS for one build and renamed on the owner's question ("We should make sure
+            /// that it tells a story of what we went through, so its sort of a book. 'Quest log' or
+            /// just 'Book'?"). BOOK, because it is the shorter word and the truer one: a quest log
+            /// lists what is outstanding, and this page's centre of gravity is the CHRONICLE - what
+            /// the run has already been through, in the words that were said at the time. The enum
+            /// member keeps its old name so the diff stays about the page rather than about renaming.
+            /// </remarks>
             Quests,
         }
 
@@ -1251,7 +1261,7 @@ namespace ICanShowYouTheWorld.RunMode
             GUILayout.BeginHorizontal();
 
             DrawPageTab("RUN", HudPage.Run);
-            DrawPageTab("QUESTS", HudPage.Quests);
+            DrawPageTab("BOOK", HudPage.Quests);
 
             GUILayout.FlexibleSpace();
             GUILayout.EndHorizontal();
@@ -1292,6 +1302,10 @@ namespace ICanShowYouTheWorld.RunMode
         /// </remarks>
         private void DrawQuestLog(IRunService run)
         {
+            // The book opens on what has HAPPENED. The live tracks come after it, because a book
+            // whose first page is a to-do list is a to-do list.
+            DrawChronicle(run);
+
             var tracks = run.Challenges?.Tracks;
             if (tracks == null || tracks.Count == 0)
             {
@@ -1300,6 +1314,9 @@ namespace ICanShowYouTheWorld.RunMode
             }
 
             var act = run.CurrentAct;
+
+            GUILayout.Label(act == null ? "NOW" : $"ACT {act.Numeral} — NOW", RunTheme.Header);
+
             if (act != null && !string.IsNullOrEmpty(act.Epigraph))
             {
                 GUI.contentColor = RunTheme.TextMuted;
@@ -1388,6 +1405,65 @@ namespace ICanShowYouTheWorld.RunMode
             }
 
             DrawRecordSections(run);
+        }
+
+        /// <summary>
+        /// The run's own account of itself: every main-quest step finished, in order, under the act
+        /// it happened in.
+        /// </summary>
+        /// <remarks>
+        /// This is the page's reason to exist. The tracks below it say what is outstanding, which the
+        /// RUN page already says more briefly - what nothing said before is what the run HAS BEEN.
+        /// Each entry carries the line spoken when that step opened, so read top to bottom it is the
+        /// saga in its own words rather than a list of verbs (owner: "We should make sure that it
+        /// tells a story of what we went through, so its sort of a book").
+        ///
+        /// It comes from RunService, not from the tracks, because the tracks cannot answer it: they
+        /// are re-seated when an act flips, so by Act III there is nothing left in memory that
+        /// remembers Act I. It is persisted for the same reason - a record that forgets itself on
+        /// resume is not a record.
+        /// </remarks>
+        private void DrawChronicle(IRunService run)
+        {
+            var entries = run.Chronicle;
+            if (entries == null) return;
+
+            string act = null;
+            bool any = false;
+
+            foreach (var entry in entries)
+            {
+                any = true;
+
+                // An act heading only where the act CHANGES, so the book reads as chapters rather
+                // than as a table with a repeated column.
+                if (entry.Act != act)
+                {
+                    act = entry.Act;
+                    GUILayout.Space(any ? 4f : 0f);
+                    GUILayout.Label(string.IsNullOrEmpty(act) ? "THE SAGA" : $"ACT {act}", RunTheme.Header);
+                }
+
+                GUI.contentColor = RunTheme.TextParchment;
+                GUILayout.Label("  " + entry.Step, RunTheme.Small);
+                GUI.contentColor = Color.white;
+
+                if (!string.IsNullOrEmpty(entry.Line))
+                {
+                    GUI.contentColor = RunTheme.TextMuted;
+                    GUILayout.Label("      " + entry.Line, RunTheme.Small);
+                    GUI.contentColor = Color.white;
+                }
+            }
+
+            if (!any)
+            {
+                GUI.contentColor = RunTheme.TextMuted;
+                GUILayout.Label("  Nothing written yet.", RunTheme.Small);
+                GUI.contentColor = Color.white;
+            }
+
+            GUILayout.Space(6f);
         }
 
         private void DrawQuestSection(IRunService run)

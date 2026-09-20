@@ -64,6 +64,7 @@ namespace ICanShowYouTheWorld.Core
         float RunDeerGreylingChance { get; set; }
         float RunHomewardCooldownMinutes { get; set; }
         float RunCorpseGateCooldownMinutes { get; set; }
+        int RunMessageWrapChars { get; set; }
         bool RunShowHomestead { get; set; }
         float RunForestNoticeChance { get; set; }
         int RunForestNoticeChops { get; set; }
@@ -226,6 +227,19 @@ namespace ICanShowYouTheWorld.Core
         // home is - it is the same walk you already made, with none of it left to find out - and the
         // death itself has already been paid for in heat and lost skill.
         [SerializeField] private float runCorpseGateCooldownMinutes = 4f;
+
+        // Where the saga's centre-screen lines break.
+        //
+        // Valheim's own MessageHud centre text is one long line at a large size and does not wrap,
+        // so a sentence runs off the side of the screen (owner: "Sometimes the Yellow large text is
+        // too large and goes off screen, can we wrap it?"). Wrapping it OURSELVES rather than
+        // reaching into the game's text component: these are our strings, the newline is ours to
+        // insert, and nothing about the game's UI has to be touched to do it.
+        //
+        // Config rather than a constant for the same reason RunHudMenuOffset and RunSidePanelX are:
+        // the right number depends on the screen and the UI scale, so it cannot be one value that
+        // is right for everyone. Zero or less turns wrapping off.
+        [SerializeField] private int runMessageWrapChars = 44;
         // The HOMESTEAD records panel. Off by default: it competed for room with the three
         // quest tracks. The records are still kept either way, so switching this on shows the
         // full history rather than starting from nothing.
@@ -354,6 +368,7 @@ namespace ICanShowYouTheWorld.Core
         public float RunDeerGreylingChance { get => runDeerGreylingChance; set => runDeerGreylingChance = value; }
         public float RunHomewardCooldownMinutes { get => runHomewardCooldownMinutes; set => runHomewardCooldownMinutes = value; }
         public float RunCorpseGateCooldownMinutes { get => runCorpseGateCooldownMinutes; set => runCorpseGateCooldownMinutes = value; }
+        public int RunMessageWrapChars { get => runMessageWrapChars; set => runMessageWrapChars = value; }
         public bool RunShowHomestead { get => runShowHomestead; set => runShowHomestead = value; }
         public float RunForestNoticeChance { get => runForestNoticeChance; set => runForestNoticeChance = value; }
         public int RunForestNoticeChops { get => runForestNoticeChops; set => runForestNoticeChops = value; }

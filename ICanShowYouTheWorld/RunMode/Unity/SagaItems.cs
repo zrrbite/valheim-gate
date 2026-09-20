@@ -177,6 +177,15 @@ namespace ICanShowYouTheWorld.RunMode
         /// Thor's rather than a better bow. Both raised: 20/+4 first, then 26/+5 ("we COULD increase
         /// the dmg just a bit"), now this.
         /// </remarks>
+        /// <summary>
+        /// How far the lightning reaches around an arrow's impact, in metres.
+        /// </summary>
+        /// <remarks>
+        /// Four, which is about two deer or a knot of greylings - enough to read as a storm and
+        /// small enough that aim still matters. Eikthyr's own stomp is wider; this is a bow.
+        /// </remarks>
+        private const float ThorsBowAoeRadius = 4f;
+
         private const float ThorsBowPierce = 58f;
         private const float ThorsBowPiercePerLevel = 6f;
         private const float ThorsBowLightning = 32f;
@@ -447,6 +456,25 @@ namespace ICanShowYouTheWorld.RunMode
 
                     p.m_spawnOnHit = lightning;
                     p.m_spawnOnHitChance = 1f;
+
+                    // And it strikes AROUND the arrow, not just through it (owner: "I really feel
+                    // the Thors bow should have an Aoe component since it does lightning!"). Quite
+                    // right: a bolt that stops at one deer is not lightning, it is a nail.
+                    //
+                    // Projectile.m_aoe is the game's OWN area path, which is why it is used instead
+                    // of spawning an Aoe component of our own. The projectile already knows its
+                    // owner, so hitOwner/noDamageFriendly mean what they say and the player cannot
+                    // be caught in their own storm - whereas a bare Aoe spawned by m_spawnOnHit is
+                    // never given an owner at all, and would have had nothing to exempt.
+                    //
+                    // The bow's damage is not divided between the targets: m_aoe re-uses the hit,
+                    // which is generous, and deliberately so - this is the reward for a whole craft
+                    // track plus three lights won off the forest.
+                    p.m_aoe = ThorsBowAoeRadius;
+                    p.m_aoeMaxHitOnce = true;
+                    p.m_hitOwner = false;
+                    p.m_noDamageFriendly = true;
+
                     _tunedProjectiles.Add(id);
                 }
 

@@ -17,7 +17,7 @@ Standing context for the Windows side:
 
 ---
 
-## 2026-09-20 - THE TEST LIST for 1.0.15-run.2026-09-20c
+## 2026-09-20 - THE TEST LIST for 1.0.15-run.2026-09-20d
 
 Fourteen builds over two days, rewritten as ONE pass in the order you actually meet things. The
 per-build TASK entries below keep the reasoning; this is the list to play with.
@@ -25,21 +25,22 @@ per-build TASK entries below keep the reasoning; this is the list to play with.
 **`...20c` is staged but NOT installed** - you were playing when it was built, and replacing a
 DLL the game has open fails. When you are done: `.\dist\windows\Install-Mod.ps1 -ModOnly`.
 
-### If you only do five things
+### If you only do seven things
 
-1. The saga menu **opens itself** when you load a character, **"Not now"** keeps it away, and it
-   now has a **`GM` tab** with the cheat mod's key table on it.
-2. The run window has **RUN / QUESTS tabs**, and QUESTS remembers what you have finished.
-3. **Dev keys work bare** again - `Keypad *` and `/` especially - and the DEV banner names the two
-   that want a modifier.
-4. The **HEARTH track holds the homestead** (roof, fire, pot, bed, chest), not CRAFT.
-5. Afterwards, the log greps at the bottom of this page. `] Unknown` must be empty.
+1. **`mod` + `Keypad -` now skips to night** in one press, and says so when it arrives. The old
+   "+2h" reported the wrong answer every time - your log caught it.
+2. The **BOOK** tab (was QUESTS) opens on the run's own account of itself, act by act.
+3. **Thor's bow forks.** Every arrow strikes 4m around where it lands.
+4. The saga menu **opens itself**, **"Not now"** keeps it away, and it has a **`GM` tab**.
+5. Centre-screen lines **wrap** instead of running off the side.
+6. **The HEARTH track holds the homestead** (roof, fire, pot, bed, chest), not CRAFT.
+7. Afterwards, the log greps at the bottom of this page.
 
 ### 1. At the main menu
 
 - [ ] Launch and **do not open Credits**. **No popup at all.** Silence is success.
 - [ ] Under the game's own version line, one gold line at 70% size, **not overlapping**:
-      `SAGA v1.0.15-run.2026-09-20c · GM`. That line is the ONLY proof the mod loaded.
+      `SAGA v1.0.15-run.2026-09-20d · GM`. That line is the ONLY proof the mod loaded.
 - [ ] Load the character carrying **Thor's bow**. Still there. Save, quit to desktop, come back:
       still there, and no `Failed to find item prefab` in the log.
 
@@ -61,14 +62,20 @@ DLL the game has open fails. When you are done: `.\dist\windows\Install-Mod.ps1 
 - [ ] `End` still brings it back by hand.
 - [ ] Start a run, then **abandon** it: the menu does not immediately reappear.
 
-### 4. The run window, which is now two pages
+### 4. The run window, which is now two pages - RUN and BOOK
 
 - [ ] Tabs read **`RUN`** and **`QUESTS`**. The selected one is gold.
 - [ ] **RUN** keeps the numbers, the step in play with its count, bar and clause list, TASKS and
       BOONS. SPLITS and HOMESTEAD are gone from it.
-- [ ] **QUESTS** shows, per track: what it has **finished** - each with the line that was said at the
-      time - then the step in play with its **hint** and what it **pays**, then `N more on this
-      track`. Future steps are a count and never a list, deliberately.
+- [ ] **BOOK** (renamed from QUESTS) opens on **THE CHRONICLE**: every main-quest step you have
+      finished, in order, grouped under `ACT I`, `ACT II` and so on, each with the line that was
+      said when it opened. Read it top to bottom - it should read as the run's own account of itself.
+- [ ] **The chronicle survives a reload.** Save, quit to the menu, resume: the book is still full.
+      It is persisted precisely because a record that forgets itself is not one.
+- [ ] Below the chronicle, `ACT <n> - NOW` holds the live tracks: the step in play with its **hint**
+      and what it **pays**, then `N more on this track`. Future steps stay a count, never a list.
+- [ ] **Centre-screen lines wrap** now instead of running off the side. If 44 characters is the
+      wrong width for your screen, `runMessageWrapChars` in the config is the dial.
 - [ ] The tab row **does not move** when you switch pages, and the log has no
       `Mismatched LayoutGroup` after clicking about.
 - [ ] **Sub-objective counts read down a column**: `3/4  Hunt 4 Boar`, bright gold, left-aligned.
@@ -77,6 +84,9 @@ DLL the game has open fails. When you are done: `.\dist\windows\Install-Mod.ps1 
 ### 5. The keys
 
 - [ ] `Keypad +` = **Shaman's Mercy** (burst heal). `Keypad -` = **Unseen** (20s, nothing sees you).
+- [ ] **`mod` + `Keypad -` skips straight to night**, in one press, and says `DEV: it is night.`
+      when it has arrived. Press it again while it is night and it winds back to daylight - which
+      "Hunt a deer by daylight" needs and the old key had no way to give you.
 - [ ] **Dev keys are bare again** except two: `Keypad *`, `/`, `.`, `Enter`, `Delete`, `Home` and
       `PageUp` need NO modifier. Only the step-skip and the clock do, because those share the
       player's keys - **`Shift`/`Ctrl`/`Alt` + `Keypad +`** and **+ `Keypad -`**.
@@ -123,8 +133,9 @@ DLL the game has open fails. When you are done: `.\dist\windows\Install-Mod.ps1 
       you already have. Same after a world reload, which rebuilds ObjectDB and re-registers
       everything - that is the case the guard exists for.
 - [ ] **Thor's bow** - the bench will not list it until you are HOLDING a light; needs 3. It is now
-      **58 pierce + 32 lightning** and wears the **Huntsman's model**, not the plank bow's. Lightning
-      flash on impact.
+      **58 pierce + 32 lightning** and wears the **Huntsman's model**. Lightning flash on impact -
+      and the bolt now **forks 4m around the arrow**, so a shot into a knot of greylings should take
+      more than the one it hit. It must NEVER hurt you or a tamed animal.
 - [ ] **The Stormward** - an **improved** workbench and 10 troll hide, and it wears the
       **serpentscale shield's** model.
 - [ ] **The Gatherer is 35% bigger than its children** and arrives about **45 seconds AFTER** its
@@ -176,6 +187,96 @@ default is **2.5** - the file wins over the code, so you have been playing a mon
 regen. Thirty-five newer settings are absent from it entirely and running on code defaults, which is
 correct behaviour but means they cannot be TUNED without adding the lines by hand. Ask and I will
 either add the keys or make `Load()` re-save so no future setting is invisible.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
+---
+
+## 2026-09-20 - TASK: 1.0.15-run.2026-09-20d - the book, the fork, the wrap, and a lying dev key
+
+Four of your observations, plus one your LOG found that you had not mentioned.
+
+### The dev clock key was reporting the wrong answer every single time
+
+Twenty-six consecutive `DEV: +2h - still light` lines in your log, across three sittings. The clock
+was moving the whole time. The message was not.
+
+`EnvMan` recomputes `s_isNight` in its `FixedUpdate`, from a day fraction it lerps toward with
+`Mathf.LerpAngle` at 0.01 per step - so reading `IsNight` in the same frame as the `SetNetTime` write
+always returned the state BEFORE the jump. The key worked; the only thing it ever told you was stale.
+A key that plainly does nothing is better than that, because at least it does not make you press it
+eleven times.
+
+It is now a skip that spans frames and asks the GAME whether it has arrived, rather than doing
+arithmetic on a day length and a fraction whose rescaling is EnvMan's business. One press, and it says
+`DEV: it is night.` when it is there. Capped at three in-game days so a world that never darkens stops
+rather than winding into next week. And it TOGGLES - press it at night and it winds back to daylight,
+which "Hunt a deer by daylight" needs and which the old key had no way to give you.
+
+This is the second time in two days that the fix was "stop reading state in the frame you wrote it",
+after the creature dressing. Worth remembering as a shape.
+
+### Also in your log, and all good
+
+All seven saga items resolved to their FIRST-choice mesh - `BowHuntsman`, `ShieldSerpentscale`,
+`HelmetBronze`, `ArmorIronChest`, `ArmorWolfLegs`, `CapeLox`, `Wisp` - so no fallback was needed
+anywhere. No `] Unknown`, no `Failed to find item prefab`, and **no `Mismatched`**, which is the one
+that mattered: clicking between the tabs leaves IMGUI's layout stacks intact. Both recipes were taught
+exactly once.
+
+Still unverified: `forge`. You did not reach Act II, so the one prefab name I could not check from the
+codebase is still unchecked.
+
+### The BOOK
+
+Renamed from QUESTS, and it is the shorter word and the truer one: a quest log lists what is
+outstanding, and this page's centre of gravity is now what the run has already been through.
+
+`RunService` keeps a **chronicle** - one entry per main-quest step finished, carrying the act numeral,
+the step, and the line that was spoken when it opened. The book opens on that, grouped into acts, and
+the live tracks come after it under `ACT <n> - NOW`. A book whose first page is a to-do list is a
+to-do list.
+
+It is kept by the service rather than read off the tracks because the tracks cannot answer it: they
+are re-seated when an act flips, so by Act III nothing in memory remembers Act I. And it is persisted,
+because a record that forgets itself on resume is not a record. Encoded as `numeral|display|opening`
+in one list, since that DTO goes through Unity's `JsonUtility` and cannot nest.
+
+### Thor's bow forks
+
+Right, and for the right reason: a bolt that stops at one deer is a nail, not lightning.
+`Projectile.m_aoe` is the game's OWN area path, which is why it is used instead of spawning an `Aoe`
+component of our own - the projectile already knows its owner, so `m_hitOwner` and
+`m_noDamageFriendly` mean what they say and you cannot be caught in your own storm. A bare `Aoe`
+spawned through `m_spawnOnHit` is never given an owner at all and would have had nothing to exempt.
+
+Four metres: about two deer or a knot of greylings. Eikthyr's own stomp is wider; this is a bow.
+
+### The big yellow text wraps
+
+Valheim's centre message is one long line at a large size and does not wrap. Wrapped on OUR side
+rather than by reaching into `MessageHud`'s text component, because these are our strings and that
+component is shared with every message the game itself raises. Breaks on spaces only, so a long word
+overhangs rather than being cut in half, and an existing newline resets the count.
+`runMessageWrapChars` (default 44) is the dial, config rather than a constant for the same reason
+`RunHudMenuOffset` is: the right number depends on the screen.
+
+### Not built: search at the workbench
+
+The one I did not do, and I want to be straight about why rather than quietly dropping it.
+
+It is real UI surgery on Valheim's own crafting panel, and I cannot play-test. The research is done
+and the members are all there - `InventoryGui.m_availableRecipes`, `m_recipeListRoot`,
+`m_recipeListSpace`, `m_recipeListBaseSize`, `m_recipeElementPrefab` - so filtering means hiding the
+elements that do not match and RE-STACKING the rest by index, every time the game rebuilds the list.
+The part I will not guess at is the text field: an IMGUI input competing with Valheim's own keyboard
+handling, over a panel the player is using, where being wrong breaks crafting itself. Breaking the
+crafting window would be far worse than not having search in it.
+
+So it wants its own build and its own play-test, not a corner of a batch of five. Say the word and it
+is the next thing.
 
 ### RESULTS (Windows side appends here)
 

@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-09-20 at `1.0.15-run.2026-09-20c`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-09-20 at `1.0.15-run.2026-09-20d`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -21,7 +21,7 @@ Everything below is what that file tells it.
 
 - Branch **`feature/run-mode`**, not merged, deliberately — the mode is still
   being tuned in play.
-- Latest tag **`1.0.15-run.2026-09-20c`**; builds are date-based since 2026-08-31
+- Latest tag **`1.0.15-run.2026-09-20d`**; builds are date-based since 2026-08-31
   (`Scripts/nextversion.sh`). The game moved to **1.0.12 on 2026-09-12** and to
   **1.0.15 on 2026-09-19**; both times the mod was rebuilt and installed on Windows
   the same day. **1.0.15 needed no source change** — all 316 member references from
@@ -211,6 +211,38 @@ is a decision, not a detail — see the note at the top of `CreatureDressing`.
 `specs/2026-08-23-act-questline-plans.md`; the story itself in
 `specs/2026-08-27-story-bible.md`. Acts II–V exist and open correctly; their
 middles are thinner than Act I's.
+
+## Next: search at the crafting bench
+
+Asked 2026-09-20, deliberately NOT built in the batch that day, and the reason is the reason to read
+this before starting.
+
+It is UI surgery on Valheim's own crafting panel, and breaking the crafting window is far worse than
+not having search in it. The research is done and every member exists: `InventoryGui.m_availableRecipes`
+(private list), `m_recipeListRoot`, `m_recipeListSpace`, `m_recipeListBaseSize`, `m_recipeElementPrefab`.
+Filtering therefore means hiding the elements that do not match and RE-STACKING the rest by index,
+every time the game rebuilds the list - the game positions them by index times `m_recipeListSpace`, so
+hidden ones leave gaps otherwise.
+
+The part not to guess at is the INPUT. An IMGUI text field competing with Valheim's own keyboard
+handling, over a panel the player is actively using. Valheim's `TakeInput` is false while the inventory
+is open, which is the reason to think letters will not reach the game - but "is the reason to think"
+is not "was play-tested", and this one has to be.
+
+So: its own build, its own play-test, and behind `runDevMode` for the first outing.
+
+## Two shapes worth remembering from 2026-09-20
+
+**Do not read state in the frame you wrote it.** Twice in two days. `CreatureDressing` lost its scale
+and colour because it wrote materials before `LevelEffects.Start` ran; the dev clock key reported
+"still light" twenty-six times because it read `EnvMan.s_isNight` in the same frame as its
+`SetNetTime`, and EnvMan only recomputes that in `FixedUpdate` from a fraction it lerps toward. Both
+fixes were the same: span frames, and ask the game whether it has arrived.
+
+**A help line that is WRONG is worse than none.** The dev banner, and then the dev clock's message.
+In both cases the tester trusted it and concluded a working feature was broken. Where a key or a
+number is shown to a person, generate it from the thing that reads it - `BoonKeys`,
+`RunService.DevKeyHelp`, the GM page's table from `CommandRegistry.All`.
 
 ## Done 2026-09-20 (`...20c`): the general menu, and the flavour baked into the DLL
 

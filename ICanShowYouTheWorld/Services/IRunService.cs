@@ -3,6 +3,14 @@ using ICanShowYouTheWorld.RunMode;
 
 namespace ICanShowYouTheWorld.Services
 {
+    /// <summary>One line of the run's book: which act, what was done, and what was said.</summary>
+    public struct ChronicleEntry
+    {
+        public string Act;
+        public string Step;
+        public string Line;
+    }
+
     /// <summary>
     /// Orchestrates Run Mode: lifecycle (start/abandon/finish), per-frame polling,
     /// resume-after-reload, and scoring. The engines it owns (challenges, boons, heat)
@@ -60,6 +68,9 @@ namespace ICanShowYouTheWorld.Services
         /// <summary>True while the player has things lying where they died. Gated back with PageDown.</summary>
         bool CorpseWaiting { get; }
         float CorpseGateCooldown { get; }
+
+        /// <summary>The run's book: what it has been through, in order. See RunService.Chronicle.</summary>
+        System.Collections.Generic.IEnumerable<ChronicleEntry> Chronicle { get; }
 
         /// <summary>True when the saga menu should open itself on entering a world. See RunService.</summary>
         bool WantsLobbyShown { get; }

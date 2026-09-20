@@ -259,6 +259,17 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>The homestead's answer to splits — see <see cref="HearthRecords"/>.</summary>
         private readonly HearthRecords _records = new HearthRecords();
 
+        /// <summary>
+        /// One line per main-quest step finished, in order, for the BOOK page.
+        /// </summary>
+        /// <remarks>
+        /// Written here rather than read back off the tracks because the tracks cannot answer it:
+        /// they are re-seated when an act flips, so Act I's chain has gone by the time Act II
+        /// starts. A saga that can only show you the act you are standing in is a quest list; one
+        /// that keeps the whole run is a book, which is what was asked for.
+        /// </remarks>
+        private readonly List<string> _chronicle = new List<string>();
+
         private readonly List<string> _splitLabels = new List<string>();
         private readonly List<float> _splitTimes = new List<float>();
 
@@ -1751,7 +1762,8 @@ namespace ICanShowYouTheWorld.RunMode
                 _saveTimer = 0f;
                 _noArmorSeconds = 0f;
                 _noArmorChallengeIds.Clear();
-                _splitLabels.Clear();
+                _chronicle.Clear();
+            _splitLabels.Clear();
                 _splitTimes.Clear();
                 _accountedBossKeys.Clear();
                 foreach (var key in preDefeated) _accountedBossKeys.Add(key);
@@ -2049,6 +2061,7 @@ namespace ICanShowYouTheWorld.RunMode
             HandleBoonOfferInput();
             HandleBoonActivationInput();
             HandleDevInput();
+            TickDevClock();
 
             _pollTimer += dt;
             if (_pollTimer >= BossPollIntervalSeconds)
@@ -2220,7 +2233,7 @@ namespace ICanShowYouTheWorld.RunMode
         public static readonly string[] DevKeyHelp =
         {
             "DEV MODE   *items   .light   /god+speed   Ent:home   Del:slay   Home:map-tp   PgUp:probe",
-            "Shift/Ctrl/Alt + [+] complete step   \u00b7   + [-] advance 2h   (bare + and - are the player's)",
+            "Shift/Ctrl/Alt + [+] complete step   \u00b7   + [-] skip to night/day   (bare + and - are the player's)",
         };
 
         /// <summary>
@@ -2445,28 +2458,89 @@ namespace ICanShowYouTheWorld.RunMode
             }
         }
 
+        /// <summary>True while the dev clock is winding toward the state asked for.</summary>
+        private bool _devSkipping;
+
+        /// <summary>What the skip is aiming at: night, or day.</summary>
+        private bool _devSkipToNight;
+
+        /// <summary>How much net time the skip has added, so it cannot wind forever.</summary>
+        private double _devSkipAdded;
+
+        /// <summary>Net seconds added per frame while skipping. Three in-game days is the cap.</summary>
+        private const double DevSkipStepSeconds = 60.0;
+        private const double DevSkipMaxSeconds = 5400.0;
+
         /// <summary>
-        /// Pushes the world clock forward two game hours.
-        ///
-        /// A fixed step per press rather than "skip to night": the caller can see what it did and
-        /// press again, whereas a loop that hunts for nightfall depends on how EnvMan derives its
-        /// time from the network clock, which is not worth being clever about in a test aid.
+        /// Winds the world clock to the OTHER half of the day - night if it is light, day if it is
+        /// dark - and says so when it gets there.
         /// </summary>
+        /// <remarks>
+        /// It was "+2h per press", which reported the wrong thing every single time, and the play log
+        /// caught it: twenty-six consecutive `DEV: +2h - still light` lines. The clock was moving. The
+        /// MESSAGE was read in the same frame as the write, and EnvMan only recomputes s_isNight in
+        /// its FixedUpdate - from a day fraction it lerps toward with Mathf.LerpAngle at 0.01 per
+        /// step. So the answer printed was always the state BEFORE the jump, and the tester pressed
+        /// the key eleven times learning nothing, which is worse than a key that plainly does not
+        /// work.
+        ///
+        /// So the skip now spans frames and asks the GAME whether it has arrived, rather than doing
+        /// arithmetic on a day length and a fraction whose rescaling is EnvMan's business. Capped, so
+        /// a night that never comes - a broken EnvMan, a paused world - stops rather than winding the
+        /// clock into next week.
+        ///
+        /// Toggling to DAY as well as to night is not a bonus: "Hunt a deer by daylight" is a step,
+        /// and a tester who has just skipped to night had no way back.
+        /// </remarks>
         private void DevAdvanceClock()
         {
+            if (_devSkipping)
+            {
+                // Pressed again mid-skip: stop where we are rather than queueing another.
+                _devSkipping = false;
+                DevMessage("DEV: clock stopped.");
+                return;
+            }
+
+            _devSkipToNight = !IsNight;
+            _devSkipping = true;
+            _devSkipAdded = 0.0;
+
+            DevMessage(_devSkipToNight ? "DEV: winding to night…" : "DEV: winding to daylight…");
+        }
+
+        /// <summary>
+        /// One frame of the dev clock skip. See <see cref="DevAdvanceClock"/>.
+        /// </summary>
+        private void TickDevClock()
+        {
+            if (!_devSkipping) return;
+
             try
             {
-                // Valheim's day is 1800 seconds, so an in-game hour is 75 of them.
-                const double TwoHours = 150.0;
+                if (IsNight == _devSkipToNight)
+                {
+                    _devSkipping = false;
+                    DevMessage(_devSkipToNight ? "DEV: it is night." : "DEV: it is light.");
+                    return;
+                }
+
+                if (_devSkipAdded >= DevSkipMaxSeconds)
+                {
+                    _devSkipping = false;
+                    DevMessage("DEV: clock gave up — three days and no change.");
+                    return;
+                }
 
                 var net = ZNet.instance;
-                if (net == null) return;
+                if (net == null) { _devSkipping = false; return; }
 
-                net.SetNetTime(net.GetTimeSeconds() + TwoHours);
-                DevMessage(IsNight ? "DEV: +2h — it is night." : "DEV: +2h — still light.");
+                net.SetNetTime(net.GetTimeSeconds() + DevSkipStepSeconds);
+                _devSkipAdded += DevSkipStepSeconds;
             }
             catch (Exception ex)
             {
+                _devSkipping = false;
                 LogOnce("dev-clock", ex);
             }
         }
@@ -5234,6 +5308,7 @@ namespace ICanShowYouTheWorld.RunMode
                 {
                     AddHeat(MainQuestHeatReward * objectives);
 
+                    RecordInChronicle(def);
                     GrantQuestReward(def);
                     SaveState();   // the chain has advanced; don't wait for the autosave
                     return;
@@ -5289,6 +5364,52 @@ namespace ICanShowYouTheWorld.RunMode
         /// and announces it. A step with no entry (or an empty one) simply pays nothing but heat —
         /// the table is the single source of truth for what a step gives.
         /// </summary>
+        /// <summary>
+        /// Writes a finished step into the run's book.
+        /// </summary>
+        /// <remarks>
+        /// The step's <see cref="ChallengeDefinition.Opening"/> goes in beside its name, because
+        /// that line WAS the beat - "The forest sent nothing for this one" is the record of the
+        /// night the troll came in a way "Put down the Breaker" is not. Steps without one still get
+        /// an entry: the book should not have holes where the plainer work happened.
+        /// </remarks>
+        private void RecordInChronicle(ChallengeDefinition def)
+        {
+            if (def == null || string.IsNullOrEmpty(def.Display)) return;
+
+            try
+            {
+                string numeral = CurrentAct?.Numeral ?? string.Empty;
+
+                // Encoded, not structured. See RunState.chronicle: that DTO goes through Unity's
+                // JsonUtility, which cannot serialise a nested list.
+                _chronicle.Add(numeral + "|" + def.Display + "|" + (def.Opening ?? string.Empty));
+            }
+            catch (Exception ex) { LogOnce("chronicle", ex); }
+        }
+
+        /// <summary>
+        /// The run's book, oldest first: act numeral, what was done, and the line that was said.
+        /// </summary>
+        public IEnumerable<ChronicleEntry> Chronicle
+        {
+            get
+            {
+                foreach (var raw in _chronicle)
+                {
+                    if (string.IsNullOrEmpty(raw)) continue;
+
+                    var parts = raw.Split(new[] { '|' }, 3);
+                    yield return new ChronicleEntry
+                    {
+                        Act = parts.Length > 0 ? parts[0] : string.Empty,
+                        Step = parts.Length > 1 ? parts[1] : string.Empty,
+                        Line = parts.Length > 2 ? parts[2] : string.Empty,
+                    };
+                }
+            }
+        }
+
         private void GrantQuestReward(ChallengeDefinition def)
         {
             GrantQuestSkills(def);
@@ -6391,12 +6512,14 @@ namespace ICanShowYouTheWorld.RunMode
             _noArmorSeconds = 0f;
             _noArmorChallengeIds.Clear();
 
+            _chronicle.Clear();
             _splitLabels.Clear();
             _splitTimes.Clear();
             _lights?.Restore(s.lightsTaken, s.lightsLost);
             _records.Restore(s.recordIds, s.recordValues, s.recordDetails);
 
             if (s.splitLabels != null) _splitLabels.AddRange(s.splitLabels);
+            if (s.chronicle != null) _chronicle.AddRange(s.chronicle);
             if (s.splitTimes != null) _splitTimes.AddRange(s.splitTimes);
 
             // Everything in the saved list is already accounted for: pre-existing kills and
@@ -6594,6 +6717,7 @@ namespace ICanShowYouTheWorld.RunMode
                 recordIds = _records.All.Select(r => r.Id).ToList(),
                 recordValues = _records.All.Select(r => r.Value).ToList(),
                 recordDetails = _records.All.Select(r => r.Detail).ToList(),
+                chronicle = _chronicle.ToList(),
                 splitLabels = _splitLabels.ToList(),
                 splitTimes = _splitTimes.ToList(),
                 activeChallengeIds = active.Select(a => a.Def.Id).ToList(),
@@ -6798,8 +6922,51 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>On-screen HUD message. Silently does nothing when there is no local player.</summary>
         private void Message(string text)
         {
-            try { _game?.ShowMessage(text, MessageType.Center); }
+            try { _game?.ShowMessage(Wrapped(text), MessageType.Center); }
             catch { /* HUD messages are never worth failing a run over. */ }
+        }
+
+        /// <summary>
+        /// Breaks a line so it fits across the screen.
+        /// </summary>
+        /// <remarks>
+        /// Valheim's centre message is one long line at a large size and does not wrap, so a
+        /// sentence runs off the side (owner: "Sometimes the Yellow large text is too large and goes
+        /// off screen, can we wrap it?"). Done HERE rather than by reaching into MessageHud's text
+        /// component: these are our strings, the newline is ours to put in, and nothing about the
+        /// game's own UI has to be touched - which matters because that component is shared with
+        /// every message the game itself raises.
+        ///
+        /// Breaks on SPACES only, so a long word is allowed to overhang rather than being cut in
+        /// half; and an existing newline resets the count, so a line that was already shaped by hand
+        /// stays shaped.
+        /// </remarks>
+        private string Wrapped(string text)
+        {
+            int width = _cfg?.RunMessageWrapChars ?? 44;
+            if (width <= 0 || string.IsNullOrEmpty(text) || text.Length <= width) return text;
+
+            var sb = new System.Text.StringBuilder(text.Length + 8);
+            int since = 0;
+            int lastSpace = -1;
+
+            foreach (char c in text)
+            {
+                if (c == '\n') { sb.Append(c); since = 0; lastSpace = -1; continue; }
+
+                sb.Append(c);
+                since++;
+                if (c == ' ') lastSpace = sb.Length - 1;
+
+                if (since >= width && lastSpace >= 0)
+                {
+                    sb[lastSpace] = '\n';
+                    since = sb.Length - 1 - lastSpace;
+                    lastSpace = -1;
+                }
+            }
+
+            return sb.ToString();
         }
 
         /// <summary>Log + console, for things the player must see even with no character in the world.</summary>
