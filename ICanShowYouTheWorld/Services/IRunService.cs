@@ -55,6 +55,12 @@ namespace ICanShowYouTheWorld.Services
         ICanShowYouTheWorld.RunMode.ActDefinition CurrentAct { get; }
 
         /// <summary>
+        /// The act with this numeral ("I", "IV"), or null. How the BOOK turns a chronicle entry -
+        /// which stores only the numeral - back into a chapter with a title and a passage.
+        /// </summary>
+        ICanShowYouTheWorld.RunMode.ActDefinition ActByNumeral(string numeral);
+
+        /// <summary>
         /// The run's stash — things set aside that follow the player between bases and acts; null
         /// when inactive. See <see cref="ICanShowYouTheWorld.RunMode.RunStash"/>.
         /// </summary>

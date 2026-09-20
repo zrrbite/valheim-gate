@@ -17,6 +17,53 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-20 - TASK: the BOOK becomes a book, and the GM tab gets its layout back (`...20l`)
+
+Two things from one report: "*like we're building a story, and that should be apparent to the
+user*", and "*the initial popup to start the saga, the GM tab is weird - the text doesnt fit and
+there are no buttons*".
+
+**The GM tab was one unbalanced layout group.** `DrawLobbyBody` opened a horizontal group for the
+title row, opened and closed a second one for the tabs, then drew the whole GM page and `return`ed
+- with the title row still open. So the blurb, the button, the KEYS heading and the scroll view
+were laid out SIDE BY SIDE in a 360px row, and the method left a group on IMGUI's stack every
+frame. The title row is now opened and closed before any page draws, the GM page has its own width
+(470) as well as its own height, and the key rows lost the `FlexibleSpace` that was competing with
+their wrapping description for the width.
+
+**The BOOK now reads as a book.** The material was already right - every finished main-quest beat
+with the line that was said when it happened - and it still read as a checklist, because a list of
+deeds is not a narrative until something frames it. Four changes:
+
+- A **title page**: `THE SAGA OF <NAME>` and the premise in one sentence.
+- **Chapters have titles.** It said `ACT II`; the act card had always said `Where the Light Goes`.
+- A new **`ActDefinition.Chapter`** - a prose passage, past tense, at the head of each act's
+  chapter - and **`ChapterClose`**, one closing line drawn once the act is behind you. Eight of
+  each written; each close ends on the question its own act failed to answer, which is the next
+  act. A third voice, deliberately: the epigraph is the saga instructing the player, the raven line
+  is a character speaking, this is the saga telling itself after the fact.
+- The **deed and its line swapped weights**: the line is now the body text in parchment and the
+  step label the marginal note. Same two strings; it was the emphasis that made it look like a
+  to-do list with annotations.
+
+`ACT II - NOW` is gone, replaced by *"Here the writing stops. The rest is yours to do."*
+
+### Test it
+
+- [ ] **The GM tab lays out vertically.** Blurb, then the button, then `KEYS`, then a scrollable
+      table of all 34 bindings with readable descriptions. The window widens when you switch to it.
+- [ ] **No IMGUI errors in the log** while the menu is open (`GUI Error`, or anything about pushing
+      more GUILayouts than you are popping). That was happening every frame the GM tab was up.
+- [ ] **The BOOK opens with your character's name on it** and the premise under it.
+- [ ] **Each act's chapter has its title and an opening passage.** Act I's should be there from the
+      first main-quest step you finish.
+- [ ] **Act I gets a closing passage once Eikthyr is down** and Act II has opened - and Act II does
+      NOT have one while you are in it.
+- [ ] **The act's title is not printed twice** where the chronicle already opened that chapter.
+- [ ] Read it top to bottom. It should read like an account of the run, not a list of ticks.
+
+---
+
 ## 2026-09-20 - THE TEST LIST for 1.0.15-run.2026-09-20j
 
 Fourteen builds over two days, rewritten as ONE pass in the order you actually meet things. The

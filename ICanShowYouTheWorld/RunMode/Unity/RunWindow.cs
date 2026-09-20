@@ -109,7 +109,12 @@ namespace ICanShowYouTheWorld.RunMode
         private const float LobbyWidth = 360f;
         private const float LobbyHeight = 280f;
 
-        /// <summary>Tall enough for the GM key table to be worth scrolling rather than squinting at.</summary>
+        /// <summary>
+        /// The GM page's own size. Thirty-four bindings, each a key and a sentence, need more room
+        /// than four buttons and a paragraph do - so this page is both taller and wider than the
+        /// saga page, and the window grows down and to the right when you switch to it.
+        /// </summary>
+        private const float GmPageWidth = 470f;
         private const float GmPageHeight = 460f;
         private const float OfferWidth = 460f;
         private const float OfferHeight = 200f;
@@ -573,15 +578,14 @@ namespace ICanShowYouTheWorld.RunMode
                     if (Visible)
                     {
                         UpdateOfferFadeState(0);
-                        // The GM page carries a key table and wants the room; the saga page is
-                        // four buttons and does not. Height is the only thing that changes, so the
-                        // window does not appear to jump sideways when you switch tabs.
-                        float lobbyHeight = ModVersion.GmEnabled && _lobbyPage == LobbyPage.Gm
-                            ? GmPageHeight
-                            : LobbyHeight;
+                        // The GM page carries a thirty-four row key table and wants the room; the
+                        // saga page is four buttons and a paragraph and does not.
+                        bool gmPage = ModVersion.GmEnabled && _lobbyPage == LobbyPage.Gm;
+                        float lobbyWidth  = gmPage ? GmPageWidth  : LobbyWidth;
+                        float lobbyHeight = gmPage ? GmPageHeight : LobbyHeight;
 
                         _lobbyRect = GUILayout.Window(LobbyWindowId, _lobbyRect, DrawLobby, GUIContent.none, RunTheme.Panel,
-                            GUILayout.Width(LobbyWidth), GUILayout.Height(lobbyHeight));
+                            GUILayout.Width(lobbyWidth), GUILayout.Height(lobbyHeight));
                     }
                 }
             }
@@ -1302,9 +1306,11 @@ namespace ICanShowYouTheWorld.RunMode
         /// </remarks>
         private void DrawQuestLog(IRunService run)
         {
+            DrawTitlePage();
+
             // The book opens on what has HAPPENED. The live tracks come after it, because a book
             // whose first page is a to-do list is a to-do list.
-            DrawChronicle(run);
+            string writtenAct = DrawChronicle(run);
 
             var tracks = run.Challenges?.Tracks;
             if (tracks == null || tracks.Count == 0)
@@ -1315,11 +1321,24 @@ namespace ICanShowYouTheWorld.RunMode
 
             var act = run.CurrentAct;
 
-            GUILayout.Label(act == null ? "NOW" : $"ACT {act.Numeral} — NOW", RunTheme.Header);
+            // The heading only where the chronicle has not already opened this chapter. An act
+            // whose beats are written above is the chapter being read, so repeating its title here
+            // printed the same words twice within a few rows - the same objection that took the
+            // duplicate act banner off the transition card.
+            if (act != null && act.Numeral != writtenAct) OpenChapter(run, act.Numeral);
+
+            // Where the writing stops. Said as a line in the book rather than as a section label,
+            // because "ACT II - NOW" was the one row on this page that read like a UI.
+            GUI.contentColor = RunTheme.TextMuted;
+            GUILayout.Label(act == null
+                ? "  The rest is not written yet."
+                : "  Here the writing stops. The rest is yours to do.", RunTheme.Small);
+            GUI.contentColor = Color.white;
+            GUILayout.Space(4f);
 
             if (act != null && !string.IsNullOrEmpty(act.Epigraph))
             {
-                GUI.contentColor = RunTheme.TextMuted;
+                GUI.contentColor = RunTheme.AccentGold;
                 GUILayout.Label(act.Epigraph, RunTheme.Small);
                 GUI.contentColor = Color.white;
                 GUILayout.Space(4f);
@@ -1423,47 +1442,138 @@ namespace ICanShowYouTheWorld.RunMode
         /// remembers Act I. It is persisted for the same reason - a record that forgets itself on
         /// resume is not a record.
         /// </remarks>
-        private void DrawChronicle(IRunService run)
+        /// <summary>
+        /// The book's title page: whose saga this is, and the one sentence the whole thing is about.
+        /// </summary>
+        /// <remarks>
+        /// Two lines, and they are the reason the page now reads as a story at all (owner: "like
+        /// we're building a story, and that should be apparent to the user"). A reader who opens the
+        /// BOOK mid-run needs to be told, before any deed, that they are holding an account of
+        /// something - and the character's own name on it is what turns a log into a saga.
+        ///
+        /// The name is read live rather than stored with the run: a chronicle that outlives one
+        /// character is a thing this mode allows, and the name over it should be whoever is reading.
+        /// </remarks>
+        private void DrawTitlePage()
+        {
+            string name = null;
+            try { name = Player.m_localPlayer?.GetPlayerName(); }
+            catch { /* Never let a cosmetic line take the page down. */ }
+
+            GUI.contentColor = RunTheme.AccentGoldBright;
+            GUILayout.Label(string.IsNullOrEmpty(name)
+                ? "THE SAGA"
+                : $"THE SAGA OF {name.ToUpperInvariant()}", RunTheme.Header);
+            GUI.contentColor = Color.white;
+
+            GUI.contentColor = RunTheme.TextParchment;
+            GUILayout.Label("Something is stealing the light from the world. This is the account of "
+                          + "what was done about it.", RunTheme.Small);
+            GUI.contentColor = Color.white;
+
+            GUILayout.Space(8f);
+        }
+
+        /// <returns>The numeral of the last act it drew a chapter heading for, or null.</returns>
+        private string DrawChronicle(IRunService run)
         {
             var entries = run.Chronicle;
-            if (entries == null) return;
+            if (entries == null) return null;
 
             string act = null;
             bool any = false;
 
             foreach (var entry in entries)
             {
-                any = true;
-
-                // An act heading only where the act CHANGES, so the book reads as chapters rather
-                // than as a table with a repeated column.
+                // A chapter heading only where the act CHANGES, so the book reads as chapters
+                // rather than as a table with a repeated column.
                 if (entry.Act != act)
                 {
+                    // The chapter you are leaving gets its last line before the next one opens.
+                    CloseChapter(run, act);
+
                     act = entry.Act;
-                    GUILayout.Space(any ? 4f : 0f);
-                    GUILayout.Label(string.IsNullOrEmpty(act) ? "THE SAGA" : $"ACT {act}", RunTheme.Header);
+                    GUILayout.Space(any ? 6f : 0f);
+                    OpenChapter(run, act);
                 }
 
-                GUI.contentColor = RunTheme.TextParchment;
-                GUILayout.Label("  " + entry.Step, RunTheme.Small);
+                any = true;
+
+                // The DEED is the marginal note and the LINE is the text. It used to be the other
+                // way round - a bright step label with its line whispered underneath - and that is
+                // what made the page read as a checklist with annotations rather than as a story
+                // with a record beside it. Same two strings, opposite weights.
+                GUI.contentColor = RunTheme.CompleteGreen;
+                GUILayout.Label("  ✓ " + entry.Step, RunTheme.Small);
                 GUI.contentColor = Color.white;
 
                 if (!string.IsNullOrEmpty(entry.Line))
                 {
-                    GUI.contentColor = RunTheme.TextMuted;
-                    GUILayout.Label("      " + entry.Line, RunTheme.Small);
+                    GUI.contentColor = RunTheme.TextParchment;
+                    GUILayout.Label("    " + entry.Line, RunTheme.Body);
                     GUI.contentColor = Color.white;
+                    GUILayout.Space(3f);
                 }
             }
+
+            // The last act in the chronicle is closed too, when it is not the one being played.
+            // CurrentAct is null outside a run, which closes the final chapter of a finished saga -
+            // correct, and the only place that line is ever read.
+            var current = run.CurrentAct;
+            if (act != null && (current == null || current.Numeral != act)) CloseChapter(run, act);
 
             if (!any)
             {
                 GUI.contentColor = RunTheme.TextMuted;
                 GUILayout.Label("  Nothing written yet.", RunTheme.Small);
                 GUI.contentColor = Color.white;
+                return null;
             }
 
             GUILayout.Space(6f);
+            return act;
+        }
+
+        /// <summary>
+        /// A chapter heading - numeral, title, and the act's opening passage.
+        /// </summary>
+        /// <remarks>
+        /// The title was missing entirely: the book said "ACT II" where the act card had said
+        /// "Where the Light Goes", so the one page meant to hold the story was the one place its
+        /// chapters had no names.
+        /// </remarks>
+        private void OpenChapter(IRunService run, string numeral)
+        {
+            var def = run.ActByNumeral(numeral);
+
+            string heading =
+                string.IsNullOrEmpty(numeral) ? "THE SAGA" :
+                def == null || string.IsNullOrEmpty(def.Title) ? $"ACT {numeral}" :
+                $"ACT {numeral} — {def.Title.ToUpperInvariant()}";
+
+            GUILayout.Label(heading, RunTheme.Header);
+
+            if (def != null && !string.IsNullOrEmpty(def.Chapter))
+            {
+                GUI.contentColor = RunTheme.TextParchment;
+                GUILayout.Label(def.Chapter, RunTheme.Body);
+                GUI.contentColor = Color.white;
+                GUILayout.Space(5f);
+            }
+        }
+
+        /// <summary>The act's closing line, if it has one and the act is behind the player.</summary>
+        private void CloseChapter(IRunService run, string numeral)
+        {
+            if (string.IsNullOrEmpty(numeral)) return;
+
+            var def = run.ActByNumeral(numeral);
+            if (def == null || string.IsNullOrEmpty(def.ChapterClose)) return;
+
+            GUILayout.Space(3f);
+            GUI.contentColor = RunTheme.TextParchment;
+            GUILayout.Label(def.ChapterClose, RunTheme.Body);
+            GUI.contentColor = Color.white;
         }
 
         private void DrawQuestSection(IRunService run)
@@ -1956,8 +2066,17 @@ namespace ICanShowYouTheWorld.RunMode
             var run = Service;
             if (run == null) return;
 
+            // The title row, OPENED AND CLOSED before anything else draws. It used to stay open
+            // across the tab row and across the GM page, which put that whole page - blurb, button,
+            // key table and scroll view - side by side in a single 360px-wide row, and returned from
+            // the method with a layout group still on the stack. Reported as "the text doesn't fit
+            // and there are no buttons", which is exactly what a vertical page laid out horizontally
+            // looks like. One group at a time, balanced before the next begins.
             GUILayout.BeginHorizontal();
             GUILayout.Label("VALHEIM: THE SAGA", RunTheme.Header);
+            GUILayout.FlexibleSpace();
+            GUILayout.Label($"v{ModVersion.VERSION}", RunTheme.Small);
+            GUILayout.EndHorizontal();
 
             // Only a GM build has anywhere else to go, so a saga build never draws a tab row it
             // would be the only occupant of.
@@ -1976,9 +2095,6 @@ namespace ICanShowYouTheWorld.RunMode
                     return;
                 }
             }
-            GUILayout.FlexibleSpace();
-            GUILayout.Label($"v{ModVersion.VERSION}", RunTheme.Small);
-            GUILayout.EndHorizontal();
 
             // What the saga IS, before any numbers. This lobby used to open with mechanical
             // facts (rates, par, a mode-gating note) and never said what the player was signing
@@ -2134,11 +2250,13 @@ namespace ICanShowYouTheWorld.RunMode
                     GUI.contentColor = RunTheme.AccentGoldBright;
                     GUILayout.Label(KeyLabel(cmd.Key), RunTheme.Small, GUILayout.Width(92f));
 
+                    // No FlexibleSpace after this: the style wraps, and a flexible space in the
+                    // same row competes with a wrapping label for the width, which squeezes the
+                    // description into a column two words wide.
                     GUI.contentColor = RunTheme.TextMuted;
                     GUILayout.Label(cmd.Description ?? "", RunTheme.Small);
 
                     GUI.contentColor = Color.white;
-                    GUILayout.FlexibleSpace();
                     GUILayout.EndHorizontal();
                 }
             }

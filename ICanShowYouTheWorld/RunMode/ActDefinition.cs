@@ -44,6 +44,36 @@ namespace ICanShowYouTheWorld.RunMode
         public string RavenLine;
 
         /// <summary>
+        /// The act's opening passage in the BOOK - a few sentences of narration, past tense,
+        /// standing where a chapter's first paragraph stands.
+        /// </summary>
+        /// <remarks>
+        /// A third voice, and the reason for it is the owner's: "like we're building a story, and
+        /// that should be apparent to the user". The BOOK had the right material - every finished
+        /// beat with the line that was said when it happened - and still read as a checklist,
+        /// because a list of deeds is not a narrative until something frames it.
+        ///
+        /// So: <see cref="Epigraph"/> is the saga telling the player what to do, <see
+        /// cref="RavenLine"/> is a character speaking, and this is the SAGA TELLING ITSELF, after
+        /// the fact, as a book would. Past tense is what separates it from the other two on sight.
+        ///
+        /// Bound by the same rule as everything else here - no line the world does not back. Every
+        /// clause in these passages describes something that actually happens in its act.
+        /// </remarks>
+        public string Chapter;
+
+        /// <summary>
+        /// The act's closing line, drawn once the act is behind the player.
+        /// </summary>
+        /// <remarks>
+        /// Each one ends on the question its own act failed to answer, because that question is
+        /// the next act - which is the premise of Acts II-VII stated one chapter at a time. An act
+        /// still in play has no close: its ending has not happened, and a book does not print the
+        /// end of the chapter you are reading.
+        /// </remarks>
+        public string ChapterClose;
+
+        /// <summary>
         /// The global key set when this act's boss dies — the same string the boss table holds.
         /// This is what makes an act's END observable: the act is over precisely when the world
         /// says this key is set.

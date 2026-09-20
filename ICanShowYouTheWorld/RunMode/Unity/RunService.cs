@@ -1643,6 +1643,20 @@ namespace ICanShowYouTheWorld.RunMode
         public ActDefinition CurrentAct =>
             _active && _actIndex >= 0 && _actIndex < _acts.Count ? _acts[_actIndex] : null;
 
+        /// <summary>
+        /// The act with this numeral, or null.
+        /// </summary>
+        /// <remarks>
+        /// Not gated on a live run, unlike <see cref="CurrentAct"/>: the chronicle outlives the act
+        /// it records, and the whole point of the BOOK is reading Act I's chapter while standing in
+        /// Act IV. The act table is static content, so there is nothing here a finished run
+        /// invalidates.
+        /// </remarks>
+        public ActDefinition ActByNumeral(string numeral) =>
+            string.IsNullOrEmpty(numeral)
+                ? null
+                : _acts.FirstOrDefault(a => a != null && a.Numeral == numeral);
+
         public float CurrentScore =>
             _active
                 ? RunScore.Compute(_cfg.RunParTimeMinutes * 60f, _elapsed, _heat.Heat, _cfg.RunHeatScoreWeight)
@@ -7409,6 +7423,17 @@ namespace ICanShowYouTheWorld.RunMode
                 Epigraph = "Something is taking the light from the meadows. Take it back.",
                 RavenLine = "He is counting, you know. Every antler that falls, he counts. " +
                             "Start where the herd is thinnest.",
+                Chapter =
+                    "You came ashore alive, which nothing in this world had managed in an age, and " +
+                    "the dark noticed you before anything else did. So you built: an axe, a fire, a " +
+                    "bed you called yours. Every night the meadows whispered over it, counting. " +
+                    "Then a raven landed and told you why you had been sent, and it was not for the " +
+                    "antlered one.",
+                ChapterClose =
+                    "Eikthyr came down onto stones his own herd had paid for, and went out. You " +
+                    "walked away carrying light this world had already lost once - the first of it " +
+                    "ever to come back. The forest went on being hungry. Nobody had yet asked where " +
+                    "it had been carrying everything it took.",
                 BossDefeatKey = "defeated_eikthyr", Tracks = Split(MainQuestChain()),
             },
             new ActDefinition
@@ -7417,6 +7442,15 @@ namespace ICanShowYouTheWorld.RunMode
                 Epigraph = "The forest has been fed for years. Meet what did the feeding.",
                 RavenLine = "The little ones carry it somewhere. Nobody has ever followed them home. " +
                             "Odin would like that corrected.",
+                Chapter =
+                    "You went after the little ones instead of waiting for them. They had been " +
+                    "carrying the meadows away for years, down under the roots to something that " +
+                    "had never once come up to collect in person, and nothing had ever followed " +
+                    "them home.",
+                ChapterClose =
+                    "The Elder burned, and everything it had been fed went out with it. So that was " +
+                    "where the light had gone: nowhere. Spent on keeping deadwood standing. The " +
+                    "world was darker than the day you landed, and you had helped.",
                 BossDefeatKey = "defeated_gdking", Tracks = Split(BlackForestChain()),
             },
             new ActDefinition
@@ -7425,6 +7459,14 @@ namespace ICanShowYouTheWorld.RunMode
                 Epigraph = "What the marsh takes, it keeps.",
                 RavenLine = "Men dug here before you, and iron is all they left. " +
                             "Take the iron. Leave the rest where it lies.",
+                Chapter =
+                    "The marsh had taken for longer than the forest and had never spent a thing. " +
+                    "You waded in after what it was holding and found out what happens to the ones " +
+                    "who stay: down there, nothing had rotted, and nothing had let go.",
+                ChapterClose =
+                    "Bonemass came apart in water it had stood in since before the herd. Nothing in " +
+                    "the marsh had been carrying light anywhere. It had simply been kept - and that " +
+                    "was the first hoard you had found that nobody was using.",
                 BossDefeatKey = "defeated_bonemass", Tracks = Split(SwampChain()),
             },
             new ActDefinition
@@ -7433,6 +7475,14 @@ namespace ICanShowYouTheWorld.RunMode
                 Epigraph = "Above the treeline, even light freezes.",
                 RavenLine = "Nothing up here is hungry. That is worse. " +
                             "Hunger at least wants something.",
+                Chapter =
+                    "Above the treeline nothing moved and nothing rotted and nothing was hungry. " +
+                    "The cold had been holding what it took for so long that it had stopped " +
+                    "behaving like a thief at all, and you climbed up to see what it had underneath.",
+                ChapterClose =
+                    "Moder fell out of her own sky and the mountain gave up what it had been " +
+                    "keeping. It was still warm. Whatever is up there is not taking light to use " +
+                    "it, and that was worse than any answer you had had so far.",
                 BossDefeatKey = "defeated_dragon", Tracks = Split(MountainChain()),
             },
             new ActDefinition
@@ -7441,6 +7491,14 @@ namespace ICanShowYouTheWorld.RunMode
                 Epigraph = "They harvested a god's herd before you. See how it ended.",
                 RavenLine = "Look at the stones before you fight anything. " +
                             "Someone tried exactly what you are trying.",
+                Chapter =
+                    "Somebody had done all of this before you. The plains were built out of their " +
+                    "leavings - their stones, their walls, their harvest - and the fuling had put " +
+                    "their huts on top without ever asking what any of it had been for.",
+                ChapterClose =
+                    "Yagluth's hand closed on nothing and stayed shut. The first harvesters were " +
+                    "dust in the fields they had cleared, and you were standing in their answer. It " +
+                    "had not worked for them either.",
                 BossDefeatKey = "defeated_goblinking", Tracks = Split(PlainsChain()),
             },
             new ActDefinition
@@ -7453,6 +7511,10 @@ namespace ICanShowYouTheWorld.RunMode
                 Epigraph = "The dvergr borrow light and give it back. Learn how.",
                 RavenLine = "They keep it in lanterns. Borrowed, they say. " +
                             "Odin would like to know from whom.",
+                Chapter =
+                    "In the mist there were lamps, and the lamps were not stolen. The dvergr had " +
+                    "worked out how to borrow light and hand it back, and had no intention of " +
+                    "explaining it to something as new as you.",
                 BossDefeatKey = "defeated_queen", Tracks = Split(MistlandsChain()),
             },
             new ActDefinition
@@ -7461,6 +7523,9 @@ namespace ICanShowYouTheWorld.RunMode
                 Epigraph = "Where light goes to end. Follow it in.",
                 RavenLine = "Everything here has already burned once. " +
                             "Mind what you carry.",
+                Chapter =
+                    "Every thread you had pulled ran the same direction, and it ran here, where " +
+                    "everything has already burned once. You followed it in.",
                 BossDefeatKey = "defeated_fader", Tracks = Split(AshlandsChain()),
             },
             new ActDefinition
@@ -7476,6 +7541,10 @@ namespace ICanShowYouTheWorld.RunMode
                 Epigraph = "Ice does not take light. It keeps it. Find out from whom.",
                 RavenLine = "Nothing here has thawed in an age. " +
                             "Odin is curious what it was keeping warm.",
+                Chapter =
+                    "Nothing in the far north has thawed since before the herd, and the ice is not " +
+                    "hungry and never was. It has only been keeping something. You went to find out " +
+                    "who it was keeping it for.",
                 BossDefeatKey = SagaNames.DeepNorthBossKey, Tracks = Split(DeepNorthChain()),
                 Placeholder = true,
             },

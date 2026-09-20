@@ -291,11 +291,42 @@ answer, practised before it was taught. Act VII spends it.
   deaths — never in a wall of text. The lobby paragraph is the only
   exposition the saga allows itself.
 
+## The three voices
+
+Added 2026-09-20, because the saga had been writing in two registers without
+ever saying so, and a third was needed.
+
+1. **The epigraph** — the saga instructing the player. Present tense, an order
+   or a warning, never a summary. On the act transition card.
+2. **A character** — the ravens, the meadows, the hunter's shade. Present tense,
+   spoken, and bound absolutely by *no line the world does not back*.
+3. **The chapter** — the saga telling ITSELF, after the fact, as a book would.
+   **Past tense**, which is what separates it from the other two on sight. Lives
+   in `ActDefinition.Chapter` and `ChapterClose`, and is read only in the BOOK.
+
+The third exists because the BOOK had every finished beat with the line that
+was said when it happened and still read as a checklist (owner: *"like we're
+building a story, and that should be apparent to the user"*). A list of deeds
+is not a narrative until something frames it. Each `ChapterClose` ends on the
+question its own act failed to answer — which is the next act, so the
+Acts II–VII premise is now stated one chapter at a time, in the player's hands,
+rather than only in this document.
+
+**The bible stays a spec.** It says above that if a mechanic and this document
+disagree one of them is a bug, and the reasoning interleaved with the beats is
+what stops decisions being re-litigated — *"deliberately anticlimactic, and
+deliberately early"* is the sentence that will stop someone fixing the daylight
+deer kill that gives nothing. Prose belongs where a player reads it, which is
+the BOOK, not here.
+
+---
+
 ## Where the story is currently told on screen (inventory)
 
-Lobby paragraph · act cards + epigraphs · Act II premise whisper · day/night
-whispers · the pale light's going-out beat · race release/take/fade lines with
-the ledger · the Gatherer's foretelling, arrival readout and hoard line ·
-forfeit lines · quest hints (the bargain, the Herald, the altar, the crypt,
-the shamans, the Elder's altar) · ravens at beats · "power must be earned
-here."
+Lobby paragraph · act cards + epigraphs · **the BOOK: title page, per-act
+chapter passages and closes, and every finished beat with its own line** ·
+Act II premise whisper · day/night whispers · the pale light's going-out beat ·
+race release/take/fade lines with the ledger · the Gatherer's foretelling,
+arrival readout and hoard line · forfeit lines · quest hints (the bargain, the
+Herald, the altar, the crypt, the shamans, the Elder's altar) · ravens at
+beats · the shade's two return visits · "power must be earned here."
