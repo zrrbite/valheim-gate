@@ -27,10 +27,11 @@ It ships `false` and nothing in the mod ever turns it on by itself.
 
 ## The keys
 
-**Seven are bare. Two want a modifier.** Only `Keypad +` and `Keypad -` need
-one, because those two keys are also the player's — **Shaman's Mercy** and
-**Unseen** activate on a bare press. `Shift`, `Ctrl` or `Alt` all count; use
-whichever hand is free.
+**Seven are bare. Three want a modifier.** `Keypad +` and `Keypad -` need one
+because those two keys are also the player's — **Shaman's Mercy** and
+**Unseen** activate on a bare press. `Backspace` needs one for a different
+reason: it is the only dev key that **builds**. `Shift`, `Ctrl` or `Alt` all
+count; use whichever hand is free.
 
 | Key | Effect |
 |---|---|
@@ -43,6 +44,7 @@ whichever hand is free.
 | `Delete` | **Slay everything hostile within 10m** |
 | `Home` | **Teleport to the map cursor** (the GM mod's own teleport) |
 | `PageUp` | **Dump what the creature in view is made of** to the log |
+| `mod` + `Backspace` | Plant a **Storm-Anvil**, claimed, plus the bow, the shield and both bills |
 
 Keys only work during an active run.
 
@@ -67,7 +69,25 @@ tester their muscle memory ("the dev mode commands dont seem to work * / - +,
 etc.").
 
 The rule now states only what is true, which also means the surface where a
-missed modifier can hide a whole layer is two keys wide instead of nine.
+missed modifier can hide a whole layer is three keys wide instead of nine.
+
+### Why `Backspace` joined them (2026-09-20)
+
+Not because it collides — it collides with nothing. Because it is the only key
+in the layer that **leaves something behind**. Everything else here is
+transient: a toggle, a teleport, a report, a light that burns out, a pack of
+materials. `Backspace` raises a permanent, claimed building, so an accidental
+press is the only one in the set that has to be cleaned up afterwards. It is
+also a large key next to ones used in ordinary play, which makes the accident
+easy (owner, testing with a world full of them: *"oK, BACKSPACE, should be mod
++ backspace, heh. Ive got anvils all over"*).
+
+So the rule has two clauses now, and both are narrow: **a modifier where a key
+collides, and where an accident persists.** Nothing else in the dev layer
+builds, so nothing else qualifies.
+
+**To clear the ones already standing:** they were planted with `SetCreator`, so
+they are yours — a hammer should remove them like any piece you placed.
 
 That key reported the wrong thing for a long time, and the play log of 2026-09-20 caught it:
 twenty-six consecutive `DEV: +2h - still light` lines. The clock WAS moving; the message was

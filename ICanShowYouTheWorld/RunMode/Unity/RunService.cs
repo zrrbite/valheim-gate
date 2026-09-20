@@ -2507,9 +2507,10 @@ namespace ICanShowYouTheWorld.RunMode
         public static readonly string[] DevKeyHelp =
         {
             "DEV MODE   *items   .light   /god+speed   Ent:home   Del:slay",
-            "Home:map-tp   PgUp:probe   Bksp:Storm-Anvil + bow + shield + the combine's makings",
+            "Home:map-tp   PgUp:probe",
             "Shift/Ctrl/Alt + [+] complete step   \u00b7   + [-] +2h AND cycle weather: fair/rain/storm",
-            "(bare + and - are the player's own boons)",
+            "Shift/Ctrl/Alt + [Bksp] Storm-Anvil + bow + shield + the combine's makings",
+            "(bare + and - are the player's own boons; Bksp BUILDS, so it wants a hand too)",
         };
 
         /// <summary>
@@ -2713,8 +2714,21 @@ namespace ICanShowYouTheWorld.RunMode
                 }
                 catch (Exception ex) { LogOnce("dev-probe", ex); }
             }
-            else if (Input.GetKeyDown(KeyCode.Backspace))
+            else if (mod && Input.GetKeyDown(KeyCode.Backspace))
             {
+                // THE THIRD KEY THAT WANTS A MODIFIER, and for a reason the other two do not have.
+                //
+                // Keypad + and Keypad - need one because they COLLIDE - they are the player's own
+                // boons. Backspace collides with nothing. It asks for one because it is the only dev
+                // key that LEAVES SOMETHING BEHIND: every other one is transient (a toggle, a
+                // teleport, a dump, a light that burns out), and this one raises a permanent, claimed
+                // building in the world. An accidental press of the others costs nothing; an
+                // accidental press of this one has to be cleaned up, and Backspace is a large key
+                // sitting next to ones used in ordinary play (owner, with a world full of them: "oK,
+                // BACKSPACE, should be mod + backspace, heh. Ive got anvils all over").
+                //
+                // So the rule gains a second clause, and it is narrow on purpose: a modifier where a
+                // key collides, AND where an accident persists. Nothing else in the dev layer builds.
                 DevPlantStormAnvil();
             }
             else if (Input.GetKeyDown(KeyCode.KeypadPeriod))
