@@ -972,6 +972,22 @@ namespace ICanShowYouTheWorld.RunMode
                 lineY += 20f;
             }
 
+            // A SECOND line, and the only one that is ever allowed. The tracks run in parallel, so
+            // "somewhere to go" and "something to wait for" can both be true at once - and when they
+            // were made to share one line, the wait shadowed the walk and the player stood reading a
+            // hint that belonged to a different track (owner: "no two hints can be active at the same
+            // time"). Two is the honest number here; a third would be crowding.
+            //
+            // The hierarchy does the work the ordering could not: the bearing above is bright and
+            // full size because it is actionable, this is dimmer and under it because it is not.
+            string waiting = run.QuestNotice;
+            if (!string.IsNullOrEmpty(waiting))
+            {
+                RunTheme.ShadowedLabel(new Rect(rect.x - 100f, lineY, StripWidth + 200f, 18f),
+                    waiting, _noticeStyle, RunTheme.TextMuted);
+                lineY += 18f;
+            }
+
             // A BAR under the rumour, because the rumour is deliberately vague and vague prose
             // cannot tell warm from cold. Owner, having chased the light: "not sure how close I
             // was" — after reading atmosphere lines that sound like hints and carry nothing.

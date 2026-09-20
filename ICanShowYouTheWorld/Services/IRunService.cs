@@ -96,6 +96,13 @@ namespace ICanShowYouTheWorld.Services
         /// </summary>
         string QuestBearing { get; }
 
+        /// <summary>
+        /// A standing WARNING rather than a direction - currently only "a step in play needs
+        /// the dark, and it is day". Drawn under the bearing, not instead of it: see
+        /// RunService.QuestNotice for why the two must not compete for one line.
+        /// </summary>
+        string QuestNotice { get; }
+
         /// <summary>Max health lent by completions so far this run.</summary>
         float EarnedHealth { get; }
 

@@ -393,19 +393,6 @@ namespace ICanShowYouTheWorld.RunMode
         public BoonEngine Boons => _active ? _boons : null;
 
         /// <summary>
-        /// A finished sentence pointing at whatever the questline currently wants found, or null
-        /// when it wants nothing findable. The HUD prints it verbatim under the strip.
-        ///
-        /// Two things qualify. The Herald — a named creature somewhere in a 250m radius with no
-        /// direction is a search rather than a hunt. And the biome an act opens on: "Reach the
-        /// Black Forest" was the last step in the saga that told you WHAT to find and nothing
-        /// about WHERE, which on a world where the forest happens to lie behind you is a step
-        /// that gets solved by walking in circles.
-        ///
-        /// The Herald wins when both apply: it moves, it expires with the act, and it is the
-        /// only one of the two you can lose.
-        /// </summary>
-        /// <summary>
         /// True when the sky is awake: rain, or a storm. The game's own test, which is what Thjalfi
         /// stands in - see <see cref="Thjalfi"/> for why the pair of him and the shade are gated on
         /// weather and dark respectively.
@@ -425,6 +412,19 @@ namespace ICanShowYouTheWorld.RunMode
             }
         }
 
+        /// <summary>
+        /// A finished sentence pointing at whatever the questline currently wants found, or null
+        /// when it wants nothing findable. The HUD prints it verbatim under the strip.
+        ///
+        /// Two things qualify. The Herald — a named creature somewhere in a 250m radius with no
+        /// direction is a search rather than a hunt. And the biome an act opens on: "Reach the
+        /// Black Forest" was the last step in the saga that told you WHAT to find and nothing
+        /// about WHERE, which on a world where the forest happens to lie behind you is a step
+        /// that gets solved by walking in circles.
+        ///
+        /// The Herald wins when both apply: it moves, it expires with the act, and it is the
+        /// only one of the two you can lose.
+        /// </summary>
         public string QuestBearing
         {
             get
@@ -434,33 +434,54 @@ namespace ICanShowYouTheWorld.RunMode
                 var player = Player.m_localPlayer;
                 if (player == null) return null;
 
-                // Outranks every bearing: a direction is no use while the thing it points at
-                // cannot be caught, and "the hunt refuses to count" is the single most
-                // bug-looking thing this act can do.
-                if (ActIsMeadows && DarkStepWanted && !IsNight)
-                    return "Nothing you seek walks in the light. Wait for dark.";
+                // A WARNING, not a bearing, and the difference is the whole of this ordering.
+                //
+                // It used to return outright, above everything. That was right while the only other
+                // candidate was a biome direction, and wrong the moment a second track could want a
+                // PLACE: the tracks advance in parallel, so the hunt can be waiting for night while
+                // the craft track is a walk to the coast, and the strip has exactly one line to say
+                // it in. The owner hit it head-on - standing on "the one who waits" and reading
+                // "wait for dark", which belonged to a step on another track entirely ("no two hints
+                // can be active at the same time").
+                //
+                // So it now brackets the dark-gated bearings instead of pre-empting all of them:
+                //
+                //   ABOVE the spirit, the Herald and the light race, because those three point at
+                //   the dark-gated things THEMSELVES. In daylight the spirit is not standing and
+                //   SpiritChase.Bearing still answers from its last known target - a confident
+                //   direction to nothing, which is worse than a warning.
+                //
+                //   BELOW Thjalfi and the shade, who are walks rather than hunts. Whatever the sky
+                //   is doing, the player can be closing that distance while they wait for the dark,
+                //   and a bearing to work that CAN be done outranks a notice about work that cannot.
+                //
+                // It still beats the biome bearing, which is the fallback and never urgent.
+                bool waitingForDark = ActIsMeadows && DarkStepWanted && !IsNight;
 
-                if (_spirit != null && ActIsMeadows && (SpiritWanted || _strayOut))
+                if (!waitingForDark)
                 {
-                    string rumour = _spirit.Bearing(player);
-                    if (!string.IsNullOrEmpty(rumour)) return rumour;
-                }
+                    if (_spirit != null && ActIsMeadows && (SpiritWanted || _strayOut))
+                    {
+                        string rumour = _spirit.Bearing(player);
+                        if (!string.IsNullOrEmpty(rumour)) return rumour;
+                    }
 
-                if (_deer != null && ActIsMeadows && HeraldWanted)
-                {
-                    string herald = _deer.HeraldBearing(player);
-                    if (!string.IsNullOrEmpty(herald)) return $"The Herald\u2019s tracks lead {herald}";
-                }
+                    if (_deer != null && ActIsMeadows && HeraldWanted)
+                    {
+                        string herald = _deer.HeraldBearing(player);
+                        if (!string.IsNullOrEmpty(herald)) return $"The Herald\u2019s tracks lead {herald}";
+                    }
 
-                // The light race with nothing burning: point at the herd, because a light only
-                // rises where a deer falls. Strays and the Herald outrank this above; a burning
-                // light needs no bearing, the player can see it.
-                if (_deer != null && ActIsMeadows && LightRaceWanted && IsNight && (_lights == null || _lights.Burning == 0))
-                {
-                    string herd = _deer.HerdBearing(player);
-                    return herd != null
-                        ? $"No light burns. The herd is {herd}."
-                        : "No light burns, and no deer near. They graze the open meadows; walk.";
+                    // The light race with nothing burning: point at the herd, because a light only
+                    // rises where a deer falls. Strays and the Herald outrank this above; a burning
+                    // light needs no bearing, the player can see it.
+                    if (_deer != null && ActIsMeadows && LightRaceWanted && IsNight && (_lights == null || _lights.Burning == 0))
+                    {
+                        string herd = _deer.HerdBearing(player);
+                        return herd != null
+                            ? $"No light burns. The herd is {herd}."
+                            : "No light burns, and no deer near. They graze the open meadows; walk.";
+                    }
                 }
 
                 // The shade only while it is to be FOUND: once spoken to, the player knows where it
@@ -482,6 +503,44 @@ namespace ICanShowYouTheWorld.RunMode
                 }
 
                 return BiomeBearing(player);
+            }
+        }
+
+        /// <summary>
+        /// The one thing the strip says that is not a direction: a step in play can only be
+        /// finished in the dark, and the sun is up.
+        /// </summary>
+        /// <remarks>
+        /// SEPARATE from <see cref="QuestBearing"/> on purpose, and the reason is worth keeping.
+        ///
+        /// It used to be the first branch of the bearing cascade, returning outright. That made it
+        /// compete for a line it was never the best use of: the questline runs THREE tracks at once,
+        /// so the hunt can be waiting for night while the craft track is a walk to the coast, and
+        /// the player standing on "the one who waits" read "wait for dark" - a true sentence about
+        /// a step on another track entirely (owner: "no two hints can be active at the same time").
+        ///
+        /// The fix is not to pick a winner. Both are true, and they are different KINDS of thing:
+        /// one is somewhere to go, the other is something to wait for, and a player can do the
+        /// first while the second is pending. So the HUD draws both, the bearing bright and first
+        /// because it is actionable, the notice small and muted beneath it. Two lines of six words
+        /// is not the crowding that took the spoken hints away; that was large centre text
+        /// interrupting the game, and this is a standing line you glance at.
+        ///
+        /// It stays out of the cascade in the other direction too: <see cref="QuestBearing"/> now
+        /// suppresses the spirit, Herald and herd bearings while this is true, because those three
+        /// point at the dark-gated things THEMSELVES and in daylight they answer from a last known
+        /// position - a confident direction to nothing, which is worse than a warning.
+        /// </remarks>
+        public string QuestNotice
+        {
+            get
+            {
+                if (!_active) return null;
+                if (Player.m_localPlayer == null) return null;
+
+                return ActIsMeadows && DarkStepWanted && !IsNight
+                    ? "Nothing you seek walks in the light. Wait for dark."
+                    : null;
             }
         }
 
