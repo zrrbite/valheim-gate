@@ -65,6 +65,12 @@ namespace ICanShowYouTheWorld.Core
         float RunHomewardCooldownMinutes { get; set; }
         float RunCorpseGateCooldownMinutes { get; set; }
         int RunMessageWrapChars { get; set; }
+
+        /// <summary>
+        /// Centre-screen lines longer than this become a small top-left toast instead, with the full
+        /// text kept on the HEARD page. 0 disables it and puts everything back on the centre.
+        /// </summary>
+        int RunToastOverChars { get; set; }
         bool RunSortCraftingByName { get; set; }
         bool RunShowHomestead { get; set; }
         float RunForestNoticeChance { get; set; }
@@ -242,6 +248,17 @@ namespace ICanShowYouTheWorld.Core
         // is right for everyone. Zero or less turns wrapping off.
         [SerializeField] private int runMessageWrapChars = 44;
 
+        /// <summary>
+        /// Ninety is a shade over two wrapped lines at the default width of 44.
+        /// </summary>
+        /// <remarks>
+        /// Chosen as the point where a message stops being FEEDBACK and starts being a PASSAGE. One
+        /// or two lines is something you take in without stopping - "The courier falls, and its cargo
+        /// rises" - and anything longer is prose, which cannot be read before the next line replaces
+        /// it and is the whole of the complaint this exists for.
+        /// </remarks>
+        [SerializeField] private int runToastOverChars = 90;
+
         // Asks VALHEIM to sort the crafting list alphabetically - see CraftingSort, which found the
         // game's own 'sortcraft' setting rather than building a search box over its panel. On by
         // default because the unsorted order is nobody's preference, and respectful of a deliberate
@@ -376,6 +393,7 @@ namespace ICanShowYouTheWorld.Core
         public float RunHomewardCooldownMinutes { get => runHomewardCooldownMinutes; set => runHomewardCooldownMinutes = value; }
         public float RunCorpseGateCooldownMinutes { get => runCorpseGateCooldownMinutes; set => runCorpseGateCooldownMinutes = value; }
         public int RunMessageWrapChars { get => runMessageWrapChars; set => runMessageWrapChars = value; }
+        public int RunToastOverChars { get => runToastOverChars; set => runToastOverChars = value; }
         public bool RunSortCraftingByName { get => runSortCraftingByName; set => runSortCraftingByName = value; }
         public bool RunShowHomestead { get => runShowHomestead; set => runShowHomestead = value; }
         public float RunForestNoticeChance { get => runForestNoticeChance; set => runForestNoticeChance = value; }

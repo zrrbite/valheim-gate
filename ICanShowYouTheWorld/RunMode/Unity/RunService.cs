@@ -7807,7 +7807,42 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>On-screen HUD message. Silently does nothing when there is no local player.</summary>
-        private void Message(string text)
+        private void Message(string text) => Message(text, false);
+
+        /// <summary>
+        /// Says something, on the channel the length of it deserves.
+        /// </summary>
+        /// <remarks>
+        /// THE PROBLEM THIS SOLVES, in the owner's words: "There's still a lot of text flying around
+        /// on screen thats hard to read in time." Everything the mode said went to MessageHud's
+        /// CENTRE channel - one big yellow line that the next message replaces. Step openings were
+        /// paced and capped, but roughly sixty other call sites fire straight into it, so a boss
+        /// falling, a reward, a light rising and a step opening could land in the same two seconds and
+        /// the last one won.
+        ///
+        /// The game has a second channel and we were not using it. MessageHud.MessageType.TopLeft is
+        /// the small, unobtrusive one - what vanilla uses for picking something up - and it is where
+        /// "quest log updated" belongs.
+        ///
+        /// The split is by LENGTH, not by a tag on sixty call sites, and length turns out to be the
+        /// honest test:
+        ///
+        ///   SHORT is feedback. "The courier falls, and its cargo rises." "Stash is full."
+        ///   "Homeward. 2 charges left." You act on these, they are readable at a glance, and they
+        ///   must not be delayed. They stay on the centre, exactly as before.
+        ///
+        ///   LONG is a PASSAGE. Prose, several sentences, written to be read rather than reacted to -
+        ///   and therefore the worst possible thing to put in a channel that erases itself. These
+        ///   become a toast carrying the first sentence, with the whole thing kept on HEARD.
+        ///
+        /// The first sentence is what the toast carries rather than a bare "BOOK updated", because
+        /// the saga's openings put the good line first - "The storm is his." - and a notice that says
+        /// only that something happened makes the player open a window to find out whether they care.
+        ///
+        /// Nothing is lost either way: the full text is recorded BEFORE any of this, which is why
+        /// this could be done at all.
+        /// </remarks>
+        private void Message(string text, bool urgent)
         {
             // Recorded before it is shown, and recorded UNWRAPPED: the transcript page has its own
             // width, and the screen's 44-character breaks would read as ragged nonsense on a page.
@@ -7820,8 +7855,43 @@ namespace ICanShowYouTheWorld.RunMode
             }
             catch { /* A record of a line is worth less than the line. */ }
 
-            try { _game?.ShowMessage(Wrapped(text), MessageType.Center); }
+            int toastOver = _cfg?.RunToastOverChars ?? 0;
+            bool passage = !urgent && toastOver > 0 && !string.IsNullOrEmpty(text) && text.Length > toastOver;
+
+            try
+            {
+                if (passage) _game?.ShowMessage(Toast(text), MessageType.TopLeft);
+                else _game?.ShowMessage(Wrapped(text), MessageType.Center);
+            }
             catch { /* HUD messages are never worth failing a run over. */ }
+        }
+
+        /// <summary>
+        /// The one line a passage gets on screen: its opening sentence, and where the rest is.
+        /// </summary>
+        /// <remarks>
+        /// Sentence-first, then a hard character cap, because a "sentence" in this mode's prose can
+        /// still be forty words and the toast channel is not wide. Newlines collapse to spaces: an
+        /// opening is written with paragraph breaks for the HEARD page, and those would tear a
+        /// one-line notice in half.
+        /// </remarks>
+        private static string Toast(string text)
+        {
+            string flat = text.Replace("\r", " ").Replace("\n", " ");
+            while (flat.Contains("  ")) flat = flat.Replace("  ", " ");
+            flat = flat.Trim();
+
+            int end = flat.IndexOfAny(new[] { '.', '!', '?' });
+            if (end > 0 && end + 1 < flat.Length) flat = flat.Substring(0, end + 1);
+
+            const int Cap = 58;
+            if (flat.Length > Cap)
+            {
+                int cut = flat.LastIndexOf(' ', Math.Min(Cap, flat.Length - 1));
+                flat = (cut > 0 ? flat.Substring(0, cut) : flat.Substring(0, Cap)).TrimEnd() + "\u2026";
+            }
+
+            return flat + "   [End] HEARD";
         }
 
         /// <summary>
