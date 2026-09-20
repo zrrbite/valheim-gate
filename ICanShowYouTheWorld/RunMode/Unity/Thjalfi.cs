@@ -469,6 +469,25 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         private static bool TryFindShore(Vector3 origin, out Vector3 shore, out Vector3 seaward)
         {
+            // Strict first, relaxed only if that finds nothing. A placed quest-giver on a bad beach
+            // beats an unplaced one, but he should have to earn the bad beach.
+            if (TryFindShore(origin, true, out shore, out seaward)) return true;
+
+            // Worth a line in the log: a relaxed placement is the one that can put him somewhere
+            // odd, and knowing which pass placed him is the difference between a bug report and a
+            // shrug at a world with a rocky coastline.
+            if (TryFindShore(origin, false, out shore, out seaward))
+            {
+                Debug.Log("[ICanShowYouTheWorld] No open, level shore within range; " +
+                          "Thjalfi takes the best crossing he can find.");
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool TryFindShore(Vector3 origin, bool strict, out Vector3 shore, out Vector3 seaward)
+        {
             shore = origin;
             seaward = Vector3.forward;
 
@@ -508,11 +527,24 @@ namespace ICanShowYouTheWorld.RunMode
                     float distance = Vector3.Distance(origin, lastLand);
                     if (distance < MinDistance) break;
 
+                    Vector3 stand = lastLand - dir * ShoreInset;
+
+                    // A height crossing the waterline is not enough to make a beach. A crevasse
+                    // between two cliffs crosses it, and so does a puddle - and the owner found him
+                    // standing in one ("sometimes I found him in a crevasse because there was
+                    // water"). Two cheap samples tell a coast from a crack: the water beyond must
+                    // keep going, and the ground he stands on must be flat.
+                    //
+                    // Both are skipped on the relaxed pass, which exists so that a genuinely rugged
+                    // coastline still gets him a spot rather than exiling him to the inland ring.
+                    if (strict && !(OpenWaterBeyond(gen, lastLand, dir) && IsFlatEnough(gen, stand)))
+                        break;
+
                     float score = Mathf.Abs(distance - PreferredDistance);
                     if (score < bestScore)
                     {
                         bestScore = score;
-                        shore = lastLand - dir * ShoreInset;
+                        shore = stand;
                         seaward = dir;
                         found = true;
                     }
@@ -521,6 +553,130 @@ namespace ICanShowYouTheWorld.RunMode
             }
 
             return found;
+        }
+
+        /// <summary>
+        /// True when the water past <paramref name="edge"/> keeps being water.
+        /// </summary>
+        /// <remarks>
+        /// The test that tells a coast from a crevasse. An inlet, a ravine with a stream in it or a
+        /// pond all cross the waterline exactly once going out, which is the whole of what the ray
+        /// walk was checking - and then there is land again twenty metres on. Open sea does not do
+        /// that. Sampling eight steps out is enough to separate the two and costs eight height
+        /// lookups on a search that already does hundreds.
+        /// </remarks>
+        private static bool OpenWaterBeyond(WorldGenerator gen, Vector3 edge, Vector3 dir)
+        {
+            for (int i = 1; i <= OpenWaterSteps; i++)
+            {
+                Vector3 at = edge + dir * (ShoreStep * i);
+
+                float h;
+                try { h = gen.GetHeight(at.x, at.z); }
+                catch { return false; }
+
+                if (h > Waterline) return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// True when the ground around a candidate is level enough to stand a man and an altar on.
+        /// </summary>
+        /// <remarks>
+        /// Sampled as a ring rather than a cross, because a ravine floor is flat along its length and
+        /// a cross aligned with it reports a meadow. The spread across the whole ring is what matters.
+        /// </remarks>
+        private static bool IsFlatEnough(WorldGenerator gen, Vector3 at)
+        {
+            float low = float.MaxValue;
+            float high = float.MinValue;
+
+            for (int i = 0; i < FlatSamples; i++)
+            {
+                float angle = (float)i / FlatSamples * Mathf.PI * 2f;
+                Vector3 s = at + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * FlatRadius;
+
+                float h;
+                try { h = gen.GetHeight(s.x, s.z); }
+                catch { return false; }
+
+                if (h < low) low = h;
+                if (h > high) high = h;
+            }
+
+            return high - low <= FlatSpread;
+        }
+
+        /// <summary>
+        /// Where the Storm-Anvil should stand: beside him, on land, at his own level.
+        /// </summary>
+        /// <remarks>
+        /// This used to be "his position plus 2.5 metres along world X", which is a direction with no
+        /// relationship to anything. Beside a shore it is a coin flip whether that is the beach or the
+        /// sea, and the grounding call underneath it made the failure invisible twice over:
+        ///
+        ///   <c>ZoneSystem.GetSolidHeight(Vector3)</c> raycasts from a THOUSAND metres up and takes
+        ///   the first collider it meets, so a point 2.5m into a cliff face grounds on the clifftop
+        ///   above rather than the floor he is standing on - and when the ray hits nothing it returns
+        ///   the y it was handed, so there is no failure to detect. Both readings look like success.
+        ///
+        /// So: fan landward from the water, take the first candidate that grounds on real geometry
+        /// near HIS height and above the waterline, and use the margin overload, which starts a few
+        /// metres above the point and answers false when it finds nothing.
+        ///
+        /// The last resort is his own feet. An altar clipping a ghost is a blemish; an altar in the
+        /// sea or on a clifftop is a quest the player cannot finish.
+        /// </remarks>
+        public Vector3 AltarSpot()
+        {
+            Vector3 feet = Position() ?? _spot ?? Vector3.zero;
+            if (feet == Vector3.zero) return feet;
+
+            Vector3 landward = new Vector3(-_seaward.x, 0f, -_seaward.z);
+            landward = landward.sqrMagnitude > 0.001f ? landward.normalized : Vector3.forward;
+
+            foreach (float deg in AltarFan)
+            {
+                Vector3 dir = Quaternion.AngleAxis(deg, Vector3.up) * landward;
+
+                for (float r = AltarNear; r <= AltarFar; r += AltarStep)
+                {
+                    Vector3 grounded;
+                    if (TryGround(feet + dir * r, feet.y, out grounded))
+                    {
+                        Debug.Log($"[ICanShowYouTheWorld] Storm-Anvil spot {grounded:0.0}, " +
+                                  $"{r:0.0}m from Thjalfi at {deg:0}\u00b0 landward.");
+                        return grounded;
+                    }
+                }
+            }
+
+            Debug.LogWarning("[ICanShowYouTheWorld] No clear ground beside Thjalfi; " +
+                             "the Storm-Anvil goes at his feet.");
+            return feet;
+        }
+
+        /// <summary>Grounds a point on real geometry near a reference height, or reports failure.</summary>
+        private static bool TryGround(Vector3 at, float reference, out Vector3 grounded)
+        {
+            grounded = at;
+
+            var zones = ZoneSystem.instance;
+            if (zones == null) return false;
+
+            float h;
+            // The MARGIN overload on purpose - see AltarSpot. It starts heightMargin above the point
+            // instead of a kilometre, so it cannot grab a ledge overhead, and it returns a bool.
+            try { if (!zones.GetSolidHeight(at, out h, AltarRayMargin)) return false; }
+            catch { return false; }
+
+            if (h <= Waterline) return false;                          // not in the surf
+            if (Mathf.Abs(h - reference) > AltarMaxStep) return false;  // not on a shelf above or below him
+
+            grounded = new Vector3(at.x, h, at.z);
+            return true;
         }
 
         /// <summary>The old behaviour, kept as the fallback: a ring around home, on dry land.</summary>
@@ -549,6 +705,31 @@ namespace ICanShowYouTheWorld.RunMode
 
         /// <summary>How far back from the water's edge he stands, in metres.</summary>
         private const float ShoreInset = 3f;
+
+        /// <summary>How far out the water must stay water, in <see cref="ShoreStep"/> steps.</summary>
+        private const int OpenWaterSteps = 8;
+
+        private const int FlatSamples = 8;
+        private const float FlatRadius = 4f;
+
+        /// <summary>Metres of height spread tolerated across the flatness ring - about 25 degrees.</summary>
+        private const float FlatSpread = 3.5f;
+
+        /// <summary>
+        /// Angles to try for the altar, in order, measured from landward. Deliberately stops short of
+        /// 180: the last thing to try is still not straight out to sea.
+        /// </summary>
+        private static readonly float[] AltarFan = { 0f, 35f, -35f, 70f, -70f, 110f, -110f };
+
+        private const float AltarNear = 3f;
+        private const float AltarFar = 6f;
+        private const float AltarStep = 1.5f;
+
+        /// <summary>How far above the candidate the grounding ray starts. Small, so it stays local.</summary>
+        private const int AltarRayMargin = 5;
+
+        /// <summary>How far from Thjalfi's own feet the altar's ground may be, in metres.</summary>
+        private const float AltarMaxStep = 2f;
 
         private const int DryLandAttempts = 12;
 

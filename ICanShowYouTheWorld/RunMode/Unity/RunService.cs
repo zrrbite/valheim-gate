@@ -3792,9 +3792,11 @@ namespace ICanShowYouTheWorld.RunMode
                 return;
             }
 
-            Vector3 at = _thjalfi?.Position() ?? player.transform.position + player.transform.forward * 3f;
-            at += Vector3.right * 2.5f;   // Beside him, not inside him.
-            try { at.y = ZoneSystem.instance.GetSolidHeight(at); } catch { }
+            // Thjalfi picks the spot: he knows where he is standing and which way the sea is, and
+            // both matter. See Thjalfi.AltarSpot for what the old one-liner here got wrong.
+            Vector3 at = _thjalfi != null
+                ? _thjalfi.AltarSpot()
+                : player.transform.position + player.transform.forward * 3f;
 
             var raised = UnityEngine.Object.Instantiate(prefab, at, Quaternion.identity);
             if (raised == null)
