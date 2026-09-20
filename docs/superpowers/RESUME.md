@@ -224,16 +224,35 @@ Agreed 2026-09-20, after the pages landed. Not started.
 This closes the **saga-only build** goal that has been open since 2026-09-19, and it closes it
 better than the plan it replaces. Three things fall out of it.
 
-**It needs no build flavours.** A fresh config is written with `runDevMode: false`, so a recipient's
-install is saga-only with no second binary, no second tag and no second install path. The deferred
-"two flavours" work turns out to be one honest default plus a flag that means what it says. The one
-question worth asking first: does "off" have to mean the GM code is **absent**, or only
-**unreachable**? Unreachable is a config flag; absent needs a compile-time `#if` and two builds, and
-only matters if somebody would edit the JSON to cheat at a personal mod.
+**The switch is BAKED INTO THE DLL, not read from the config.** Asked and answered
+(owner: "I dont want anyone to be able to reach the GM mod but me, so i think it should be
+absent?"). A config bool does not meet that, because the recipient owns the config file.
 
-**Keep the key name `runDevMode`.** Broaden what it means; do not rename it. The owner's config file
-is from 25 August and already says `runDevMode: true`, and a renamed key silently drops to the new
-default - which is the same trap `runStaminaRegenRate` is currently sitting in.
+Do it the way `Version.cs` is already done: `ICanShowYouTheWorld/VersionTemplate.cs` is sed-filled
+into `Assets/Version.cs` by `Scripts/setversion.sh`. Add a second baked constant beside `VERSION`
+- `GM_ENABLED` - written by the same script from a `--saga-only` flag on
+`Scripts/build_windows.sh`. The gates then read a `const bool` nobody outside the build can touch.
+
+**Not two project configurations and not `#if`.** Two reasons, the first decisive: the saga-only
+binary is the one the owner never plays, so it is the one that would break silently - the worst
+property a shipped artefact can have. And because the legacy `CheatCommands` pipeline must STAY
+(the saga rides it), the conditional surface would be scattered across `Cheat.cs`, `UIManager.cs`
+and `InputManager.cs`, which is exactly where "works in my build" lives. One binary, one code path,
+one constant.
+
+**Have the badge say which build it is.** `MenuBadge` already prints `SAGA v<build>`; a GM build
+should say so (`SAGA v<build> - GM`). The failure this prevents is handing out the wrong DLL and
+nobody being able to tell.
+
+**Say plainly what this does and does not buy.** Valheim ships its own cheats: `F5` plus the
+`-console` launch option gives `devcommands`, and with it god, fly, spawn and kill. So none of this
+stops a determined person - it stops an idle one, and it stops the saga's score from being quietly
+meaningless for someone who never asked for GM. That is worth doing; "security" is not the claim.
+
+**`runDevMode` keeps its name and its meaning.** It stays the TESTER's switch - step-skips, kits,
+the clock - and does not become the GM switch after all, since those are now two different things
+living in two different places. Renaming it would also have dropped the owner's 25-August config
+silently to a new default, which is the trap `runStaminaRegenRate` is already sitting in.
 
 **Build it on the pages, not a new window.** `RunWindow.HudPage` and its tab row exist as of
 `...20b`. Outside a run the pages are the saga lobby and - in dev only - a GM page that toggles the
