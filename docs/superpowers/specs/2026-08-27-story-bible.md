@@ -253,12 +253,16 @@ answer, practised before it was taught. Act VII spends it.
   blocks inside five seconds and it discharges Eikthyr's own weather in a five
   metre ring. It is the biggest object a player can hold, on purpose. Also the
   FIRST piece of the Stormsworn.
-  **Possibly an Act II item**: it may be too much for the Meadows, and the owner
-  has flagged the move. Nothing in the fiction resists it — the shield is made
-  of the Breaker's hide and rescued lights, both of which Act I supplies, so a
-  move would mean the craft is finished in the forest rather than before the
-  god. The reason to keep it in Act I is that it answers Eikthyr; the reason to
-  move it is that the act is over once you can do this to a greydwarf pack.
+  **Where it eventually lives** (owner, 2026-09-20): a shield this size wants
+  wood and IRON, and iron is Act III — "abomination wood + Iron + some other
+  swamp biome item" — which is a fair reading of the object. The answer is not to
+  move it but to **reforge** it: Act I binds the Stormward out of hide and
+  rescued light, and Act III puts that shield back on the Storm-Anvil with iron
+  and ancient bark and takes up something heavier. That keeps Act I's capstone
+  craft, gives the iron version a home, and matches the one-piece-per-act shape
+  the Stormsworn already set. A straight move would leave Act I with no last
+  craft, which is the thing it was built to have.
+  It also stays in Act I for now on the owner's call — play with it there first.
 - **The Stormsworn** (2026-09-20) — one piece of armour per act, Acts II to V,
   each answering what its own act kills people with: blunt in the forest, poison
   in the fen, frost on the mountain, fire in the plains. Not a stat total but a
@@ -276,6 +280,25 @@ answer, practised before it was taught. Act VII spends it.
   since 2026-09-20 it comes BACK - after the Breaker and after Eikthyr - to say
   something about what you did with it. Both remarks are about someone else having
   done the thing it never could, because it is a hunter who never loosed.
+- **The Storm-Anvil** (2026-09-20) — Valheim's Obliterator, renamed and about to
+  be promoted. A machine that takes what you feed it, strikes it with lightning
+  and gives back coal. In this premise that makes it a small Elder: the only
+  other thing in the world that BREAKS light rather than carrying it — and the
+  only one a player can own, feed and pull the lever on themselves. That is the
+  moral hook, and it is the same question the light races ask, asked with your
+  own hand on the switch.
+  Mechanically it is a gift: `Incinerator.m_conversions` is a public list of
+  `IncineratorConversion { m_requirements, m_result, m_resultAmount, m_priority }`
+  — an EverQuest-style combine shipped in the base game and used by nothing but
+  coal. The saga appends to it, which is why no patch and no new asset is needed.
+  **The plan** (owner, 2026-09-20): make it a focal thread of Act I and the forge
+  for every lightning thing afterwards — the Stormward first, then Thor's bow
+  moved off the workbench, then the Stormsworn. Three things stand in the way and
+  all three are cheap: the Obliterator needs a Thunder Stone from Haldor, who
+  lives in the Black Forest (solved the way the fishing rod was — the saga hands
+  over the makings as a step reward, see `mq-fish`); its build cost is asset data
+  this assembly cannot read, so it has to be read off a running game; and the
+  lever's hover text is a localisation token that will keep saying Obliterator.
 - **The ravens** — Odin's audit. They witness beats; they never help.
 - **Heat** — the world noticing you burn. Score is how brightly you burned.
 - **Boons** — Odin's loans against the answer you owe. Death collects one.

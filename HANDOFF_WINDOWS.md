@@ -17,6 +17,59 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-20 - TASK: the Storm-Anvil, and two beats for the shield quest (`...20n`)
+
+Four things, from one conversation about making the shield's Act I quest worth doing.
+
+**The Obliterator already does EverQuest combines.** `Incinerator.m_conversions` is a public
+`List<IncineratorConversion>`, each one `{ m_requirements (item + amount), m_result, m_resultAmount,
+m_priority }`. Put in exactly these things, take out exactly that thing - shipped in the base game
+and used by nothing but coal. So "if the user oblitarates 4 specific things, replace with a new
+object" is not a workaround; it is the feature. The saga now appends a conversion: the Stormward's
+materials in, the Stormward out, with the lever, the strike and the `m_lightingAOEs` flash for free.
+No patch, no new asset.
+
+It is found by its **Incinerator component, never by name** - a prefab name is asset data this
+assembly cannot verify - and the log prints what it turned out to be. Both the ZNetScene prefab and
+every live instance are taught, because the prefab alone misses one already standing and instances
+alone lose it when you build another.
+
+**It is called the Storm-Anvil now.** `Piece.m_name` is ours to set. An anvil is where the blow
+lands, which is exactly what this is. The lever's own hover text is a localisation token and will
+still say Obliterator - a seam, not a bug.
+
+**Two new craft-track steps**, because the shield's whole quest was a shopping list:
+
+- `mq-shield-answer` - **let the Stormward answer three times.** The discharge is otherwise
+  undiscoverable: no animation of its own, no tooltip line, no tutorial. Detected from
+  `ItemData.m_lastAttackTime`, which `StartWithoutAnimation` stamps and nothing else on a shield
+  touches - exact, where polling `m_blockCharges` would confuse a discharge with a decayed charge.
+  The count is persisted, because measures keep their maximum and a counter that reset on resume
+  would stall a half-done step.
+- `mq-storm-vigil` - **stand out in a thunderstorm holding it.** LAST on the track on purpose: it
+  waits on weather, which nothing can hurry, so it sits where nothing is behind it, exactly as the
+  losable troll does. Matched on the substring "thunder" rather than a guessed environment name, and
+  `Player.InShelter()` means a roof does not count.
+
+**And a reward that lied.** `mq-shield` promised "Mead, and arrows enough for a god" and had no
+entry in the reward table at all, so it paid nothing. Fixed.
+
+### Test it
+
+- [ ] **Block twice quickly, three times over, and the step completes.** Watch it count.
+- [ ] **Save and resume mid-step**: progress is kept, and you do not have to start the three again.
+- [ ] **`mq-shield` actually pays** mead and 60 flint arrows now.
+- [ ] **A thunderstorm, no roof, shield equipped** completes the vigil. Under a roof it must NOT.
+- [ ] **Find an Obliterator** (Act II, or spawn one) - it should be called **Storm-Anvil** in the
+      hammer menu and on hover. Put 20 wood, 20 resin, 10 troll hide, 10 deer hide and 3 rescued
+      lights in, pull the lever, and a Stormward should come out instead of coal.
+- [ ] **Nothing else obliterates wrong.** Put a few random items in and pull: still coal. The saga's
+      conversion has priority 100 and must only fire on an exact match.
+- [ ] Log: `The storm-altar is '<prefab>'` - **write that name down**, it is the one asset name this
+      whole thread was missing - and `Storm-altar combine registered: 5 things in, Stormward out`.
+
+---
+
 ## 2026-09-20 - TASK: the Stormward answers being hit (`...20m`)
 
 "*can we do something crzy with it? lighting and aoe when someone hits it?*", then "*the shield IS

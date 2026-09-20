@@ -37,6 +37,9 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         public List<string> shadeRemarksSaid;
 
+        /// <summary>How many times the Stormward has answered a blow this run.</summary>
+        public int stormwardAnswers;
+
         public List<string> chronicle;
 
         public List<string> splitLabels;

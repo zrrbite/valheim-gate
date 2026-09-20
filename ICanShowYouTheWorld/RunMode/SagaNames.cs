@@ -44,6 +44,15 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         public const string BreakerStepId = "mq-troll";
 
+        /// <summary>
+        /// PlayerState measures the Stormward raises: how many times it has discharged, and whether
+        /// the player has stood out in a thunderstorm holding it. Named here because a step's Param
+        /// and the code that reports it must be the same string, and two literals are two chances to
+        /// mistype one.
+        /// </summary>
+        public const string StormwardAnswered = "StormwardAnswered";
+        public const string StormVigil = "StormVigil";
+
         // Act VIII stand-ins (2026-09-12). Valheim 1.0's Deep North boss exists — the assembly has
         // GP_DeepNorth and a "frozen king" item token — but its prefab, altar location and defeat
         // key are asset data. These are deliberately un-guessed: a guess that happened to be right

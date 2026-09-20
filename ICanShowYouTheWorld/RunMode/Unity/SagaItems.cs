@@ -523,6 +523,9 @@ namespace ICanShowYouTheWorld.RunMode
 
                 if (dbChanged && _clones.Count > 0) RegisterWithDb(odb);
                 if (sceneChanged && _clones.Count > 0) RegisterWithScene(scene);
+
+                // The altar's prefab, once the clones exist to be its result.
+                if (sceneChanged && _clones.Count > 0) TeachAltarPrefab(scene);
             }
             catch (Exception ex)
             {
@@ -902,6 +905,193 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         private static bool _masksChecked;
+
+        // ------------------------------------------------------------------ the storm-altar
+        //
+        // Valheim's Obliterator - the lever-and-lightning machine that turns what you feed it into
+        // coal - carries a PUBLIC conversion table: Incinerator.m_conversions, a list of
+        // IncineratorConversion { m_requirements, m_result, m_resultAmount, m_priority }. Put in
+        // exactly these things, take out exactly that thing. An EverQuest combine, shipped in the
+        // base game and used by nothing but coal (owner: "if the user oblitarates 4 specific things,
+        // for instance, replace with a new object? Sort of like in Everquest, old school mmo").
+        //
+        // So the saga's lightning items can be MADE OF LIGHTNING, in the machine that makes it,
+        // rather than tapped together at a bench. The lever animation, the strike and the
+        // m_lightingAOEs flash all come free because it is the game's own path.
+        //
+        // The Obliterator is found by its COMPONENT and never by name: a prefab name is asset data
+        // this assembly cannot verify, and the one time this codebase guessed one it spent an
+        // evening on it. Whatever it is called, it is the thing with an Incinerator on it, and the
+        // log says what that turned out to be.
+
+        /// <summary>How many of each thing the altar asks for. Deliberately the bench recipe's cost.</summary>
+        /// <remarks>
+        /// The same price by a different road, not a cheaper one. Until the Obliterator is something
+        /// Act I can reach, the bench has to stay open or the shield is unmakeable - so the altar is
+        /// an alternative, and an alternative that undercut the bench would simply retire it.
+        ///
+        /// When the altar becomes the point (see the story bible: it is to be Act I's third act-long
+        /// thread and the forge for every storm item after) this table is where the divergence goes:
+        /// things only the lightning can bind, which the bench then does not list at all.
+        /// </remarks>
+        private static readonly (string item, int amount)[] StormwardCombine =
+        {
+            ("Wood", 20), ("Resin", 20), ("TrollHide", 10), ("DeerHide", 10),
+        };
+
+        private readonly HashSet<int> _alteredAltars = new HashSet<int>();
+        private float _altarTimer;
+        private bool _altarFound;
+
+        /// <summary>
+        /// Teaches every Obliterator in the world to give back the Stormward.
+        /// </summary>
+        /// <remarks>
+        /// Both the prefab and the live instances, because neither alone is enough: patching only
+        /// the prefab misses an Obliterator that was already standing when the mod loaded, and
+        /// patching only instances loses the change the moment the player builds a new one.
+        /// Idempotent by result - a conversion whose result is already ours is left alone - so this
+        /// can run as often as it likes.
+        /// </remarks>
+        public void TickStormAltar(float dt)
+        {
+            _altarTimer += dt;
+            if (_altarTimer < AltarPollSeconds) return;
+            _altarTimer = 0f;
+
+            try
+            {
+                if (!_clones.TryGetValue(StormwardPrefab, out var shieldClone) || shieldClone == null) return;
+
+                var result = shieldClone.GetComponent<ItemDrop>();
+                if (result == null) return;
+
+                foreach (var inc in UnityEngine.Object.FindObjectsByType<Incinerator>(FindObjectsSortMode.None))
+                {
+                    if (inc == null) continue;
+                    if (!_alteredAltars.Add(inc.GetInstanceID())) continue;
+                    TeachAltar(inc, result);
+                }
+            }
+            catch (Exception ex)
+            {
+                ReportOnce("altar", "[ICanShowYouTheWorld] The storm-altar could not be taught: " + ex.Message);
+            }
+        }
+
+        /// <summary>The prefab pass, so an Obliterator built later is born knowing it.</summary>
+        private void TeachAltarPrefab(ZNetScene scene)
+        {
+            if (scene == null || scene.m_prefabs == null) return;
+            if (!_clones.TryGetValue(StormwardPrefab, out var shieldClone) || shieldClone == null) return;
+
+            var result = shieldClone.GetComponent<ItemDrop>();
+            if (result == null) return;
+
+            foreach (var prefab in scene.m_prefabs)
+            {
+                if (prefab == null) continue;
+
+                var inc = prefab.GetComponent<Incinerator>();
+                if (inc == null) continue;
+
+                if (!_altarFound)
+                {
+                    _altarFound = true;
+                    Debug.Log($"[ICanShowYouTheWorld] The storm-altar is '{prefab.name}' " +
+                              $"(found by its Incinerator, not by name).");
+                }
+
+                TeachAltar(inc, result);
+            }
+        }
+
+        /// <summary>
+        /// What the saga calls the Obliterator.
+        /// </summary>
+        /// <remarks>
+        /// "Obliterator" is a machine's name in a world that has no machines, and the saga is about to
+        /// make this thing a fixture (owner: "we could make the obliterator a focal topic of act1 that
+        /// you then use throughout the game to craft lighting items"). It needed a name in the same
+        /// family as the rest - Stormward, Stormsworn - and an ANVIL is where the blow lands, which is
+        /// precisely what this is: you put a thing down and the sky hits it.
+        ///
+        /// Only Piece.m_name is ours to set. The lever's own hover text is a localisation token
+        /// ($piece_incinerator) and will still say Obliterator, which is a seam worth knowing about
+        /// rather than a thing to go fighting.
+        /// </remarks>
+        private const string AnvilName = "Storm-Anvil";
+
+        private const string AnvilDescription =
+            "The sky does the work. Put down what you have taken back, pull the lever, and see " +
+            "whether it comes up as something or as ash.";
+
+        private static void NameTheAnvil(Incinerator inc)
+        {
+            var piece = inc.GetComponent<Piece>();
+            if (piece == null || piece.m_name == AnvilName) return;
+
+            piece.m_name = AnvilName;
+            piece.m_description = AnvilDescription;
+        }
+
+        private void TeachAltar(Incinerator inc, ItemDrop result)
+        {
+            NameTheAnvil(inc);
+
+            if (inc.m_conversions == null)
+                inc.m_conversions = new List<Incinerator.IncineratorConversion>();
+
+            // Already knows it. Checked by RESULT rather than by a flag, so a reload, a rebuild and
+            // a second pass over the same object all come to the same answer.
+            foreach (var existing in inc.m_conversions)
+                if (existing != null && ReferenceEquals(existing.m_result, result)) return;
+
+            var reqs = new List<Incinerator.Requirement>();
+            foreach (var (item, amount) in StormwardCombine)
+            {
+                var drop = ItemPrefab(item);
+                if (drop == null)
+                {
+                    ReportOnce("altar-" + item,
+                        $"[ICanShowYouTheWorld] The storm-altar wants '{item}' and the game has no such item — " +
+                        "the Stormward combine is NOT registered.");
+                    return;
+                }
+                reqs.Add(new Incinerator.Requirement { m_resItem = drop, m_amount = amount });
+            }
+
+            var lightDrop = _clones.TryGetValue(RescuedLightPrefab, out var lightClone) && lightClone != null
+                ? lightClone.GetComponent<ItemDrop>()
+                : null;
+            if (lightDrop != null)
+                reqs.Add(new Incinerator.Requirement { m_resItem = lightDrop, m_amount = StormwardLightCost });
+
+            inc.m_conversions.Add(new Incinerator.IncineratorConversion
+            {
+                m_requirements = reqs,
+                m_result = result,
+                m_resultAmount = 1,
+
+                // Above the coal. The default conversion is what happens to anything with no rule of
+                // its own, and a shield's worth of troll hide going to coal because the table was
+                // read in the wrong order is the one outcome here that cannot be undone.
+                m_priority = 100,
+                m_requireOnlyOneIngredient = false,
+            });
+
+            Debug.Log($"[ICanShowYouTheWorld] Storm-altar combine registered: {reqs.Count} things in, " +
+                      $"{StormwardName} out.");
+        }
+
+        private ItemDrop ItemPrefab(string name)
+        {
+            var odb = ObjectDB.instance;
+            var go = odb != null ? odb.GetItemPrefab(name) : null;
+            return go != null ? go.GetComponent<ItemDrop>() : null;
+        }
+
+        private const float AltarPollSeconds = 3f;
 
         private GameObject Lightning()
         {

@@ -269,6 +269,15 @@ namespace ICanShowYouTheWorld.RunMode
         /// starts. A saga that can only show you the act you are standing in is a quest list; one
         /// that keeps the whole run is a book, which is what was asked for.
         /// </remarks>
+        /// <summary>
+        /// How many times the Stormward has discharged this run, and the stamp that proves the last
+        /// one. Persisted: measures keep their maximum, so a counter that restarted at zero on
+        /// resume would stall a half-finished step until the player beat the old total in one sitting.
+        /// </summary>
+        private int _stormwardAnswers;
+        private float _stormwardLastAttack;
+        private bool _stormwardSeen;
+
         /// <summary>The shade's return visits already heard, by id. Persisted.</summary>
         private readonly HashSet<string> _shadeRemarksSaid = new HashSet<string>();
 
@@ -1800,6 +1809,9 @@ namespace ICanShowYouTheWorld.RunMode
                 _chronicle.Clear();
             _shadeRemarksSaid.Clear();
             _shadeRemarkOwed = null;
+            _stormwardAnswers = 0;
+            _stormwardLastAttack = 0f;
+            _stormwardSeen = false;
             _splitLabels.Clear();
                 _splitTimes.Clear();
                 _accountedBossKeys.Clear();
@@ -1961,6 +1973,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // whether or not a saga is running. Both are cheap when nothing changed.
                 _items.Ensure();
                 _items.TickStrikes(dt);
+                _items.TickStormAltar(dt);
 
                 // Alphabetical crafting lists, which has nothing to do with a saga and everything to
                 // do with the late acts. See CraftingSort: it asks the GAME to sort its own list.
@@ -3314,12 +3327,89 @@ namespace ICanShowYouTheWorld.RunMode
 
                 ReportSkillLevels(player);
 
+                PollStormward(player);
+
                 PollHearthRecords(player);
             }
             catch
             {
                 // Cosmetic to miss a poll; the next one will catch it.
             }
+        }
+
+        /// <summary>
+        /// Counts the Stormward's discharges, and notices when the sky is doing what the shield was
+        /// built to answer.
+        /// </summary>
+        /// <remarks>
+        /// A discharge is detected from <c>ItemData.m_lastAttackTime</c>, which
+        /// <c>Attack.StartWithoutAnimation</c> stamps and which nothing else on a shield ever
+        /// touches - so it is an exact signal rather than an inference. Polling
+        /// <c>m_blockCharges</c> instead would have been ambiguous: the count also drops to zero when
+        /// the charge simply decays, and a step that cannot tell a discharge from a lapse would
+        /// credit the player for standing still.
+        ///
+        /// The first sighting BASELINES rather than counts. m_lastAttackTime is a Time.time stamp, so
+        /// an item carried in from a previous session can arrive with a value already on it, and
+        /// counting that would hand the player a free discharge for equipping the thing.
+        ///
+        /// Why a step at all: without one the discharge is undiscoverable. The shield does not say it
+        /// stores hits, the item card cannot show a mechanic, and a player who never blocks twice
+        /// inside five seconds will finish the act never knowing. A quest is the only place this
+        /// saga has to teach a rule, which is the same argument that built the daylight deer kill.
+        /// </remarks>
+        private void PollStormward(Player player)
+        {
+            var shield = EquippedStormward(player);
+
+            if (shield != null)
+            {
+                if (!_stormwardSeen)
+                {
+                    _stormwardSeen = true;
+                    _stormwardLastAttack = shield.m_lastAttackTime;
+                }
+                else if (shield.m_lastAttackTime > _stormwardLastAttack + 0.05f)
+                {
+                    _stormwardLastAttack = shield.m_lastAttackTime;
+                    _stormwardAnswers++;
+                    SaveState();
+                }
+            }
+
+            _challenges.ReportMeasure(ChallengeKind.PlayerState, SagaNames.StormwardAnswered, _stormwardAnswers);
+
+            // The vigil: his weather, felt rather than described, with the answer to it in your hand.
+            // Out in it - InShelter is the game's own test and a roof is the whole opposite of the
+            // beat. One sighting latches it forever (measures keep their maximum), so this is a
+            // moment to be in, not a duration to endure.
+            if (shield == null || player.InShelter()) return;
+
+            var env = EnvMan.instance;
+            if (env == null) return;
+
+            var current = env.GetCurrentEnvironment();
+            if (current == null || string.IsNullOrEmpty(current.m_name)) return;
+
+            // Matched on "thunder" rather than on an exact name. The environment is asset data and
+            // "ThunderStorm" is a guess at its spelling; a substring answers the same question
+            // without betting the step on a capital S.
+            if (current.m_name.IndexOf("thunder", StringComparison.OrdinalIgnoreCase) < 0) return;
+
+            _challenges.ReportMeasure(ChallengeKind.PlayerState, SagaNames.StormVigil, 1f);
+        }
+
+        /// <summary>The Stormward if it is equipped, or null. The same ItemData the game blocks with.</summary>
+        private static ItemDrop.ItemData EquippedStormward(Player player)
+        {
+            var inv = player?.GetInventory();
+            var equipped = inv?.GetEquippedItems();
+            if (equipped == null) return null;
+
+            foreach (var item in equipped)
+                if (item?.m_shared != null && item.m_shared.m_name == SagaItems.StormwardName) return item;
+
+            return null;
         }
 
         /// <summary>
@@ -6591,6 +6681,9 @@ namespace ICanShowYouTheWorld.RunMode
             _chronicle.Clear();
             _shadeRemarksSaid.Clear();
             _shadeRemarkOwed = null;
+            _stormwardAnswers = 0;
+            _stormwardLastAttack = 0f;
+            _stormwardSeen = false;
             _splitLabels.Clear();
             _splitTimes.Clear();
             _lights?.Restore(s.lightsTaken, s.lightsLost);
@@ -6599,6 +6692,7 @@ namespace ICanShowYouTheWorld.RunMode
             if (s.splitLabels != null) _splitLabels.AddRange(s.splitLabels);
             if (s.chronicle != null) _chronicle.AddRange(s.chronicle);
             if (s.shadeRemarksSaid != null) foreach (var id in s.shadeRemarksSaid) _shadeRemarksSaid.Add(id);
+            _stormwardAnswers = s.stormwardAnswers;
             if (s.splitTimes != null) _splitTimes.AddRange(s.splitTimes);
 
             // Everything in the saved list is already accounted for: pre-existing kills and
@@ -6798,6 +6892,7 @@ namespace ICanShowYouTheWorld.RunMode
                 recordDetails = _records.All.Select(r => r.Detail).ToList(),
                 chronicle = _chronicle.ToList(),
                 shadeRemarksSaid = _shadeRemarksSaid.ToList(),
+                stormwardAnswers = _stormwardAnswers,
                 splitLabels = _splitLabels.ToList(),
                 splitTimes = _splitTimes.ToList(),
                 activeChallengeIds = active.Select(a => a.Def.Id).ToList(),
@@ -7913,6 +8008,46 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
+                // What the shield DOES, made into a step, because otherwise nobody finds out it does
+                // anything. The Stormward stores blows and gives them back as lightning - and a
+                // mechanic with no animation of its own, no tooltip line and no tutorial is a
+                // mechanic a player can carry through a whole act without meeting. A quest is the
+                // only place this saga has to teach a rule; the daylight deer kill exists for the
+                // same reason.
+                //
+                // Three, not one: one could happen by accident and be mistaken for something else
+                // going off. Three is the player noticing a pattern.
+                Id = "mq-shield-answer", MainQuest = true, Kind = ChallengeKind.PlayerState,
+                Param = SagaNames.StormwardAnswered, Target = 3,
+                Display = "Let the Stormward answer (3)",
+                RewardText = "Coal for the anvil, and mead",
+                Hint = "Block twice inside five seconds and it gives the storm back \u2014 five metres, " +
+                       "everything but you and yours. Stand IN a fight rather than backing out of one.",
+                Opening = "It keeps what it is hit with. Let something hit it twice, and stand still.",
+            },
+            new ChallengeDefinition
+            {
+                // LAST on the craft track, and that placement is the whole safety argument. It waits
+                // on WEATHER, which no amount of play can hurry - so it must sit where nothing is
+                // behind it, exactly as the losable troll does. If the storm never comes the track
+                // ends unfinished, which this act already permits and which costs the hunt track
+                // nothing.
+                //
+                // It is also the only step in Act I that asks the player to do nothing at all. The
+                // vigil in the meadows asked them to be in the dark; this asks them to be under the
+                // sky holding the answer to it. Both are the act saying: the world does this whether
+                // you are ready or not.
+                Id = "mq-storm-vigil", MainQuest = true, Kind = ChallengeKind.PlayerState,
+                Param = SagaNames.StormVigil, Target = 1,
+                Display = "Stand out in his weather",
+                RewardText = "Amber, coal, and mead",
+                Hint = "A thunderstorm, out from under any roof, with the Stormward on your arm. " +
+                       "It comes when it comes \u2014 nothing you do brings it sooner.",
+                Opening = "The sky does this on its own, and has since before you landed. " +
+                          "Go and be under it holding what you made.",
+            },
+            new ChallengeDefinition
+            {
                 // The rod comes from the previous step's reward, because Haldor — the only
                 // vanilla source — spawns in the Black Forest, and Act I is not supposed to need
                 // that trip yet. See the Act I design spec.
@@ -8938,6 +9073,18 @@ namespace ICanShowYouTheWorld.RunMode
                 // back is also the better story: it is the only thing it had left of its own hunt.
                 ["mq-shade-bring"] = new[] { (SagaItems.RescuedLightPrefab, 1) },
                 ["mq-bow"] = new[] { ("ArrowFlint", 40) },
+
+                // mq-shield had a RewardText promising "Mead, and arrows enough for a god" and NO
+                // ENTRY here, so it paid nothing - a reward line that lied, which is the one class of
+                // bug this mode treats as worse than a missing feature. Found while adding the two
+                // steps below.
+                ["mq-shield"] = new[] { ("MeadHealthMedium", 3), ("ArrowFlint", 60) },
+
+                // Coal, deliberately, and ahead of its use: the Storm-Anvil burns it and the saga is
+                // about to make that altar the place every lightning thing is bound. A reward that
+                // points at the next act is cheap and reads as foresight.
+                ["mq-shield-answer"] = new[] { ("Coal", 20), ("MeadHealthMedium", 3) },
+                ["mq-storm-vigil"] = new[] { ("Amber", 5), ("Coal", 20), ("MeadHealthMedium", 2) },
                 ["mq-comfort"] = new[] { ("DeerHide", 10), ("Resin", 20), ("Wood", 30) },
                 ["bf-trophy"] = new[] { ("Wood", 30), ("Resin", 15) },
                 ["mq-fish"] = new[] { ("FishingBait", 100), ("Wood", 20) },
