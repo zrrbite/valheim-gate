@@ -212,6 +212,44 @@ is a decision, not a detail — see the note at the top of `CreatureDressing`.
 `specs/2026-08-27-story-bible.md`. Acts II–V exist and open correctly; their
 middles are thinner than Act I's.
 
+## Next: the general menu, and dev mode as the one switch
+
+Agreed 2026-09-20, after the pages landed. Not started.
+
+> Owner: "I've actually been thinking about the 'run' menu, that it should be a sort of general
+> menu. IF it's built with -Dev mode we can access both the GM mod of old and the new Saga mode and
+> we can use the menu to go back and forth. Saga mode would then have the dev commands we have now.
+> If it's built without dev mode then only the saga would be available."
+
+This closes the **saga-only build** goal that has been open since 2026-09-19, and it closes it
+better than the plan it replaces. Three things fall out of it.
+
+**It needs no build flavours.** A fresh config is written with `runDevMode: false`, so a recipient's
+install is saga-only with no second binary, no second tag and no second install path. The deferred
+"two flavours" work turns out to be one honest default plus a flag that means what it says. The one
+question worth asking first: does "off" have to mean the GM code is **absent**, or only
+**unreachable**? Unreachable is a config flag; absent needs a compile-time `#if` and two builds, and
+only matters if somebody would edit the JSON to cheat at a personal mod.
+
+**Keep the key name `runDevMode`.** Broaden what it means; do not rename it. The owner's config file
+is from 25 August and already says `runDevMode: true`, and a renamed key silently drops to the new
+default - which is the same trap `runStaminaRegenRate` is currently sitting in.
+
+**Build it on the pages, not a new window.** `RunWindow.HudPage` and its tab row exist as of
+`...20b`. Outside a run the pages are the saga lobby and - in dev only - a GM page that toggles the
+EXISTING cheat windows rather than re-implementing them. During a run the GM page is absent: the
+input gate exists because heat and score assume GM is dead, and that is not negotiable by a menu.
+
+What "saga-only" has to switch off, concretely: `InputManager` must not REGISTER the GM bindings
+(not merely gate them), `UIManager` must not draw the GM windows, and F1 must do nothing outside the
+Heat HUD. What it must NOT switch off is the legacy `CheatCommands` pipeline itself - Run Mode's own
+effects ride it (`WithLegacyGodModeBracket`), so this is hiding entry points, never deleting the
+layer.
+
+Worth naming as a pre-existing hole rather than a new one: in a dev build, GM is available outside a
+run today, so a world can be god-built and then played as a saga. Per-run fairness does not claim
+otherwise, but if that should be closed, it is a separate decision.
+
 ## Done 2026-09-20 (`...20b`): the QUESTS page and the self-opening menu
 
 Both built the same evening they were agreed. Kept here because the REASONING is what a later
