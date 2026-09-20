@@ -2258,6 +2258,23 @@ namespace ICanShowYouTheWorld.RunMode
                 GUILayout.Label("That world keeps Run Mode's rates.", RunTheme.Small);
             }
 
+            // What the disk holds for THIS character, stated plainly. There is no Continue button
+            // because there is nothing to press - a run for this character in this world resumes by
+            // itself on entry, and this window only opens when one did not. So the useful thing to
+            // say is WHY, and the answer is nearly always one of two ordinary mistakes: a different
+            // character (the save is keyed by name), or the right character in a different world.
+            //
+            // Before this line, all three outcomes looked identical from the lobby: one button
+            // saying "Begin the saga".
+            string saved = _concrete?.SavedRunSummary;
+            if (!string.IsNullOrEmpty(saved))
+            {
+                GUILayout.Space(4f);
+                GUI.contentColor = RunTheme.TextMuted;
+                GUILayout.Label(saved, RunTheme.Small);
+                GUI.contentColor = Color.white;
+            }
+
             GUILayout.Space(5f);
             // Deferred: starting a run here would change the window set mid-pass.
             if (GUILayout.Button("Begin the saga")) _pendingStart = true;

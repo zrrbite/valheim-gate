@@ -359,9 +359,38 @@ namespace ICanShowYouTheWorld.RunMode
                 Description = "Troll hide over a meadow frame, with three rescued lights bound under " +
                               "the boss. The storm goes around it — and when it has gone around " +
                               "twice, it comes back out. The herd paid for the light; the forest paid " +
-                              "for the hide.",
+                              "for the hide.\n\nIt takes both hands. Nothing else can be held with it.",
                 Tune = shared =>
                 {
+                    // BOTH HANDS. Not a house rule enforced by the mod - the game already has
+                    // the concept, and it is one field (owner: "is it possible to disallow weapons
+                    // while wielding it? Its a big powerful shield" / "I guess this is essentially a
+                    // 2h shield").
+                    //
+                    // ItemType.TwoHandedWeaponLeft is what the staves use. Humanoid.EquipItem's
+                    // branch for it unequips BOTH hands and then takes the left, and the
+                    // OneHandedWeapon branch unequips whatever is in the left unless it is a Shield
+                    // or a Torch - which this now is not. So the exclusion holds in both directions,
+                    // for one-handers, two-handers and bows alike, and none of it is our code.
+                    //
+                    // Three things had to be true for this to be free, and the IL says all three are:
+                    //
+                    //   Humanoid.GetCurrentBlocker() returns m_leftItem with NO type check, and
+                    //   Humanoid.BlockAttack reads m_timedBlockBonus straight off it. Blocking, the
+                    //   parry window and the block charges that fire the discharge all survive.
+                    //
+                    //   Attack.Start returns immediately when m_attackAnimation is "", which is what
+                    //   the discharge has. So the attack button cannot fire the nova by hand - only
+                    //   BlockAttack's StartWithoutAnimation can, which is the whole design (owner:
+                    //   "We dont have to let it attack, if it cant. Just make it big and react to
+                    //   dmg"). Typing it as a weapon does not turn it into one.
+                    //
+                    //   m_animationState is left alone, so it is still carried and held as a shield.
+                    //
+                    // What it costs the player is the torch, the bow and every weapon - which is the
+                    // point. The storm is the weapon.
+                    shared.m_itemType = ItemDrop.ItemData.ItemType.TwoHandedWeaponLeft;
+
                     shared.m_blockPower = StormwardBlock;
                     shared.m_blockPowerPerLevel = StormwardBlockPerLevel;
                     shared.m_deflectionForce = 40f;

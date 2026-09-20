@@ -323,6 +323,21 @@ namespace ICanShowYouTheWorld.RunMode
 
         private bool _resumeAttempted;
         private RunSaveState _pendingResume;
+
+        /// <summary>
+        /// What the last look at the disk found, in one sentence, for the lobby and the log.
+        /// </summary>
+        /// <remarks>
+        /// Resuming is AUTOMATIC and silent, which is the right behaviour and was also the reason a
+        /// failure to resume had no symptom: the lobby offered "Begin the saga" whether a run was
+        /// waiting, missing, or belonged to somebody else. Run state is keyed by CHARACTER and then
+        /// matched on world, so the two ways to miss it are ordinary mistakes - a different
+        /// character, or the same character in a different world - and neither said anything.
+        /// </remarks>
+        private string _savedRunSummary;
+
+        /// <summary>One sentence on the saved run for the current character; null before any look.</summary>
+        internal string SavedRunSummary => _savedRunSummary;
         private bool _restorePending;
 
         /// <summary>
@@ -7016,6 +7031,7 @@ namespace ICanShowYouTheWorld.RunMode
             _idleCharacter = character;
             _resumeAttempted = false;
             _pendingResume = null;
+            _savedRunSummary = null;
         }
 
         private void TryResume()
@@ -7040,6 +7056,18 @@ namespace ICanShowYouTheWorld.RunMode
             var state = RunStorage.TryLoad(name, out corrupt);
             if (state == null)
             {
+                // Said out loud, every time. "No saved run" was the one outcome here that logged
+                // NOTHING, which made a resume that never happened indistinguishable from a resume
+                // that was never owed - and that is exactly the question the owner could not answer
+                // about their own session ("I've had some indicators that I couldn\u2019t [continue],
+                // and I could only start a new one"). The file is keyed by CHARACTER, so the name is
+                // the half of the answer that is easy to get wrong.
+                _savedRunSummary = corrupt
+                    ? $"The saved run for \u2018{name}\u2019 could not be read."
+                    : $"No saved run for \u2018{name}\u2019.";
+                Debug.Log($"[ICanShowYouTheWorld] {_savedRunSummary} " +
+                          $"(looked in {RunStorage.PathForCharacter(name)})");
+
                 // "No file" is the normal case and says nothing. "File there but unreadable" is
                 // a loss the player must hear about: RunStorage has quarantined it as .corrupt
                 // rather than deleting it, because it holds the only copy of the world's
@@ -7052,6 +7080,10 @@ namespace ICanShowYouTheWorld.RunMode
                 }
                 return;
             }
+
+            _savedRunSummary = $"Saved run for \u2018{name}\u2019 on world " +
+                               $"\u2018{ReadableWorldName(state.worldId)}\u2019 at {FormatTime(state.elapsedSeconds)}.";
+            Debug.Log($"[ICanShowYouTheWorld] {_savedRunSummary}");
 
             _pendingResume = state;
             TryResumePending();
