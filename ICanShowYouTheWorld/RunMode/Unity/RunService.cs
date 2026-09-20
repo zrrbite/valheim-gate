@@ -278,6 +278,12 @@ namespace ICanShowYouTheWorld.RunMode
         private float _stormwardLastAttack;
         private bool _stormwardSeen;
 
+        /// <summary>How many things Thor's bow has brought down this run. Persisted; see BowKillsStat.</summary>
+        private int _thorsBowKills;
+
+        /// <summary>Debounce on saving the two saga counters, which can both tick several times a second.</summary>
+        private float _counterSaveAt;
+
         /// <summary>The shade's return visits already heard, by id. Persisted.</summary>
         private readonly HashSet<string> _shadeRemarksSaid = new HashSet<string>();
 
@@ -1812,6 +1818,7 @@ namespace ICanShowYouTheWorld.RunMode
             _stormwardAnswers = 0;
             _stormwardLastAttack = 0f;
             _stormwardSeen = false;
+            _thorsBowKills = 0;
             _splitLabels.Clear();
                 _splitTimes.Clear();
                 _accountedBossKeys.Clear();
@@ -3455,6 +3462,69 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
+        /// Counts a kill as Thor's bow's, when it provably was.
+        /// </summary>
+        /// <remarks>
+        /// The injected death hook hands over the victim and nothing else, so the evidence comes from
+        /// the victim's own last hit - <c>Character.m_lastHit</c>, a HitData the game fills in on the
+        /// way down. Three things together identify the bow and nothing else can satisfy all three:
+        /// the attacker is the local player, the skill is Bows, and the hit carried LIGHTNING. No
+        /// other bow in the game does lightning, and the shield's own discharge is a Blocking-skill
+        /// hit rather than a Bows one, so the two saga items cannot be confused for each other.
+        ///
+        /// That precision is the point. The alternative - "was the player holding the bow when
+        /// something died" - would credit a wolf's kill to the archer standing next to it, and a
+        /// counter that lies is worse than a counter that is missing.
+        /// </remarks>
+        private void CountThorsBowKill(Character victim)
+        {
+            var player = Player.m_localPlayer;
+            if (player == null || victim == null) return;
+
+            try
+            {
+                if (_lastHitField == null)
+                    _lastHitField = typeof(Character).GetField(
+                        "m_lastHit",
+                        System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+                var hit = _lastHitField?.GetValue(victim) as HitData;
+                if (hit == null) return;
+
+                if (!hit.m_attacker.Equals(player.GetZDOID())) return;
+                if (hit.m_skill != Skills.SkillType.Bows) return;
+                if (hit.m_damage.m_lightning <= 0f) return;
+
+                _thorsBowKills++;
+                SaveCountersSoon();
+            }
+            catch (Exception ex)
+            {
+                LogOnce("bow-kill", ex);
+            }
+        }
+
+        private static System.Reflection.FieldInfo _lastHitField;
+
+        /// <summary>
+        /// Saves the run, but at most every few seconds.
+        /// </summary>
+        /// <remarks>
+        /// Both saga counters can tick several times a second - an area shot into a pack, a shield
+        /// discharging through a raid - and every other SaveState in this file sits behind something
+        /// a player does once. Writing the run file ten times in a second to record a number is the
+        /// one place that cadence is wrong.
+        /// </remarks>
+        private void SaveCountersSoon()
+        {
+            if (Time.time < _counterSaveAt) return;
+            _counterSaveAt = Time.time + CounterSaveSeconds;
+            SaveState();
+        }
+
+        private const float CounterSaveSeconds = 5f;
+
+        /// <summary>
         /// Counts the Stormward's discharges, and notices when the sky is doing what the shield was
         /// built to answer.
         /// </summary>
@@ -3497,7 +3567,7 @@ namespace ICanShowYouTheWorld.RunMode
                     // place that knows a discharge HAPPENED, it is also the place that can bill it.
                     shield.m_durability = Mathf.Max(0f, shield.m_durability - SagaItems.StormwardDischargeWear);
 
-                    SaveState();
+                    SaveCountersSoon();
                 }
             }
 
@@ -4453,6 +4523,15 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         private float? ReadPlayerStat(string param)
         {
+            // The saga's own counters first. They are not PlayerStatType members and never will be,
+            // so this is a fall-THROUGH rather than a fallback: an unrecognised name still reaches
+            // the real stats below exactly as before.
+            switch (param)
+            {
+                case SagaNames.BowKillsStat:     return _thorsBowKills;
+                case SagaNames.StormAnswersStat: return _stormwardAnswers;
+            }
+
             var type = ResolveStatType(param);
             if (type == null) return null;
 
@@ -6216,6 +6295,8 @@ namespace ICanShowYouTheWorld.RunMode
                 string prefabName = PrefabNameOf(c);
                 _challenges?.ReportKill(prefabName);
 
+                CountThorsBowKill(c);
+
                 // Eikthyr's herd is being farmed, and a deer gives up its light where it falls.
                 // Only while the hunt is on, for the same reason the pack is: this is the story of
                 // the hunt, not a thing that follows the player around the act.
@@ -6812,6 +6893,7 @@ namespace ICanShowYouTheWorld.RunMode
             _stormwardAnswers = 0;
             _stormwardLastAttack = 0f;
             _stormwardSeen = false;
+            _thorsBowKills = 0;
             _splitLabels.Clear();
             _splitTimes.Clear();
             _lights?.Restore(s.lightsTaken, s.lightsLost);
@@ -6821,6 +6903,7 @@ namespace ICanShowYouTheWorld.RunMode
             if (s.chronicle != null) _chronicle.AddRange(s.chronicle);
             if (s.shadeRemarksSaid != null) foreach (var id in s.shadeRemarksSaid) _shadeRemarksSaid.Add(id);
             _stormwardAnswers = s.stormwardAnswers;
+            _thorsBowKills = s.thorsBowKills;
             if (s.splitTimes != null) _splitTimes.AddRange(s.splitTimes);
 
             // Everything in the saved list is already accounted for: pre-existing kills and
@@ -7021,6 +7104,7 @@ namespace ICanShowYouTheWorld.RunMode
                 chronicle = _chronicle.ToList(),
                 shadeRemarksSaid = _shadeRemarksSaid.ToList(),
                 stormwardAnswers = _stormwardAnswers,
+                thorsBowKills = _thorsBowKills,
                 splitLabels = _splitLabels.ToList(),
                 splitTimes = _splitTimes.ToList(),
                 activeChallengeIds = active.Select(a => a.Def.Id).ToList(),
@@ -7387,6 +7471,29 @@ namespace ICanShowYouTheWorld.RunMode
             // Both gated on the ROD (owner, in play: "I had a fish task before i got a rod"). A
             // fishing task without one is not difficult, it is unstartable — the same dead slot as
             // a door task with no door, and the rod is not something the run hands you.
+            // --- The saga's own gear, and the only tasks in the pool that can ask for a named item.
+            //
+            // RequiresItem is what makes them fair: a slot is only DEALT when the player carries the
+            // thing, so nobody is handed "eight kills with a bow you have not made" and forced to pay
+            // heat to reroll it. The same door the fishing tasks use.
+            //
+            // StatDelta rather than PlayerState, which is the part worth getting right. A PlayerState
+            // measure is absolute, so a task dealt after fifty bow kills would complete the instant it
+            // appeared. StatDelta snapshots the counter when the slot is dealt and counts up from
+            // there - "eight MORE", which is what the task says.
+            new ChallengeDefinition { Id = "c-bowkill", Tier = 1, Kind = ChallengeKind.StatDelta, Param = SagaNames.BowKillsStat,
+                                      Target = 6, HeatReward = 2, RequiresItem = SagaItems.ThorsBowPrefab,
+                                      Display = "Thunder at range (6 kills)" },
+            new ChallengeDefinition { Id = "c-bowkill2", Tier = 2, Kind = ChallengeKind.StatDelta, Param = SagaNames.BowKillsStat,
+                                      Target = 15, HeatReward = 3, RequiresItem = SagaItems.ThorsBowPrefab,
+                                      Display = "The storm hunts with you (15 kills)" },
+            new ChallengeDefinition { Id = "c-stormward", Tier = 1, Kind = ChallengeKind.StatDelta, Param = SagaNames.StormAnswersStat,
+                                      Target = 4, HeatReward = 2, RequiresItem = SagaItems.StormwardPrefab,
+                                      Display = "Give it back (4 discharges)" },
+            new ChallengeDefinition { Id = "c-stormward2", Tier = 2, Kind = ChallengeKind.StatDelta, Param = SagaNames.StormAnswersStat,
+                                      Target = 10, HeatReward = 3, RequiresItem = SagaItems.StormwardPrefab,
+                                      Display = "Stand in it (10 discharges)" },
+
             new ChallengeDefinition { Id = "c-fishhaul", Tier = 1, Kind = ChallengeKind.PlayerState, Param = "FishHeld",       Target = 8, HeatReward = 2, RequiresItem = "FishingRod", Display = "A day at the water (8 fish)" },
             new ChallengeDefinition { Id = "c-fishcook", Tier = 1, Kind = ChallengeKind.PlayerState, Param = "CookedFishHeld", Target = 3, HeatReward = 2, RequiresItem = "FishingRod", Display = "Fish supper (3 cooked)",
                 Hint = "Craft Raw fish from your catch in the crafting tab first, then cook it on the station." },

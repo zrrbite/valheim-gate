@@ -53,6 +53,22 @@ namespace ICanShowYouTheWorld.RunMode
         public const string StormwardAnswered = "StormwardAnswered";
         public const string StormVigil = "StormVigil";
 
+        /// <summary>
+        /// The saga's own lifetime counters, read as if they were Valheim player stats.
+        /// </summary>
+        /// <remarks>
+        /// These are StatDelta params, not PlayerState ones, and the difference is the whole reason
+        /// they exist. A PlayerState measure is ABSOLUTE - right for a one-off chain step, and wrong
+        /// for the rotating pool, where a task dealt after fifty bow kills would complete the instant
+        /// it appeared and hand over free heat. StatDelta takes a snapshot when the slot is dealt and
+        /// counts up from there, which is exactly what "kill eight more with that bow" means.
+        ///
+        /// The "Saga" prefix keeps them clear of every PlayerStatType member name, since the host
+        /// tries this list first and falls through to the real stats.
+        /// </remarks>
+        public const string BowKillsStat = "SagaThorsBowKills";
+        public const string StormAnswersStat = "SagaStormwardAnswers";
+
         // Act VIII stand-ins (2026-09-12). Valheim 1.0's Deep North boss exists — the assembly has
         // GP_DeepNorth and a "frozen king" item token — but its prefab, altar location and defeat
         // key are asset data. These are deliberately un-guessed: a guess that happened to be right

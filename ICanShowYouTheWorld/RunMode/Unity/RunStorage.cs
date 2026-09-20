@@ -40,6 +40,9 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>How many times the Stormward has answered a blow this run.</summary>
         public int stormwardAnswers;
 
+        /// <summary>How many things Thor's bow has brought down this run.</summary>
+        public int thorsBowKills;
+
         public List<string> chronicle;
 
         public List<string> splitLabels;

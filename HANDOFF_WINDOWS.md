@@ -17,6 +17,53 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-20 - TASK: tasks for the bow and the shield (`...20t`)
+
+**STAGED, NOT INSTALLED** - you were playing when it was built. When you quit:
+`.\dist\windows\Install-Mod.ps1 -ModOnly`
+
+"*We need tasks that involve firing the bow and killing monsters, if we have it. And blocking with
+the shield*" - "*only if we possess it, of course*". Four new entries in the random pool:
+
+| | |
+|---|---|
+| `c-bowkill` | Thunder at range (6 kills) |
+| `c-bowkill2` | The storm hunts with you (15 kills) |
+| `c-stormward` | Give it back (4 discharges) |
+| `c-stormward2` | Stand in it (10 discharges) |
+
+**"Only if we possess it" is a field, not new machinery.** `RequiresItem` already decides whether a
+slot can be DEALT, which is how the fishing tasks work - so nobody is handed "six kills with a bow
+you have not made" and then has to pay heat to reroll it.
+
+**A bow kill is identified exactly, not inferred.** The injected death hook hands over the victim and
+nothing else, so the evidence comes from `Character.m_lastHit` - the HitData the game fills in on the
+way down. Three things together, and nothing else in the game can satisfy all three: the attacker is
+the local player, the skill is **Bows**, and the hit carried **lightning**. No other bow does
+lightning, and the shield's discharge is a Blocking-skill hit, so the two saga items cannot be
+confused for each other. The lazy version - "was the player holding the bow when something died" -
+would credit a wolf's kill to the archer standing beside it.
+
+**StatDelta, not PlayerState, and that is the part that matters.** A PlayerState measure is absolute,
+so a task dealt after fifty bow kills would complete the instant it appeared and hand over free heat.
+StatDelta snapshots the counter when the slot is dealt and counts up from there - "six MORE", which is
+what the task says. The engine already had that baseline; it only needed the host to be able to read
+a counter that is not a Valheim player stat, which is one switch in `ReadPlayerStat`.
+
+Saving is now debounced (5 s) for both counters. An area shot into a pack or a shield discharging
+through a raid can tick these several times a second, and every other SaveState in the file sits
+behind something a player does once.
+
+### Test it
+
+- [ ] **No bow or shield task is ever dealt before you own the item.** That is the whole gate.
+- [ ] **A freshly dealt bow task starts at 0/6**, not already complete, however many you have killed.
+- [ ] **Only Thor's bow counts.** Kill something with an ordinary bow: no progress.
+- [ ] **A kill your wolf made does not count**, nor one from the shield's discharge.
+- [ ] **Resume mid-task**: progress is kept, not re-baselined.
+
+---
+
 ## 2026-09-20 - TASK: two real bugs from the first play, both found in the log (`...20s`)
 
 "*No obliterator was placed, check the logs. I pressed backspace a few times. The shield didnt do
