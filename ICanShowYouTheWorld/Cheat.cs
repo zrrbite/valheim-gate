@@ -457,10 +457,6 @@ namespace ICanShowYouTheWorld
             DrainPendingPopup();
             MenuBadge.Tick();
 
-            // A window you opened should be a window you can click. See ModCursor: this is the same
-            // state vanilla F1 puts the game in, which is why it is safe to hold.
-            try { ModCursor.Tick(UIManager.Instance != null && UIManager.Instance.AnyModWindowVisible); }
-            catch { /* never worth failing Update over */ }
 
             inputManager.HandleInput();
             CheatCommands.HandlePeriodic();

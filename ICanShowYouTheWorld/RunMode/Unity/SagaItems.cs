@@ -166,30 +166,42 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         /// <remarks>
         /// Set, because inherited was a quiet defect: the pierce came from whichever prefab the
-        /// fallback chain resolved, so the saga's signature weapon had a different power depending
-        /// on which bow existed in the build - and the number nobody chose was the one the player
-        /// read. It is also the number that was WRONG. The Finewood bow it was cut from is 32
-        /// pierce, while mq-herald hands out a Huntsman at 52 four steps later, so the reward for a
-        /// whole craft track plus three won lights was outclassed by a quest drop (owner: "Finebow
-        /// does 50 dmg, but thor a lot less pierce? boost it a bit?").
+        /// fallback chain resolved, so the saga's signature weapon had a different power depending on
+        /// which bow existed in the build - and the number nobody chose was the one the player read.
         ///
-        /// 58 pierce beats the Huntsman on its own terms, and the lightning on top is what makes it
-        /// Thor's rather than a better bow. Both raised: 20/+4 first, then 26/+5 ("we COULD increase
-        /// the dmg just a bit"), now this.
+        /// The numbers have moved three times and the last move was DOWN, which is the interesting
+        /// one. 20/+4 lightning first, then 26/+5 ("we COULD increase the dmg just a bit"), then
+        /// 58 pierce + 32 lightning once pierce stopped being inherited - and then the bow learned to
+        /// fork, and 90 damage to everything within four metres was plainly too much (owner: "since
+        /// the bow is AOE now, it seems OP").
+        ///
+        /// 44 + 22 is 66 on a direct hit, against the Huntsman's 52 that mq-herald hands over - so it
+        /// is still the better bow in the hand, and far better against a group, which is what it is
+        /// FOR. The radius came down with it; see <see cref="ThorsBowAoeRadius"/> for why that
+        /// mattered more than the damage did.
+        ///
+        /// Both are one-line dials and neither is sacred. If it is still too strong, cut the pierce:
+        /// the lightning is the part that makes it Thor's.
         /// </remarks>
+        private const float ThorsBowPierce = 44f;
+        private const float ThorsBowPiercePerLevel = 5f;
+        private const float ThorsBowLightning = 22f;
+        private const float ThorsBowLightningPerLevel = 4f;
+
         /// <summary>
         /// How far the lightning reaches around an arrow's impact, in metres.
         /// </summary>
         /// <remarks>
-        /// Four, which is about two deer or a knot of greylings - enough to read as a storm and
-        /// small enough that aim still matters. Eikthyr's own stomp is wider; this is a bow.
+        /// Three. It was four, and four plus the damage above was too much. BOTH dials were turned,
+        /// because the radius is what decides how many things a shot kills and that is where the
+        /// strength actually was.
+        ///
+        /// <c>Projectile.m_aoe</c> applies the arrow's full damage to everything inside it - there is
+        /// no distance falloff on that path, only on <c>Aoe</c> components, which the strike code
+        /// deliberately does not use (it would have had no owner to exempt). So the radius is not a
+        /// nicety: it is a multiplier on the whole weapon.
         /// </remarks>
-        private const float ThorsBowAoeRadius = 4f;
-
-        private const float ThorsBowPierce = 58f;
-        private const float ThorsBowPiercePerLevel = 6f;
-        private const float ThorsBowLightning = 32f;
-        private const float ThorsBowLightningPerLevel = 6f;
+        private const float ThorsBowAoeRadius = 3f;
 
         /// <summary>Candidate lightning effects, the Herald's list; the first that resolves is used.</summary>
         private static readonly string[] LightningPrefabs =

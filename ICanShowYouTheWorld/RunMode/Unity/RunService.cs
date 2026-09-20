@@ -7720,7 +7720,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // StepPredicates.StepDone), which is what "get a recipe" means mechanically.
                 Id = SagaNames.ShadeBringStepId, MainQuest = true, Kind = ChallengeKind.PlayerEvent, Param = SagaNames.ShadeDelivered,
                 Target = 1, Display = "Bring the shade what it lacked",
-                RewardText = "The shade\u2019s recipe: a hunter\u2019s bow, at the workbench",
+                RewardText = "The shade\u2019s recipe, and the one light it kept",
                 Hint = "Ten flint and five leather scraps in your pack, then speak to it after dark.",
             },
             new ChallengeDefinition
@@ -8767,6 +8767,24 @@ namespace ICanShowYouTheWorld.RunMode
                 ["mq-upgrade"] = new[] { ("Flint", 20), ("DeerHide", 10), ("Resin", 20) },
                 // The bow step pays in what a bow eats; the gathering step before it pays nothing
                 // but heat and health, because its point is the craft that follows.
+                // ONE rescued light, and it is not generosity - it is the only thing that makes the
+                // recipe VISIBLE.
+                //
+                // Valheim lists a recipe only when its item name is in Player.m_knownRecipes, and
+                // UpdateKnownRecipesList adds it when HaveRequirements passes with discover:true -
+                // which tests IsKnownMaterial for every ingredient rather than the amounts. So until
+                // the player has held a Rescued light ONCE, Thor's bow is not merely uncraftable: it
+                // is absent from the bench entirely, with nothing greyed out to explain itself.
+                //
+                // Which is exactly how it was reported - "I continued a game and completed the hunter
+                // quest for the bow, but my workbench doesnt have the recipe. doing something wrong?"
+                // No: the shade said the bench knew the shape, and the bench showed nothing, because
+                // the lights come off the HUNT track while the bow sits on CRAFT and the two can be
+                // reached in either order.
+                //
+                // One light turns an invisible requirement into a visible 0/3. The shade keeping one
+                // back is also the better story: it is the only thing it had left of its own hunt.
+                ["mq-shade-bring"] = new[] { (SagaItems.RescuedLightPrefab, 1) },
                 ["mq-bow"] = new[] { ("ArrowFlint", 40) },
                 ["mq-comfort"] = new[] { ("DeerHide", 10), ("Resin", 20), ("Wood", 30) },
                 ["bf-trophy"] = new[] { ("Wood", 30), ("Resin", 15) },

@@ -17,7 +17,7 @@ Standing context for the Windows side:
 
 ---
 
-## 2026-09-20 - THE TEST LIST for 1.0.15-run.2026-09-20g
+## 2026-09-20 - THE TEST LIST for 1.0.15-run.2026-09-20i
 
 Fourteen builds over two days, rewritten as ONE pass in the order you actually meet things. The
 per-build TASK entries below keep the reasoning; this is the list to play with.
@@ -27,7 +27,7 @@ DLL the game has open fails. When you are done: `.\dist\windows\Install-Mod.ps1 
 
 ### If you only do seven things
 
-0. **The crafting list is alphabetical**, and **`End` frees the mouse** - no more TAB to click.
+0. **The crafting list is alphabetical.** (The free-cursor change is REVERTED - TAB as before.)
 1. **`mod` + `Keypad -` is `+2h` per press again.** It says `DEV: +2h` immediately and then, a
    second and a half later, whether it is night - which is the only part that was ever broken.
 2. The **BOOK** tab (was QUESTS) opens on the run's own account of itself, act by act.
@@ -41,7 +41,7 @@ DLL the game has open fails. When you are done: `.\dist\windows\Install-Mod.ps1 
 
 - [ ] Launch and **do not open Credits**. **No popup at all.** Silence is success.
 - [ ] Under the game's own version line, one gold line at 70% size, **not overlapping**:
-      `SAGA v1.0.15-run.2026-09-20g · GM`. That line is the ONLY proof the mod loaded.
+      `SAGA v1.0.15-run.2026-09-20i · GM`. That line is the ONLY proof the mod loaded.
 - [ ] Load the character carrying **Thor's bow**. Still there. Save, quit to desktop, come back:
       still there, and no `Failed to find item prefab` in the log.
 
@@ -134,9 +134,11 @@ DLL the game has open fails. When you are done: `.\dist\windows\Install-Mod.ps1 
       you already have. Same after a world reload, which rebuilds ObjectDB and re-registers
       everything - that is the case the guard exists for.
 - [ ] **Thor's bow** - the bench will not list it until you are HOLDING a light; needs 3. It is now
-      **58 pierce + 32 lightning** and wears the **Huntsman's model**. Lightning flash on impact -
-      and the bolt now **forks 4m around the arrow**, so a shot into a knot of greylings should take
-      more than the one it hit. It must NEVER hurt you or a tamed animal.
+      **44 pierce + 22 lightning** and wears the **Huntsman's model**. Lightning flash on impact -
+      and the bolt **forks 3m around the arrow**, so a shot into a knot of greylings takes more than
+      the one it hit. It must NEVER hurt you or a tamed animal.
+- [ ] **The shade hands you one Rescued light** with the recipe, so the bench shows Thor's bow at
+      `0/3` the moment it is taught rather than showing nothing at all.
 - [ ] **The Stormward** - an **improved** workbench and 10 troll hide, and it wears the
       **serpentscale shield's** model.
 - [ ] **The Gatherer is 35% bigger than its children** and arrives about **45 seconds AFTER** its
@@ -188,6 +190,50 @@ default is **2.5** - the file wins over the code, so you have been playing a mon
 regen. Thirty-five newer settings are absent from it entirely and running on code defaults, which is
 correct behaviour but means they cannot be TUNED without adding the lines by hand. Ask and I will
 either add the keys or make `Load()` re-save so no future setting is invisible.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
+---
+
+## 2026-09-20 - TASK: 1.0.15-run.2026-09-20i - the invisible recipe, the bow tuned, the cursor reverted
+
+### Why the bench had no bow
+
+Your log had the answer: the recipe registered perfectly (`Saga recipe registered: Saga_hunters-bow ->
+... (Wood 10, Resin 10, DeerHide 6, Saga_RescuedLight 3)`), so the shade and the gate both worked. The
+bench hid it for a reason in Valheim's own code.
+
+`Player.GetAvailableRecipes` lists a recipe only when its item name is in `m_knownRecipes`, and
+`UpdateKnownRecipesList` adds it when `HaveRequirements(recipe, discover: true, ...)` passes - which
+tests `IsKnownMaterial` for every INGREDIENT rather than the amounts. Until a Rescued light has been in
+the pack once, Thor's bow is not uncraftable, it is ABSENT, with nothing greyed out to explain itself.
+
+The root cause is structural and will bite again: lights come off the HUNT track while the bow sits on
+CRAFT, and the two can be reached in either order. So **the shade now hands over one Rescued light**
+with the recipe. An invisible requirement becomes a visible `0/3`, and it is the better story - the one
+light the shade had left of its own hunt. Anything that gates a craft on another track's resource needs
+its first unit given, or the bench lies by omission.
+
+### The bow, down
+
+It forked, and then it was 90 damage to everything within four metres. Now **44 pierce + 22 lightning**
+(66 direct, against the Huntsman's 52) and **3m**. Both dials moved, not just the damage, because the
+radius is what decides how many things a shot kills - `Projectile.m_aoe` applies the full damage to
+everything inside it with no distance falloff. If it is still too strong, cut the pierce: the lightning
+is the part that makes it Thor's.
+
+### The cursor change is reverted
+
+A clean failure and a fair one: with the pointer free, drawing the bow **drags the windows around**. Of
+course it does - the mouse buttons are how you shoot AND how you move an IMGUI window, and freeing the
+cursor put both on the same click. TAB works because Valheim also stops taking player input while the
+inventory is up; the mod can claim the cursor half but not that half, and the cursor half alone turns
+out to be the worse one.
+
+`ModCursor` is deleted rather than left behind a flag, and the reason is in RESUME.md so nobody
+rebuilds it: the missing piece is suppressing player input, not showing a pointer.
 
 ### RESULTS (Windows side appends here)
 

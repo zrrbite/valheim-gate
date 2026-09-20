@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-09-20 at `1.0.15-run.2026-09-20g`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-09-20 at `1.0.15-run.2026-09-20i`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -21,7 +21,7 @@ Everything below is what that file tells it.
 
 - Branch **`feature/run-mode`**, not merged, deliberately — the mode is still
   being tuned in play.
-- Latest tag **`1.0.15-run.2026-09-20g`**; builds are date-based since 2026-08-31
+- Latest tag **`1.0.15-run.2026-09-20i`**; builds are date-based since 2026-08-31
   (`Scripts/nextversion.sh`). The game moved to **1.0.12 on 2026-09-12** and to
   **1.0.15 on 2026-09-19**; both times the mod was rebuilt and installed on Windows
   the same day. **1.0.15 needed no source change** — all 316 member references from
@@ -211,6 +211,22 @@ is a decision, not a detail — see the note at the top of `CreatureDressing`.
 `specs/2026-08-23-act-questline-plans.md`; the story itself in
 `specs/2026-08-27-story-bible.md`. Acts II–V exist and open correctly; their
 middles are thinner than Act I's.
+
+## Do not free the cursor for the mod's windows (tried, reverted 2026-09-20)
+
+`ModCursor` held `GameCamera.m_mouseCapture` false while a mod window was open, which is the state
+vanilla F1 puts the game in, so the pointer appeared and the windows were clickable without TAB.
+Reverted within the hour: with the pointer free, **drawing the bow drags the windows around**. The
+mouse buttons are how you shoot AND how you move an IMGUI window, and a free cursor puts both on the
+same click.
+
+TAB works because Valheim ALSO stops taking player input while the inventory is up
+(`Player.TakeInput()` consults `InventoryGui.IsVisible()` and friends). The mod can claim the cursor
+half of that and not the input half, and the cursor half on its own is worse than nothing. Faking the
+input half means making the game believe one of its own panels is open, which is not ours to do.
+
+If it is ever wanted again, the only honest route is a mode the player opts into explicitly - not a
+thing that happens because a window is up.
 
 ## Read the IL before building the workaround
 
