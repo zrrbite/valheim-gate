@@ -767,6 +767,37 @@ That is how the percentage bug, `Player.UseStamina`'s stamina multiplier,
 increments were all confirmed. If a change depends on what the game does, read
 it there first.
 
+## Four decisions taken 2026-09-20 (owner, asked directly)
+
+Recorded here because each one closes off alternatives that would otherwise be re-proposed by
+anybody reading the issues cold. Each is also written up on its GitHub issue.
+
+**1. Act I's light economy stays exactly even** (#7). Seven rescued lights are needed and seven
+are available; the Gatherer's freed hoard is the only slack. A player who loses lights to the
+forest may finish the act with ONE storm item, and that is the design rather than a balance bug.
+Rejected: raising the race target, cheapening an item, scaling the hoard to what was lost.
+
+**2. No AssetBundle pipeline. Reuse what ships** (#15). This is the standing answer, not a
+deferral. Every saga asset so far is an existing prefab wearing different numbers - the Stormward
+is a flametal tower shield, the rescued light is a Wisp, `Tutorial.instance.m_ravenPrefab` is the
+raven - and it has worked every time at no toolchain cost, in a repo where a Valheim update
+already means re-patch and rebuild. What it closes off: the quest book as an in-world mesh, custom
+creature looks beyond the four shader properties `CreatureDressing` can already shift, item tints,
+and any new model. **The parked quest-book idea below is therefore parked for good** in its
+asset form; the tracker IS the book.
+
+**3. The Deep North is an epilogue, not Act VIII** (#14). Act VII is now the ending - the hall in
+the Ashlands, the feast, Fader (#17, #13) - and a ninth boss after a climax reads as an
+afterthought. Its premise also duplicates Act III's marsh. One beat, reachable only after Fader.
+The docs should stop counting to eight: seven acts and an epilogue. The `FrozenKing` names still
+want validating, because the startup placeholder warning is a claim about the world.
+
+**4. The feast: empty high seats by default, and a god who comes if you earned it** (#17). One
+named seat per felled god, empty unless something specific was done in that god's own act. The
+empty-seat path must be complete and winnable on its own, because it is the version most players
+get. Build order: the shade's seat first, then the five empty named seats, then ONE god as an
+experiment - a boss fighting for you needs its faction flipped and can look ridiculous.
+
 ## Parked ideas
 
 - **A quest book instead of the tracker panel** (owner, 2026-09-12, prompted
@@ -774,9 +805,11 @@ it there first.
   the saga's progress, in place of the panel on the right. Also the natural
   home for a quest's HINT if hints should be found rather than shown (the Act I
   item quest's hint placement is undecided for exactly this reason). Needs the
-  asset pipeline decision `CreatureDressing` is already waiting on: a book is a
-  mesh and a UI, and both want an AssetBundle built in Unity 6000.0.x. Until
-  then the tracker is the book.
+  asset pipeline decision `CreatureDressing` was waiting on: a book is a
+  mesh and a UI, and both want an AssetBundle built in Unity 6000.0.x.
+  **Settled 2026-09-20: there will be no AssetBundle pipeline** (see the decisions
+  above), so the tracker is the book permanently. What is still open is whether the
+  BOOK page's *presentation* can carry more of the feeling - that costs nothing.
 
 ## Done 2026-09-19: the entry point, and Valheim 1.0.15
 
