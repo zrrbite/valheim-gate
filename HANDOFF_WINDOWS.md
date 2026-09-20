@@ -17,6 +17,33 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-20 - TASK: Backspace hands over the whole test (`...20r`)
+
+"*Can you make sure that both bow and shield and obliterator spawn on backspace? that'll give me a
+chance to test fast.*" Done. One press now gives:
+
+- a **Storm-Anvil**, planted in front of you (found by its Incinerator component, so no prefab name
+  is needed),
+- the **combine's five materials**, so the lever is the only action left,
+- **Thor's bow** and the **Stormward** themselves, finished,
+- **100 flint arrows**, because a bow without them tests nothing,
+- and **one spare rescued light** on top of the combine's three, so the bow's own bench recipe is
+  visible too — the bench will not list it until a light has been HELD, which is the trap this saga
+  already paid for once.
+
+Both halves on purpose, not either: "does the anvil hand back a shield" and "does the shield then do
+what it claims" are separate questions, and neither should wait on the other.
+
+The dev banner says so — it is generated from `DevKeyHelp`, so it cannot go stale.
+
+### Still true, and still the thing that looks like a bug
+
+A dev-planted anvil does **not** complete `mq-anvil`: the spawn never sets `Piece.m_creator`, and the
+built-piece scan requires it so world ruins and other players' houses do not count. Build a real one
+for the step, or `mod` + `Keypad +`.
+
+---
+
 ## 2026-09-20 - TASK: the storm eats the shield (`...20q`)
 
 "*Since the shield should trigger an aoe on attack maybe the durability should be low to start? Must

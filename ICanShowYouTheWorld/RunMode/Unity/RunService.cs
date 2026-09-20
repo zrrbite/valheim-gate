@@ -2287,7 +2287,7 @@ namespace ICanShowYouTheWorld.RunMode
         public static readonly string[] DevKeyHelp =
         {
             "DEV MODE   *items   .light   /god+speed   Ent:home   Del:slay",
-            "Home:map-tp   PgUp:probe   Bksp:plant a Storm-Anvil + its makings",
+            "Home:map-tp   PgUp:probe   Bksp:Storm-Anvil + bow + shield + the combine's makings",
             "Shift/Ctrl/Alt + [+] complete step   \u00b7   + [-] advance 2h   (bare + and - are the player's)",
         };
 
@@ -2553,9 +2553,10 @@ namespace ICanShowYouTheWorld.RunMode
         /// belongs to Act I - so "does the anvil work" was a question the Meadows could not ask
         /// ("so how do i test the obliterator in this act1?").
         ///
-        /// One press gives the whole test: the altar, and the five things it asks for, so the next
-        /// action is pulling the lever. It plants by PREFAB found through the Incinerator component,
-        /// which means this works without anybody knowing what the piece is called.
+        /// One press gives the whole test: the altar, the five things it asks for, and the two finished
+        /// items themselves - so the lever and the shield can be judged in either order, without one
+        /// waiting on the other. It plants by PREFAB found through the Incinerator component, which
+        /// means this works without anybody knowing what the piece is called.
         ///
         /// Dev-only and bare-keyed, like the other seven: Backspace collides with nothing the player
         /// or the game uses in the field.
@@ -2590,7 +2591,16 @@ namespace ICanShowYouTheWorld.RunMode
                 given++;
             }
 
-            DevMessage($"DEV: Storm-Anvil planted ('{prefab.name}'), {given} materials granted.");
+            // And the finished pair, so the shield can be tested without first winning the combine.
+            int items = 0;
+            foreach (var (item, amount) in SagaItemTestKit)
+            {
+                GrantItem(item, amount);
+                items++;
+            }
+
+            DevMessage($"DEV: Storm-Anvil planted ('{prefab.name}'), {given} materials and {items} " +
+                       "saga items granted.");
         }
 
         /// <summary>
@@ -2606,6 +2616,27 @@ namespace ICanShowYouTheWorld.RunMode
         {
             ("Wood", 20), ("Resin", 20), ("TrollHide", 10), ("DeerHide", 10),
             (SagaItems.RescuedLightPrefab, SagaItems.StormwardLightCost),
+        };
+
+        /// <summary>
+        /// The finished saga items, handed over alongside the anvil and its makings.
+        /// </summary>
+        /// <remarks>
+        /// The combine materials alone test the LEVER; these test the two things the lever is for
+        /// (owner: "make sure that both bow and shield and obliterator spawn on backspace, that'll
+        /// give me a chance to test fast"). Both, not either, because the two questions are separate:
+        /// does the anvil hand back a shield, and does the shield then do what it claims.
+        ///
+        /// Arrows because a bow without them tests nothing, and a spare rescued light on top of the
+        /// combine's three so the bow's own recipe is also visible at the bench - the bench will not
+        /// list it until a light has been HELD, which is the trap this saga has already paid for once.
+        /// </remarks>
+        private static readonly (string item, int amount)[] SagaItemTestKit =
+        {
+            (SagaItems.ThorsBowPrefab, 1),
+            (SagaItems.StormwardPrefab, 1),
+            ("ArrowFlint", 100),
+            (SagaItems.RescuedLightPrefab, 1),
         };
 
         private void DevAdvanceClock()
