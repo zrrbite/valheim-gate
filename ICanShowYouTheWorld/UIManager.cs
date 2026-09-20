@@ -89,6 +89,28 @@ namespace ICanShowYouTheWorld
         /// <summary>End key: opens the Run Mode lobby, or the Heat HUD while a run is live.</summary>
         public void ToggleRunWindow() => runWindow.ToggleVisible();
 
+        /// <summary>
+        /// True while any window of the mod's own is on screen — the cheat windows, the saga menu,
+        /// the HUD, the stash. What <see cref="ModCursor"/> asks, so a window you opened is a window
+        /// you can click.
+        /// </summary>
+        /// <remarks>
+        /// The tracker panel is deliberately NOT counted. It is on screen for the whole run while the
+        /// Hunter's Eye boon is held, it has nothing to click, and counting it would leave the cursor
+        /// free and the camera unlocked for an entire act.
+        /// </remarks>
+        public bool AnyModWindowVisible
+        {
+            get
+            {
+                // Exactly the two toggles: F1 (the cheat UI, which also reveals the run HUD and the
+                // stash) and End (the saga menu). RunWindow.Draw gates its clickable windows on the
+                // same pair, so anything with a button on it is covered by one of these two.
+                try { return visible || runWindow.Visible; }
+                catch { return false; }
+            }
+        }
+
 
 
         void OnGUI()

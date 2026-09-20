@@ -17,7 +17,7 @@ Standing context for the Windows side:
 
 ---
 
-## 2026-09-20 - THE TEST LIST for 1.0.15-run.2026-09-20d
+## 2026-09-20 - THE TEST LIST for 1.0.15-run.2026-09-20f
 
 Fourteen builds over two days, rewritten as ONE pass in the order you actually meet things. The
 per-build TASK entries below keep the reasoning; this is the list to play with.
@@ -27,6 +27,7 @@ DLL the game has open fails. When you are done: `.\dist\windows\Install-Mod.ps1 
 
 ### If you only do seven things
 
+0. **The crafting list is alphabetical**, and **`End` frees the mouse** - no more TAB to click.
 1. **`mod` + `Keypad -` now skips to night** in one press, and says so when it arrives. The old
    "+2h" reported the wrong answer every time - your log caught it.
 2. The **BOOK** tab (was QUESTS) opens on the run's own account of itself, act by act.
@@ -40,7 +41,7 @@ DLL the game has open fails. When you are done: `.\dist\windows\Install-Mod.ps1 
 
 - [ ] Launch and **do not open Credits**. **No popup at all.** Silence is success.
 - [ ] Under the game's own version line, one gold line at 70% size, **not overlapping**:
-      `SAGA v1.0.15-run.2026-09-20d · GM`. That line is the ONLY proof the mod loaded.
+      `SAGA v1.0.15-run.2026-09-20f · GM`. That line is the ONLY proof the mod loaded.
 - [ ] Load the character carrying **Thor's bow**. Still there. Save, quit to desktop, come back:
       still there, and no `Failed to find item prefab` in the log.
 
@@ -187,6 +188,59 @@ default is **2.5** - the file wins over the code, so you have been playing a mon
 regen. Thirty-five newer settings are absent from it entirely and running on code defaults, which is
 correct behaviour but means they cannot be TUNED without adding the lines by hand. Ask and I will
 either add the keys or make `Load()` re-save so no future setting is invisible.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
+---
+
+## 2026-09-20 - TASK: 1.0.15-run.2026-09-20f - both answers were already in the game
+
+Two asks, and reading the IL first answered both without writing the thing I had planned.
+
+### The crafting list: Valheim already sorts it
+
+I was going to do surgery on `InventoryGui` - hide the recipe elements that do not match, re-stack the
+survivors by index on every rebuild, put an IMGUI text field over a panel you are using. Then I read
+`UpdateRecipeList`:
+
+```
+Player.m_localPlayer.TryGetUniqueKeyValue("sortcraft", out string v)
+  -> Enum.TryParse<InventoryGui.SortMethod>(v, true, out method)
+    -> switch (method) { Original | Name | Type | Weight | Count }
+```
+
+With no key set the method is `Original` - which IS the unpredictable order. Writing `"Name"` into
+that key makes the GAME sort its own list with its own comparator. Nothing reflected into, nothing
+re-laid-out, no code of ours between you and the panel. The only other writer of that key in the whole
+assembly is `Terminal.InitTerminal`, so it is a console setting and the feature was simply
+undiscoverable; `sortcraft Name` in the console does it by hand.
+
+`CraftingSort` writes it once per character, and ONLY when the key is absent or explicitly `Original` -
+somebody who chose `Type` on purpose has said what they want. `runSortCraftingByName` turns it off.
+
+With the list alphabetical, a search box is worth far less. Say if you still want one.
+
+### The cursor: `m_mouseCapture` is what vanilla F1 toggles
+
+Valheim keeps the cursor locked while you play and frees it in exactly one place,
+`GameCamera.UpdateMouseCapture`, which unlocks and shows it when `m_mouseCapture` is false OR one of
+the game's own panels is up. TAB works because it satisfies the second clause. `ModCursor` satisfies
+the first, for as long as one of the mod's windows is open.
+
+The reason that is safe rather than clever: `m_mouseCapture` is the field **vanilla F1 toggles** -
+`ZInput.GetKeyDown((KeyCode)282)` in that same method, and 282 is F1. So this is not a new state
+invented by the mod, it is the state the game itself enters on a documented key. It is also only
+reachable through one private field, so the alternative - writing `ZCursor` directly every frame and
+fighting `UpdateMouseCapture` for it - would have been OUR state rather than the game's.
+
+Written every frame while a window is up, because `UpdateMouseCapture` also runs every frame. Given
+back exactly once when the last window closes, and only if this class was what took it - press F1
+yourself and the cursor you asked for stays.
+
+Counted as "a window": F1's cheat UI and End's saga menu. NOT the tracker panel, which is on screen
+for a whole act while Hunter's Eye is held and has nothing to click on it.
 
 ### RESULTS (Windows side appends here)
 

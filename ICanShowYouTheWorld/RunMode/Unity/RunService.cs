@@ -195,6 +195,7 @@ namespace ICanShowYouTheWorld.RunMode
 
         /// <summary>The saga's own crafting recipes, present only while a run is live. See <see cref="SagaRecipes"/>.</summary>
         private readonly SagaRecipes _recipes = new SagaRecipes();
+        private readonly CraftingSort _craftSort = new CraftingSort();
 
         /// <summary>The saga's own items — present whenever the mod is, run or no run. See <see cref="SagaItems"/>.</summary>
         private readonly SagaItems _items = new SagaItems();
@@ -1924,6 +1925,10 @@ namespace ICanShowYouTheWorld.RunMode
                 // whether or not a saga is running. Both are cheap when nothing changed.
                 _items.Ensure();
                 _items.TickStrikes(dt);
+
+                // Alphabetical crafting lists, which has nothing to do with a saga and everything to
+                // do with the late acts. See CraftingSort: it asks the GAME to sort its own list.
+                _craftSort.Ensure(_cfg);
 
                 TickInner(dt);
                 _consecutiveTickFailures = 0;

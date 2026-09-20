@@ -65,6 +65,7 @@ namespace ICanShowYouTheWorld.Core
         float RunHomewardCooldownMinutes { get; set; }
         float RunCorpseGateCooldownMinutes { get; set; }
         int RunMessageWrapChars { get; set; }
+        bool RunSortCraftingByName { get; set; }
         bool RunShowHomestead { get; set; }
         float RunForestNoticeChance { get; set; }
         int RunForestNoticeChops { get; set; }
@@ -240,6 +241,12 @@ namespace ICanShowYouTheWorld.Core
         // the right number depends on the screen and the UI scale, so it cannot be one value that
         // is right for everyone. Zero or less turns wrapping off.
         [SerializeField] private int runMessageWrapChars = 44;
+
+        // Asks VALHEIM to sort the crafting list alphabetically - see CraftingSort, which found the
+        // game's own 'sortcraft' setting rather than building a search box over its panel. On by
+        // default because the unsorted order is nobody's preference, and respectful of a deliberate
+        // choice: CraftingSort only writes the key when it is unset or 'Original'.
+        [SerializeField] private bool runSortCraftingByName = true;
         // The HOMESTEAD records panel. Off by default: it competed for room with the three
         // quest tracks. The records are still kept either way, so switching this on shows the
         // full history rather than starting from nothing.
@@ -369,6 +376,7 @@ namespace ICanShowYouTheWorld.Core
         public float RunHomewardCooldownMinutes { get => runHomewardCooldownMinutes; set => runHomewardCooldownMinutes = value; }
         public float RunCorpseGateCooldownMinutes { get => runCorpseGateCooldownMinutes; set => runCorpseGateCooldownMinutes = value; }
         public int RunMessageWrapChars { get => runMessageWrapChars; set => runMessageWrapChars = value; }
+        public bool RunSortCraftingByName { get => runSortCraftingByName; set => runSortCraftingByName = value; }
         public bool RunShowHomestead { get => runShowHomestead; set => runShowHomestead = value; }
         public float RunForestNoticeChance { get => runForestNoticeChance; set => runForestNoticeChance = value; }
         public int RunForestNoticeChops { get => runForestNoticeChops; set => runForestNoticeChops = value; }

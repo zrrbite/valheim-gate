@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-09-20 at `1.0.15-run.2026-09-20d`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-09-20 at `1.0.15-run.2026-09-20f`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -21,7 +21,7 @@ Everything below is what that file tells it.
 
 - Branch **`feature/run-mode`**, not merged, deliberately — the mode is still
   being tuned in play.
-- Latest tag **`1.0.15-run.2026-09-20d`**; builds are date-based since 2026-08-31
+- Latest tag **`1.0.15-run.2026-09-20f`**; builds are date-based since 2026-08-31
   (`Scripts/nextversion.sh`). The game moved to **1.0.12 on 2026-09-12** and to
   **1.0.15 on 2026-09-19**; both times the mod was rebuilt and installed on Windows
   the same day. **1.0.15 needed no source change** — all 316 member references from
@@ -212,10 +212,28 @@ is a decision, not a detail — see the note at the top of `CreatureDressing`.
 `specs/2026-08-27-story-bible.md`. Acts II–V exist and open correctly; their
 middles are thinner than Act I's.
 
-## Next: search at the crafting bench
+## Read the IL before building the workaround
 
-Asked 2026-09-20, deliberately NOT built in the batch that day, and the reason is the reason to read
-this before starting.
+Twice on 2026-09-20 the feature already existed in the game and the plan was to build over the top
+of it.
+
+**Alphabetical crafting** was going to be a filter and a text field laid over `InventoryGui`.
+`UpdateRecipeList` turned out to read a player key, `sortcraft`, parse it as
+`InventoryGui.SortMethod` (`Original|Name|Type|Weight|Count`) and sort its own list. One key write
+replaced the whole plan. See `CraftingSort`.
+
+**Freeing the mouse** was going to mean driving `ZCursor` every frame and fighting
+`GameCamera.UpdateMouseCapture` for it. That method turned out to key off one bool,
+`m_mouseCapture` - the same bool **vanilla F1 toggles**. Setting it is entering a state the game
+ships rather than inventing one. See `ModCursor`.
+
+The habit that paid: before writing anything that reaches into the game's UI, dump the method with
+Cecil and look for the setting.
+
+## Parked: search at the crafting bench
+
+Asked 2026-09-20 and PARKED the same day, because alphabetical sorting turned out to be most of what
+it was for (see above). Worth building only if the owner asks again.
 
 It is UI surgery on Valheim's own crafting panel, and breaking the crafting window is far worse than
 not having search in it. The research is done and every member exists: `InventoryGui.m_availableRecipes`

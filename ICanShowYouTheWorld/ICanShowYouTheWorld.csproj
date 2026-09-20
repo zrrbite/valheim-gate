@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -288,6 +288,7 @@
   <ItemGroup>
     <Compile Include="Cheat.cs" />
     <Compile Include="MenuBadge.cs" />
+    <Compile Include="ModCursor.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Helpers.cs" />
     <Compile Include="Assets\Version.cs" />
@@ -338,6 +339,7 @@
     <Compile Include="RunMode\Unity\SpiritChase.cs" />
     <Compile Include="RunMode\Unity\StolenLights.cs" />
     <Compile Include="RunMode\Unity\SagaRecipes.cs" />
+    <Compile Include="RunMode\Unity\CraftingSort.cs" />
     <Compile Include="RunMode\Unity\HuntersShade.cs" />
     <Compile Include="RunMode\Unity\SagaItems.cs" />
     <Compile Include="RunMode\Unity\SagaDreams.cs" />
