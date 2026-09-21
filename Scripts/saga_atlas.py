@@ -1,11 +1,21 @@
 # -*- coding: utf-8 -*-
 """Generates the Saga Atlas - a one-page overview of every questline in the saga.
 
-    python Scripts/saga_atlas.py          # writes saga-atlas.html beside the repo
+    python Scripts/saga_atlas.py          # writes saga-atlas.html AND docs/SAGA-ATLAS.md
 
-Run it from the repo root. Publish the result as an Artifact and REPLACE the existing
+Run it from the repo root. Publish the HTML as an Artifact and REPLACE the existing
 page rather than making a new one, so the link the owner has keeps working:
     https://claude.ai/artifact/8EvSbu7GH5SQ1Fq9Md83ca
+
+The MARKDOWN is for GitHub, which renders Mermaid natively in .md files and in issue
+bodies. It exists because the artifact is private to its owner: an issue that links to
+it shows a reader nothing, and the diagrams are the part of this page worth linking from
+an issue. Both outputs come from the same tables in this file, so they cannot drift.
+
+The two are deliberately not identical. The Markdown drops the `%%{init}` theme block
+from each diagram - those colours are tuned for the dark plate the HTML draws them on,
+and GitHub themes its own diagrams light or dark per reader. Hard-coding a dark fill
+there produces black-on-black for half the audience.
 
 Why a generator and not a hand-written page. Every lane, step, target and track is read
 out of RunService.cs and the track is resolved the same way the game resolves it - an
@@ -440,3 +450,159 @@ __ACTS__
 PAGE = PAGE.replace('__ACTS__', ''.join(acts_html)).replace('__TOTAL__', str(total))
 io.open(OUT, 'w', encoding='utf-8', newline='\n').write(PAGE)
 print('wrote %s  (%d steps across %d acts)' % (OUT, total, len(ACTS)))
+
+
+# ============================================================ the GitHub-flavoured twin
+#
+# Written from the same ACTS table and the same chain() reader as the page above, for the reason the
+# generator exists at all: two hand-kept copies of a questline diverge the first time a step moves,
+# and this one moves weekly.
+
+MD_OUT = os.environ.get('SAGA_ATLAS_MD', os.path.join('docs', 'SAGA-ATLAS.md'))
+
+MD_STATUS = {
+    'played':      'Written & played',
+    'written':     'Written, not yet played',
+    'thin':        'Thin stand-in',
+    'placeholder': 'Placeholder',
+}
+
+md = []
+w = md.append
+
+w('# Saga Atlas')
+w('')
+w('Every questline in the saga, lane by lane, with the story each act is telling and an honest')
+w('note on how finished it is.')
+w('')
+w('> **Generated** by `Scripts/saga_atlas.py` from `RunService.cs`. Do not hand-edit: every lane,')
+w('> step and target is read out of the source, so the page cannot drift from the code. The prose')
+w('> (epigraphs, chapters, status) lives in the generator.')
+w('')
+w('`%d` quest steps &middot; `%d` acts &middot; `1` played through &middot; `%d` tracks in use'
+  % (total, len(ACTS), len(SLUG)))
+w('')
+w('## How to read a lane')
+w('')
+w('An act runs two or three questlines **in parallel** - HUNT is what the world makes you do,')
+w('CRAFT is what you make, and the third lane is that act\'s own domestic thread (HEARTH in the')
+w('Meadows, FORGE in the forest, MARSH in the fens). Each lane is strictly linear with no skips, so')
+w('a lane can stall without stopping the others. A number in a code box is the count the step wants.')
+w('The last step of HUNT is the act\'s god, shown in bold.')
+w('')
+w('## The arc')
+w('')
+w('Acts II to VII are each a *failed answer* to the same shortage, and the question one act fails')
+w('to answer is the next act. That is the whole spine, and it is told to the player one chapter at')
+w('a time in the BOOK rather than living only in the design notes.')
+w('')
+w('```mermaid')
+w('flowchart TD')
+w('  P["Nothing in this world<br/>can make its own light"]')
+for a in ACTS[:7]:
+    # A REAL middot here, not an entity. GitHub decodes entities in Markdown prose, but a mermaid
+    # node label is handed to the renderer and can come out literal.
+    w('  A%s["%s · %s"]' % (a['n'], a['n'], a['t']))
+w('  P --> AI')
+for src, dst, label in (('I', 'II', 'who is taking it?'),
+                        ('II', 'III', 'spent on nothing'),
+                        ('III', 'IV', 'kept, not used'),
+                        ('IV', 'V', 'frozen, still warm'),
+                        ('V', 'VI', 'others tried and died'),
+                        ('VI', 'VII', 'borrowed, from whom?')):
+    w('  A%s -- "%s" --> A%s' % (src, label, dst))
+w('```')
+w('')
+w('The Deep North is **not** an eighth act. Decided 2026-09-20: it is an epilogue after the hall')
+w('and the feast, because a ninth boss after a climax reads as an afterthought and its premise')
+w('duplicates Act III\'s marsh.')
+w('')
+w('## The light economy')
+w('')
+w('Rescued lights are the only currency the lanes share, and they exist so the hunt and the crafts')
+w('owe each other something. Acts I and II only - nothing later asks for one, deliberately, because')
+w('a craft nobody can finish is a stalled act.')
+w('')
+w('```mermaid')
+w('flowchart LR')
+w('  pale["The pale light<br/>+1"]')
+w('  race["Night races<br/>+1 each"]')
+w('  gath["The Gatherer\'s hoard<br/>freed on its death"]')
+w('  shade["The shade\'s kept light<br/>+1"]')
+w('  cour["Act II couriers<br/>+4"]')
+w('  L(("Rescued<br/>light"))')
+w('  bow["Thor\'s bow<br/>-3"]')
+w('  anv["The Storm-Anvil<br/>-1, stays in"]')
+w('  shd["The Stormward<br/>-3"]')
+w('  pale --> L')
+w('  race --> L')
+w('  gath --> L')
+w('  shade --> L')
+w('  cour --> L')
+w('  L --> bow')
+w('  L --> anv')
+w('  L --> shd')
+w('```')
+w('')
+w('**Act I\'s budget comes out exactly even: 7 needed, 7 available.** One light to Thjalfi, three')
+w('for the bow, three for the shield; one from the pale light, five from the night races, one from')
+w('the shade. The Gatherer\'s freed hoard is the only slack, so a player who loses lights to the')
+w('forest may finish the act with only ONE storm item. That is the design, decided 2026-09-20, not')
+w('a balance bug to report.')
+w('')
+w('The shade\'s single kept light is load-bearing beyond its value: Valheim only lists a recipe or')
+w('a build piece whose every ingredient the player has *handled*, so that one item is what makes')
+w('both Thor\'s bow and the Storm-Anvil appear at all.')
+w('')
+w('## The questlines')
+w('')
+
+for a in ACTS:
+    steps = chain(a['m'])
+    lanes = {}
+    for st in steps:
+        lanes.setdefault(st['track'], []).append(st)
+
+    w('### Act %s &mdash; %s' % (a['n'], a['t']))
+    w('')
+    w('`%s` &middot; `%d steps` &middot; `%d tracks`'
+      % (MD_STATUS[a['st']], len(steps), len(lanes)))
+    w('')
+    w('> *%s*' % unesc(a['ep']))
+    w('')
+    w(unesc(a['ch']))
+    w('')
+
+    order = [k for k in ('HUNT', 'CRAFT', 'HEARTH', 'FORGE', 'MARSH') if k in lanes]
+    deep = max(len(lanes[k]) for k in order)
+
+    # One column per lane, one row per position: the table IS the claim that the lanes advance
+    # independently. A list per lane would hide it.
+    w('| # | ' + ' | '.join(order) + ' |')
+    w('|--:| ' + ' | '.join('---' for _ in order) + ' |')
+    for i in range(deep):
+        cells = []
+        for k in order:
+            if i < len(lanes[k]):
+                st = lanes[k][i]
+                text = unesc(st['display']).replace('|', '\\|')
+                if st.get('target') and st['target'] > 1:
+                    text += ' `%s`' % st['target']
+                if k == 'HUNT' and i == len(lanes[k]) - 1:
+                    text = '**%s**' % text
+                cells.append(text)
+            else:
+                cells.append('')
+        w('| %d | %s |' % (i + 1, ' | '.join(cells)))
+    w('')
+
+    if a['cl']:
+        w('**Chapter ends.** %s' % unesc(a['cl']))
+        w('')
+
+md_dir = os.path.dirname(MD_OUT)
+if md_dir and not os.path.isdir(md_dir):
+    os.makedirs(md_dir)
+
+io.open(MD_OUT, 'w', encoding='utf-8', newline='\n').write('\n'.join(md) + '\n')
+print('wrote %s' % MD_OUT)
