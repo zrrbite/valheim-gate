@@ -2857,18 +2857,34 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
-        /// What the Stormward's combine asks for, for the dev key above.
+        /// What BOTH anvil combines ask for, for the dev key above - enough to forge the shield and
+        /// the bow in a single pull.
         /// </summary>
         /// <remarks>
-        /// Deliberately a SECOND list rather than a reference to SagaItems.StormwardCombine: this one
-        /// is a tester's convenience and the other is the recipe. If they drift, the test stops
-        /// working and somebody notices - whereas sharing them would let a broken combine be tested
-        /// with exactly the materials it was broken into wanting.
+        /// Deliberately a SECOND list rather than a reference to SagaItems.AnvilCombines: this one is
+        /// a tester's convenience and the other is the recipe. If they drift the test stops working
+        /// and somebody notices, whereas sharing them would let a broken combine be tested with
+        /// exactly the materials it was broken into wanting.
+        ///
+        /// IT HELD ONLY THE SHIELD'S BILL UNTIL NOW, and that is why Thor's bow had never once been
+        /// forged after days of testing: the bow wants ten FLINT, the kit granted a hundred
+        /// ArrowFlint, and those are different items. The one ingredient unique to the bow was the one
+        /// ingredient the fast path could not supply, so every session that reached the anvil tested
+        /// the shield and stopped. A test kit that cannot exercise the thing under test is worse than
+        /// no kit, because it looks like coverage.
+        ///
+        /// Both bills at once is deliberate and safe. Incinerator's coroutine sums AttemptCraft over
+        /// EVERY conversion, each removing its own requirements as it goes, so a box holding both
+        /// bills produces both items from one lever pull. That halves the test and exercises the
+        /// subset problem at the same time - if the two bills were ever confusable again, this is the
+        /// press that would show it.
         /// </remarks>
         private static readonly (string item, int amount)[] StormAnvilTestKit =
         {
-            ("Wood", 20), ("Resin", 20), ("TrollHide", 10), ("DeerHide", 10),
-            (SagaItems.RescuedLightPrefab, SagaItems.StormwardLightCost),
+            // The union of the two bills. Shield: wood 20, resin 20, troll hide 10, deer hide 10.
+            // Bow: wood 10, resin 10, deer hide 6, flint 10. Lights: three each.
+            ("Wood", 30), ("Resin", 30), ("TrollHide", 10), ("DeerHide", 16), ("Flint", 10),
+            (SagaItems.RescuedLightPrefab, SagaItems.StormwardLightCost + SagaItems.ThorsBowLightCost),
         };
 
         /// <summary>
