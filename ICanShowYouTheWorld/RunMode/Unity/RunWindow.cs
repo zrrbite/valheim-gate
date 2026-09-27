@@ -2106,6 +2106,23 @@ namespace ICanShowYouTheWorld.RunMode
 
             GUILayout.Space(4f);
 
+            // --- The way ---
+            // Only who the run is walking as, and whether the graves have more to give. The way's
+            // boons themselves are boons, so they are already in the list below and on the bar.
+            GUILayout.Label("THE WAY", RunTheme.Header);
+            var way = run.ClassId == null ? null : run.Classes?.FirstOrDefault(c => c.Id == run.ClassId);
+            if (way == null)
+            {
+                GUILayout.Label("no way chosen yet", RunTheme.Small);
+            }
+            else
+            {
+                GUILayout.Label($"{way.Display} · the way of {way.Title}", RunTheme.Body);
+                if (run.ClassNotice != null) GUILayout.Label(run.ClassNotice, RunTheme.Ready);
+            }
+
+            GUILayout.Space(4f);
+
             // --- Boons ---
             GUILayout.Label("BOONS", RunTheme.Header);
 

@@ -321,4 +321,57 @@ static class BoonEngineTests
         Check.That(!e.Grant(null), "and so is a null one");
         Check.That(e.Held.Count == 1, "none of which added anything");
     }
+
+    /// <summary>
+    /// Class boons: the wheel never deals them, death never takes them, Grant is the only door.
+    /// </summary>
+    public static void ClassTests()
+    {
+        List<BoonDefinition> ClassPool() => new List<BoonDefinition>
+        {
+            new BoonDefinition { Id = "fleet", IsPassive = true },
+            new BoonDefinition { Id = "sharp", IsPassive = true },
+            new BoonDefinition { Id = "hearty", IsPassive = true },
+            new BoonDefinition { Id = "mule", IsPassive = true },
+            new BoonDefinition { Id = "brother", ClassId = "hunter", CooldownSeconds = 240f },
+            new BoonDefinition { Id = "shepherd", ClassId = "hunter", IsPassive = true, Weight = 50 },
+        };
+
+        var e = new BoonEngine(ClassPool(), new Random(5), 45f) { FirstOfferPin = "brother" };
+        bool dealt = false;
+        for (int i = 0; i < 30; i++)
+        {
+            e.CreateOffer();
+            if (e.CurrentOffer.Any(d => d.ClassId != null)) dealt = true;
+            e.ClearOffer();
+        }
+        Check.That(!dealt, "a class boon is never offered, not even pinned or heavily weighted");
+
+        var g = new BoonEngine(ClassPool(), new Random(6), 45f);
+        BoonDefinition gained = null;
+        g.Gained += d => gained = d;
+        Check.That(g.Grant("brother") && gained != null && gained.Id == "brother",
+            "Grant takes a class boon and raises Gained");
+
+        var d1 = new BoonEngine(ClassPool(), new Random(8), 45f);
+        d1.Grant("fleet");
+        d1.Grant("brother");
+        var taken = d1.RemoveLatest();
+        Check.That(taken != null && taken.Def.Id == "fleet", "death steps over the newer class boon and takes the loan");
+        Check.That(d1.Held.Count == 1 && d1.Held[0].Def.Id == "brother", "and the class boon stays held");
+
+        int lost = 0;
+        d1.Lost += _ => lost++;
+        Check.That(d1.RemoveLatest() == null, "with only class boons held, death takes nothing");
+        Check.That(lost == 0, "and raises no Lost");
+        Check.That(d1.Held.Count == 1, "and the class boon is still held");
+
+        BoonDefinition revoked = null;
+        d1.Lost += d => revoked = d;
+        Check.That(d1.Revoke("brother"), "Revoke gives back a held boon by id");
+        Check.That(revoked != null && revoked.Id == "brother", "and raises Lost, so its effect is repaid");
+        Check.That(d1.Held.Count == 0, "and it is no longer held");
+        revoked = null;
+        Check.That(!d1.Revoke("brother") && revoked == null, "revoking what is not held does nothing");
+    }
 }

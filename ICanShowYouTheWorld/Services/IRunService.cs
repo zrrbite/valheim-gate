@@ -71,6 +71,24 @@ namespace ICanShowYouTheWorld.Services
         bool HomewardReady { get; }
         float HomewardCooldown { get; }
 
+        /// <summary>The way this run has taken up (a ClassLadder id), or null for none or no run.</summary>
+        string ClassId { get; }
+
+        /// <summary>True while a way is on offer and not yet chosen.</summary>
+        bool ClassChoicePending { get; }
+
+        /// <summary>The ways a run may take up — the static v1 table.</summary>
+        IReadOnlyList<ICanShowYouTheWorld.RunMode.ClassDefinition> Classes { get; }
+
+        /// <summary>Null, or a line saying the way has something due to be learned at the graves.</summary>
+        string ClassNotice { get; }
+
+        /// <summary>
+        /// Takes up a way and learns whatever of it is due now. Refused (with a message) if a way
+        /// is already held or the id is unknown — a run holds one.
+        /// </summary>
+        void ChooseClass(string classId);
+
         /// <summary>True while the player has things lying where they died. Gated back with PageDown.</summary>
         bool CorpseWaiting { get; }
         float CorpseGateCooldown { get; }

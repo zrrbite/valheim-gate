@@ -1858,6 +1858,76 @@ namespace ICanShowYouTheWorld.RunMode
         public HearthRecords Records => _records;
 
         public int HomewardCharges => _active ? _homewardCharges : 0;
+
+        public string ClassId => _active ? _classId : null;
+        public bool ClassChoicePending => _active && _classChoicePending;
+        public IReadOnlyList<ClassDefinition> Classes => _classCatalog;
+
+        /// <summary>
+        /// Built once: the catalog is static content, and the HUD reads it every frame.
+        /// </summary>
+        private static readonly IReadOnlyList<ClassDefinition> _classCatalog = ClassLadder.Catalog();
+
+        public string ClassNotice
+        {
+            get
+            {
+                if (!_active || _classId == null || _boons == null) return null;
+                return ClassDue().Any() ? "A skill awaits you at the graves." : null;
+            }
+        }
+
+        /// <summary>What the held way owes now, at the world's own boss count.</summary>
+        private IEnumerable<string> ClassDue() => ClassDue(_boons?.DefeatedBosses ?? 0);
+
+        private IEnumerable<string> ClassDue(int defeatedBosses)
+        {
+            var cls = ClassLadder.Find(_classId);
+            if (cls == null || _boons == null) return Enumerable.Empty<string>();
+            return ClassLadder.Due(cls, defeatedBosses, _boons.Held.Select(h => h.Def.Id)).ToList();
+        }
+
+        public void ChooseClass(string classId)
+        {
+            if (!_active || _boons == null) return;
+            if (_classId != null)
+            {
+                Message($"You have taken up the way of {ClassLadder.Find(_classId)?.Display ?? _classId} already. A run holds one.");
+                return;
+            }
+            var cls = ClassLadder.Find(classId);
+            if (cls == null)
+            {
+                Debug.LogWarning($"[ICanShowYouTheWorld] ChooseClass: no way called '{classId}'.");
+                return;
+            }
+
+            _classId = cls.Id;
+            _classChoicePending = false;
+            // Whatever is already due counts as announced: the choice itself is the announcement.
+            _classAnnouncedAt = _boons.DefeatedBosses;
+            LearnDueClassBoons();
+            Message($"You take up the way of the {cls.Display}, as {cls.Title} walked it.");
+            SaveState();
+        }
+
+        /// <summary>
+        /// Grants every boon the held way owes at the current boss count. Returns how many.
+        ///
+        /// Through <see cref="BoonEngine.Grant"/>, the one door in — so Gained fires and the effect
+        /// applies exactly as an offered boon's would.
+        /// </summary>
+        private int LearnDueClassBoons() => LearnDueClassBoons(_boons?.DefeatedBosses ?? 0);
+
+        private int LearnDueClassBoons(int defeatedBosses)
+        {
+            if (_boons == null) return 0;
+            int learned = 0;
+            foreach (var id in ClassDue(defeatedBosses))
+                if (_boons.Grant(id)) learned++;
+            if (learned > 0) SaveState();
+            return learned;
+        }
         public float EarnedHealth => _active ? _taskHealthReward : 0f;
 
         /// <summary>The transition card: the window draws it large for a few seconds. See RefreshAct.</summary>
@@ -2068,6 +2138,9 @@ namespace ICanShowYouTheWorld.RunMode
                 _warnedUnbaselined.Clear();
                 _taskHealthReward = 0f;
                 _homewardCharges = 0;
+                _classId = null;
+                _classChoicePending = false;
+                _classAnnouncedAt = -1;
                 _discovered.Clear();
                 _pinnedActIndex = -1;
                 _worldModifiers.ApplyBaseline(_cfg);
@@ -2510,8 +2583,44 @@ namespace ICanShowYouTheWorld.RunMode
             "Home:map-tp   PgUp:probe",
             "Shift/Ctrl/Alt + [+] complete step   \u00b7   + [-] +2h AND cycle weather: fair/rain/storm",
             "Shift/Ctrl/Alt + [Bksp] Storm-Anvil + bow + shield + the combine's makings",
-            "(bare + and - are the player's own boons; Bksp BUILDS, so it wants a hand too)",
+            "Shift/Ctrl/Alt + [*] cycle way: none/Hunter/Völva/Berserker   ·   + [/] learn all its rungs",
+            "(+ and - keep their modifier though now free; bare * and / are items and god; Bksp BUILDS)",
         };
+
+        /// <summary>
+        /// Dev: none → Hunter → Völva → Berserker → none. Gives back the old way's boons first,
+        /// through <see cref="BoonEngine.Revoke"/> so each is repaid on the Lost path — a real run
+        /// never changes its way, so this is the only place a way is ever taken back.
+        /// </summary>
+        private void DevCycleClass()
+        {
+            if (_boons == null) return;
+
+            var ids = _classCatalog.Select(c => c.Id).ToList();
+            int at = _classId == null ? -1 : ids.IndexOf(_classId);
+            string next = at + 1 < ids.Count ? ids[at + 1] : null;
+
+            int revoked = 0;
+            if (_classId != null)
+            {
+                foreach (var h in _boons.Held.Where(h => h.Def.ClassId == _classId).ToList())
+                    if (_boons.Revoke(h.Def.Id)) revoked++;
+            }
+            _classId = null;
+            _classChoicePending = false;
+            _classAnnouncedAt = -1;
+
+            if (next == null)
+            {
+                SaveState();
+                DevMessage($"DEV: no way ({revoked} boon{(revoked == 1 ? "" : "s")} given back).");
+                return;
+            }
+
+            ChooseClass(next);
+            DevMessage($"DEV: way now {ClassLadder.Find(next)?.Display} ({revoked} given back, " +
+                       $"{_boons.Held.Count(h => h.Def.ClassId == next)} held).");
+        }
 
         /// <summary>
         /// Shift, Ctrl or Alt - any of the three. Only the two dev keys the player's own boons
@@ -2556,6 +2665,12 @@ namespace ICanShowYouTheWorld.RunMode
             // bare. Shift, Ctrl and Alt are all accepted, because which one a tester reaches for
             // is not worth being precious about, and a dev layer nobody can reach is a worse
             // fault than an over-generous modifier.
+            //
+            // Since the ways, + and - are free of the player (Mending and Unseen moved to [7] and
+            // [Ins]) but keep their modifier: the help text says so, and moving a tester's hands
+            // twice is worse than a modifier that no longer guards anything. And * and / gained a
+            // SECOND, modified layer of their own (the ways) - there a modifier separates dev from
+            // dev, which is the one other place it can earn its keep.
             bool mod = DevModifierHeld();
 
             if (mod && Input.GetKeyDown(KeyCode.KeypadPlus))
@@ -2568,7 +2683,31 @@ namespace ICanShowYouTheWorld.RunMode
                 DevAdvanceClock();
                 DevCycleWeather();
             }
-            else if (Input.GetKeyDown(KeyCode.KeypadMultiply))
+            // The ways. Modifier variants of two BARE dev keys, not player keys — the only
+            // modifier layer here that separates dev from dev. They come before the bare branches,
+            // and those are guarded with !mod as well, so the order of this chain is not the only
+            // thing standing between Shift+* and a stash full of wood.
+            else if (mod && Input.GetKeyDown(KeyCode.KeypadMultiply))
+            {
+                try { DevCycleClass(); }
+                catch (Exception ex) { LogOnce("dev-class", ex); }
+            }
+            else if (mod && Input.GetKeyDown(KeyCode.KeypadDivide))
+            {
+                try
+                {
+                    if (_classId == null) DevMessage("DEV: no way chosen - Shift + [*] first.");
+                    else
+                    {
+                        // Every rung, not just those due: the point is testing rung 3 without
+                        // killing three gods first.
+                        int learned = LearnDueClassBoons(int.MaxValue);
+                        DevMessage($"DEV: learned {learned} of the {ClassLadder.Find(_classId)?.Display} way's boons (all rungs).");
+                    }
+                }
+                catch (Exception ex) { LogOnce("dev-class-learn", ex); }
+            }
+            else if (!mod && Input.GetKeyDown(KeyCode.KeypadMultiply))
             {
                 // Into the STASH, not the inventory. The kit's raw materials alone are several
                 // hundred weight — granted to the pockets it left the tester over-encumbered on
@@ -2578,7 +2717,7 @@ namespace ICanShowYouTheWorld.RunMode
                 SaveState();
                 DevMessage($"DEV: {DevKit.Length} materials in the stash.");
             }
-            else if (Input.GetKeyDown(KeyCode.KeypadDivide))
+            else if (!mod && Input.GetKeyDown(KeyCode.KeypadDivide))
             {
                 // God mode, plus a fighter's kit. GM commands are gated off during a run
                 // (InputManager.Gate), which is correct for play and wrong for testing — so the
@@ -2664,8 +2803,8 @@ namespace ICanShowYouTheWorld.RunMode
                 // The GM mod's map-cursor teleport, reachable during a run (owner: "It would be
                 // helpful to have a teleport option like i do in my original mod").
                 //
-                // Home rather than Insert, which is what the GM mod binds it to: Insert is the
-                // menagerie boon's activation key during a run. Home is the GM mod's other
+                // Home rather than Insert, which is what the GM mod binds it to: Insert is a
+                // way's third ability during a run. Home is the GM mod's other
                 // teleport key and does nothing in run mode, so it is both free and familiar.
                 //
                 // DEV ONLY, deliberately. Free travel is not a small change to a mode whose score
@@ -3086,9 +3225,10 @@ namespace ICanShowYouTheWorld.RunMode
         {
             if (_boons == null || _boons.CurrentOffer.Count > 0) return;
 
-            // A modifier held, in a dev session, means the tester is addressing the dev layer -
-            // which owns Keypad + and - there. Without this, Ctrl+KeypadPlus would complete the
-            // step AND try to cast Shaman's Mercy, and the cast would eat the charge.
+            // A modifier held, in a dev session, means the tester is addressing the dev layer.
+            // Keypad + and - were the player's when this was written (Shaman's Mercy, Unseen), and
+            // Ctrl+KeypadPlus would complete the step AND cast; they are free now, but a modified
+            // key is still never the player's, which keeps the rule sayable in one line.
             if (DevMode && DevModifierHeld()) return;
 
             // Walked from BoonKeys rather than spelled out here, so the key the HUD PRINTS and the
@@ -3096,6 +3236,12 @@ namespace ICanShowYouTheWorld.RunMode
             foreach (var binding in BoonKeys.Actives)
             {
                 if (!Input.GetKeyDown(binding.Key)) continue;
+
+                // Several ids share a key now — the ways' rungs sit on the same three slots — so
+                // the row whose id is HELD is the one that fires. Returning on the first match
+                // would have the Völva's [7] try the Hunter's wolf and stop. A run holds one way,
+                // so at most one row per key is held.
+                if (!Holds(binding.Id)) continue;
 
                 TryActivateHeldBoon(binding.Id);
                 return;
@@ -3221,6 +3367,12 @@ namespace ICanShowYouTheWorld.RunMode
             // ...and boons gated on progression become offerable. Resistances are the reason this
             // exists: frost resistance in the Meadows is a wasted pick out of only three options.
             if (progressed) RefreshBoonGate();
+
+            // ...and the held way may have a rung come due. Said once per boss count, not once per
+            // poll: ClassNotice keeps saying it on the HUD for as long as it stays true, which is
+            // the reminder; this line is the news. After RefreshBoonGate, which is what moves the
+            // count Due reads.
+            if (progressed) AnnounceClassRung();
 
             if (finished) FinishRun();
         }
@@ -4287,6 +4439,26 @@ namespace ICanShowYouTheWorld.RunMode
         private int _homewardCharges;
 
         /// <summary>
+        /// The way this run has taken up (a <see cref="ClassLadder"/> id), or null for none.
+        /// Per run and persisted in <see cref="RunStorage.RunSaveState.classId"/>. What the way has
+        /// TAUGHT is not stored beside it: learned means held, and held boons already save.
+        /// </summary>
+        private string _classId;
+
+        /// <summary>
+        /// True while a way is on offer and not yet chosen. Nothing sets it in Phase 1 — the thane
+        /// will — but the HUD and the offer card read it, so it exists and is cleared now.
+        /// </summary>
+        private bool _classChoicePending;
+
+        /// <summary>
+        /// The boss count whose rung was last announced, so "more to teach" is said once per
+        /// threshold rather than on every poll that still finds something due. Session state: a
+        /// reload that says it again is harmless.
+        /// </summary>
+        private int _classAnnouncedAt = -1;
+
+        /// <summary>
         /// When the free Homeward comes back. Session state rather than run state on purpose:
         /// being sent home by a reload is harmless, and persisting it would mean a save-scum
         /// check for no gain.
@@ -5221,6 +5393,12 @@ namespace ICanShowYouTheWorld.RunMode
             ResetOutageTracking();
             _trackedPlayer = null;
 
+            // The way goes with the run. Its boons were unapplied with the rest above; a resumed
+            // run reads the id back from the save.
+            _classId = null;
+            _classChoicePending = false;
+            _classAnnouncedAt = -1;
+
             // Run state, so it goes with the run. The paths that END a run call RestoreLoanedSkills
             // first; SuspendRun deliberately does not — that run is still live, the character keeps
             // the loaned levels, and the originals ride the save file back in on resume.
@@ -5514,6 +5692,20 @@ namespace ICanShowYouTheWorld.RunMode
         /// resume and a run started on an already-progressed world both gate correctly without any
         /// new save state.
         /// </summary>
+        private void AnnounceClassRung()
+        {
+            try
+            {
+                if (_classId == null || _boons == null) return;
+                int bosses = _boons.DefeatedBosses;
+                if (bosses <= _classAnnouncedAt || !ClassDue().Any()) return;
+
+                _classAnnouncedAt = bosses;
+                Message("The one at the graves has more to teach.");
+            }
+            catch (Exception ex) { LogOnce("class-rung", ex); }
+        }
+
         private void RefreshBoonGate()
         {
             if (_boons == null) return;
@@ -5665,6 +5857,39 @@ namespace ICanShowYouTheWorld.RunMode
             ValidateAssetNames(pool.Concat(AllActChains()));
             ValidateSpawnEvents();
             ValidateQuestPrices();
+            ValidateClassLadder();
+        }
+
+        /// <summary>
+        /// Checks the ways against the boon pool and the key table, and logs what disagrees.
+        ///
+        /// Diagnostics only, the same policy as <see cref="ValidateAssetNames"/>: the class table,
+        /// the pool and <see cref="BoonKeys"/> are three files, and every way they can drift apart
+        /// fails silently in play — a rung that teaches nothing, or two abilities of one way on one
+        /// key, where the activation handler would only ever reach the first.
+        /// </summary>
+        private void ValidateClassLadder()
+        {
+            try
+            {
+                var pool = DefaultBoons();
+                var problems = ClassLadder.Validate(ClassLadder.Catalog(), pool).ToList();
+
+                // Keys are shared ACROSS ways on purpose (a run holds one); within one way a
+                // shared key would hide an ability.
+                var classOf = pool.Where(b => b.ClassId != null).ToDictionary(b => b.Id, b => b.ClassId);
+                foreach (var clash in BoonKeys.Actives
+                    .Where(k => classOf.ContainsKey(k.Id))
+                    .GroupBy(k => new { k.Key, Class = classOf[k.Id] })
+                    .Where(g => g.Count() > 1))
+                {
+                    problems.Add($"way '{clash.Key.Class}' binds {string.Join(", ", clash.Select(k => k.Id))} all to {clash.Key.Key}");
+                }
+
+                foreach (var p in problems)
+                    Debug.LogError($"[ICanShowYouTheWorld] class ladder: {p}");
+            }
+            catch (Exception ex) { LogOnce("validate-class-ladder", ex); }
         }
 
         /// <summary>
@@ -7342,6 +7567,9 @@ namespace ICanShowYouTheWorld.RunMode
             _frozen = false;
             ResetOutageTracking();
             HudNotice = null;
+            _classId = null;              // read back from the save below, before the held boons
+            _classChoicePending = false;
+            _classAnnouncedAt = -1;
 
             _worldId = string.IsNullOrEmpty(s.worldId) ? world : s.worldId;
             _runCharacter = CharacterName();
@@ -7448,6 +7676,14 @@ namespace ICanShowYouTheWorld.RunMode
             // That does re-baseline against a higher lifetime value, but only where there was
             // nothing better to re-baseline against.
             SyncStatDeltaBaselines();
+
+            // Before the held boons, so anything that looks at the way while they come back sees
+            // the run's way rather than none. Null on a pre-class save, which is a run with no way
+            // chosen — and a pre-class save still holding brother or shaman is legal: those ids
+            // did not change when they moved into the ways, and a held boon is held regardless.
+            _classId = ClassLadder.Find(s.classId) != null ? s.classId : null;
+            if (s.classId != null && _classId == null)
+                Debug.LogWarning($"[ICanShowYouTheWorld] Saved way '{s.classId}' is no longer in the table; resuming with none.");
 
             _boons.RestoreHeld(Zip(s.heldBoonIds, s.heldBoonCooldowns), BuildRestoreCharges(s));
 
@@ -7660,6 +7896,7 @@ namespace ICanShowYouTheWorld.RunMode
                 heraldTargetZ = _deer?.HeraldTarget?.z ?? 0f,
                 taskHealthReward = _taskHealthReward,
                 homewardCharges = _homewardCharges,
+                classId = _classId,
                 stashPrefabs = _stash.Entries.Select(e => e.Prefab).ToList(),
                 stashCounts = _stash.Entries.Select(e => e.Count).ToList(),
                 stashQualities = _stash.Entries.Select(e => e.Quality).ToList(),
@@ -10246,26 +10483,35 @@ namespace ICanShowYouTheWorld.RunMode
         /// slots spent on a problem the run's BASELINE already solves, since every run starts with
         /// move stamina x0.5, regen x2.5 and all costs x0.75. They are now one boon, Tireless, worth
         /// picking on its own, and the four freed slots went on categories the pool had none of.
+        ///
+        /// Since the classes (2026-09-27) the pool holds two kinds of boon. Rows with no ClassId are
+        /// GENERAL: Odin's loans, offered three at a time by the wheel and the newest taken back on
+        /// death. Rows with a ClassId belong to a way (ClassLadder) and are its kit: never offered,
+        /// never taken on death, granted only by the ladder through BoonEngine.Grant. The nine that
+        /// moved kept their ids, so a run saved before the move still restores what it held. The
+        /// class table and this pool must agree; ValidateClassLadder logs where they do not.
         /// </summary>
         internal static List<BoonDefinition> DefaultBoons() => new List<BoonDefinition>
         {
             new BoonDefinition { Id = "fleet", Display = "Fleet-footed", IsPassive = true,  Description = "Move and run faster." },
             new BoonDefinition { Id = "sharp", Display = "Sharpened",    IsPassive = true,  Description = "Your weapons deal 20% more damage." },
-            new BoonDefinition { Id = "brother", Display = "Packbrother", IsPassive = false, CooldownSeconds = 240f, Description = "Summon a wolf to fight for you. Two at a time." },
+            new BoonDefinition { Id = "brother", ClassId = "hunter", Display = "Packbrother", IsPassive = false, CooldownSeconds = 240f, Description = "Summon a wolf to fight for you. Two at a time." },
             // Testable from Act I: you tame a boar on the hearth track, so this has something to
             // work on long before a boss falls.
-            new BoonDefinition { Id = "menagerie", Display = "Menagerie", IsPassive = false, CooldownSeconds = 90f, Description = "Odin lends a beast \u2014 any beast. Cast again to trade it back." },
-            new BoonDefinition { Id = "hearthlight", Display = "Hearthlight", IsPassive = true, Description = "A mending warmth follows you. You and your animals heal near it." },
-            new BoonDefinition { Id = "shepherd", Display = "Shepherd", IsPassive = true, Weight = 3, Description = "Your tamed animals are stronger, tougher and faster. New ones too." },
+            new BoonDefinition { Id = "menagerie", ClassId = "hunter", Display = "Menagerie", IsPassive = false, CooldownSeconds = 90f, Description = "Odin lends a beast \u2014 any beast. Cast again to trade it back." },
+            new BoonDefinition { Id = "hearthlight", ClassId = "volva", Display = "Hearthlight", IsPassive = true, Description = "A mending warmth follows you. You and your animals heal near it." },
+            new BoonDefinition { Id = "shepherd", ClassId = "hunter", Display = "Shepherd", IsPassive = true, Weight = 3, Description = "Your tamed animals are stronger, tougher and faster. New ones too." },
             // Act II onward. Skeletons in the Meadows would be a Black Forest answer to a Meadows
-            // problem, and the flavour belongs with the burial chambers.
-            new BoonDefinition { Id = "bonecaller", Display = "Bonecaller", IsPassive = false, CooldownSeconds = 180f, MinBosses = 1, Description = "Raise two skeletons to fight for you." },
+            // problem, and the flavour belongs with the burial chambers. That used to be MinBosses
+            // = 1; it is the Völva's rung 2 now, and the ladder's first threshold (one god down)
+            // says the same thing. MinBosses only gates the wheel, which never deals a way's boons.
+            new BoonDefinition { Id = "bonecaller", ClassId = "volva", Display = "Bonecaller", IsPassive = false, CooldownSeconds = 180f, Description = "Raise two skeletons to fight for you." },
             new BoonDefinition { Id = "mule",  Display = "Packmule",     IsPassive = true,  Description = "Carry 100 more weight." },
             new BoonDefinition { Id = "hearty", Display = "Hearty",      IsPassive = true,  Description = "+15 max health." },
             new BoonDefinition { Id = "tireless", Display = "Tireless",  IsPassive = true,  Description = "+25 max stamina, faster recovery, cheaper dodges." },
             new BoonDefinition { Id = "woodsman", Display = "Woodsman", IsPassive = true, Description = "Woodcutting skill to 60. Trees fall fast." },
-            new BoonDefinition { Id = "hunter",   Display = "Hunter",   IsPassive = true, Description = "Bow skill to 50. Straighter, harder shots." },
-            new BoonDefinition { Id = "warrior",  Display = "Warrior",  IsPassive = true, Description = "Axe, sword and club skill to 50." },
+            new BoonDefinition { Id = "hunter", ClassId = "hunter", Display = "Hunter",   IsPassive = true, Description = "Bow skill to 50. Straighter, harder shots." },
+            new BoonDefinition { Id = "warrior", ClassId = "berserker", Display = "Warrior",  IsPassive = true, Description = "Axe, sword and club skill to 50." },
             // The first skill boon that is not a one-off grant (owner: "a boon that gives
             // accelerated skills"). The other three hand you a level in one skill and are done;
             // this pays out in whatever you actually spend the run doing, which makes it a pick for
@@ -10319,8 +10565,16 @@ namespace ICanShowYouTheWorld.RunMode
             // is the whole point of BoonEffects: a boon is a legacy cheat with a cooldown and a
             // reason. A burst heal where Second Wind is a window, and an escape where the mode had
             // none at all.
-            new BoonDefinition { Id = "shaman", Display = "Shaman\u2019s Mercy", IsPassive = false, CooldownSeconds = 90f, Description = "Cast a healing burst where you stand. Heals you and your own." },
-            new BoonDefinition { Id = "unseen", Display = "Unseen", IsPassive = false, CooldownSeconds = 150f, Description = "Nothing can see you for 20s. Walk away from anything." },
+            new BoonDefinition { Id = "shaman", ClassId = "volva", Display = "Mending", IsPassive = false, CooldownSeconds = 90f, Description = "Cast a healing burst where you stand. Heals you and your own." },
+            new BoonDefinition { Id = "unseen", ClassId = "hunter", Display = "Unseen", IsPassive = false, CooldownSeconds = 150f, Description = "Nothing can see you for 20s. Walk away from anything." },
+            // --- The ways' new abilities (classes, 2026-09-27) ---
+            //
+            // No effects yet: BoonEffects.Activate answers false for an id it does not know, so
+            // until Phase 2 these are held, keyed and labelled but say "not ready" when pressed.
+            new BoonDefinition { Id = "wrath",  ClassId = "volva",     Display = "Thor\u2019s Wrath", IsPassive = false, CooldownSeconds = 60f,  Description = "Call lightning down where you aim. Everything within six metres takes it." },
+            new BoonDefinition { Id = "rend",   ClassId = "berserker", Display = "Rend",       IsPassive = false, CooldownSeconds = 20f,  Description = "A sweep of the blade around you: every foe within reach bleeds." },
+            new BoonDefinition { Id = "rage",   ClassId = "berserker", Display = "Blood Rage", IsPassive = false, CooldownSeconds = 120f, Description = "Fifteen seconds of half again the damage. You take more while it lasts." },
+            new BoonDefinition { Id = "warcry", ClassId = "berserker", Display = "Warcry",     IsPassive = false, CooldownSeconds = 90f,  Description = "Stagger every foe within eight metres. Not the gods." },
         };
     }
 }

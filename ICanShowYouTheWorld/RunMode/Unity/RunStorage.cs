@@ -210,6 +210,12 @@ namespace ICanShowYouTheWorld.RunMode
         public int homewardCharges;
 
         /// <summary>
+        /// The way the run has taken up (a ClassLadder id). Null on an older save, which reads as
+        /// "no way chosen". Only the id: what the way has taught is held boons, which save already.
+        /// </summary>
+        public string classId;
+
+        /// <summary>
         /// Boss altars this run has found (alpha36) — the latch behind the questline's discovery
         /// steps. Persisted so a resume does not ask the player to walk back to somewhere they have
         /// already been. Null on an older save, which reads as "nothing found yet".

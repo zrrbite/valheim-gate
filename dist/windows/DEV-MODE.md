@@ -27,11 +27,15 @@ It ships `false` and nothing in the mod ever turns it on by itself.
 
 ## The keys
 
-**Seven are bare. Three want a modifier.** `Keypad +` and `Keypad -` need one
-because those two keys are also the player's — **Shaman's Mercy** and
-**Unseen** activate on a bare press. `Backspace` needs one for a different
-reason: it is the only dev key that **builds**. `Shift`, `Ctrl` or `Alt` all
-count; use whichever hand is free.
+**Seven are bare. Five want a modifier.** `Keypad +` and `Keypad -` need one
+because those two keys were the player's — **Mending** (then Shaman's Mercy)
+and **Unseen** activated on a bare press. Since the ways (classes, 2026-09-27)
+those two moved to `[7]` and `[Ins]` and the keys are free, but the modifier
+stays: moving a tester's hands twice is worse than a modifier that no longer
+guards anything. `Backspace` needs one for a different reason: it is the only
+dev key that **builds**. And `Keypad *` and `Keypad /` have a **second layer**
+with a modifier — the ways — while the bare press does what it always did.
+`Shift`, `Ctrl` or `Alt` all count; use whichever hand is free.
 
 | Key | Effect |
 |---|---|
@@ -45,6 +49,8 @@ count; use whichever hand is free.
 | `Home` | **Teleport to the map cursor** (the GM mod's own teleport) |
 | `PageUp` | **Dump what the creature in view is made of** to the log |
 | `mod` + `Backspace` | Plant a **Storm-Anvil**, claimed, plus the bow, the shield and both bills |
+| `mod` + `Keypad *` | **Cycle the way**: none → Hunter → Völva → Berserker → none. Gives back the old way's boons first |
+| `mod` + `Keypad /` | **Learn every rung** of the held way now, without the bosses the ladder asks for |
 
 Keys only work during an active run.
 
@@ -128,6 +134,14 @@ is a grep.
   as long as it is on. Top-tier food is where Valheim HP actually comes from,
   so "more hp" means eating better, not a bigger chestpiece. Toggle it OFF to test dying, which is itself part of the
   design (death costs heat and a boon).
+- **`mod` + `*` (way)** takes up the next way through the same `ChooseClass` the
+  thane will use, so the passive and rung 1 arrive as they would in play. A real
+  run never changes its way; this revokes the old one's boons (repaid on the
+  ordinary Lost path) before choosing the next, which is the only place a way
+  is ever taken back.
+- **`mod` + `/` (rungs)** grants every rung of the held way at once — rung 3
+  wants three gods down otherwise. Until Phase 2 the four new abilities (Thor's
+  Wrath, Rend, Blood Rage, Warcry) are held and keyed but answer "not ready".
 - **`Enter` (home)** teleports to your claimed bed with no charge and no
   cooldown — the real Homeward's economy is not usually the thing under test.
   Needs a claimed bed, and says so if there is none.

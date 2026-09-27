@@ -26,6 +26,17 @@ namespace ICanShowYouTheWorld.RunMode
         public int MinBosses;
 
         /// <summary>
+        /// The way (class) this boon belongs to, or null for a general boon.
+        ///
+        /// Null is Odin's loan: offered by the wheel, taken back on death. A class id means the
+        /// boon is part of that way's kit — never offered, never taken on death, and reachable only
+        /// through <see cref="BoonEngine.Grant"/>. Classes are boons rather than a second system
+        /// so that apply, repay, save, restore and the ability bar all stay one path; this field
+        /// is the whole of the difference.
+        /// </summary>
+        public string ClassId;
+
+        /// <summary>
         /// Draw weight in the offer roll; 1 is normal, 0 is treated as 1. Exists because a boon
         /// with prerequisites the player worked for (Shepherd wants a tame) deserves better odds
         /// than one that is always relevant — a uniform draw made the pet boon a rare sight in
@@ -102,6 +113,8 @@ namespace ICanShowYouTheWorld.RunMode
             var options = pool
                 .Where(d => !heldIds.Contains(d.Id))
                 .Where(d => d.MinBosses <= DefeatedBosses)
+                // The wheel is Odin's. A way's kit is taught at the graves, never dealt.
+                .Where(d => d.ClassId == null)
                 .ToList();
             if (options.Count == 0) return;
 
@@ -221,13 +234,40 @@ namespace ICanShowYouTheWorld.RunMode
                     h.CooldownRemaining = Math.Max(0f, h.CooldownRemaining - dt);
         }
 
+        /// <summary>
+        /// Takes the newest GENERAL boon, or nothing. Death lets the world collect a LOAN; what the
+        /// thane taught was not lent, so class boons are stepped over rather than taken — and if
+        /// only class boons are held, the death costs no boon at all and nothing is raised.
+        /// </summary>
         public HeldBoon RemoveLatest()
         {
-            if (held.Count == 0) return null;
-            var last = held[held.Count - 1];
-            held.RemoveAt(held.Count - 1);
-            Lost?.Invoke(last.Def);
-            return last;
+            for (int i = held.Count - 1; i >= 0; i--)
+            {
+                if (held[i].Def.ClassId != null) continue;
+                var last = held[i];
+                held.RemoveAt(i);
+                Lost?.Invoke(last.Def);
+                return last;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Removes one held boon by id, raising Lost so its effect is repaid on the usual path.
+        /// Returns false if it is not held.
+        ///
+        /// Not a death rule — <see cref="RemoveLatest"/> is that. This is for giving back a whole
+        /// way at once (the dev layer switching class), which has to name its boons because the
+        /// newest-first order says nothing about which way a boon came from.
+        /// </summary>
+        public bool Revoke(string boonId)
+        {
+            int i = held.FindIndex(h => h.Def.Id == boonId);
+            if (i < 0) return false;
+            var gone = held[i];
+            held.RemoveAt(i);
+            Lost?.Invoke(gone.Def);
+            return true;
         }
     }
 }
