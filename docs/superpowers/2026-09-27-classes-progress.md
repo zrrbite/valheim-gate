@@ -17,13 +17,23 @@ Legend: `[x]` done and verified by build + tests · `[p]` built, awaiting the ow
 
 ## Phase 1 — pure engine, migration, keys, state — MILESTONE 1
 
-- [ ] `BoonDefinition.ClassId`; offers skip class boons; death skips class boons; `Revoke` for dev.
-- [ ] `ClassDefinition` + `ClassLadder` (pure, tested); `ValidateClassLadder` at run start.
-- [ ] Nine boons re-tagged, four new rows (`wrath`, `rend`, `rage`, `warcry`) — effects come in Phase 2.
-- [ ] `classId` in run state; save, restore, clear.
-- [ ] `BoonKeys`: Keypad7 / Keypad0 / Insert are the three rung slots; handler fires the HELD id.
-- [ ] Dev keys `mod+Keypad*` (cycle class) and `mod+Keypad/` (learn all rungs); DEV-MODE.md.
-- [ ] THE WAY block on the HUD above BOONS.
+Built and installed as **`1.0.16-run.2026-09-27`** (commit `630bd91`; tests 617, all pass). Steam
+moved the game to 1.0.16 the same morning, so the mod was rebuilt against it first (commit
+`65c2159`, no source change; every reflected member still resolves). The stray tag
+`1.0.15-run.2026-09-27` was cut minutes before the update was noticed and was never installed.
+
+- [p] `BoonDefinition.ClassId`; offers skip class boons; death skips class boons; `Revoke` for dev.
+- [p] `ClassDefinition` + `ClassLadder` (pure, tested); `ValidateClassLadder` at run start.
+- [p] Nine boons re-tagged, four new rows (`wrath`, `rend`, `rage`, `warcry`) — effects come in Phase 2.
+- [p] `classId` in run state; save, restore, clear.
+- [p] `BoonKeys`: Keypad7 / Keypad0 / Insert are the three rung slots; handler fires the HELD id.
+- [p] Dev keys `mod+Keypad*` (cycle class) and `mod+Keypad/` (learn all rungs); DEV-MODE.md.
+- [p] THE WAY block on the HUD above BOONS.
+
+Known and accepted for now: a save from before this build that holds `brother` with no way, whose
+player then picks Völva, has `brother` and `shaman` both on Keypad7 and the first held row fires.
+The four new abilities answer "not ready" until Phase 2. CLAUDE.md, RESUME.md and the story bible
+still name Shaman's Mercy on Keypad+ — Phase 4 fixes the docs in one pass.
 
 **Milestone 1 — what to play** (needs `"runDevMode": true`):
 1. Start a saga. THE WAY reads "no way chosen yet".

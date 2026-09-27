@@ -17,6 +17,37 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-27 - TASK: the ways - classes as boons, MILESTONE 1 (`1.0.16-run.2026-09-27`)
+
+Installed here already (FULL install: Steam moved the game to **1.0.16** this morning, so the mod was rebuilt against it - no source change needed, every reflected member still resolves). First of four milestones for the class plan; the record of
+how far it has got is `docs/superpowers/2026-09-27-classes-progress.md`, the reasoning is
+`docs/superpowers/specs/2026-09-27-classes-design.md`.
+
+**What changed.** A run may take up one WAY - Hunter, Völva or Berserker - a passive and three
+abilities paced by the boss count. In this milestone there is no trainer yet: a DEV key picks the
+way, and the four brand-new effects (Thor's Wrath, Rend, Blood Rage, Warcry) do nothing but say
+"not ready". What IS live: the migration and the keys. Nine boons have left the general pool and
+belong to the ways (pets and Unseen to Hunter; Hearthlight, Bonecaller and Shaman's Mercy - now
+"Mending" - to Völva; Warrior to Berserker), so an offer can never show them. The three rungs sit on
+**Keypad7 / Keypad0 / Insert** for every way. Death never takes a way's boon.
+
+**What to look for** (`"runDevMode": true`):
+1. Begin a saga. THE WAY above BOONS reads "no way chosen yet".
+2. `Shift+Keypad*` -> Hunter. BOONS: Hunter (Bows 50), Shepherd, Packbrother. `Keypad7` summons the
+   wolf. Do random tasks: the offer never shows a pet, heal or skill boon.
+3. `Shift+Keypad/` -> every rung learned: `Keypad0` Menagerie, `Insert` Unseen.
+4. `Shift+Keypad*` -> Völva (wolves despawn, Hearthlight and Mending arrive; `Keypad7` heals). Again
+   -> Berserker (Warrior; `7/0/Ins` say "not ready" - phase 2). Again -> none.
+5. Die holding a way: a GENERAL boon is lost, the way's boons stay.
+6. Quit to the menu and resume: THE WAY still names the way, passives are back, keys work.
+7. Abandon: `Player.log` shows loans repaid and companions gone.
+
+Grep the log for `class ladder:` - it must NOT appear (that line means the two tables disagree).
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-09-20 - TASK: the anvil is the forge, and the screen quiets down (`...20aa`)
 
 Four things, and the version letters ran out on the way.

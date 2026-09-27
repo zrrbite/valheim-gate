@@ -19,6 +19,12 @@ Everything below is what that file tells it.
 
 ## Where things stand
 
+- **2026-09-27: the game is 1.0.16** (no source change, Unity still 6000.0.75) and **the class
+  plan is in progress, in milestones** — read `2026-09-27-classes-progress.md` for how far it has
+  got and what is waiting on a play verdict, and `specs/2026-09-27-classes-design.md` for why it
+  is shaped the way it is. Latest tag `1.0.16-run.2026-09-27` (Milestone 1: classes as boons, dev
+  key picks the way, no trainer yet). Keypad7/0/Ins are now the three class rungs; the key notes
+  further down this file that name Shaman's Mercy on Keypad+ are stale until Phase 4.
 - Branch **`feature/run-mode`**, not merged, deliberately — the mode is still
   being tuned in play.
 - **The Saga Atlas** — one page with every questline in the saga, lane by lane across
