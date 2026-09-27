@@ -17,6 +17,47 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-27 - TASK: the thane at the graves, MILESTONE 3 (`1.0.16-run.2026-09-27c`)
+
+Installed here already (`-ModOnly`). Test together with Milestones 1 and 2 below. Records:
+`docs/superpowers/2026-09-27-classes-progress.md`; reasoning in
+`docs/superpowers/specs/2026-09-27-classes-design.md`.
+
+**What changed.** The class NPC exists. **The thane** stands by DAY, 60-120 m from your claimed
+bed, a Ghost in a moss-green glow (the shade is cold and dim, Thjalfi gold and large). A new HEARTH
+step, **"Speak with the one at the graves"**, sits directly after the bed step and completes when you
+TALK to him; choosing is optional. With no way held, speaking opens **THE WAY** card - the boon
+offer's window with three ways, picked with Keypad 1/2/3, timing out like an offer (speak again to
+reopen). The pick grants the passive and rung 1, he says the way's line, the BOOK records it. When a
+boss falls and a rung comes due, Hugin says so and the HUD strip points back to him; talk to him and
+he teaches it. Act I is 22 questline steps now (+1 heat, +2 health).
+
+**What to look for:**
+1. Claim the bed. The Opening line "Someone stands among stones..." is spoken; the strip reads
+   "Someone waits <compass>, <m>" by day and "He counts the stones by daylight. Wait for morning."
+   at night. Walk there: he greets at 10 m, is a GREEN-lit ghost, normal size, facing your bed.
+2. Speak: the rune panel is his AskLine; the step completes on the spot; the card appears. Let it
+   time out once, speak again, it reopens. Pick with Keypad 1-3: his ChosenLine, THE WAY names the
+   way, BOONS lists the passive and rung 1, the ability bar shows `[7]`.
+3. BOOK: a past-tense line under Act I ("...you took up the way of ...").
+4. Speak again with nothing due: "Nothing more yet...". Skip to Eikthyr's fall (or kill him): Hugin
+   speaks, the strip says "The one at the graves has more to teach - <bearing>", he says the
+   TeachLine on interact and `[0]` appears. After Bonemass: rung 3, then "That is all of it."
+5. Finish a random task WHILE the card is up: no boon offer under the card; it appears when the card
+   closes.
+6. Resume a saved run at his spot: he stands (day) and remembers the phase. He must never stand at
+   night or in water, and never be culled at birth.
+7. Grep `Player.log` for `thane` - his spot line says which pass placed him (level / dry / last
+   resort). The `class ladder:` line must still not appear.
+
+Known: the dev step-skip (`Shift+Keypad+`) completes `mq-thane` WITHOUT opening the card - speak to
+him, or `Shift+Keypad*`. `ChooseClass`'s own centre message shows alongside his rune line. A boon
+offer already on screen when you speak to him hides behind the card and keeps ageing.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-09-27 - TASK: the four new abilities, MILESTONE 2 (`1.0.16-run.2026-09-27b`)
 
 Installed here already (`-ModOnly`). Test together with Milestone 1 below - the owner asked for

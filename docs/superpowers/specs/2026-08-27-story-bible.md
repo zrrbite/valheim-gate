@@ -278,7 +278,7 @@ answer, practised before it was taught. Act VII spends it.
 - **Splinters** — greydwarves: deadwood animated by the Elder, starving
   always. They carry lights; they never destroy them.
 - **The wisp (item)** — a taken light, pocketed. Act VI's payoff in waiting.
-- **The hunter's shade** — Act I's only speaking part, and one of the taken: it wears
+- **The hunter's shade** — Act I's first speaking part, and one of the taken: it wears
   the Ghost prefab, the same body the deer's lights use. It teaches Thor's bow, and
   since 2026-09-20 it comes BACK - after the Breaker and after Eikthyr - to say
   something about what you did with it. Both remarks are about someone else having
@@ -325,9 +325,25 @@ answer, practised before it was taught. Act VII spends it.
   debtor waits; and a man who tends a machine the sky powers should only be there
   when the sky is awake. It also completes the pair: the hunter's shade wants
   DARK, Thjalfi wants WEATHER, and neither can be found by simply walking about.
+- **The thane** (2026-09-27) — Act I's third speaker. He buried three of a hird that came
+  before you and was kept here to count their stones, since nobody came for any of them;
+  he is one of the put-away, wears the Ghost in a third palette, and stands by DAY — the
+  shade wants dark, Thjalfi wants weather, he wants to see which stone is whose. He
+  teaches the WAYS: Eydís (Hunter), Sigrún (Völva), Ulfr (Berserker) — a class, taken up
+  at a grave, held for one run, a rung at a time as the gods fall (the choice, then
+  Eikthyr, then Bonemass). Meeting him is a HEARTH step (`mq-thane`) that completes on
+  speaking, so declining a way never stalls the chain. He keeps names, not light: he never
+  mentions the shortage and cannot answer it. Not a god, so he may speak. He has no name of
+  his own on purpose — what he keeps is other people's — which is the whole of his
+  relationship to Thjalfi, who has one because somebody wrote it down. Design:
+  `specs/2026-09-27-classes-design.md`.
+- **A way** (2026-09-27) — a class. Mechanically a set of boons the wheel never deals and
+  death never takes, because what the thane taught was not lent. Everything else about it
+  is a boon: applied, repaid at run end, saved and restored on the one path.
 - **The ravens** — Odin's audit. They witness beats; they never help.
 - **Heat** — the world noticing you burn. Score is how brightly you burned.
-- **Boons** — Odin's loans against the answer you owe. Death collects one.
+- **Boons** — Odin's loans against the answer you owe. Death collects one — never a
+  way's.
 - **The hearth** — where a living spark tends itself. Never optional flavour.
 
 ---

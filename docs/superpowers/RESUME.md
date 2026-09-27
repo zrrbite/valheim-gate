@@ -538,10 +538,10 @@ Two rules the content follows, both learned the hard way:
   therefore have **no** build step — no distinctively mountain-built piece has a
   compiled class, and filler would be worse than an extra fight.
 
-Questline heat across the saga is **54** (21+9+8+8+8) — roughly ×3.2 enemy damage
+Questline heat across the saga is **55** (22+9+8+8+8) — roughly ×3.2 enemy damage
 by the Plains before any random task, and far steeper than anything played.
 
-**Act I**, 21 questline steps, all of it doable without leaving the Meadows (the hunt track opens with the raven's errand, a daylight kill that yields nothing, and a night watch - see the `...-19h` note below): craft an axe
+**Act I**, 22 questline steps (the thane's step since 2026-09-27), all of it doable without leaving the Meadows (the hunt track opens with the raven's errand, a daylight kill that yields nothing, and a night watch - see the `...-19h` note below): craft an axe
 → craft a hammer → build a workbench → hunt 5 boar → raise a roof (6 pieces) →
 **build a fire** → **build a cooking station** → kill 6 greylings → **build a
 bed** → settle in (2 min at home) → sleep through the night → **build a chest**
@@ -579,20 +579,32 @@ went from 10 to 14 across the two.
 move stamina ×0.5, stamina regen ×2.5, all stamina costs ×0.75, free melee and
 tools (ranged pays 25%), and the Hunter's Eye tracker panel.
 
-**30 boons**, never offering one already held. Nine actives - Keypad 4-8 plus 0 and Insert
-(Second Wind, Emberskin, Waystone, Packbrother, Windfall, Bonecaller, Menagerie), plus
-`Keypad +` and `Keypad -` (Shaman's Mercy, Unseen); the rest are passives, across seven kinds:
+**21 general boons** (30 until 2026-09-27, when nine moved into the WAYS — see below), never
+offering one already held. Four general actives - `Keypad 4-6` and `8` (Second Wind, Emberskin,
+Waystone, Windfall); the rest are passives, across six kinds:
 
 | Kind | Boons |
 |---|---|
 | Stats | Fleet-footed, Sharpened, Packmule, Hearty, **Tireless** |
-| Skills | Woodsman, Hunter, Warrior, **Quick Study** (skill gain ×3 on the baseline) |
+| Skills | Woodsman, **Quick Study** (skill gain ×3 on the baseline) |
 | **Rates** | **Bountiful** (resource drops ×2 on the baseline) |
 | **Resistance** | Irongut (poison), Coldblooded (frost), Fire-blooded (fire) |
 | **On-kill** | Bloodthirst (heals), Relentless (stamina) |
 | **Risk** | Glass Cannon (+40% dmg, −30% HP), Reckless (+50% dmg, +25% taken) |
 | **Heat** | Slow Burn (heat rises 25% slower), Forge-fed (damage scales with heat) |
-| Pets | Shepherd, Hearthlight, and the tracker panel (Hunter's Eye) |
+
+**The ways (2026-09-27)** are class boons: `BoonDefinition.ClassId` marks them, the wheel never
+deals them, death never takes them, and the thane grants them through `BoonEngine.Grant`. Three
+rungs per way on `Keypad7`, `Keypad0`, `Insert`:
+
+| Way | Passive | Rung 1 [7] | Rung 2, Eikthyr [0] | Rung 3, Bonemass [Ins] |
+|---|---|---|---|---|
+| Hunter (Eydís) | Hunter (Bows 50), Shepherd | Packbrother | Menagerie | Unseen |
+| Völva (Sigrún) | Hearthlight | Mending (was Shaman's Mercy) | Bonecaller | Thor's Wrath |
+| Berserker (Ulfr) | Warrior | Rend | Blood Rage | Warcry |
+
+Reasoning in `specs/2026-09-27-classes-design.md`; progress and milestones in
+`2026-09-27-classes-progress.md`. The tracker panel (Hunter's Eye) is baseline, not a boon.
 
 Quick Study and Bountiful are the two that ride WORLD keys rather than player state, which is
 why they are handled in `RunService.RefreshRateBoons` and not in `BoonEffects` — see the
@@ -1048,7 +1060,7 @@ Three rescued lights, the same price as the bow, so a player who raced badly can
 two - a decision rather than a shortage. `SagaNames.BreakerStepId` now holds the step id, since four
 places ask about it (spawner, death hook, clock, recipe gate).
 
-Act I is 21 questline steps; saga questline heat 54.
+Act I is 22 questline steps (since 2026-09-27); saga questline heat 55.
 
 **`...-19k` tidied the main menu**, both from the first launch of the test run. The success popup
 is gone (owner: "I guess we dont need to show the popup except if something fails when the mod is

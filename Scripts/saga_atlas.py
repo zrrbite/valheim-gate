@@ -287,7 +287,7 @@ PAGE = u"""<title>Saga Atlas</title>
   <h1>Saga Atlas</h1>
   <p class="lede">Every questline in the saga, lane by lane, with the story each act is telling
   and an honest note on how finished it is.</p>
-  <p class="meta">Generated from RunService.cs at 1.0.15-run.2026-09-20ad &middot; 20 September 2026</p>
+  <p class="meta">Generated from RunService.cs at 1.0.16-run.2026-09-27c &middot; 27 September 2026</p>
 
   <div class="tally">
     <div><b>__TOTAL__</b><span>quest steps</span></div>
@@ -396,27 +396,31 @@ __ACTS__
     <h2>The log</h2>
     <p>Two days of building, newest first. Every line shipped as its own installed build.</p>
     <ul class="log">
-      <li class="today"><span class="d">20 Sep</span><span>The Stormward takes both hands — a two-handed shield, which the game already had a type for</span></li>
-      <li class="today"><span class="d">20 Sep</span><span>Thjalfi stopped standing in crevasses; the anvil stopped guessing where to land</span></li>
-      <li class="today"><span class="d">20 Sep</span><span>&ldquo;Wait for dark&rdquo; stopped stealing the bearing&rsquo;s line — the strip says two things now</span></li>
-      <li class="today"><span class="d">20 Sep</span><span>The Storm-Anvil is the forge: both storm items move off the bench, and the screen quiets down</span></li>
-      <li class="today"><span class="d">20 Sep</span><span>Thjalfi — a named ghost who raises the Storm-Anvil for stone and a light</span></li>
-      <li class="today"><span class="d">20 Sep</span><span>Pool tasks for Thor&rsquo;s bow and the Stormward, gated on carrying them</span></li>
-      <li class="today"><span class="d">20 Sep</span><span>First play: the anvil was never spawned, and the shield&rsquo;s lightning was invisible — both fixed</span></li>
-      <li class="today"><span class="d">20 Sep</span><span>The storm eats the shield — each discharge costs durability</span></li>
-      <li class="today"><span class="d">20 Sep</span><span>Review of the anvil work: the re-cost retries, the knockback stops scaling an unknown</span></li>
-      <li class="today"><span class="d">20 Sep</span><span>The Storm-Anvil is raised in Act I, for a light</span></li>
-      <li class="today"><span class="d">20 Sep</span><span>The Storm-Anvil combine, and two beats so the shield quest is worth doing</span></li>
-      <li class="today"><span class="d">20 Sep</span><span>The Stormward is huge, and answers being hit with lightning</span></li>
-      <li class="today"><span class="d">20 Sep</span><span>The BOOK becomes a book; the GM tab gets its layout back</span></li>
-      <li class="today"><span class="d">20 Sep</span><span>The shade comes back after the Breaker and after Eikthyr</span></li>
-      <li class="today"><span class="d">20 Sep</span><span>The shade hands over a light — the missing bow recipe, solved</span></li>
-      <li class="today"><span class="d">20 Sep</span><span>The dev clock is +2h per press again, readout split off</span></li>
-      <li class="today"><span class="d">20 Sep</span><span>Alphabetical crafting — already in the game, just unused</span></li>
-      <li class="today"><span class="d">20 Sep</span><span>Thor&rsquo;s bow forks; centre text wraps</span></li>
-      <li class="today"><span class="d">20 Sep</span><span>GM becomes a flavour baked into the DLL; the menu is the launcher</span></li>
-      <li class="today"><span class="d">20 Sep</span><span>A QUESTS page, and a saga menu that opens itself</span></li>
-      <li class="today"><span class="d">20 Sep</span><span>The Stormsworn — one piece of armour per act, Acts II to V</span></li>
+      <li class="today"><span class="d">27 Sep</span><span>The thane at the graves &mdash; Act I&rsquo;s third speaker, by day, who hands out the WAYS; a HEARTH step to find him and THE WAY card to choose</span></li>
+      <li class="today"><span class="d">27 Sep</span><span>Four new abilities: Rend, Blood Rage, Warcry (Berserker) and Thor&rsquo;s Wrath (V&ouml;lva)</span></li>
+      <li class="today"><span class="d">27 Sep</span><span>Classes as boons &mdash; a way is a passive and three rungs the wheel never deals and death never takes; nine boons moved into Hunter, V&ouml;lva and Berserker</span></li>
+      <li class="today"><span class="d">27 Sep</span><span>Valheim 1.0.16 &mdash; rebuilt, no source change</span></li>
+      <li><span class="d">20 Sep</span><span>The Stormward takes both hands — a two-handed shield, which the game already had a type for</span></li>
+      <li><span class="d">20 Sep</span><span>Thjalfi stopped standing in crevasses; the anvil stopped guessing where to land</span></li>
+      <li><span class="d">20 Sep</span><span>&ldquo;Wait for dark&rdquo; stopped stealing the bearing&rsquo;s line — the strip says two things now</span></li>
+      <li><span class="d">20 Sep</span><span>The Storm-Anvil is the forge: both storm items move off the bench, and the screen quiets down</span></li>
+      <li><span class="d">20 Sep</span><span>Thjalfi — a named ghost who raises the Storm-Anvil for stone and a light</span></li>
+      <li><span class="d">20 Sep</span><span>Pool tasks for Thor&rsquo;s bow and the Stormward, gated on carrying them</span></li>
+      <li><span class="d">20 Sep</span><span>First play: the anvil was never spawned, and the shield&rsquo;s lightning was invisible — both fixed</span></li>
+      <li><span class="d">20 Sep</span><span>The storm eats the shield — each discharge costs durability</span></li>
+      <li><span class="d">20 Sep</span><span>Review of the anvil work: the re-cost retries, the knockback stops scaling an unknown</span></li>
+      <li><span class="d">20 Sep</span><span>The Storm-Anvil is raised in Act I, for a light</span></li>
+      <li><span class="d">20 Sep</span><span>The Storm-Anvil combine, and two beats so the shield quest is worth doing</span></li>
+      <li><span class="d">20 Sep</span><span>The Stormward is huge, and answers being hit with lightning</span></li>
+      <li><span class="d">20 Sep</span><span>The BOOK becomes a book; the GM tab gets its layout back</span></li>
+      <li><span class="d">20 Sep</span><span>The shade comes back after the Breaker and after Eikthyr</span></li>
+      <li><span class="d">20 Sep</span><span>The shade hands over a light — the missing bow recipe, solved</span></li>
+      <li><span class="d">20 Sep</span><span>The dev clock is +2h per press again, readout split off</span></li>
+      <li><span class="d">20 Sep</span><span>Alphabetical crafting — already in the game, just unused</span></li>
+      <li><span class="d">20 Sep</span><span>Thor&rsquo;s bow forks; centre text wraps</span></li>
+      <li><span class="d">20 Sep</span><span>GM becomes a flavour baked into the DLL; the menu is the launcher</span></li>
+      <li><span class="d">20 Sep</span><span>A QUESTS page, and a saga menu that opens itself</span></li>
+      <li><span class="d">20 Sep</span><span>The Stormsworn — one piece of armour per act, Acts II to V</span></li>
       <li><span class="d">19 Sep</span><span>LevelEffects was eating the creature dressing</span></li>
       <li><span class="d">19 Sep</span><span>The quest hints speak, and Hugin announces the recipes</span></li>
       <li><span class="d">19 Sep</span><span>The Stormward — Act I&rsquo;s last craft, and what the troll&rsquo;s hide is for</span></li>
@@ -429,6 +433,8 @@ __ACTS__
   <section>
     <h2>What is next</h2>
     <ul class="next">
+      <li><b>Playing:</b> the three class milestones together &mdash; the thane&rsquo;s spot and palette, the card, whether
+      the four new numbers are anywhere near right. Then the doc pass, and refilling the general pool (21 boons since the move).</li>
       <li><b>Answered:</b> the Storm-Anvil&rsquo;s prefab is <code>incinerator</code>, printed by a running
       game at last. The mod still finds it by component, because a component search cannot go stale.</li>
       <li><b>Done:</b> Thor&rsquo;s bow and the Stormward both moved off the workbench onto the anvil, so the

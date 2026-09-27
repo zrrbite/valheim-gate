@@ -73,10 +73,25 @@ Verdict: _pending_
 
 ## Phase 3 — the thane — MILESTONE 3
 
-- [ ] `mq-thane` step after `mq-bed`; `SagaNames.ThaneFound`; validator entry.
-- [ ] `Thane.cs` actor (day-gated, near the bed, third palette); `PollThane` every act.
-- [ ] THE WAY card (offer-card pattern, Keypad1/2/3); teaching on interact; bearing.
-- [ ] Text per `scratchpad/thane-text.md` (copied into code and the bible).
+Built and installed as **`1.0.16-run.2026-09-27c`** (commit `8306eae`; tests 622, all pass). The
+owner asked to test Milestones 1, 2 and 3 together. The play list is in `HANDOFF_WINDOWS.md`.
+
+- [p] `mq-thane` step directly after `mq-bed` (Act I: 22 steps, heat 55); `SagaNames.ThaneFound`;
+      `StepPredicates.Thane`; validator entry.
+- [p] `Thane.cs` actor: Ghost, day-gated, 60–120 m from the claimed bed on level dry ground
+      (three passes, logged), third palette (colour kept, darker, moss-green glow, normal size);
+      `PollThane` in every act, since `StepDone` only reads the current act's chains.
+- [p] THE WAY card in the offer window (Keypad1/2/3, times out like an offer, reopens on speaking);
+      `TakeUpWay` = choose + his ChosenLine + a BOOK line; boon offers are OWED while the card is up.
+- [p] Teaching on interact when a rung is due; bearing to him on the strip (day only for rungs).
+- [p] Text from `thane-text.md` verbatim; glossary entries in the story bible.
+
+Known: the dev step-skip completes `mq-thane` without opening the card (speak to him instead);
+`ChooseClass`'s centre message shows beside his rune line; an owed boon offer is not saved across a
+reload; a boon offer already up when he is spoken to hides behind the card and keeps ageing. The
+dream was skipped: `SagaDreams` gates on world keys only.
+
+Verdict: _pending_
 
 ## Phase 4 — docs, atlas, tag
 

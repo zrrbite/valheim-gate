@@ -217,14 +217,20 @@ listeners are never both live:
    GM command dead while a run is live. So a GM key is free for the saga to reuse. In a
    **saga-only build they are never registered at all** — see Build flavours above.
 2. **Saga bindings** are read straight from `RunService.Tick`: `Keypad1-3` pick from an
-   offer (and the activation handler returns early while an offer is up), `Keypad4-8`,
-   `0`, `Insert`, `+` and `-` activate held boons, `Keypad9` is Homeward, and `PageDown`
-   gates back to where you died.
+   offer — a boon offer or the thane's class card (and the activation handler returns early
+   while either is up), `Keypad4-6` and `8` activate the general actives, **`Keypad7`, `0`
+   and `Insert` are the three RUNGS of whichever class (way) the run took up** — several boon
+   ids share each of those keys and the handler fires the HELD one — `Keypad9` is Homeward,
+   and `PageDown` gates back to where you died. Since 2026-09-27 `Keypad +` and `-` are
+   free for the player: Shaman's Mercy became the Völva's Mending on `Keypad7`, Unseen the
+   Hunter's third rung on `Insert`.
 3. **Dev bindings** are read from that same handler, so the two layers ARE in one mode and
    a modifier is the only thing that can separate them — but only where there is a second
-   layer to separate. Dev owns `Keypad * / . Enter`, `Delete`, `Home` and `PageUp` BARE,
-   and needs `Shift`/`Ctrl`/`Alt` on `Keypad +` and `Keypad -` alone, because those two are
-   the player's (Shaman's Mercy, Unseen). See `dist/windows/DEV-MODE.md`.
+   layer to separate. Dev owns `Keypad . Enter`, `Delete`, `Home` and `PageUp` BARE, and
+   `Keypad *` and `/` bare too; with `Shift`/`Ctrl`/`Alt` held, `*` cycles the class and `/`
+   learns every rung, `+` completes the step, `-` advances the clock, `Backspace` plants the
+   test kit. The modifier on `+` and `-` outlived its reason (they were the player's) and is
+   kept because the help text says so. See `dist/windows/DEV-MODE.md`.
 
 The rule, sayable in one line: a saga key is the player's, a key the saga does not use is the
 tester's, a key they share goes to the tester only with a modifier, and what the cheat mod
