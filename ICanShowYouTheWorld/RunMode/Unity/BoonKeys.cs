@@ -29,10 +29,12 @@ namespace ICanShowYouTheWorld.RunMode
     /// than the first row that matches. Keeping a way's three rungs on three distinct keys is
     /// checked at run start (RunService.ValidateClassLadder). General actives keep keys of their own.
     ///
-    /// Keypad+ and Keypad- are free for the player since Mending and Unseen moved into the ways.
-    /// The dev layer, which shares this handler and this mode, still takes them only with a
-    /// modifier held, because its help text and DEV-MODE.md say so and a help line that is wrong is
-    /// worse than none. See CLAUDE.md and RunService.HandleDevInput.
+    /// Keypad+ and Keypad- were freed when Mending and Unseen moved into the ways, and taken again
+    /// the same day by two general actives, Mending Hands and Farsight. The dev layer, which shares
+    /// this handler and this mode, takes them only with a modifier held — for the original reason
+    /// once more: without it one press would be both the tester's and the player's. See CLAUDE.md
+    /// and RunService.HandleDevInput. No two GENERAL actives may share a key (a run can hold them
+    /// all); ValidateClassLadder checks that too.
     /// </summary>
     internal static class BoonKeys
     {
@@ -55,6 +57,8 @@ namespace ICanShowYouTheWorld.RunMode
             new Binding { Id = "ember",     Key = KeyCode.Keypad5,     Label = "[5]" },
             new Binding { Id = "way",       Key = KeyCode.Keypad6,     Label = "[6]" },
             new Binding { Id = "windfall",  Key = KeyCode.Keypad8,     Label = "[8]" },
+            new Binding { Id = "mend",      Key = KeyCode.KeypadPlus,  Label = "[+]" },
+            new Binding { Id = "farsight",  Key = KeyCode.KeypadMinus, Label = "[-]" },
 
             // Rung 1 of each way.
             new Binding { Id = "brother",   Key = KeyCode.Keypad7,     Label = "[7]" },

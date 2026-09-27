@@ -146,6 +146,23 @@ namespace ICanShowYouTheWorld.RunMode
         private const float ClassDamagePerBoss = 0.25f;
         private const float ClassDamageMaxScale = 3f;
 
+        // --- The general boons of 2026-09-27 ---
+        //
+        // Same rule as the ways' block above: DefaultBoons' descriptions state these numbers, so a
+        // change here is a change to the card.
+
+        /// <summary>Stoker's gain: "+20%", Sharpened's number, because the heat is the price Sharpened
+        /// does not ask. The heat half lives in RunService.AddHeat, next to Slow Burn's.</summary>
+        private const float StokerDamageMultiplier = 1.2f;
+
+        /// <summary>Mending Hands' reach: "twenty metres", the radius the GM repair command has always
+        /// used — a longhouse and its fence, not the village.</summary>
+        private const float MendRadius = 20f;
+
+        /// <summary>Farsight's reach: "four hundred metres", four times the game's own walking reveal
+        /// (Minimap.m_exploreRadius is 100). A look from a hilltop, not the whole map.</summary>
+        private const float FarsightRadius = 400f;
+
         /// <summary>
         /// How many summoned companions may stand at once, across ALL summoning boons.
         ///
@@ -367,14 +384,33 @@ namespace ICanShowYouTheWorld.RunMode
                 case "woodsman":
                 case "hunter":
                 case "warrior":
+                case "miner":
+                case "wayfarer":
+                case "steady":
                     ApplySkillBoon(boonId);
                     break;
 
                 case "irongut":
                 case "coldblood":
                 case "fireblood":
+                case "thickskin":
+                case "hardshell":
                 case "reckless":
                     ApplyDamageModifier(boonId);
+                    break;
+
+                case "stoker":
+                    // The gain half only. The cost — heat rising faster — is the host's, applied
+                    // where Slow Burn's discount is (RunService.AddHeat), because heat is not a
+                    // thing this class can write.
+                    ApplyWeaponMultiplier(StokerDamageMultiplier, "stoker");
+                    break;
+
+                case "kindling":
+                    // Nothing to apply. It doubles what each FUTURE completion lends
+                    // (RunService.GrantCompletionHealth), so the loan it enlarges is the task-health
+                    // reward's own and is repaid with it. Listed so a reader looking for its effect
+                    // finds this note rather than concluding it was forgotten.
                     break;
 
                 case "glasscannon":
@@ -490,8 +526,14 @@ namespace ICanShowYouTheWorld.RunMode
                 case "irongut":
                 case "coldblood":
                 case "fireblood":
+                case "thickskin":
+                case "hardshell":
                 case "reckless":
                     UnapplyDamageModifier(boonId);
+                    break;
+
+                case "stoker":
+                    RemoveWeaponMultiplier(boonId);
                     break;
 
                 case "glasscannon":
@@ -557,6 +599,8 @@ namespace ICanShowYouTheWorld.RunMode
                 case "rend": return ActivateRend();
                 case "warcry": return ActivateWarcry();
                 case "wrath": return ActivateWrath();
+                case "mend": return ActivateMend();
+                case "farsight": return ActivateFarsight();
                 default: return false;
             }
         }
@@ -925,6 +969,12 @@ namespace ICanShowYouTheWorld.RunMode
             if (_damageModBoons.Contains("coldblood")) mods.m_frost = HitData.DamageModifier.Resistant;
             if (_damageModBoons.Contains("fireblood")) mods.m_fire = HitData.DamageModifier.Resistant;
 
+            // The two physical resistances (2026-09-27). Same game step as the elemental three.
+            bool thickskin = _damageModBoons.Contains("thickskin");
+            bool hardshell = _damageModBoons.Contains("hardshell");
+            if (thickskin) mods.m_blunt = HitData.DamageModifier.Resistant;
+            if (hardshell) mods.m_pierce = HitData.DamageModifier.Resistant;
+
             // Reckless's cost. "Weak" is the game's own one-step-worse modifier, which is roughly
             // the stated 25% and, more importantly, is a value Valheim already balances around
             // rather than a number invented here.
@@ -933,11 +983,17 @@ namespace ICanShowYouTheWorld.RunMode
             // modifier because there is no separate armour to put it on: one struct, one snapshot,
             // and both claims collapse to the same Weak — holding Reckless and raging at once costs
             // no more than either, which is the honest reading of "one step worse".
+            //
+            // Thick-skinned and Hardshell were the first boons to claim the same slots. Written as
+            // "last one wins", holding Reckless would silently delete a resistance the player also
+            // picked, and which of the two the player kept would depend on nothing they could see.
+            // One step better and one step worse is no step at all, so a resisted type goes to
+            // Normal under the cost rather than to Weak: both picks still mean what their cards say.
             if (_damageModBoons.Contains("reckless") || _damageModBoons.Contains("rage"))
             {
-                mods.m_blunt = HitData.DamageModifier.Weak;
+                mods.m_blunt = thickskin ? HitData.DamageModifier.Normal : HitData.DamageModifier.Weak;
                 mods.m_slash = HitData.DamageModifier.Weak;
-                mods.m_pierce = HitData.DamageModifier.Weak;
+                mods.m_pierce = hardshell ? HitData.DamageModifier.Normal : HitData.DamageModifier.Weak;
             }
 
             player.m_damageModifiers = mods;
@@ -1269,6 +1325,124 @@ namespace ICanShowYouTheWorld.RunMode
 
             WithLegacyGodModeBracket(CheatCommands.CastHealAOE);
 
+            held.CooldownRemaining = held.Def.CooldownSeconds;
+            return true;
+        }
+
+        /// <summary>
+        /// Mending Hands: every damaged player-built piece within <see cref="MendRadius"/> goes back
+        /// to full health.
+        ///
+        /// The GM mod's "repair all things" (CheatCommands.RepairStructuresAoE) is the ancestor, and
+        /// the radius is its radius — but its loop is not reused, for three reasons that all matter
+        /// to a boon and none to a cheat. It walks FindObjectsOfType&lt;Piece&gt;, a scene search per
+        /// press; it fires RPC_Repair at every piece whether damaged or not and counts them all, so
+        /// it can never say "nothing needed it"; and it would mend a dungeon's walls or a
+        /// Fuling village as readily as the player's own house. WearNTear.Repair() — the game's own
+        /// hammer path — answers all three: it returns false for anything already whole, and the
+        /// Piece's creator says whether a player built it.
+        ///
+        /// A press that mends nothing refuses rather than firing, the same policy as Rend: a
+        /// three-minute cooldown spent on a sound house is a punishment for checking.
+        ///
+        /// Not a loan, and nothing to unwind: a repaired wall is what the hammer would have made of
+        /// it with a trip to the workbench. The boon saves the walk, not the wood's worth.
+        /// </summary>
+        private bool ActivateMend()
+        {
+            var held = FindHeld("mend");
+            if (held == null || held.CooldownRemaining > 0f) return false;
+
+            var player = Player.m_localPlayer;
+            if (player == null) return false;
+
+            int mended = 0;
+            try
+            {
+                Vector3 center = player.transform.position;
+                float r2 = MendRadius * MendRadius;
+
+                // A copy: Repair raises an RPC, and a piece that is destroyed mid-walk rearranges
+                // the game's list under us (OnDestroy swaps the last entry into its slot).
+                foreach (var wnt in WearNTear.GetAllInstances().ToList())
+                {
+                    if (wnt == null) continue;
+                    if ((wnt.transform.position - center).sqrMagnitude > r2) continue;
+
+                    var piece = wnt.GetComponent<Piece>();
+                    if (piece == null || !piece.IsPlacedByPlayer()) continue;
+
+                    if (wnt.Repair()) mended++;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[ICanShowYouTheWorld] Mending Hands failed: " + ex.Message);
+                if (mended == 0) return false;
+            }
+
+            if (mended == 0)
+            {
+                LastActivationMessage = "Nothing here needs mending.";
+                return false;
+            }
+
+            LastActivationMessage = mended == 1 ? "One piece made whole." : $"{mended} pieces made whole.";
+            held.CooldownRemaining = held.Def.CooldownSeconds;
+            return true;
+        }
+
+        /// <summary>
+        /// Minimap.Explore(Vector3, float) — the method the game's own walking reveal calls every
+        /// few seconds with m_exploreRadius. Private, so found by reflection, and by its full
+        /// signature: there is a private Explore(int, int) beside it, and a lookup by name alone
+        /// would be ambiguous. Resolved once; null if a game update renames it.
+        /// </summary>
+        private static readonly System.Reflection.MethodInfo MinimapExplore =
+            typeof(Minimap).GetMethod("Explore",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
+                null, new[] { typeof(Vector3), typeof(float) }, null);
+
+        /// <summary>
+        /// Farsight: the map within <see cref="FarsightRadius"/> of the player is revealed.
+        ///
+        /// Through the game's own reveal rather than by writing the fog texture here, so the
+        /// explored bits and the texture cannot disagree and the result saves with the character
+        /// exactly as walking there would have.
+        ///
+        /// The one boon whose effect is not a loan, and deliberately: what the player has seen they
+        /// have seen. The map a run ends with is a map they could have walked, and taking fog back
+        /// would mean remembering which pixels were ours — a record of a thing that is not power.
+        /// </summary>
+        private bool ActivateFarsight()
+        {
+            var held = FindHeld("farsight");
+            if (held == null || held.CooldownRemaining > 0f) return false;
+
+            var player = Player.m_localPlayer;
+            var map = Minimap.instance;
+            if (player == null || map == null) return false;
+
+            if (MinimapExplore == null)
+            {
+                // Said once in the log and to the player, rather than spending the cooldown on
+                // nothing: the reason is a game update, and the player should hear it did nothing.
+                Debug.LogWarning("[ICanShowYouTheWorld] Farsight: Minimap.Explore(Vector3, float) not found.");
+                LastActivationMessage = "The land will not show itself.";
+                return false;
+            }
+
+            try
+            {
+                MinimapExplore.Invoke(map, new object[] { player.transform.position, FarsightRadius });
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[ICanShowYouTheWorld] Farsight failed: " + ex.Message);
+                return false;
+            }
+
+            LastActivationMessage = "The land around you is known.";
             held.CooldownRemaining = held.Def.CooldownSeconds;
             return true;
         }
@@ -1884,6 +2058,18 @@ namespace ICanShowYouTheWorld.RunMode
                     (Skills.SkillType.Swords, 50f),
                     (Skills.SkillType.Clubs, 50f),
                 },
+
+                // General again (2026-09-27), refilling the pool the ways emptied. Each is a skill
+                // the run leans on without teaching: ore from the Black Forest on, the distances
+                // every act adds, and the parry the bosses are balanced around.
+                ["miner"]    = new[] { (Skills.SkillType.Pickaxes, 50f) },
+                ["wayfarer"] = new[]
+                {
+                    (Skills.SkillType.Run, 50f),
+                    (Skills.SkillType.Jump, 50f),
+                    (Skills.SkillType.Swim, 50f),
+                },
+                ["steady"]   = new[] { (Skills.SkillType.Blocking, 50f) },
             };
 
         private void ApplySkillBoon(string boonId)

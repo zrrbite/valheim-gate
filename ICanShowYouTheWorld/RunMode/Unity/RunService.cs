@@ -2775,9 +2775,10 @@ namespace ICanShowYouTheWorld.RunMode
             // is not worth being precious about, and a dev layer nobody can reach is a worse
             // fault than an over-generous modifier.
             //
-            // Since the ways, + and - are free of the player (Mending and Unseen moved to [7] and
-            // [Ins]) but keep their modifier: the help text says so, and moving a tester's hands
-            // twice is worse than a modifier that no longer guards anything. And * and / gained a
+            // The ways freed + and - (Mending and Unseen moved to [7] and [Ins]) and the same day
+            // they were taken again, by two GENERAL actives - Mending Hands on +, Farsight on - - so
+            // the modifier guards what it was written to guard. HandleBoonActivationInput stands
+            // down while it is held, which is what keeps Shift+[+] a dev key. And * and / gained a
             // SECOND, modified layer of their own (the ways) - there a modifier separates dev from
             // dev, which is the one other place it can earn its keep.
             bool mod = DevModifierHeld();
@@ -3340,9 +3341,9 @@ namespace ICanShowYouTheWorld.RunMode
             if (_classChoicePending) return;
 
             // A modifier held, in a dev session, means the tester is addressing the dev layer.
-            // Keypad + and - were the player's when this was written (Shaman's Mercy, Unseen), and
-            // Ctrl+KeypadPlus would complete the step AND cast; they are free now, but a modified
-            // key is still never the player's, which keeps the rule sayable in one line.
+            // Keypad + and - are the player's (Mending Hands and Farsight since 2026-09-27; Shaman's
+            // Mercy and Unseen when this was written), and without this Ctrl+KeypadPlus would
+            // complete the step AND mend. A modified key is never the player's.
             if (DevMode && DevModifierHeld()) return;
 
             // Walked from BoonKeys rather than spelled out here, so the key the HUD PRINTS and the
@@ -3379,6 +3380,14 @@ namespace ICanShowYouTheWorld.RunMode
             if (!_boonEffects.Activate(boonId))
             {
                 Message(_boonEffects.LastActivationMessage ?? $"{held.Def.Display} not ready.");
+            }
+            // A SUCCESS line, when the effect set one. Windfall, Menagerie, Bonecaller, Mending Hands
+            // and Farsight all report what they did ("7 pieces made whole."), and until 2026-09-27
+            // nobody saw it: only the failure branch read the message. Activate clears the field
+            // before every attempt, so a stale refusal cannot leak into a later success.
+            else if (!string.IsNullOrEmpty(_boonEffects.LastActivationMessage))
+            {
+                Message(_boonEffects.LastActivationMessage);
             }
         }
 
@@ -4579,6 +4588,16 @@ namespace ICanShowYouTheWorld.RunMode
         private const float SlowBurnGainMultiplier = 0.75f;
 
         /// <summary>
+        /// Stoker's surcharge on heat GAINED — Slow Burn's mirror, and the cost of Stoker's +20%.
+        /// Losses untouched for the same reason. Holding both multiplies (x0.9375): each card says
+        /// what it does to the rise, and neither says it cancels the other.
+        /// </summary>
+        private const float StokerGainMultiplier = 1.25f;
+
+        /// <summary>Kindling: every completion lends this many times <see cref="HealthPerCompletion"/>.</summary>
+        private const float KindlingHealthMultiplier = 2f;
+
+        /// <summary>
         /// Max health lent for every completion — questline step or random task alike.
         ///
         /// Owner, alpha34 play: "maybe we should reward the player with a tiny bit of armor and
@@ -4827,9 +4846,20 @@ namespace ICanShowYouTheWorld.RunMode
 
         private void GrantCompletionHealth()
         {
-            _taskHealthReward += HealthPerCompletion;
+            _taskHealthReward += CompletionHealthNow;
             ApplyTaskHealthReward();
         }
+
+        /// <summary>
+        /// What ONE completion lends right now: Kindling doubles it while held.
+        ///
+        /// Read at the moment of each completion and added to the running total, so Kindling pays
+        /// forward only — nothing retroactive on the pick, and nothing clawed back on losing it to a
+        /// death. What was lent stays lent until run end, like every completion's health; the loan it
+        /// rides is the task-health reward's own, which the ledger already repays.
+        /// </summary>
+        private float CompletionHealthNow =>
+            Holds("kindling") ? HealthPerCompletion * KindlingHealthMultiplier : HealthPerCompletion;
 
         private void ApplyTaskHealthReward()
         {
@@ -4838,7 +4868,7 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
-        /// Raises heat, after Slow Burn's discount, and tells everything that cares.
+        /// Raises heat, after Slow Burn's discount and Stoker's surcharge, and tells everything that cares.
         ///
         /// Every heat change goes through here or <see cref="RemoveHeat"/> so the world modifiers
         /// and Forge-fed cannot fall out of step with the number — the same "one path, not several
@@ -4847,6 +4877,7 @@ namespace ICanShowYouTheWorld.RunMode
         private void AddHeat(float amount)
         {
             if (amount > 0f && HoldsBoon("slowburn")) amount *= SlowBurnGainMultiplier;
+            if (amount > 0f && HoldsBoon("stoker")) amount *= StokerGainMultiplier;
 
             _heat.Add(amount);
             OnHeatChanged();
@@ -6081,6 +6112,14 @@ namespace ICanShowYouTheWorld.RunMode
                     problems.Add($"way '{clash.Key.Class}' binds {string.Join(", ", clash.Select(k => k.Id))} all to {clash.Key.Key}");
                 }
 
+                // General actives share a key with NOTHING general: every run can hold all of them
+                // at once, so a shared key there would hide an ability outright. (Sharing with a way's
+                // rung is a different fault and is not checked here — no general active sits on
+                // [7], [0] or [Ins].)
+                var general = new HashSet<string>(pool.Where(b => b.ClassId == null).Select(b => b.Id));
+                foreach (var clash in BoonKeys.Actives.Where(k => general.Contains(k.Id)).GroupBy(k => k.Key).Where(g => g.Count() > 1))
+                    problems.Add($"general actives {string.Join(", ", clash.Select(k => k.Id))} all bind {clash.Key}");
+
                 foreach (var p in problems)
                     Debug.LogError($"[ICanShowYouTheWorld] class ladder: {p}");
             }
@@ -6605,7 +6644,7 @@ namespace ICanShowYouTheWorld.RunMode
                 else _boons?.CreateOffer();
 
                 Message($"Challenge complete: {def.Display}  " +
-                        $"(+{def.HeatReward:0.#} heat, +{HealthPerCompletion * objectives:0.#} health)");
+                        $"(+{def.HeatReward:0.#} heat, +{CompletionHealthNow * objectives:0.#} health)");
             }
             catch (Exception ex)
             {
@@ -10725,6 +10764,15 @@ namespace ICanShowYouTheWorld.RunMode
             new BoonDefinition { Id = "hearty", Display = "Hearty",      IsPassive = true,  Description = "+15 max health." },
             new BoonDefinition { Id = "tireless", Display = "Tireless",  IsPassive = true,  Description = "+25 max stamina, faster recovery, cheaper dodges." },
             new BoonDefinition { Id = "woodsman", Display = "Woodsman", IsPassive = true, Description = "Woodcutting skill to 60. Trees fall fast." },
+            // --- Skills, refilled (2026-09-27) ---
+            //
+            // Hunter and Warrior went to the ways and took two of the pool's three skill boons with
+            // them. These three are skills every run leans on and none teaches: Miner gated to the
+            // Black Forest, where the first ore is, since in the Meadows there is nothing to swing
+            // a pickaxe at.
+            new BoonDefinition { Id = "miner",    Display = "Miner",        IsPassive = true, MinBosses = 1, Description = "Pickaxe skill to 50. Rock and ore give way faster." },
+            new BoonDefinition { Id = "wayfarer", Display = "Wayfarer",     IsPassive = true, Description = "Run, jump and swim skill to 50." },
+            new BoonDefinition { Id = "steady",   Display = "Steady Hands", IsPassive = true, Description = "Blocking skill to 50. Parries come easier." },
             new BoonDefinition { Id = "hunter", ClassId = "hunter", Display = "Hunter",   IsPassive = true, Description = "Bow skill to 50. Straighter, harder shots." },
             new BoonDefinition { Id = "warrior", ClassId = "berserker", Display = "Warrior",  IsPassive = true, Description = "Axe, sword and club skill to 50." },
             // The first skill boon that is not a one-off grant (owner: "a boon that gives
@@ -10747,6 +10795,12 @@ namespace ICanShowYouTheWorld.RunMode
             new BoonDefinition { Id = "irongut",   Display = "Irongut",      IsPassive = true, MinBosses = 1, Description = "Resistant to poison." },
             new BoonDefinition { Id = "coldblood", Display = "Coldblooded",  IsPassive = true, MinBosses = 2, Description = "Resistant to frost." },
             new BoonDefinition { Id = "fireblood", Display = "Fire-blooded", IsPassive = true, MinBosses = 2, Description = "Resistant to fire." },
+            // The physical two (2026-09-27), on the same rule. Blunt is ungated because the
+            // Meadows already has it — Greydwarf brutes, and trolls wander in from the forest.
+            // Pierce waits for two gods: its enemies are Mountain drakes, deathsquitos and Fuling
+            // archers, Acts IV and V, and this is the one-biome-early handing of the answer.
+            new BoonDefinition { Id = "thickskin", Display = "Thick-skinned", IsPassive = true, MinBosses = 0, Description = "Resistant to blunt. Clubs, brutes and trolls hit softer." },
+            new BoonDefinition { Id = "hardshell", Display = "Hardshell",     IsPassive = true, MinBosses = 2, Description = "Resistant to pierce. Arrows, stingers and spears bite less." },
 
             // --- On-kill (alpha34) ---
             //
@@ -10763,6 +10817,10 @@ namespace ICanShowYouTheWorld.RunMode
             // would be a different thing entirely.
             new BoonDefinition { Id = "glasscannon", Display = "Glass Cannon", IsPassive = true, Description = "+40% weapon damage. -30% max health." },
             new BoonDefinition { Id = "reckless",    Display = "Reckless",     IsPassive = true, Description = "+50% weapon damage. You take 25% more." },
+            // The third (2026-09-27), and the first whose cost is the mode's own dial: Sharpened's
+            // +20%, paid for in heat — Slow Burn run backwards. The heat half is the host's
+            // (AddHeat); the damage half rides BoonEffects' weapon product like the other two.
+            new BoonDefinition { Id = "stoker",      Display = "Stoker",       IsPassive = true, Description = "+20% weapon damage. Heat rises 25% faster." },
 
             // --- Heat (alpha34) ---
             //
@@ -10771,11 +10829,22 @@ namespace ICanShowYouTheWorld.RunMode
             // build.
             new BoonDefinition { Id = "slowburn", Display = "Slow Burn", IsPassive = true, Description = "Heat rises 25% slower." },
             new BoonDefinition { Id = "forgefed", Display = "Forge-fed", IsPassive = true, Description = "Your weapons hit harder the hotter the run." },
+            // One more on the dial (2026-09-27). Every completion raises heat and lends health; Kindling
+            // makes the completion pay more for what it costs — the same trade, struck harder, which
+            // rewards working both quest tracks the way Forge-fed does. Read by the host
+            // (GrantCompletionHealth), so BoonEffects has nothing to apply for it.
+            new BoonDefinition { Id = "kindling", Display = "Kindling", IsPassive = true, Description = "Every completion pays twice the health." },
 
             new BoonDefinition { Id = "wind",  Display = "Second Wind",  IsPassive = false, CooldownSeconds = 120f, Description = "Heals you and nearby allies for 10s." },
             new BoonDefinition { Id = "ember", Display = "Emberskin",    IsPassive = false, CooldownSeconds = 180f, Description = "Cloak of flames burns nearby foes for 30s." },
             new BoonDefinition { Id = "way",   Display = "Waystone",     IsPassive = false, Description = "Teleport to the next boss altar. One charge." },
             new BoonDefinition { Id = "windfall", Display = "Windfall",  IsPassive = false, Description = $"Double every stack you carry. {BoonEffects.WindfallCharges} charges, never refills." },
+            // The two keys Mending and Unseen gave up when they went to the ways (2026-09-27), taken
+            // by actives that answer the saga's chores rather than its fights: a raid on the base,
+            // and a map that is all fog. Both are GM commands with a cooldown and a reason — the
+            // repair AoE, and the reveal the game does itself as you walk, made wider.
+            new BoonDefinition { Id = "mend",     Display = "Mending Hands", IsPassive = false, CooldownSeconds = 180f, Description = "Every wall, roof and post within 20 m is made whole." },
+            new BoonDefinition { Id = "farsight", Display = "Farsight",      IsPassive = false, CooldownSeconds = 300f, Description = "The map within four hundred metres is known to you." },
             // Both ride commands the GM mod has had for years (CastHealAOE, ToggleGhostMode), which
             // is the whole point of BoonEffects: a boon is a legacy cheat with a cooldown and a
             // reason. A burst heal where Second Wind is a window, and an escape where the mode had
