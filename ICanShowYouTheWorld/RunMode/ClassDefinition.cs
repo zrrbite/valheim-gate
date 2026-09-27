@@ -26,5 +26,17 @@ namespace ICanShowYouTheWorld.RunMode
         /// with <see cref="ClassLadder.Thresholds"/>.
         /// </summary>
         public string[][] Rungs;
+
+        /// <summary>
+        /// Items handed over ONCE, at the moment the way is taken up at the graves, as
+        /// (prefab, count). Empty for a way that gives nothing to hold.
+        /// </summary>
+        /// <remarks>
+        /// Not a boon, and deliberately not on the ladder: a thing in the pack is saved with the
+        /// pack, so it needs no reapply on resume and no repayment at run end, and it can be lost
+        /// the way any item can. The host grants these from the thane's card only - never from the
+        /// dev class cycle, which would otherwise fill the pack with a pair per press.
+        /// </remarks>
+        public (string prefab, int count)[] GrantItems = new (string, int)[0];
     }
 }

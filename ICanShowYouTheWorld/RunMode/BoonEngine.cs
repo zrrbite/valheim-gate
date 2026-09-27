@@ -88,6 +88,15 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         public int DefeatedBosses;
 
+        /// <summary>
+        /// The pool's definition for an id, held or not, or null if the pool has no such boon.
+        ///
+        /// For naming what the player does not hold yet - the HUD lists a way's later rungs before
+        /// they are learned, and <see cref="Held"/> cannot name what is not in it.
+        /// </summary>
+        public BoonDefinition Definition(string id) =>
+            string.IsNullOrEmpty(id) ? null : pool.FirstOrDefault(d => d.Id == id);
+
         /// <summary>Drops the current offer without picking from it. Used by the timeout and by tests.</summary>
         public void ClearOffer() => offer.Clear();
 

@@ -89,5 +89,24 @@ static class ClassLadderTests
         shared[2].Rungs[0] = new[] { "brother" };
         Check.That(ClassLadder.Validate(shared, Pool()).Any(p => p.Contains("claimed by both")),
             "an id two ways both teach is caught");
+
+        // What a way hands over at the graves. Only the Berserker gives something to hold, and
+        // exactly one pair: TakeUpWay grants these once, so a count here is a count in the pack.
+        var berserker = ClassLadder.Find("berserker");
+        Check.That(berserker.GrantItems.Length == 1 &&
+                   berserker.GrantItems[0].prefab == "Saga_UlfrsAxes" && berserker.GrantItems[0].count == 1,
+            "the Berserker is handed one pair of Ulfr's axes");
+        Check.That(ClassLadder.Find("hunter").GrantItems.Length == 0 && ClassLadder.Find("volva").GrantItems.Length == 0,
+            "the Hunter and the Völva are handed nothing");
+        Check.That(berserker.Description.EndsWith(" Ulfr’s axes are yours the moment you take his name."),
+            "and the card says so");
+        Check.That(new ClassDefinition().GrantItems != null, "a way built without gifts has an empty list, not null");
+
+        // What the HUD says a rung waits on - read from the thresholds, so moving one keeps it true.
+        Check.That(ClassLadder.AfterLine(ClassLadder.Thresholds[1]) == "after Eikthyr", "rung 2 waits on Eikthyr");
+        Check.That(ClassLadder.AfterLine(ClassLadder.Thresholds[2]) == "after Bonemass", "rung 3 waits on Bonemass");
+        Check.That(ClassLadder.AfterLine(2) == "after the Elder" && ClassLadder.AfterLine(5) == "after Yagluth",
+            "the table covers the gods between");
+        Check.That(ClassLadder.AfterLine(9) == "after 9 gods", "a count past the table falls back to a number");
     }
 }

@@ -35,6 +35,10 @@ namespace ICanShowYouTheWorld.Services
         /// </summary>
         /// <param name="position">Target world position.</param>
         /// <param name="rotation">Target rotation (optional).</param>
-        void TeleportTo(Vector3 position, Quaternion? rotation = null);
+        /// <param name="distant">
+        /// The game's distantTeleport flag. Null decides by distance from the local player (see
+        /// TeleportService.DistantBeyondMeters); pass true for a hop that always crosses the map.
+        /// </param>
+        void TeleportTo(Vector3 position, Quaternion? rotation = null, bool? distant = null);
     }
 }

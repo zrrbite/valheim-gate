@@ -146,7 +146,7 @@ namespace ICanShowYouTheWorld.RunMode
                            "The mending is yours now. The calling comes when a god has fallen.";
                 case "berserker":
                     return "Ulfr, then. He struck all round him and never once from behind a shield. The sweep " +
-                           "is yours now. The rest of him comes when a god has fallen — and you may not want it.";
+                           "is yours now. The rest of him comes when a god has fallen — and you may not want it. Take his axes.";
                 default:
                     return null;
             }

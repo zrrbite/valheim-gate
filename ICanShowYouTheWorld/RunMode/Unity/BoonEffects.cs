@@ -1912,7 +1912,9 @@ namespace ICanShowYouTheWorld.RunMode
             var teleport = Resolve<ITeleportService>();
             if (teleport == null) return false;
 
-            teleport.TeleportTo(LandingNear(altar.Value, playerPos));
+            // Distant on purpose: an altar is always across the map, and the game's distant wait is
+            // what lets its zones load before the player is put down in them.
+            teleport.TeleportTo(LandingNear(altar.Value, playerPos), distant: true);
             held.Charges--;
             return true;
         }

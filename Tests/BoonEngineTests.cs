@@ -320,6 +320,13 @@ static class BoonEngineTests
         Check.That(!e.Grant("nonsense"), "an unknown id is refused rather than throwing");
         Check.That(!e.Grant(null), "and so is a null one");
         Check.That(e.Held.Count == 1, "none of which added anything");
+
+        // Definition names what is NOT held too - the HUD lists a way's later rungs by name.
+        Check.That(e.Definition("hearty")?.Display == "Hearty", "Definition finds a boon not held");
+        Check.That(e.Definition("tireless")?.Display == "Tireless", "and one that is");
+        Check.That(e.Definition("nonsense") == null && e.Definition(null) == null,
+            "and answers null for an unknown or null id");
+        Check.That(e.Held.Count == 1, "and looking changes nothing held");
     }
 
     /// <summary>

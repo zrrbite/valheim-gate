@@ -606,7 +606,8 @@ namespace ICanShowYouTheWorld.RunMode
 
                 _recipeCardsAt = Time.time;
                 _recipeCards = _items.DescribeRecipes(
-                    id => _challenges != null && StepPredicates.StepDone(_challenges.Tracks, id));
+                    id => _challenges != null && StepPredicates.StepDone(_challenges.Tracks, id),
+                    _classId);
 
                 return _recipeCards;
             }
@@ -1886,6 +1887,8 @@ namespace ICanShowYouTheWorld.RunMode
 
         public int HomewardCharges => _active ? _homewardCharges : 0;
 
+        public int DefeatedBosses => _active && _boons != null ? _boons.DefeatedBosses : 0;
+
         public string ClassId => _active ? _classId : null;
         public bool ClassChoicePending => _active && _classChoicePending;
         public IReadOnlyList<ClassDefinition> Classes => _classCatalog;
@@ -1953,6 +1956,15 @@ namespace ICanShowYouTheWorld.RunMode
 
             ChooseClass(cls.Id);
             if (_classId != cls.Id) return;   // refused (a way already held) - ChooseClass said why
+
+            // Once, here: ChooseClass is also the dev cycle's door, and a resume never comes
+            // through this at all - which is right, because a granted item is in the pack and the
+            // pack is in the save.
+            foreach (var (prefab, count) in cls.GrantItems ?? new (string, int)[0])
+            {
+                GrantItem(prefab, count);
+                Debug.Log($"[ICanShowYouTheWorld] The thane: {count}x {prefab} handed over with the way of the {cls.Display}.");
+            }
 
             Thane.Say(Thane.ChosenLine(cls.Id));
 
@@ -2521,7 +2533,8 @@ namespace ICanShowYouTheWorld.RunMode
                 // The gate is derived from the tracks, so a resume re-teaches what was taught.
                 if (_active) _recipes.Ensure(
                     id => _challenges != null && StepPredicates.StepDone(_challenges.Tracks, id),
-                    AnnounceRecipe);
+                    AnnounceRecipe,
+                    _classId);
                 if (_active) _dreams.Ensure();
             }
 
@@ -4809,7 +4822,8 @@ namespace ICanShowYouTheWorld.RunMode
                 if (teleport == null) return;
 
                 // Lifted clear of the ground for the same reason Waystone does it: arriving inside
-                // the terrain is how a teleport turns into a death.
+                // the terrain is how a teleport turns into a death. Distance left to the service:
+                // from inside the base a distant teleport spun for 8 s with the player already home.
                 teleport.TeleportTo(profile.GetCustomSpawnPoint() + Vector3.up * 2f);
 
                 if (_homewardCharges > 0)
@@ -5921,13 +5935,16 @@ namespace ICanShowYouTheWorld.RunMode
 
                 _classAnnouncedAt = bosses;
 
-                // Hugin, not a centre-screen line: a rung coming due is news from outside the
-                // fight that just ended, and the raven is who carries that kind. Keyed by the boss
-                // count so each threshold gets its own line (and the run-seed scoping in
-                // TrySpawnRaven lets the next run hear it again). No raven, no staging — the line
-                // still goes out, plainly.
+                // Hugin AND a centre-screen line. The raven alone was missed: it lands while the
+                // boss's drop and the trophy are what the player is looking at, and the owner killed
+                // Eikthyr as a Berserker without ever learning rung 2 was due (2026-09-27). The raven
+                // is still who carries news from outside the fight; the centre line is what makes
+                // it impossible to walk past. Both once per boss count — _classAnnouncedAt above —
+                // and the raven keyed by it, so the next run hears it again.
                 const string line = "The one at the graves has more to teach you.";
-                if (!TrySpawnRaven($"class-rung-{bosses}", line)) Message(line);
+                // Urgent, so it can never be demoted to a toast however the length cap is set.
+                TrySpawnRaven($"class-rung-{bosses}", line);
+                Message(line, true);
             }
             catch (Exception ex) { LogOnce("class-rung", ex); }
         }
@@ -6384,8 +6401,11 @@ namespace ICanShowYouTheWorld.RunMode
                                   (found ? "available" : "NOT found (or unprobeable) — the race may be silent"));
                     }
 
+                    // The ways' gifts ride the same check: they are rewards too, handed over once at
+                    // the graves, and a wrong name there is a way that silently gives nothing.
                     var rewards = QuestRewards.Values
                         .Concat(BossSpoils)
+                        .Concat(ClassLadder.Catalog().Select(c => c.GrantItems ?? new (string, int)[0]))
                         .SelectMany(entries => entries)
                         .Select(entry => entry.prefab)
                         .Where(name => !string.IsNullOrEmpty(name))
@@ -6402,6 +6422,7 @@ namespace ICanShowYouTheWorld.RunMode
                     Debug.LogWarning("[ICanShowYouTheWorld] Asset-name validation ran before the game's " +
                                      "registries were ready; some names were not checked this run.");
 
+                ValidateSagaRecipes();
                 ValidateActs();
                 LogBossRegistry();
                 _raids.LogRegistry();
@@ -9069,6 +9090,45 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 LogOnce("validate-prices", ex);
             }
+        }
+
+        /// <summary>
+        /// Checks every saga recipe's result, ingredients, station and way against the game, up
+        /// front.
+        /// </summary>
+        /// <remarks>
+        /// SagaRecipes.Register already refuses a bad name loudly, but only when the recipe
+        /// UNLOCKS - an Act IV recipe's typo is found in Act IV, and a way's recipe's typo only by
+        /// a run that took that way. This asks the same questions of all of them at run start.
+        /// </remarks>
+        private void ValidateSagaRecipes()
+        {
+            try
+            {
+                var scene = ZNetScene.instance;
+                var problems = new List<string>();
+
+                foreach (var def in SagaRecipes.All)
+                {
+                    if (ResolveItemPrefab(def.ResultPrefab)?.GetComponent<ItemDrop>() == null)
+                        problems.Add($"'{def.Id}' makes '{def.ResultPrefab}', which is not an item");
+
+                    foreach (var (prefab, _) in def.Resources ?? new (string, int)[0])
+                        if (ResolveItemPrefab(prefab)?.GetComponent<ItemDrop>() == null)
+                            problems.Add($"'{def.Id}' asks for '{prefab}', which is not an item");
+
+                    if (scene != null && !string.IsNullOrEmpty(def.StationPrefab) &&
+                        scene.GetPrefab(def.StationPrefab)?.GetComponent<CraftingStation>() == null)
+                        problems.Add($"'{def.Id}' is made at '{def.StationPrefab}', which is no crafting station");
+
+                    if (!string.IsNullOrEmpty(def.RequiresClass) && ClassLadder.Find(def.RequiresClass) == null)
+                        problems.Add($"'{def.Id}' belongs to the way '{def.RequiresClass}', which is no way - it can never be made");
+                }
+
+                foreach (var p in problems)
+                    Debug.LogError($"[ICanShowYouTheWorld] Saga recipe {p}.");
+            }
+            catch (Exception ex) { LogOnce("validate-saga-recipes", ex); }
         }
 
         /// <summary>Every price every quest-giver asks, flattened for validation.</summary>

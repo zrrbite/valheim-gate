@@ -25,6 +25,22 @@ namespace ICanShowYouTheWorld.RunMode
         public static readonly int[] Thresholds = { 0, 1, 3 };
 
         /// <summary>
+        /// Which god falls at each boss count, in the saga's order, for saying what a rung waits
+        /// on. A table rather than two strings in the HUD so that moving a threshold keeps the line
+        /// true; a count past the table falls back to a number.
+        /// </summary>
+        private static readonly Dictionary<int, string> BossAtCount = new Dictionary<int, string>
+        {
+            { 1, "Eikthyr" }, { 2, "the Elder" }, { 3, "Bonemass" }, { 4, "Moder" }, { 5, "Yagluth" },
+        };
+
+        /// <summary>"after Eikthyr" for threshold 1, and so on - the HUD's state for a rung not yet due.</summary>
+        public static string AfterLine(int threshold) =>
+            threshold <= 0 ? "at the choice"
+            : BossAtCount.TryGetValue(threshold, out var name) ? "after " + name
+            : "after " + threshold + " gods";
+
+        /// <summary>
         /// The boon ids this way owes the player now: its passives plus every rung whose threshold
         /// has been reached, minus what is already held, in ladder order. Empty for a null class.
         /// </summary>
@@ -95,9 +111,17 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 Id = "berserker", Display = "Berserker", Title = "Ulfr",
                 Description = "Axe, sword and club sit better in your hand. You strike all round you. Later " +
-                              "you can rage — hit harder, and take more — and after that your cry staggers everything that hears it.",
+                              "you can rage — hit harder, and take more — and after that your cry staggers everything that hears it." +
+                              " Ulfr’s axes are yours the moment you take his name.",
                 PassiveBoonIds = new[] { "warrior" },
                 Rungs = new[] { new[] { "rend" }, new[] { "rage" }, new[] { "warcry" } },
+                // The way made visible. Owner, after three milestones as a Berserker: "I wasn't
+                // quite sure what the class benefits were" - and could he dual-wield from the
+                // start? Two arbitrary one-handers cannot share the hands without hooking the
+                // game's equip code, but the game ships dual-wield ITEMS, so the way hands one
+                // over. The name is SagaItems.UlfrsAxesPrefab; spelled out here because this file
+                // is pure and cannot see that one. The run-start validator checks it resolves.
+                GrantItems = new[] { ("Saga_UlfrsAxes", 1) },
             },
         };
 

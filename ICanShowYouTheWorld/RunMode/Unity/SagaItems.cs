@@ -154,6 +154,31 @@ namespace ICanShowYouTheWorld.RunMode
         public const float StormwardDischargeWear = 12f;
         private const float StormwardDischargeStagger = 4f;
 
+        public const string UlfrsAxesPrefab = "Saga_UlfrsAxes";
+        public const string UlfrsAxesName = "Ulfr’s axes";
+
+        /// <summary>
+        /// Ulfr's axes: slash 22 at quality 1, +3 a level, to 34 at quality 4.
+        /// </summary>
+        /// <remarks>
+        /// Handed to a Berserker at the choice, which in a fresh run is the Meadows, hours before
+        /// bronze. So the number is pitched against what the Meadows and the early Black Forest put
+        /// in the other hand: a flint axe (about 35 slash, one blade) and a bronze one (about 40).
+        /// Below both per hit on purpose, because a dual combo lands more hits than a one-hander's
+        /// chain and the axes come free; above them by the time the bench has grown to temper them
+        /// to 4, which is when the way has earned it. The source mesh is Ashlands; the number is
+        /// not, and must not be - the Berserkir axes' own damage would end the Meadows in a swing.
+        /// </remarks>
+        private const float UlfrsAxesSlash = 22f;
+        private const float UlfrsAxesSlashPerLevel = 3f;
+
+        /// <summary>Durability of a bronze axe (200, +50 a level), so it wears like the tier it stands in.</summary>
+        private const float UlfrsAxesDurability = 200f;
+        private const float UlfrsAxesDurabilityPerLevel = 50f;
+
+        /// <summary>Two flint axes' worth: it is two axes, and the pack should know it.</summary>
+        private const float UlfrsAxesWeight = 4f;
+
         public const string RescuedLightPrefab = "Saga_RescuedLight";
         public const string RescuedLightName = "Rescued light";
 
@@ -550,6 +575,78 @@ namespace ICanShowYouTheWorld.RunMode
                 Description = "Lox hide, cured in a country that burns. The last thing the storm gave " +
                               "you, and the first thing it asked for nothing in return.",
                 Tune = StormPiece(12f, 2f, HitData.DamageType.Fire),
+            },
+
+            // Ulfr's axes - the Berserker's way, made something to hold (see UlfrsAxesSlash).
+            new SagaItemDefinition
+            {
+                // Dual weapons the game already ships, so the dual combo and both hands come with the
+                // mesh and none of it is our code. Ashlands Berserkir axes first, then their three
+                // variants, then Skoll and Hati (dual knives - a smaller pair, still a pair). The
+                // variants' own lightning, poison and bleed do not come with them: every damage is
+                // set below.
+                SourcePrefab = "AxeBerzerkr",
+                SourceFallbacks = new[] { "AxeBerzerkrBlood", "AxeBerzerkrLightning", "AxeBerzerkrNature", "KnifeSkollAndHati" },
+                PrefabName = UlfrsAxesPrefab,
+                DisplayName = UlfrsAxesName,
+                Description = "Two edges and no shield. Ulfr’s way of stopping a thing.",
+                Tune = shared =>
+                {
+                    // What the source brought, before any of it is replaced - the one line to read
+                    // if the axes feel wrong, because the mesh is asset data and so is everything
+                    // it carried.
+                    Debug.Log($"[ICanShowYouTheWorld] Ulfr's axes source: type {shared.m_itemType}, skill {shared.m_skillType}, " +
+                              $"slash {shared.m_damages.m_slash}, durability {shared.m_maxDurability}, weight {shared.m_weight}, " +
+                              $"maxQuality {shared.m_maxQuality}.");
+
+                    // m_itemType is NOT set, unlike the Stormward's. The Stormward is a shield made
+                    // to take both hands; these are already a two-handed item, and their type is
+                    // what decides which hand the mesh is attached to (VisEquipment.AttachItem).
+                    // Forcing TwoHandedWeaponLeft onto a mesh built for the right would put the
+                    // pair in the wrong fist. Both two-handed types unequip both hands
+                    // (Humanoid.EquipItem), so the "no shield" in the description holds either way;
+                    // if the fallback chain ever lands on something one-handed, say so.
+                    if (shared.m_itemType != ItemDrop.ItemData.ItemType.TwoHandedWeapon &&
+                        shared.m_itemType != ItemDrop.ItemData.ItemType.TwoHandedWeaponLeft)
+                        Debug.LogError($"[ICanShowYouTheWorld] Ulfr's axes resolved to a {shared.m_itemType}, not a " +
+                                       "two-handed item - they will not be a pair.");
+
+                    // The attacks (m_attack, m_secondaryAttack) are kept: they ARE the dual combo.
+                    shared.m_skillType = Skills.SkillType.Axes;
+
+                    shared.m_damages = new HitData.DamageTypes { m_slash = UlfrsAxesSlash };
+                    shared.m_damagesPerLevel = new HitData.DamageTypes { m_slash = UlfrsAxesSlashPerLevel };
+                    shared.m_attackForce = 30f;
+                    shared.m_backstabBonus = 3f;
+
+                    // A weapon, not a tool: no chop, no pickaxe (both zeroed above), and none of
+                    // the variants' riders - a status on hit, a set, an equip effect.
+                    shared.m_attackStatusEffect = null;
+                    shared.m_attackStatusEffectChance = 0f;
+                    shared.m_equipStatusEffect = null;
+                    shared.m_setStatusEffect = null;
+                    shared.m_setName = string.Empty;
+                    shared.m_setSize = 0;
+                    shared.m_damageModifiers = new List<HitData.DamageModPair>();
+                    shared.m_movementModifier = 0f;
+
+                    // Parrying with a pair: a small block, the usual weapon parry bonus.
+                    shared.m_blockPower = 10f;
+                    shared.m_blockPowerPerLevel = 0f;
+                    shared.m_deflectionForce = 20f;
+                    shared.m_deflectionForcePerLevel = 0f;
+                    shared.m_timedBlockBonus = 2f;
+
+                    shared.m_useDurability = true;
+                    shared.m_maxDurability = UlfrsAxesDurability;
+                    shared.m_durabilityPerLevel = UlfrsAxesDurabilityPerLevel;
+                    shared.m_useDurabilityDrain = 1f;
+                    shared.m_canBeReparied = true;
+
+                    shared.m_maxQuality = 4;
+                    shared.m_weight = UlfrsAxesWeight;
+                    shared.m_teleportable = true;
+                },
             },
 
             new SagaItemDefinition
@@ -1621,7 +1718,7 @@ namespace ICanShowYouTheWorld.RunMode
         /// Counts come from the PLAYER's inventory rather than the anvil's box, because the question
         /// this answers is "what should I be picking up", asked out in the world.
         /// </remarks>
-        public List<SagaRecipeCard> DescribeRecipes(Func<string, bool> stepDone)
+        public List<SagaRecipeCard> DescribeRecipes(Func<string, bool> stepDone, string classId = null)
         {
             var cards = new List<SagaRecipeCard>();
 
@@ -1671,6 +1768,10 @@ namespace ICanShowYouTheWorld.RunMode
                 foreach (var def in SagaRecipes.All)
                 {
                     if (def == null || def.Resources == null) continue;
+
+                    // Another way's recipe is not "not yet known" - it is not this run's at all,
+                    // and a card for it would promise a Hunter something only a Berserker gets.
+                    if (!SagaRecipes.ClassAllows(def, classId)) continue;
 
                     var result = ItemPrefab(def.ResultPrefab);
                     if (result == null || result.m_itemData == null || result.m_itemData.m_shared == null) continue;

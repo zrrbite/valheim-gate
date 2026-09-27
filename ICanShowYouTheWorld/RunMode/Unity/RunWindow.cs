@@ -2117,8 +2117,12 @@ namespace ICanShowYouTheWorld.RunMode
             GUILayout.Space(4f);
 
             // --- The way ---
-            // Only who the run is walking as, and whether the graves have more to give. The way's
-            // boons themselves are boons, so they are already in the list below and on the bar.
+            // Who the run is walking as, and the whole kit with where each piece stands. It used to
+            // be the name and a notice, on the grounds that the way's boons are boons and already in
+            // the list below - and the owner played three milestones as a Berserker without being
+            // sure what the way gave him (2026-09-27). A kit you cannot see is a kit you do not
+            // have; so every piece is named here, and a rung that has come due says "at the graves"
+            // in the ready colour, which is the notice ClassNotice used to draw on a line of its own.
             GUILayout.Label("THE WAY", RunTheme.Header);
             var way = run.ClassId == null ? null : run.Classes?.FirstOrDefault(c => c.Id == run.ClassId);
             if (way == null)
@@ -2128,7 +2132,7 @@ namespace ICanShowYouTheWorld.RunMode
             else
             {
                 GUILayout.Label($"{way.Display} · the way of {way.Title}", RunTheme.Body);
-                if (run.ClassNotice != null) GUILayout.Label(run.ClassNotice, RunTheme.Ready);
+                DrawWayKit(run, way);
             }
 
             GUILayout.Space(4f);
@@ -2168,6 +2172,51 @@ namespace ICanShowYouTheWorld.RunMode
                 }
             }
 
+        }
+
+        /// <summary>
+        /// One line per piece of the way's kit: the passives, then each rung with its state -
+        /// "held", "at the graves" (due and not yet learned), or which god still stands before it.
+        /// </summary>
+        private static void DrawWayKit(IRunService run, ClassDefinition way)
+        {
+            var boons = run.Boons;
+            var heldIds = new HashSet<string>();
+            if (boons != null) foreach (var h in boons.Held) heldIds.Add(h.Def.Id);
+            int bosses = run.DefeatedBosses;
+
+            // A passive not held is due by definition: it is granted at the choice.
+            foreach (var id in way.PassiveBoonIds ?? new string[0])
+            {
+                bool held = heldIds.Contains(id);
+                DrawWayKitLine(KitName(boons, id), held ? "held" : "at the graves", !held);
+            }
+
+            var rungs = way.Rungs ?? new string[0][];
+            for (int i = 0; i < rungs.Length && i < ClassLadder.Thresholds.Length; i++)
+            {
+                int threshold = ClassLadder.Thresholds[i];
+                foreach (var id in rungs[i] ?? new string[0])
+                {
+                    if (heldIds.Contains(id)) DrawWayKitLine(KitName(boons, id), "held", false);
+                    else if (threshold <= bosses) DrawWayKitLine(KitName(boons, id), "at the graves", true);
+                    else DrawWayKitLine(KitName(boons, id), ClassLadder.AfterLine(threshold), false);
+                }
+            }
+        }
+
+        /// <summary>
+        /// The boon's display name, or its id if the pool does not know it - which the class
+        /// validator already reports at run start, so the HUD need not hide it.
+        /// </summary>
+        private static string KitName(BoonEngine boons, string id) => boons?.Definition(id)?.Display ?? id;
+
+        private static void DrawWayKitLine(string name, string state, bool due)
+        {
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("  " + name, RunTheme.Small, GUILayout.Width(HudContentWidth - BoonStatusWidth));
+            GUILayout.Label(state, due ? RunTheme.Ready : RunTheme.Small, GUILayout.Width(BoonStatusWidth));
+            GUILayout.EndHorizontal();
         }
 
         /// <summary>Cooldown/charges plus the activation key for the three active boons.</summary>

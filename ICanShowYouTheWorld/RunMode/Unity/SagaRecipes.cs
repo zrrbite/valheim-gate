@@ -46,6 +46,13 @@ namespace ICanShowYouTheWorld.RunMode
         public string RequiresStepDone;
 
         /// <summary>
+        /// The way (a ClassLadder id) a run must have taken up for this recipe to exist, or null
+        /// for any run. Judged beside <see cref="RequiresStepDone"/> on every poll, so taking up
+        /// the way teaches it and nothing has to be saved.
+        /// </summary>
+        public string RequiresClass;
+
+        /// <summary>
         /// What Hugin says the moment this recipe becomes craftable. Null for a recipe that needs
         /// no announcing.
         /// </summary>
@@ -170,7 +177,31 @@ namespace ICanShowYouTheWorld.RunMode
                 TaughtLine = "The last of it. Lox hide, cured in a country that burns — and this piece " +
                              "asks nothing back.",
             },
+
+            // The Berserker's own: a second pair when the first is lost, and the bench is where the
+            // pair is tempered - quality comes from the recipe, so without one the axes the thane
+            // gave would stay at 1 for the whole run. Meadows materials, because the way is taken
+            // up in the Meadows, and no rescued lights: those are the light economy's, and a way
+            // never touches the light.
+            new SagaRecipeDefinition
+            {
+                Id = "ulfrs-axes",
+                ResultPrefab = SagaItems.UlfrsAxesPrefab,
+                StationPrefab = "piece_workbench",
+                MinStationLevel = 1,
+                Resources = new[] { ("Wood", 10), ("Flint", 8), ("LeatherScraps", 6), ("DeerHide", 4) },
+                RequiresClass = "berserker",
+                TaughtLine = "You walk his way now, so the bench knows Ulfr’s axes. Lose his, and wood, " +
+                             "flint and hide will make you another pair.",
+            },
         };
+
+        /// <summary>
+        /// Whether a recipe belongs in a run walking <paramref name="classId"/> (null for none):
+        /// true for a recipe of no way, and for one of this way.
+        /// </summary>
+        public static bool ClassAllows(SagaRecipeDefinition def, string classId) =>
+            def != null && (string.IsNullOrEmpty(def.RequiresClass) || def.RequiresClass == classId);
 
         /// <summary>The database the recipes were last registered on. Compared by reference only.</summary>
         private ObjectDB _registeredOn;
@@ -194,7 +225,12 @@ namespace ICanShowYouTheWorld.RunMode
         /// <see cref="SagaRecipeDefinition.TaughtLine"/>. Never called for what a resumed run finds
         /// already unlocked. Optional: the registration does not depend on anybody listening.
         /// </param>
-        public void Ensure(Func<string, bool> stepDone, Action<SagaRecipeDefinition> onTaught = null)
+        /// <param name="classId">
+        /// The way the run has taken up, or null. A recipe with a <see cref="SagaRecipeDefinition.RequiresClass"/>
+        /// is locked for every other way, and UNREGISTERED if the way changes (the dev class cycle),
+        /// the same as a step gate going false.
+        /// </param>
+        public void Ensure(Func<string, bool> stepDone, Action<SagaRecipeDefinition> onTaught = null, string classId = null)
         {
             try
             {
@@ -202,7 +238,8 @@ namespace ICanShowYouTheWorld.RunMode
                 if (odb == null || odb.m_recipes == null) return;
 
                 bool Unlocked(SagaRecipeDefinition d) =>
-                    string.IsNullOrEmpty(d.RequiresStepDone) || (stepDone != null && stepDone(d.RequiresStepDone));
+                    ClassAllows(d, classId) &&
+                    (string.IsNullOrEmpty(d.RequiresStepDone) || (stepDone != null && stepDone(d.RequiresStepDone)));
 
                 // The teaching moment is the UNLOCK, and it is tracked here rather than inferred
                 // from the registration below, because the two are not the same event: a world load

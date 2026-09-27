@@ -80,6 +80,13 @@ namespace ICanShowYouTheWorld.Services
         /// <summary>The ways a run may take up — the static v1 table.</summary>
         IReadOnlyList<ICanShowYouTheWorld.RunMode.ClassDefinition> Classes { get; }
 
+        /// <summary>
+        /// Gods down in this world, as the boon gate reads it (derived from the world's keys, not
+        /// stored); 0 with no run. The way's ladder is paced by it, so the HUD needs it to say
+        /// which rungs are due.
+        /// </summary>
+        int DefeatedBosses { get; }
+
         /// <summary>Null, or a line saying the way has something due to be learned at the graves.</summary>
         string ClassNotice { get; }
 

@@ -47,7 +47,7 @@ still name Shaman's Mercy on Keypad+ — Phase 4 fixes the docs in one pass.
 6. Quit to menu, resume: THE WAY still names the class; passives reapplied; keys work.
 7. Abandon the run: `Player.log` shows loans repaid and companions despawned; no class remains.
 
-Verdict: _pending_
+Verdict (owner, 2026-09-27 evening, Milestones 1-3 played together as a Berserker): works; the pick, the thane and the step all ran. **The Berserker read as invisible** - "I wasn't quite sure what the class benefits were... melee skills, Rend?" - and the owner asked whether he could dual-wield one-handers from the start. Answer taken: a dual-wield SAGA ITEM (Ulfr's axes, from the Ashlands Berserkir axes mesh) granted at the choice, plus THE WAY block listing the whole kit with each rung's state. He also asked where the "class skill" went - dropped by his own choice of saga progression over a Cecil skill; the ladder listing restores the visible half.
 
 ## Phase 2 — the four new effects — MILESTONE 2
 
@@ -69,7 +69,7 @@ keep ×1.5 — the behaviour is unchanged for boons that never switch off.
 
 **Milestone 2 — what to play**: the table and list are in `HANDOFF_WINDOWS.md` under this build.
 
-Verdict: _pending_
+Verdict (owner, 2026-09-27): the four abilities were reached only as far as Rend; Rend's poison tick was seen in the log. Rung 2 came due after Eikthyr and the owner did not notice - the notice becomes raven AND centre line, and the kit listing shows "at the graves".
 
 ## Phase 3 — the thane — MILESTONE 3
 
@@ -91,7 +91,7 @@ Known: the dev step-skip completes `mq-thane` without opening the card (speak to
 reload; a boon offer already up when he is spoken to hides behind the card and keeps ageing. The
 dream was skipped: `SagaDreams` gates on world keys only.
 
-Verdict: _pending_
+Verdict (owner, 2026-09-27): the thane stood 61 m from the bed on level ground, spoke, the card opened, the pick landed, the BOOK line and "Nothing more yet" both ran. One unrelated find: **Homeward's screen spun "forever"** - the game's own teleport loop holds a DISTANT teleport for 8-15 s even when you are already home; the mod always passed distant. Fixed by passing distant only beyond 200 m.
 
 ## Phase 4 — docs, atlas, tag
 
@@ -108,4 +108,4 @@ Stoker (risk); Mending Hands on `Keypad+` and Farsight on `Keypad-` (actives, de
 loans). Found on the way and fixed: a risk boon's `Weak` no longer deletes a held resistance, and
 an active's success line is now shown. Play list in `HANDOFF_WINDOWS.md` under `...27d`.
 
-Verdict: _pending_
+Verdict: _pending_ (not yet installed when the milestones were played).
