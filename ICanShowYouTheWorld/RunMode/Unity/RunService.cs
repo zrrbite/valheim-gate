@@ -165,6 +165,12 @@ namespace ICanShowYouTheWorld.RunMode
         /// night, and the altar he leaves behind outlives him.
         /// </summary>
         private Thjalfi _thjalfi;
+
+        /// <summary>
+        /// The thane, who teaches the ways. Met in Act I but polled in EVERY act: rungs come due
+        /// after Eikthyr and Bonemass, and he is where they are learned. See PollThane.
+        /// </summary>
+        private Thane _thane;
         private SpiritChase _spirit;
         private StolenLights _lights;
         private TheGatherer _gatherer;
@@ -510,6 +516,25 @@ namespace ICanShowYouTheWorld.RunMode
                     string waiting = _thjalfi.Bearing(
                         player, IsRaining || !StepPredicates.ThjalfiFind(_challenges.Tracks));
                     if (!string.IsNullOrEmpty(waiting)) return waiting;
+                }
+
+                // The thane: a walk, like Thjalfi, so below the dark bracket and the light race and
+                // after Thjalfi (whose track the act's craft hangs on). Live while his step is, and
+                // again - in any act - while a rung is due, which is the only reason to walk back.
+                //
+                // At night the step says why he is not there, because an unmet speaker with no line
+                // reads as a missing one. A DUE rung at night says nothing and lets the strip point
+                // at the biome instead: in Act III that bearing is the act's own work, and the HUD's
+                // way block already says a skill awaits at the graves.
+                if (_thane != null && _challenges != null)
+                {
+                    bool toFind = StepPredicates.Thane(_challenges.Tracks);
+                    bool toLearn = !toFind && _classId != null && ClassDue().Any();
+                    if (toFind || (toLearn && !IsNight))
+                    {
+                        string graves = _thane.Bearing(player, !IsNight, toLearn);
+                        if (!string.IsNullOrEmpty(graves)) return graves;
+                    }
                 }
 
                 if (_shade != null && ActIsMeadows && _challenges != null && StepPredicates.ShadeFind(_challenges.Tracks))
@@ -1123,6 +1148,7 @@ namespace ICanShowYouTheWorld.RunMode
             _deer = new DeerHerd(_cfg, _rng);
             _shade = new HuntersShade(_rng);
             _thjalfi = new Thjalfi(_rng);
+            _thane = new Thane(_rng);
             _spirit = new SpiritChase(_cfg, _rng);
             _lights = new StolenLights(_cfg);
             _gatherer = new TheGatherer(_cfg, _rng);
@@ -1913,6 +1939,73 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
+        /// A pick from THE WAY card: take the way up, and let the thane and the BOOK say so.
+        /// </summary>
+        /// <remarks>
+        /// The speech and the chronicle live HERE rather than in <see cref="ChooseClass"/>, because
+        /// ChooseClass is also the dev cycle's door, and a tester flicking through the three ways
+        /// should not fill the BOOK with graves they never stood at.
+        /// </remarks>
+        private void TakeUpWay(ClassDefinition cls)
+        {
+            _classChoicePending = false;
+            if (cls == null) return;
+
+            ChooseClass(cls.Id);
+            if (_classId != cls.Id) return;   // refused (a way already held) - ChooseClass said why
+
+            Thane.Say(Thane.ChosenLine(cls.Id));
+
+            string book = Thane.BookLine(cls.Id);
+            if (!string.IsNullOrEmpty(book))
+            {
+                try
+                {
+                    // The chronicle's encoding (see RecordInChronicle): numeral|step|line. "The way"
+                    // is the step because it is not one - choosing is optional, the chain already
+                    // moved on when he was spoken to, and this is the line the choice earns.
+                    _chronicle.Add((CurrentAct?.Numeral ?? string.Empty) + "|The way|" + book);
+                }
+                catch (Exception ex) { LogOnce("chronicle-way", ex); }
+            }
+
+            Debug.Log($"[ICanShowYouTheWorld] The thane: the way of the {cls.Display} taken up.");
+            SaveState();
+        }
+
+        /// <summary>Opens THE WAY card, or reopens it with a fresh clock.</summary>
+        private void OpenClassCard()
+        {
+            if (_classId != null) return;
+            _classChoicePending = true;
+            _classCardAge = 0f;
+        }
+
+        /// <summary>
+        /// Times THE WAY card out like a boon offer, and deals any boon offer it held back.
+        /// </summary>
+        /// <remarks>
+        /// Timing out is not declining for good. Choosing is optional and the step completed on
+        /// speaking, so the card only closes; speaking to him again reopens it.
+        /// </remarks>
+        private void TickClassCard(float dt)
+        {
+            if (_classChoicePending)
+            {
+                _classCardAge += dt;
+                float timeout = _cfg != null ? _cfg.RunBoonOfferTimeoutSeconds : 45f;
+                if (_classCardAge >= timeout) _classChoicePending = false;
+                return;
+            }
+
+            if (_boonOfferOwed)
+            {
+                _boonOfferOwed = false;
+                _boons?.CreateOffer();
+            }
+        }
+
+        /// <summary>
         /// Grants every boon the held way owes at the current boss count. Returns how many.
         ///
         /// Through <see cref="BoonEngine.Grant"/>, the one door in — so Gained fires and the effect
@@ -2125,6 +2218,7 @@ namespace ICanShowYouTheWorld.RunMode
                 _deer.Reset();
                 _shade?.Reset();
                 _thjalfi?.Reset();
+                _thane?.Reset();
                 _spirit?.Reset();
                 _strayOut = false;
                 _strayReadyAt = Time.time + 120f;
@@ -2141,6 +2235,7 @@ namespace ICanShowYouTheWorld.RunMode
                 _homewardCharges = 0;
                 _classId = null;
                 _classChoicePending = false;
+                _boonOfferOwed = false;
                 _classAnnouncedAt = -1;
                 _discovered.Clear();
                 _pinnedActIndex = -1;
@@ -2406,6 +2501,7 @@ namespace ICanShowYouTheWorld.RunMode
             // there. See CreatureDressing for why it cannot be done at spawn.
             CreatureDressing.Tick();
 
+            TickClassCard(dt);
             HandleBoonOfferInput();
             HandleBoonActivationInput();
             HandleDevInput();
@@ -2458,6 +2554,18 @@ namespace ICanShowYouTheWorld.RunMode
 
         private void HandleBoonOfferInput()
         {
+            // THE WAY first: it outranks a boon offer, and no boon offer is dealt while it is up
+            // (see OnChallengeCompleted), so the keys cannot mean two things at once.
+            if (_classChoicePending)
+            {
+                int pick = Input.GetKeyDown(KeyCode.Keypad1) ? 0
+                         : Input.GetKeyDown(KeyCode.Keypad2) ? 1
+                         : Input.GetKeyDown(KeyCode.Keypad3) ? 2
+                         : -1;
+                if (pick >= 0 && pick < _classCatalog.Count) TakeUpWay(_classCatalog[pick]);
+                return;
+            }
+
             if (_boons == null || _boons.CurrentOffer.Count == 0) return;
 
             if (Input.GetKeyDown(KeyCode.Keypad1)) _boons.Pick(0);
@@ -3226,6 +3334,11 @@ namespace ICanShowYouTheWorld.RunMode
         {
             if (_boons == null || _boons.CurrentOffer.Count > 0) return;
 
+            // Nor while THE WAY card is up. Keypad0 is a class key, and nothing of a way is held
+            // before one is chosen, but a card that is being read should not have its keys fire
+            // anything else in the same press.
+            if (_classChoicePending) return;
+
             // A modifier held, in a dev session, means the tester is addressing the dev layer.
             // Keypad + and - were the player's when this was written (Shaman's Mercy, Unseen), and
             // Ctrl+KeypadPlus would complete the step AND cast; they are free now, but a modified
@@ -3448,6 +3561,9 @@ namespace ICanShowYouTheWorld.RunMode
             var shadePlayer = Player.m_localPlayer;
             if (shadePlayer != null) PollShade(shadePlayer);
             if (shadePlayer != null && ActIsMeadows) PollThjalfi(shadePlayer);
+            // EVERY act, unlike Thjalfi: the rungs come due after Eikthyr and Bonemass, which is to
+            // say in Acts II and IV, and he is where they are learned.
+            if (shadePlayer != null) PollThane(shadePlayer);
             PollDiscoveries();
             PollPlayerState();
             ReassertDevGod();
@@ -4061,6 +4177,65 @@ namespace ICanShowYouTheWorld.RunMode
             }
         }
 
+        /// <summary>
+        /// The thane: standing by day once the bed is claimed, and in every act after the first.
+        /// </summary>
+        /// <remarks>
+        /// WANTED once <c>mq-bed</c> is behind the player, or while his own step is live - and in
+        /// any act past the Meadows, because StepDone reads the CURRENT act's chains and Act I's bed
+        /// step is not in Act II's. Past the Meadows the bed was necessarily claimed long ago.
+        ///
+        /// The phase is the way's state, not the step's. Choose with no way held (whether or not
+        /// the step is done: a player who declined can come back), Teach while a rung is due,
+        /// otherwise Idle.
+        ///
+        /// Speaking completes <c>mq-thane</c> whatever is chosen, so the HEARTH chain never waits on
+        /// a decision the design lets the player refuse.
+        /// </remarks>
+        private void PollThane(Player player)
+        {
+            if (_thane == null || _challenges == null) return;
+
+            try
+            {
+                var tracks = _challenges.Tracks;
+
+                bool wanted = !ActIsMeadows
+                              || StepPredicates.StepDone(tracks, "mq-bed")
+                              || StepPredicates.Thane(tracks);
+
+                var cls = ClassLadder.Find(_classId);
+                bool due = cls != null && ClassDue().Any();
+                var phase = cls == null ? Thane.Phase.Choose
+                          : due ? Thane.Phase.Teach
+                          : Thane.Phase.Idle;
+
+                bool exhausted = cls != null && _boons != null &&
+                                 ClassLadder.NextThreshold(cls, _boons.DefeatedBosses,
+                                                           _boons.Held.Select(h => h.Def.Id)) == null;
+
+                bool spoken, taught;
+                _thane.Tick(player, phase, exhausted, wanted, !IsNight, out spoken, out taught);
+
+                if (spoken)
+                {
+                    _challenges.ReportEvent(ChallengeKind.PlayerEvent, SagaNames.ThaneFound);
+                    if (_classId == null) OpenClassCard();
+                }
+
+                if (taught)
+                {
+                    int learned = LearnDueClassBoons();
+                    if (learned > 0)
+                        Debug.Log($"[ICanShowYouTheWorld] The thane taught {learned} of the {cls?.Display} way's boons.");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogOnce("thane", ex);
+            }
+        }
+
         /// <summary>Puts the Storm-Anvil down at Thjalfi's feet, in the player's name.</summary>
         private void RaiseStormAnvil(Player player)
         {
@@ -4447,10 +4622,22 @@ namespace ICanShowYouTheWorld.RunMode
         private string _classId;
 
         /// <summary>
-        /// True while a way is on offer and not yet chosen. Nothing sets it in Phase 1 — the thane
-        /// will — but the HUD and the offer card read it, so it exists and is cleared now.
+        /// True while THE WAY card is up: the thane has been spoken to with no way held. Set by
+        /// PollThane, cleared by a pick or by the card timing out (TickClassCard). Never set by a
+        /// dev step-skip - skipping mq-thane completes the step and opens nothing.
         /// </summary>
         private bool _classChoicePending;
+
+        /// <summary>How long THE WAY card has been up. It times out like a boon offer.</summary>
+        private float _classCardAge;
+
+        /// <summary>
+        /// A random task completed while THE WAY card was up, and its boon offer is owed. Deferred
+        /// rather than dropped: the card owns Keypad1/2/3 while it is up, so an offer dealt beneath
+        /// it could not be picked and would time out unseen - a reward lost to a dialogue. Session
+        /// state; a reload with one owed forfeits it, which is rare enough to accept.
+        /// </summary>
+        private bool _boonOfferOwed;
 
         /// <summary>
         /// The boss count whose rung was last announced, so "more to teach" is said once per
@@ -6412,7 +6599,10 @@ namespace ICanShowYouTheWorld.RunMode
                 }
 
                 AddHeat(def.HeatReward);
-                _boons?.CreateOffer();
+                // Not beneath THE WAY card: it owns Keypad1/2/3 while it is up. Owed instead, and
+                // dealt the moment the card closes - see TickClassCard.
+                if (_classChoicePending) _boonOfferOwed = true;
+                else _boons?.CreateOffer();
 
                 Message($"Challenge complete: {def.Display}  " +
                         $"(+{def.HeatReward:0.#} heat, +{HealthPerCompletion * objectives:0.#} health)");
@@ -7577,6 +7767,7 @@ namespace ICanShowYouTheWorld.RunMode
             HudNotice = null;
             _classId = null;              // read back from the save below, before the held boons
             _classChoicePending = false;
+            _boonOfferOwed = false;
             _classAnnouncedAt = -1;
 
             _worldId = string.IsNullOrEmpty(s.worldId) ? world : s.worldId;
@@ -8867,6 +9058,7 @@ namespace ICanShowYouTheWorld.RunMode
             SagaNames.ShadeDelivered,
             SagaNames.ThjalfiFound,
             SagaNames.ThjalfiPaid,
+            SagaNames.ThaneFound,
         };
 
         /// <summary>
@@ -9069,6 +9261,21 @@ namespace ICanShowYouTheWorld.RunMode
                 Kind = ChallengeKind.PlayerState, Param = "SpawnPointSet",
                 Target = 1, Display = "Build a bed and claim it", RewardText = "Timber and resin for the rest of the house",
                 Hint = "Place it under a roof, then interact to claim it as your spawn.",
+            },
+            new ChallengeDefinition
+            {
+                // The thane (2026-09-27): the classes' door. Directly after the bed because his spot
+                // is measured FROM the claimed bed, and because a way is worth most taken early.
+                //
+                // Completes on SPEAKING, not on choosing. Taking up a way is optional - "or take
+                // none, and go" - and a step that waited on the choice would stall the HEARTH chain
+                // behind a decision the player is allowed to refuse. The card is the reward; there is
+                // no reward table entry and no RewardText on purpose.
+                Id = "mq-thane", MainQuest = true, Track = HearthTrackId,
+                Kind = ChallengeKind.PlayerEvent, Param = SagaNames.ThaneFound,
+                Target = 1, Display = "Speak with the one at the graves",
+                Hint = "By day, a walk from your bed. He counts the stones in daylight and is not there in the dark.",
+                Opening = "Someone stands among stones a little way from your door. He was not there in the dark.",
             },
             new ChallengeDefinition
             {

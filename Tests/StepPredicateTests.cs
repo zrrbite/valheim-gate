@@ -141,6 +141,32 @@ static class StepPredicateTests
         Check.That(!StepPredicates.StepDone(paid, "no-such-step"), "a step in no chain is never done — a dropped step unlocks nothing");
         Check.That(!StepPredicates.StepDone(null, "mq-bow") && !StepPredicates.StepDone(paid, null), "null input is not done");
 
+        // --- The thane (2026-09-27): wanted while his step is live, not once it is passed -----
+        //
+        // His presence after the step rides StepDone("mq-bed") in the host, so this predicate is
+        // only the "to be found" half - and it must go false once the track moves on, or the
+        // bearing strip keeps pointing at a man already met.
+        var thaneStep = Step("mq-thane", ChallengeKind.PlayerEvent, SagaNames.ThaneFound);
+        var thaneLive = new List<QuestTrack> { Track("hearth", thaneStep) };
+        Check.That(StepPredicates.Thane(thaneLive), "the thane is to be found while mq-thane is current");
+        Check.That(!StepPredicates.Thjalfi(thaneLive) && !StepPredicates.ShadeFind(thaneLive),
+                   "and his event is his own - neither Thjalfi nor the shade answers to it");
+
+        var home = Step("mq-home", ChallengeKind.StatDelta, "TimeInBase");
+        var thanePassed = new List<QuestTrack>
+        {
+            new QuestTrack
+            {
+                Id = "hearth", Label = "HEARTH",
+                Chain = new List<ChallengeDefinition> { thaneStep, home },
+                Index = 1, Current = new ActiveChallenge { Def = home },
+            },
+        };
+        Check.That(!StepPredicates.Thane(thanePassed), "and NOT once the hearth track has moved past him");
+        Check.That(StepPredicates.StepDone(thanePassed, "mq-thane"), "his step is done then");
+        Check.That(!StepPredicates.Thane(new List<QuestTrack> { Track("hearth", thaneStep, blocked: true) }),
+                   "a blocked thane step is not in play");
+
         // --- Degenerate input ---------------------------------------------------------------
         Check.That(!StepPredicates.DeerHunt(null), "a null track list is not a hunt");
         Check.That(!StepPredicates.DeerHunt(new List<QuestTrack>()), "nor is an empty one");

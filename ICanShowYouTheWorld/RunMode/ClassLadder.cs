@@ -66,6 +66,9 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>
         /// The v1 table: Hunter, Völva, Berserker.
         ///
+        /// The descriptions are what the thane's card (THE WAY) prints, in his voice: second person,
+        /// and nothing promised that the kit does not do.
+        ///
         /// Note the Hunter WAY and the <c>hunter</c> BOON (Bows to 50) share an id. They are keys
         /// in different tables — this one and the boon pool — and nothing looks one up in the
         /// other, so the collision is only a reading hazard, not a bug.
@@ -75,21 +78,24 @@ namespace ICanShowYouTheWorld.RunMode
             new ClassDefinition
             {
                 Id = "hunter", Display = "Hunter", Title = "Eydís",
-                Description = "You shoot true and beasts answer you: a wolf at your call, any creature on loan, and the knack of going unseen.",
+                Description = "Beasts answer you. A wolf comes when you call. Later, any creature on loan, " +
+                              "and the trick of going unseen. Your bow hand knows more than it did, and your tames are stronger.",
                 PassiveBoonIds = new[] { "hunter", "shepherd" },
                 Rungs = new[] { new[] { "brother" }, new[] { "menagerie" }, new[] { "unseen" } },
             },
             new ClassDefinition
             {
                 Id = "volva", Display = "Völva", Title = "Sigrún",
-                Description = "A mending warmth goes with you; you heal your own, raise the dead to your side, and call the lightning down.",
+                Description = "A mending warmth follows you, and you can pour it out where you stand. Later " +
+                              "the dead rise at your word, and after that the sky answers where you point.",
                 PassiveBoonIds = new[] { "hearthlight" },
                 Rungs = new[] { new[] { "shaman" }, new[] { "bonecaller" }, new[] { "wrath" } },
             },
             new ClassDefinition
             {
                 Id = "berserker", Display = "Berserker", Title = "Ulfr",
-                Description = "Axe, sword and club come easily to you: a sweep that bleeds, a rage that costs, and a cry that staggers.",
+                Description = "Axe, sword and club sit better in your hand. You strike all round you. Later " +
+                              "you can rage — hit harder, and take more — and after that your cry staggers everything that hears it.",
                 PassiveBoonIds = new[] { "warrior" },
                 Rungs = new[] { new[] { "rend" }, new[] { "rage" }, new[] { "warcry" } },
             },

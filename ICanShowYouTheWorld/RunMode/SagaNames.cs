@@ -70,6 +70,12 @@ namespace ICanShowYouTheWorld.RunMode
         public const string ThjalfiFound = "ThjalfiFound";
         public const string ThjalfiPaid = "ThjalfiPaid";
 
+        /// <summary>
+        /// The thane, first spoken to. Reported on SPEAKING, not on choosing a way, so that
+        /// declining one never stalls the HEARTH chain behind him.
+        /// </summary>
+        public const string ThaneFound = "ThaneFound";
+
         public const string BowKillsStat = "SagaThorsBowKills";
         public const string StormAnswersStat = "SagaStormwardAnswers";
 

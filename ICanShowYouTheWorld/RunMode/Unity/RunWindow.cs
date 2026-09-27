@@ -118,6 +118,9 @@ namespace ICanShowYouTheWorld.RunMode
         private const float GmPageHeight = 460f;
         private const float OfferWidth = 460f;
         private const float OfferHeight = 200f;
+
+        /// <summary>THE WAY card: the offer window, taller for three paragraphs instead of three lines.</summary>
+        private const float WayCardHeight = 340f;
         private const float StripWidth = 300f;
         private const float StripHeight = 24f;
 
@@ -515,7 +518,10 @@ namespace ICanShowYouTheWorld.RunMode
                     UpdateHeatPulse(run.Heat);
                     UpdateCompletionFlashes(run.Challenges);
                     UpdateQuestFlash(run.Challenges);
-                    UpdateOfferFadeState(run.Boons?.CurrentOffer?.Count ?? 0);
+                    // THE WAY card shares the offer's window and its fade: three choices either way.
+                    UpdateOfferFadeState(run.ClassChoicePending
+                        ? (run.Classes?.Count ?? 0)
+                        : (run.Boons?.CurrentOffer?.Count ?? 0));
 
                     // The strip is the one piece that survives with the rest of the UI hidden.
                     DrawStrip(run, viewWidth);
@@ -565,7 +571,8 @@ namespace ICanShowYouTheWorld.RunMode
                     }
 
                     var boons = run.Boons;
-                    if (boons != null && boons.CurrentOffer.Count > 0)
+                    bool wayCard = run.ClassChoicePending && (run.Classes?.Count ?? 0) > 0;
+                    if (wayCard || (boons != null && boons.CurrentOffer.Count > 0))
                     {
                         // Fade-in: alpha is a pure function of (now - _offerShownAt), a value only
                         // ever written at a Layout event above — so Layout and Repaint of the same
@@ -576,8 +583,11 @@ namespace ICanShowYouTheWorld.RunMode
                         GUI.color = new Color(1f, 1f, 1f, alpha);
                         try
                         {
-                            _offerRect = GUILayout.Window(OfferWindowId, _offerRect, DrawOffer, GUIContent.none, RunTheme.Panel,
-                                GUILayout.Width(OfferWidth), GUILayout.Height(OfferHeight));
+                            // Taller for THE WAY: each card carries a paragraph in the thane's voice
+                            // where a boon carries a line. Same width, same place, same fade.
+                            _offerRect = GUILayout.Window(OfferWindowId, _offerRect, wayCard ? (GUI.WindowFunction)DrawWayCard : DrawOffer,
+                                GUIContent.none, RunTheme.Panel,
+                                GUILayout.Width(OfferWidth), GUILayout.Height(wayCard ? WayCardHeight : OfferHeight));
                         }
                         finally
                         {
@@ -2717,6 +2727,52 @@ namespace ICanShowYouTheWorld.RunMode
                     RunTheme.Small);
                 if (!string.IsNullOrEmpty(offer[i].Description))
                     GUILayout.Label(offer[i].Description, RunTheme.Body);
+                GUILayout.EndVertical();
+            }
+            GUILayout.EndHorizontal();
+
+            GUILayout.FlexibleSpace();
+            GUILayout.Label("press Keypad 1/2/3", RunTheme.Small);
+        }
+
+        // --- THE WAY (display only; picks are handled in RunService.HandleBoonOfferInput) ---
+
+        private void DrawWayCard(int id)
+        {
+            try { DrawWayCardBody(); }
+            catch (Exception ex) { LogOnce("way-card", ex); }
+
+            GUI.DragWindow();
+        }
+
+        /// <summary>
+        /// The thane's three graves, drawn as the boon offer draws its three boons: numbered, side
+        /// by side, one key each. The same card on purpose - the player already knows how to read
+        /// it and which keys answer it.
+        /// </summary>
+        private void DrawWayCardBody()
+        {
+            var classes = Service?.Classes;
+            if (classes == null) return;
+
+            GUILayout.Label("THE WAY", RunTheme.Header);
+
+            GUILayout.BeginHorizontal();
+            for (int i = 0; i < classes.Count && i < 3; i++)
+            {
+                var cls = classes[i];
+                GUILayout.BeginVertical(GUILayout.Width(OfferWidth / 3f - 12f));
+
+                GUILayout.BeginHorizontal();
+                GUI.contentColor = RunTheme.AccentGold;
+                GUILayout.Label($"{i + 1}", RunTheme.Header, GUILayout.Width(20f));
+                GUI.contentColor = Color.white;
+                GUILayout.Label(cls.Display, RunTheme.Header);
+                GUILayout.EndHorizontal();
+
+                GUILayout.Label("the way of " + cls.Title, RunTheme.Small);
+                if (!string.IsNullOrEmpty(cls.Description))
+                    GUILayout.Label(cls.Description, RunTheme.Body);
                 GUILayout.EndVertical();
             }
             GUILayout.EndHorizontal();

@@ -7,7 +7,7 @@ note on how finished it is.
 > step and target is read out of the source, so the page cannot drift from the code. The prose
 > (epigraphs, chapters, status) lives in the generator.
 
-`101` quest steps &middot; `8` acts &middot; `1` played through &middot; `5` tracks in use
+`102` quest steps &middot; `8` acts &middot; `1` played through &middot; `5` tracks in use
 
 ## How to read a lane
 
@@ -87,7 +87,7 @@ both Thor's bow and the Storm-Anvil appear at all.
 
 ### Act I &mdash; The Stolen Light
 
-`Written & played` &middot; `39 steps` &middot; `3 tracks`
+`Written & played` &middot; `40 steps` &middot; `3 tracks`
 
 > *Something is taking the light from the meadows. Take it back.*
 
@@ -101,16 +101,17 @@ You came ashore alive, which nothing in this world had managed in an age, and th
 | 4 | Keep a watch after dark `3` | Upgrade the workbench (2) `2` | Build a cooking station |
 | 5 | Follow the pale light | Find the hunter’s shade | Sit down to a proper meal `3` |
 | 6 | Take back their light (5) `5` | Bring the shade what it lacked | Build a bed and claim it |
-| 7 | Put down the Breaker | Find the one who waits | Settle in (2 min at home) `120` |
-| 8 | Hunt Eikthyr's Herald | Pay Thjalfi, and stand back | Sleep through the night |
-| 9 | Kill the Gatherer | Strike Thor’s bow at the Storm-Anvil | Make it comfortable (comfort 5) `5` |
-| 10 | Find Eikthyr's altar | Bind the Stormward | Build a chest |
-| 11 | **Defeat Eikthyr** | Let the Stormward answer (3) `3` | Catch your first fish |
-| 12 |  | Stand out in his weather | A good haul (5 fish) `5` |
-| 13 |  |  | Tame a boar |
-| 14 |  |  | Fishing skill 10 `10` |
-| 15 |  |  | A fisherman's larder (5 cooked) `5` |
-| 16 |  |  | A pen of three `3` |
+| 7 | Put down the Breaker | Find the one who waits | Speak with the one at the graves |
+| 8 | Hunt Eikthyr's Herald | Pay Thjalfi, and stand back | Settle in (2 min at home) `120` |
+| 9 | Kill the Gatherer | Strike Thor’s bow at the Storm-Anvil | Sleep through the night |
+| 10 | Find Eikthyr's altar | Bind the Stormward | Make it comfortable (comfort 5) `5` |
+| 11 | **Defeat Eikthyr** | Let the Stormward answer (3) `3` | Build a chest |
+| 12 |  | Stand out in his weather | Catch your first fish |
+| 13 |  |  | A good haul (5 fish) `5` |
+| 14 |  |  | Tame a boar |
+| 15 |  |  | Fishing skill 10 `10` |
+| 16 |  |  | A fisherman's larder (5 cooked) `5` |
+| 17 |  |  | A pen of three `3` |
 
 **Chapter ends.** Eikthyr came down onto stones his own herd had paid for, and went out. The forest went on being hungry. Nobody had yet asked where it had been carrying everything it took.
 

@@ -434,5 +434,36 @@ namespace ICanShowYouTheWorld.RunMode
             LightIntensity = 1.4f,
             ScaleMultiplier = 1.2f,
         };
+
+        /// <summary>
+        /// The thane: earth and moss, dim, and the size of a man.
+        /// </summary>
+        /// <remarks>
+        /// The third ghost has to read as a third PERSON, and the other two have taken the obvious
+        /// axes. The shade is cold - blue, drained (Saturation -0.6), a thing seen after dark. Thjalfi
+        /// is gold, bright (Value +0.35) and scaled up because he has a name. So the thane goes the
+        /// other way on each: colour kept rather than drained, the body DARKER than untouched rather
+        /// than lighter, and the glow a low green-brown like turned earth under moss - somebody who
+        /// has spent an age at a graveside, not somebody lit by what he tends.
+        ///
+        /// Normal size on purpose. He has no name of his own; the Gatherer and Thjalfi are scaled
+        /// because a named thing should stand above the unnamed, and he is the one who keeps other
+        /// people's names instead.
+        ///
+        /// He stands by DAY, so the point light does almost nothing in the open and is kept small:
+        /// it is there for dusk and for the shadow of trees, not as a beacon.
+        ///
+        /// No Hue offset, like the other two ghosts: which way a rotation turns the Ghost's own pale
+        /// base has never been seen in play, and the emission alone carries the colour reliably.
+        /// </remarks>
+        public static Look Thane() => new Look
+        {
+            Saturation = -0.1f,
+            Value = -0.1f,
+            Emission = new Color(0.30f, 0.42f, 0.18f),
+            LightRange = 5f,
+            LightColor = new Color(0.62f, 0.74f, 0.42f),
+            LightIntensity = 0.8f,
+        };
     }
 }

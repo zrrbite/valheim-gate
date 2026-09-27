@@ -85,6 +85,10 @@ namespace ICanShowYouTheWorld.RunMode
         public static bool ThjalfiPayment(IReadOnlyList<QuestTrack> tracks) =>
             Live(tracks).Any(d => d.Kind == ChallengeKind.PlayerEvent && d.Param == SagaNames.ThjalfiPaid);
 
+        /// <summary>The thane is to be FOUND: his step is in play. Keyed on the event, like the others.</summary>
+        public static bool Thane(IReadOnlyList<QuestTrack> tracks) =>
+            Live(tracks).Any(d => d.Kind == ChallengeKind.PlayerEvent && d.Param == SagaNames.ThaneFound);
+
         /// <summary>
         /// A step is DONE when some track has moved past it: its chain holds the id at a position
         /// below the track's index. Absent from every chain is not done — an act that dropped the
