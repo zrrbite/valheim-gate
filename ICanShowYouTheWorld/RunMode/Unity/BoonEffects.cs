@@ -85,6 +85,67 @@ namespace ICanShowYouTheWorld.RunMode
         private const string CompanionPrefab = "Wolf";
         private const string BonePrefab = "Skeleton";
 
+        // --- The ways' actives (classes, phase 2) ---
+        //
+        // The descriptions in RunService.DefaultBoons state the radii, the duration and "half again",
+        // so those numbers are the card's as much as this class's; change one, change both.
+
+        /// <summary>Blood Rage's gain: "half again the damage", on the same product Sharpened rides.</summary>
+        private const float RageMultiplier = 1.5f;
+
+        /// <summary>Blood Rage's window: "fifteen seconds". Short, because the cost only lasts as long.</summary>
+        private const float RageSeconds = 15f;
+
+        /// <summary>Rend reaches what a sweep of a blade reaches — about a spear's length and a step.</summary>
+        private const float RendRadius = 5f;
+
+        /// <summary>Rend's cut, before boss scaling: about one early sword swing, spent on everyone at once.</summary>
+        private const float RendSlash = 20f;
+
+        /// <summary>Rend's bleed, before boss scaling. Poison, because RPC_Damage hands it to the game's
+        /// own SE_Poison as a damage-over-time — the bleed costs no status effect of ours.</summary>
+        private const float RendPoison = 15f;
+
+        /// <summary>Warcry's reach: "eight metres", a shout rather than a swing.</summary>
+        private const float WarcryRadius = 8f;
+
+        /// <summary>Thor's Wrath's blast: "six metres" around where it lands.</summary>
+        private const float WrathRadius = 6f;
+
+        /// <summary>Wrath's lightning, before boss scaling. Above the Stormward's 26 per discharge
+        /// because it is a sixty-second cooldown the player aims, not a block every few seconds.</summary>
+        private const float WrathLightning = 40f;
+
+        /// <summary>A little over the default 1: lightning already counts toward stagger in the IL
+        /// (GetTotalStaggerDamage), and this is a spell, not a Warcry.</summary>
+        private const float WrathStaggerMultiplier = 1.5f;
+
+        /// <summary>How far the aim ray looks: bow range, roughly — further and the strike lands
+        /// somewhere the player cannot see well enough to have meant it.</summary>
+        private const float WrathAimRange = 40f;
+
+        /// <summary>Where the strike lands when the aim ray finds nothing: a few steps ahead.</summary>
+        private const float WrathFallbackDistance = 8f;
+
+        /// <summary>Eitr for one Wrath, in the band a Mistlands staff charges per cast.</summary>
+        private const float WrathEitr = 25f;
+
+        /// <summary>Stamina for one Wrath when the player has no eitr — which is every act before the
+        /// Mistlands, since eitr only exists while eitr food is eaten. About a power attack.</summary>
+        private const float WrathStamina = 30f;
+
+        /// <summary>How long the borrowed flash is allowed to stand before it is taken down. See
+        /// SpawnWrathFlash for why its lifetime is ours rather than the prefab's.</summary>
+        private const float WrathFlashSeconds = 4f;
+
+        /// <summary>
+        /// Rend and Wrath grow a quarter per boss felled, capped at triple — the companion-level idea
+        /// (CompanionLevel) in damage: a Meadows swing would be a rounding error on a Plains Fuling,
+        /// and an uncapped scale is how a late-game cooldown becomes a screen wipe.
+        /// </summary>
+        private const float ClassDamagePerBoss = 0.25f;
+        private const float ClassDamageMaxScale = 3f;
+
         /// <summary>
         /// How many summoned companions may stand at once, across ALL summoning boons.
         ///
@@ -269,15 +330,24 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         private readonly Action<string, int> _grantItem;
 
+        /// <summary>
+        /// The lightning effect prefab the Stormward and Thor's bow already resolve — SagaItems owns
+        /// the candidate list and the log line saying which name won, so Wrath borrows the answer
+        /// rather than keeping a second list that could disagree with the first. May return null
+        /// (no scene yet, or no candidate resolved); Wrath then strikes without a flash.
+        /// </summary>
+        private readonly Func<GameObject> _lightningFx;
+
         public BoonEffects(Func<IReadOnlyList<HeldBoon>> heldBoons, Func<IEnumerable<string>> undefeatedBossLocations,
             Func<int> defeatedBossCount = null, Action<Skills.SkillType, float> loanSkill = null,
-            Action<string, int> grantItem = null)
+            Action<string, int> grantItem = null, Func<GameObject> lightningFx = null)
         {
             _heldBoons = heldBoons ?? (() => Array.Empty<HeldBoon>());
             _undefeatedBossLocations = undefeatedBossLocations ?? (() => Enumerable.Empty<string>());
             _defeatedBossCount = defeatedBossCount ?? (() => 0);
             _loanSkill = loanSkill ?? ((_, __) => { });
             _grantItem = grantItem ?? ((_, __) => { });
+            _lightningFx = lightningFx ?? (() => null);
         }
 
         // --- Public surface (RunService's boon seams) ---
@@ -429,6 +499,13 @@ namespace ICanShowYouTheWorld.RunMode
                     RemoveWeaponMultiplier(boonId);
                     break;
 
+                case "rage":
+                    // Losing Blood Rage mid-window (a death, most likely) takes the whole window
+                    // with it: the pending off, the damage and the cost. Nothing on gain matched
+                    // this — rage is an ACTIVE — so this is the only unwind besides the timer.
+                    EndRage();
+                    break;
+
                 case "shepherd":
                     try { WithLegacyGodModeBracket(() => PetBuff.ResetPetBuffs(quiet: true)); }
                     catch (Exception e) { Debug.LogWarning($"[ICanShowYouTheWorld] Shepherd reset: {e.Message}"); }
@@ -476,6 +553,10 @@ namespace ICanShowYouTheWorld.RunMode
                 case "windfall": return ActivateWindfall();
                 case "shaman": return ActivateShamanHeal();
                 case "unseen": return ActivateUnseen();
+                case "rage": return ActivateRage();
+                case "rend": return ActivateRend();
+                case "warcry": return ActivateWarcry();
+                case "wrath": return ActivateWrath();
                 default: return false;
             }
         }
@@ -512,6 +593,12 @@ namespace ICanShowYouTheWorld.RunMode
                 // the window open must not leave the player walking through a world that cannot
                 // see them.
                 ForceGhostOff();
+                // Blood Rage: the pending flush above normally ends it, and the weapon/modifier
+                // sweeps below would catch its halves anyway. Explicit so the rage window is
+                // provably closed on a path where an earlier step threw.
+                SafeInvoke(EndRage);
+                // A borrowed lightning flash still standing when the run ends goes with it.
+                SafeInvoke(TakeDownWrathFlashes);
                 // Pugilist is run baseline rather than a held boon, so the held-boon loop above
                 // never reaches it — unwind it here so weapon stamina costs always come back.
                 SafeInvoke(UnapplyPugilist);
@@ -764,13 +851,21 @@ namespace ICanShowYouTheWorld.RunMode
                 // Snapshot on first sight only. Keyed by the SHARED block rather than the ItemData
                 // instance for the reason documented on _sharpSnapshots: m_shared is per-prefab, and
                 // a fresh instance after respawn points at the same already-boosted block.
-                if (!_sharpSnapshots.TryGetValue(shared, out var original))
-                {
-                    original = DamageHelpers.Copy(shared.m_damages);
-                    _sharpSnapshots[shared] = original;
-                }
+                if (!_sharpSnapshots.ContainsKey(shared))
+                    _sharpSnapshots[shared] = DamageHelpers.Copy(shared.m_damages);
+            }
 
-                shared.m_damages = DamageHelpers.Scaled(original, product);
+            // Then write every block we have touched — the ones in hand, and the ones no longer in
+            // hand. Before Blood Rage no factor
+            // ever dropped mid-run except by losing a boon, so a weapon put away kept whatever the
+            // product was when it was last held and nobody could tell. A fifteen-second factor makes
+            // that visible: sheathe the axe mid-rage, draw it after, and the first swings before the
+            // next poll would still land at x1.5. One product for every block we have touched keeps
+            // "original times the live multipliers" true of all of them, not just the equipped ones.
+            foreach (var kvp in _sharpSnapshots)
+            {
+                if (kvp.Key == null) continue;
+                kvp.Key.m_damages = DamageHelpers.Scaled(kvp.Value, product);
             }
         }
 
@@ -833,7 +928,12 @@ namespace ICanShowYouTheWorld.RunMode
             // Reckless's cost. "Weak" is the game's own one-step-worse modifier, which is roughly
             // the stated 25% and, more importantly, is a value Valheim already balances around
             // rather than a number invented here.
-            if (_damageModBoons.Contains("reckless"))
+            //
+            // Blood Rage pays the same price, for its fifteen seconds only. It is not a separate
+            // modifier because there is no separate armour to put it on: one struct, one snapshot,
+            // and both claims collapse to the same Weak — holding Reckless and raging at once costs
+            // no more than either, which is the honest reading of "one step worse".
+            if (_damageModBoons.Contains("reckless") || _damageModBoons.Contains("rage"))
             {
                 mods.m_blunt = HitData.DamageModifier.Weak;
                 mods.m_slash = HitData.DamageModifier.Weak;
@@ -1209,6 +1309,395 @@ namespace ICanShowYouTheWorld.RunMode
 
             held.CooldownRemaining = held.Def.CooldownSeconds;
             return true;
+        }
+
+        // --- The ways' actives: Blood Rage, Rend, Warcry, Thor's Wrath ---
+
+        /// <summary>
+        /// Blood Rage: the Emberskin shape — switch on, schedule the off — carried by the weapon
+        /// multiplier product and the damage-modifier snapshot, both of which already know how to
+        /// give back exactly what they took.
+        ///
+        /// Discrete rather than per-frame on purpose. The boon design turned down "damage rises as
+        /// health falls" because it would be a number moving every frame against the player's own
+        /// health; fifteen seconds you chose to start is a decision, and a readable one.
+        ///
+        /// Recasting is refused while the window is open, like Emberskin and Unseen: a recast that
+        /// merely restarted the timer would waste the cooldown for nothing the player could see.
+        /// </summary>
+        private bool ActivateRage()
+        {
+            var held = FindHeld("rage");
+            if (held == null || held.CooldownRemaining > 0f) return false;
+
+            if (_weaponMultipliers.ContainsKey("rage"))
+            {
+                LastActivationMessage = "The rage is already on you.";
+                return false;
+            }
+
+            if (Player.m_localPlayer == null) return false;
+
+            try
+            {
+                // The cost first, then the gain: if the second half throws, EndRage below unwinds
+                // whichever half landed, and the player is never left with the damage but not the
+                // price.
+                ApplyDamageModifier("rage");
+                ApplyWeaponMultiplier(RageMultiplier, "rage");
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[ICanShowYouTheWorld] Blood Rage failed: " + ex.Message);
+                SafeInvoke(EndRage);
+                return false;
+            }
+
+            RemovePending("rage");
+            SchedulePending("rage", RageSeconds, EndRage);
+
+            held.CooldownRemaining = held.Def.CooldownSeconds;
+            return true;
+        }
+
+        /// <summary>
+        /// Closes the rage window: the pending timer, the weapon factor, and the cost. Idempotent —
+        /// each half is a no-op when it has nothing registered — because it is reached from the
+        /// timer, from Unapply, from the pending flush and from UnapplyAll's finally, and on a bad
+        /// day from more than one of them.
+        /// </summary>
+        private void EndRage()
+        {
+            RemovePending("rage");
+            try { RemoveWeaponMultiplier("rage"); }
+            finally { UnapplyDamageModifier("rage"); }
+        }
+
+        /// <summary>
+        /// Rend: one sweep around the player, a cut and a bleed on everything hostile in reach.
+        ///
+        /// Built as a HitData and delivered through Character.Damage, never by writing health: the
+        /// attacker is set, so the hit goes through RPC_Damage's own path — resistances, the
+        /// "attacked by a player" bookkeeping, aggravation, the enemy-hit stat. The poison half is
+        /// what the game turns into SE_Poison by itself (RPC_Damage zeroes it off the hit and calls
+        /// AddPoisonDamage), so the bleed is the game's damage-over-time, not a status of ours.
+        ///
+        /// A sweep that finds nobody refuses rather than firing: a twenty-second cooldown spent on
+        /// empty air is a punishment for pressing the key early, and it tells the player nothing.
+        /// </summary>
+        private bool ActivateRend()
+        {
+            var held = FindHeld("rend");
+            if (held == null || held.CooldownRemaining > 0f) return false;
+
+            var player = Player.m_localPlayer;
+            if (player == null) return false;
+
+            try
+            {
+                var foes = HostilesNear(player.transform.position, RendRadius, player, skipBosses: false);
+                if (foes.Count == 0)
+                {
+                    LastActivationMessage = "Nothing within reach.";
+                    return false;
+                }
+
+                float scale = ClassDamageScale();
+                Vector3 from = player.transform.position;
+                foreach (var c in foes)
+                {
+                    var hit = new HitData();
+                    hit.m_damage.m_slash = RendSlash * scale;
+                    hit.m_damage.m_poison = RendPoison * scale;
+                    AimHit(hit, c, from, player);
+                    DamageOne(c, hit, "Rend");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[ICanShowYouTheWorld] Rend failed: " + ex.Message);
+                return false;
+            }
+
+            held.CooldownRemaining = held.Def.CooldownSeconds;
+            return true;
+        }
+
+        /// <summary>
+        /// Warcry: CheatCommands.StaggerAoE's shape, aimed. The direction is away from the player —
+        /// RPC_Stagger turns the target to face AGAINST the force, so every staggered foe ends up
+        /// looking at the one who shouted, which is the picture a warcry should leave.
+        ///
+        /// Bosses are skipped, as the card says ("Not the gods"), and for a reason the card does not:
+        /// RPC_Stagger does nothing but set an animator trigger, and a boss's animator may have no
+        /// "stagger" state to go to. The game staggers bosses through accumulated stagger damage,
+        /// which knows about them; this path does not.
+        /// </summary>
+        private bool ActivateWarcry()
+        {
+            var held = FindHeld("warcry");
+            if (held == null || held.CooldownRemaining > 0f) return false;
+
+            var player = Player.m_localPlayer;
+            if (player == null) return false;
+
+            try
+            {
+                var foes = HostilesNear(player.transform.position, WarcryRadius, player, skipBosses: true);
+                if (foes.Count == 0)
+                {
+                    LastActivationMessage = "Nothing within earshot to cow.";
+                    return false;
+                }
+
+                Vector3 from = player.transform.position;
+                foreach (var c in foes)
+                {
+                    try { c.Stagger(AwayFrom(from, c)); }
+                    catch (Exception ex) { Debug.LogWarning("[ICanShowYouTheWorld] Warcry: " + ex.Message); }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[ICanShowYouTheWorld] Warcry failed: " + ex.Message);
+                return false;
+            }
+
+            held.CooldownRemaining = held.Def.CooldownSeconds;
+            return true;
+        }
+
+        /// <summary>
+        /// Thor's Wrath: lightning where the player is looking. The mod's first lightning HitData —
+        /// everything else that strikes with lightning (the Stormward, the bow) borrows a weapon's
+        /// attack and lets the game build the hit.
+        ///
+        /// The order is: find the point, find the foes, pay, strike, flash. Foes before cost so a
+        /// strike at empty ground refuses without charging anything (the same rule Rend follows);
+        /// cost before damage so a player who cannot pay gets nothing for free.
+        ///
+        /// The price is eitr when the player has enough of it and stamina otherwise. Eitr has no
+        /// base value in the IL — it exists only while eitr food is eaten — so an eitr-only spell
+        /// would be dead for every act before the Mistlands; stamina keeps it castable from the
+        /// first rung, and eitr takes over once the player has some to give.
+        /// </summary>
+        private bool ActivateWrath()
+        {
+            var held = FindHeld("wrath");
+            if (held == null || held.CooldownRemaining > 0f) return false;
+
+            var player = Player.m_localPlayer;
+            if (player == null) return false;
+
+            try
+            {
+                Vector3 point = WrathAimPoint(player);
+
+                var foes = HostilesNear(point, WrathRadius, player, skipBosses: false);
+                if (foes.Count == 0)
+                {
+                    LastActivationMessage = "Nothing there for the lightning.";
+                    return false;
+                }
+
+                if (player.HaveEitr(WrathEitr)) player.UseEitr(WrathEitr);
+                else if (player.HaveStamina(WrathStamina)) player.UseStamina(WrathStamina);
+                else
+                {
+                    LastActivationMessage = "You have not the strength to call it down.";
+                    return false;
+                }
+
+                float scale = ClassDamageScale();
+                foreach (var c in foes)
+                {
+                    var hit = new HitData();
+                    hit.m_damage.m_lightning = WrathLightning * scale;
+                    hit.m_staggerMultiplier = WrathStaggerMultiplier;
+                    AimHit(hit, c, point, player);
+                    DamageOne(c, hit, "Thor's Wrath");
+                }
+
+                SpawnWrathFlash(point);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[ICanShowYouTheWorld] Thor's Wrath failed: " + ex.Message);
+                return false;
+            }
+
+            held.CooldownRemaining = held.Def.CooldownSeconds;
+            return true;
+        }
+
+        /// <summary>
+        /// Where the player is looking, out to <see cref="WrathAimRange"/>: the nearest solid thing on
+        /// the camera's forward ray that is not the player.
+        ///
+        /// GameCamera rather than the GM mod's Camera.main.ScreenPointToRay(Input.mousePosition):
+        /// in play the cursor is locked to the centre anyway, but the GM helpers are written for a
+        /// free cursor and a menu, and the camera's own forward is the crosshair without asking.
+        /// RaycastAll, sorted, because the camera sits behind the player in third person and the
+        /// first thing its ray meets is very often the player's own collider.
+        /// </summary>
+        private static Vector3 WrathAimPoint(Player player)
+        {
+            Vector3 fallback = player.transform.position + player.transform.forward * WrathFallbackDistance;
+
+            var cam = GameCamera.instance;
+            if (cam == null) return fallback;
+
+            int mask = LayerMask.GetMask("Default", "static_solid", "Default_small", "piece", "terrain",
+                "vehicle", "character", "character_net", "character_ghost", "character_noenv", "hitbox");
+
+            var origin = cam.transform.position;
+            var hits = Physics.RaycastAll(origin, cam.transform.forward, WrathAimRange, mask,
+                QueryTriggerInteraction.Ignore);
+            if (hits == null || hits.Length == 0) return fallback;
+
+            Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+            foreach (var h in hits)
+            {
+                if (h.collider == null) continue;
+                var ch = h.collider.GetComponentInParent<Character>();
+                if (ch != null && ReferenceEquals(ch, player)) continue;
+                return h.point;
+            }
+            return fallback;
+        }
+
+        /// <summary>
+        /// Everything within <paramref name="radius"/> of <paramref name="centre"/> that a class
+        /// active may hurt: not a player, not tamed (which spares the player's own companions and
+        /// the saga's tamed speakers), not already dead, and — for Warcry — not a boss.
+        /// </summary>
+        private static List<Character> HostilesNear(Vector3 centre, float radius, Player player, bool skipBosses)
+        {
+            var list = new List<Character>();
+            Character.GetCharactersInRange(centre, radius, list);
+
+            var foes = new List<Character>();
+            foreach (var c in list)
+            {
+                if (c == null || ReferenceEquals(c, player)) continue;
+                if (c.IsPlayer() || c.IsTamed() || c.IsDead()) continue;
+                if (skipBosses && c.IsBoss()) continue;
+                foes.Add(c);
+            }
+            return foes;
+        }
+
+        /// <summary>The hit's geometry and author: at the target's centre, pushing away from the
+        /// source, and the player's — so kills, aggravation and stats follow the normal path.</summary>
+        private static void AimHit(HitData hit, Character target, Vector3 source, Player player)
+        {
+            hit.m_point = target.GetCenterPoint();
+            hit.m_dir = AwayFrom(source, target);
+            hit.SetAttacker(player);
+        }
+
+        /// <summary>Flat direction from a point to a character; forward when they stand on it.</summary>
+        private static Vector3 AwayFrom(Vector3 source, Character target)
+        {
+            Vector3 d = target.transform.position - source;
+            d.y = 0f;
+            return d.sqrMagnitude > 0.0001f ? d.normalized : target.transform.forward;
+        }
+
+        /// <summary>One target's hit, isolated so a single bad target cannot rob the rest of theirs.</summary>
+        private static void DamageOne(Character c, HitData hit, string what)
+        {
+            try { c.Damage(hit); }
+            catch (Exception ex) { Debug.LogWarning($"[ICanShowYouTheWorld] {what}: hit failed: {ex.Message}"); }
+        }
+
+        private float ClassDamageScale() =>
+            Mathf.Min(ClassDamageMaxScale, 1f + ClassDamagePerBoss * Mathf.Max(0, _defeatedBossCount()));
+
+        /// <summary>Flashes standing now, so a run ending mid-flash can take them down.</summary>
+        private readonly List<GameObject> _wrathFlashes = new List<GameObject>();
+        private bool _wrathFlashLogged;
+
+        /// <summary>
+        /// The Stormward's lightning, borrowed as a picture only.
+        ///
+        /// The candidate list SagaItems resolves includes "lightningAOE", and an Aoe on that prefab
+        /// would do damage of its own when spawned: bare, with no Setup call, it has no owner — so
+        /// nothing exempts the player, nothing exempts their wolves, and nobody is credited. Every
+        /// Aoe on the instance is therefore disabled (which drops it from the game's updater list in
+        /// OnDisable, before any fixed update can run it) and destroyed, and what remains is effects.
+        ///
+        /// With the Aoe gone, so is whatever TTL it was carrying, so the flash's lifetime is ours: a
+        /// pending entry takes it down after <see cref="WrathFlashSeconds"/>. Through ZNetScene when
+        /// it has a network view, because a bare Object.Destroy leaves the ZDO behind and ZNetScene
+        /// recreates objects for ZDOs that have none — from the PREFAB, Aoe and all. It is also made
+        /// non-persistent at once, so it can never be saved into the world.
+        /// </summary>
+        private void SpawnWrathFlash(Vector3 point)
+        {
+            GameObject fx = null;
+            try { fx = _lightningFx(); }
+            catch (Exception ex) { Debug.LogWarning("[ICanShowYouTheWorld] Thor's Wrath: lightning lookup failed: " + ex.Message); }
+
+            bool hadAoe = fx != null && fx.GetComponentsInChildren<Aoe>(true).Length > 0;
+            if (!_wrathFlashLogged)
+            {
+                _wrathFlashLogged = true;
+                Debug.Log(fx == null
+                    ? "[ICanShowYouTheWorld] Thor's Wrath: no lightning prefab resolved; it strikes without a flash."
+                    : $"[ICanShowYouTheWorld] Thor's Wrath flash: '{fx.name}'" +
+                      (hadAoe ? " (carries an Aoe; stripped from each instance)." : "."));
+            }
+            if (fx == null) return;
+
+            GameObject inst = null;
+            try
+            {
+                inst = UnityEngine.Object.Instantiate(fx, point, Quaternion.identity);
+                if (inst == null) return;
+
+                foreach (var aoe in inst.GetComponentsInChildren<Aoe>(true))
+                {
+                    aoe.enabled = false;
+                    UnityEngine.Object.Destroy(aoe);
+                }
+
+                var view = inst.GetComponent<ZNetView>();
+                var zdo = (view != null && view.IsValid()) ? view.GetZDO() : null;
+                if (zdo != null) zdo.Persistent = false;
+
+                _wrathFlashes.Add(inst);
+                var flash = inst;
+                SchedulePending("wrath-flash-" + inst.GetInstanceID(), WrathFlashSeconds, () => TakeDownWrathFlash(flash));
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[ICanShowYouTheWorld] Thor's Wrath flash failed: " + ex.Message);
+                if (inst != null) TakeDownWrathFlash(inst);
+            }
+        }
+
+        private void TakeDownWrathFlash(GameObject go)
+        {
+            _wrathFlashes.Remove(go);
+
+            // Unity's ==: the effect may have destroyed itself already, and then there is nothing
+            // left to take down.
+            if (go == null) return;
+
+            try
+            {
+                var view = go.GetComponent<ZNetView>();
+                if (view != null && view.GetZDO() != null && ZNetScene.instance != null) ZNetScene.instance.Destroy(go);
+                else UnityEngine.Object.Destroy(go);
+            }
+            catch (Exception ex) { Debug.LogWarning("[ICanShowYouTheWorld] Thor's Wrath flash cleanup: " + ex.Message); }
+        }
+
+        private void TakeDownWrathFlashes()
+        {
+            foreach (var go in _wrathFlashes.ToList()) TakeDownWrathFlash(go);
+            _wrathFlashes.Clear();
         }
 
         private bool ActivateWay()

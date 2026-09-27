@@ -1919,7 +1919,12 @@ namespace ICanShowYouTheWorld.RunMode
 
         private const float AltarPollSeconds = 3f;
 
-        private GameObject Lightning()
+        /// <summary>
+        /// The resolved lightning effect prefab, or null. Internal because Thor's Wrath borrows it
+        /// (through RunService, as BoonEffects' lightningFx): one candidate list and one log line
+        /// saying which name won, rather than a second list that could resolve differently.
+        /// </summary>
+        internal GameObject Lightning()
         {
             if (_lightningResolved && _lightning != null) return _lightning;
 

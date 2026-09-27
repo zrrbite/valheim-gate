@@ -374,7 +374,8 @@ namespace ICanShowYouTheWorld.RunMode
             // _boons doesn't exist yet at construction time — captured by reference, resolved
             // lazily whenever BoonEffects actually needs the held set.
             _boonEffects = new BoonEffects(
-                () => _boons?.Held, UndefeatedBossLocations, DefeatedBossCount, LoanSkill, GrantItem);
+                () => _boons?.Held, UndefeatedBossLocations, DefeatedBossCount, LoanSkill, GrantItem,
+                lightningFx: _items.Lightning);
             ApplyBoonEffect = _boonEffects.Apply;
             UnapplyBoonEffect = _boonEffects.Unapply;
             UnapplyAllBoonEffects = _boonEffects.UnapplyAll;
@@ -5701,7 +5702,14 @@ namespace ICanShowYouTheWorld.RunMode
                 if (bosses <= _classAnnouncedAt || !ClassDue().Any()) return;
 
                 _classAnnouncedAt = bosses;
-                Message("The one at the graves has more to teach.");
+
+                // Hugin, not a centre-screen line: a rung coming due is news from outside the
+                // fight that just ended, and the raven is who carries that kind. Keyed by the boss
+                // count so each threshold gets its own line (and the run-seed scoping in
+                // TrySpawnRaven lets the next run hear it again). No raven, no staging — the line
+                // still goes out, plainly.
+                const string line = "The one at the graves has more to teach you.";
+                if (!TrySpawnRaven($"class-rung-{bosses}", line)) Message(line);
             }
             catch (Exception ex) { LogOnce("class-rung", ex); }
         }
