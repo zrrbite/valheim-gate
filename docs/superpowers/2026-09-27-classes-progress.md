@@ -95,5 +95,17 @@ Verdict: _pending_
 
 ## Phase 4 — docs, atlas, tag
 
-- [ ] RESUME.md, CLAUDE.md keys, DEV-MODE.md, story bible glossary, HANDOFF TASK, atlas regenerated.
-- [ ] Tag, release build, install.
+- [x] RESUME.md, CLAUDE.md keys, DEV-MODE.md, story bible glossary, HANDOFF TASKs, atlas regenerated
+      and republished (shipped with Milestone 3, `...27c`).
+- [x] Tags, release builds, installs — one per milestone.
+
+## Follow-up — the general pool refilled (`1.0.16-run.2026-09-27d`, commit `4a1de8f`)
+
+Staged while the owner was testing; **not installed** until the game is closed
+(`.\dist\windows\Install-Mod.ps1 -ModOnly`). Nine general boons bring the pool back to 30: Miner,
+Wayfarer, Steady Hands (skill loans); Thick-skinned, Hardshell (resistances); Kindling (heat);
+Stoker (risk); Mending Hands on `Keypad+` and Farsight on `Keypad-` (actives, deliberately not
+loans). Found on the way and fixed: a risk boon's `Weak` no longer deletes a held resistance, and
+an active's success line is now shown. Play list in `HANDOFF_WINDOWS.md` under `...27d`.
+
+Verdict: _pending_

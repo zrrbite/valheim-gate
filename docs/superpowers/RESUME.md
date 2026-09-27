@@ -22,8 +22,8 @@ Everything below is what that file tells it.
 - **2026-09-27: the game is 1.0.16** (no source change, Unity still 6000.0.75) and **the class
   plan is in progress, in milestones** — read `2026-09-27-classes-progress.md` for how far it has
   got and what is waiting on a play verdict, and `specs/2026-09-27-classes-design.md` for why it
-  is shaped the way it is. Latest tag `1.0.16-run.2026-09-27b` (Milestones 1 and 2: classes as boons and the four
-  new abilities; a dev key picks the way, no trainer yet). Keypad7/0/Ins are now the three class rungs; the key notes
+  is shaped the way it is. Latest tag `1.0.16-run.2026-09-27d` (Milestones 1-3: classes as boons, the four new
+  abilities, the thane; plus the pool refilled to 30 - staged, not yet installed). Keypad7/0/Ins are now the three class rungs; the key notes
   further down this file that name Shaman's Mercy on Keypad+ are stale until Phase 4.
 - Branch **`feature/run-mode`**, not merged, deliberately — the mode is still
   being tuned in play.
@@ -579,19 +579,26 @@ went from 10 to 14 across the two.
 move stamina ×0.5, stamina regen ×2.5, all stamina costs ×0.75, free melee and
 tools (ranged pays 25%), and the Hunter's Eye tracker panel.
 
-**21 general boons** (30 until 2026-09-27, when nine moved into the WAYS — see below), never
-offering one already held. Four general actives - `Keypad 4-6` and `8` (Second Wind, Emberskin,
-Waystone, Windfall); the rest are passives, across six kinds:
+**30 general boons** (nine moved into the WAYS on 2026-09-27 and nine new ones refilled the pool
+the same day), never offering one already held. Six general actives - `Keypad 4-6` and `8`
+(Second Wind, Emberskin, Waystone, Windfall) plus `Keypad +` and `-` (Mending Hands, Farsight);
+the rest are passives, across seven kinds:
 
 | Kind | Boons |
 |---|---|
 | Stats | Fleet-footed, Sharpened, Packmule, Hearty, **Tireless** |
-| Skills | Woodsman, **Quick Study** (skill gain ×3 on the baseline) |
+| Skills | Woodsman, Miner (Pickaxes 50, from Act II), Wayfarer (Run/Jump/Swim 50), Steady Hands (Blocking 50), **Quick Study** (skill gain ×3 on the baseline) |
 | **Rates** | **Bountiful** (resource drops ×2 on the baseline) |
-| **Resistance** | Irongut (poison), Coldblooded (frost), Fire-blooded (fire) |
+| **Resistance** | Irongut (poison), Coldblooded (frost), Fire-blooded (fire), Thick-skinned (blunt), Hardshell (pierce, from Act III) |
 | **On-kill** | Bloodthirst (heals), Relentless (stamina) |
-| **Risk** | Glass Cannon (+40% dmg, −30% HP), Reckless (+50% dmg, +25% taken) |
-| **Heat** | Slow Burn (heat rises 25% slower), Forge-fed (damage scales with heat) |
+| **Risk** | Glass Cannon (+40% dmg, −30% HP), Reckless (+50% dmg, +25% taken), Stoker (+20% dmg, heat rises 25% faster) |
+| **Heat** | Slow Burn (heat rises 25% slower), Forge-fed (damage scales with heat), Kindling (completions pay double health) |
+| Actives | Mending Hands (repair every player-built piece within 20 m), Farsight (reveal the map within 400 m) — **neither is a loan**: a repaired wall and a walked map are the character's, and the code says so |
+
+Two things the refill found (2026-09-27): Reckless and Blood Rage wrote blunt and pierce to `Weak`
+unconditionally, which would have deleted a resistance the player also held — a resisted type under
+that cost now lands on `Normal`; and an active's SUCCESS line was never shown (only the failure branch
+read `LastActivationMessage`), so Windfall, Menagerie and Bonecaller had been reporting to nobody.
 
 **The ways (2026-09-27)** are class boons: `BoonDefinition.ClassId` marks them, the wheel never
 deals them, death never takes them, and the thane grants them through `BoonEngine.Grant`. Three

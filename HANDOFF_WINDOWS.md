@@ -17,6 +17,45 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-27 - TASK: the pool refilled to 30 (`1.0.16-run.2026-09-27d`)
+
+**STAGED, NOT INSTALLED** - you were playing. When you quit: `.\dist\windows\Install-Mod.ps1 -ModOnly`.
+Then the badge reads `...27d`. Everything from the three class milestones is in it too.
+
+**What changed.** Nine general boons, back to 30 after the ways took nine:
+
+| Kind | Boon | Effect |
+|---|---|---|
+| Skills | Miner | Pickaxes to 50 (offered from Act II) |
+| Skills | Wayfarer | Run, Jump, Swim to 50 |
+| Skills | Steady Hands | Blocking to 50 |
+| Resistance | Thick-skinned | resistant to blunt |
+| Resistance | Hardshell | resistant to pierce (offered from Act III) |
+| Heat | Kindling | every completion pays +4 health instead of +2, forward only |
+| Risk | Stoker | +20% weapon damage; heat rises 25% faster |
+| Active `Keypad+` | Mending Hands | repairs every player-built piece within 20 m (180 s) |
+| Active `Keypad-` | Farsight | reveals the map within 400 m (300 s) |
+
+Also: an active's SUCCESS line now shows ("7 pieces made whole.", Windfall's count, Menagerie's
+beast). It never did before - only refusals were shown.
+
+**What to look for:**
+1. Offers draw the new ones; Miner never before Eikthyr, Hardshell never before the Elder.
+2. Mending Hands with nothing damaged: "Nothing here needs mending.", no cooldown. Break a wall,
+   press `+`: "N pieces made whole." and the wall is whole. Dungeon and fuling structures are NOT
+   repaired (player-built only).
+3. Farsight: `-` clears the fog 400 m around you; the map keeps it after a reload (deliberate, not a
+   loan).
+4. Kindling: the completion message says +4 health while held.
+5. Stoker + Slow Burn together: heat gain x0.9375 - both apply.
+6. Thick-skinned + Reckless: blunt reads Normal, not Weak, on the damage taken (a resistance is no
+   longer deleted by a risk boon).
+7. Shift/Ctrl/Alt + `+`/`-` are still the dev keys; bare `+`/`-` are the two new actives.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-09-27 - TASK: the thane at the graves, MILESTONE 3 (`1.0.16-run.2026-09-27c`)
 
 Installed here already (`-ModOnly`). Test together with Milestones 1 and 2 below. Records:
