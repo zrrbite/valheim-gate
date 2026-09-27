@@ -51,8 +51,25 @@ Verdict: _pending_
 
 ## Phase 2 — the four new effects — MILESTONE 2
 
-- [ ] `rage`, `rend`, `warcry`, `wrath` in `BoonEffects`; lightning flash via `SagaItems.Lightning()`.
-- [ ] Hugin line when a rung comes due (`PollBosses`).
+Built and installed as **`1.0.16-run.2026-09-27b`** (commit `a889ece`). The owner asked to test
+Milestones 1 and 2 together.
+
+- [p] `rage`, `rend`, `warcry`, `wrath` in `BoonEffects`; lightning flash via `SagaItems.Lightning()`
+      with its `Aoe` stripped and a 4 s removal through `ZNetScene.Destroy`.
+- [p] Hugin line when a rung comes due (`AnnounceClassRung` → `TrySpawnRaven`, once per boss count).
+
+Numbers (first picks, unplayed): Rage ×1.5 for 15 s, Weak to blunt/slash/pierce meanwhile; Rend 5 m,
+20 slash + 15 poison; Warcry 8 m, no bosses; Wrath 6 m at the aim point, 40 lightning, stagger ×1.5,
+25 eitr or 30 stamina. Rend and Wrath scale ×(1 + 0.25·bosses), capped ×3.
+
+Known: Rend's poison ticks carry no attacker, so a kill by the bleed alone may not credit the player
+(kill challenges). Neutral animals count as targets, as in `StaggerAoE`. `RefreshWeaponDamage` now
+rewrites every snapshotted weapon, not only the equipped one, so a weapon put away mid-rage does not
+keep ×1.5 — the behaviour is unchanged for boons that never switch off.
+
+**Milestone 2 — what to play**: the table and list are in `HANDOFF_WINDOWS.md` under this build.
+
+Verdict: _pending_
 
 ## Phase 3 — the thane — MILESTONE 3
 

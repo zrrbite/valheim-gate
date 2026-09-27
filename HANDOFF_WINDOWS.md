@@ -17,6 +17,41 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-27 - TASK: the four new abilities, MILESTONE 2 (`1.0.16-run.2026-09-27b`)
+
+Installed here already (`-ModOnly`). Test together with Milestone 1 below - the owner asked for
+both in one sitting. The record is `docs/superpowers/2026-09-27-classes-progress.md`.
+
+**What changed.** The four abilities that said "not ready" in Milestone 1 now work. Still no trainer
+- the dev keys pick the way (`Shift+Keypad*`) and learn every rung (`Shift+Keypad/`).
+
+| Way | Key | Ability | What it does |
+|---|---|---|---|
+| Berserker | `Keypad7` | Rend | slash + poison ("bleed") to every foe within 5 m |
+| Berserker | `Keypad0` | Blood Rage | x1.5 weapon damage for 15 s; you are Weak to blunt/slash/pierce while it lasts |
+| Berserker | `Insert` | Warcry | stagger every foe within 8 m; bosses are skipped on purpose |
+| Völva | `Insert` | Thor's Wrath | lightning on everything within 6 m of where you AIM; costs 25 eitr if you have it, else 30 stamina; a flash |
+
+Rend and Wrath scale x(1 + 0.25 per boss down), capped at x3. **All numbers are first picks.**
+
+**What to look for:**
+1. Each active with NOTHING in range must refuse with a line ("Nothing within reach." / "Nothing
+   within earshot to cow." / "Nothing there for the lightning.") and spend NO cooldown.
+2. Blood Rage: the weapon's damage on the tooltip rises while it runs, and comes back down at 15 s
+   AND if you die, quit or abandon mid-rage. Put the weapon away mid-rage and draw it again - it
+   must still read x1.5 until the rage ends, and normal after.
+3. Rend: the poison tick shows on the foe. Warcry: things flinch; a boss does not.
+4. Wrath: aim at a greydwarf pack, press `Insert`. Look for the flash; grep `Player.log` for
+   `Thor's bow lightning effect` / `Wrath` to see which prefab resolved and whether it carried an
+   Aoe (it is stripped; the flash goes after 4 s). Try with no eitr: stamina is charged.
+5. When a boss falls with a way held, Hugin (not the centre text) says "The one at the graves has
+   more to teach you." - once per boss.
+6. Abandon the run mid-rage with a flash on screen: nothing lingers, log shows the loans repaid.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-09-27 - TASK: the ways - classes as boons, MILESTONE 1 (`1.0.16-run.2026-09-27`)
 
 Installed here already (FULL install: Steam moved the game to **1.0.16** this morning, so the mod was rebuilt against it - no source change needed, every reflected member still resolves). First of four milestones for the class plan; the record of
