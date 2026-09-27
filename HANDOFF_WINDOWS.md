@@ -17,6 +17,41 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-27 - TASK: Ulfr's axes, the kit on the HUD, Homeward fixed (`1.0.16-run.2026-09-27e`)
+
+Installed here already (`-ModOnly`). This build also carries the refilled pool (`...27d`, never
+installed on its own - its list is the section below this one).
+
+**What changed**, all from your first play as a Berserker:
+
+1. **THE WAY block lists the kit.** Passive(s) and the three rungs, each with a state: `held`,
+   `at the graves` (bright - a rung is due, go and learn it), or `after Eikthyr` / `after Bonemass`.
+2. **Ulfr's axes.** Take the Berserker's name and a pair of dual axes lands in your pack - the
+   game's own dual-wield item type, on the Ashlands Berserkir axes mesh. Slash 22 at quality 1, +3
+   per level to 4; no shield with them. A **Berserker-only** workbench recipe (Wood 10, Flint 8,
+   Leather scraps 6, Deer hide 4) replaces and tempers them; Hugin announces it. Two arbitrary
+   one-handers cannot be dual-wielded without new IL hooks, which is why it is an item.
+3. **Homeward no longer spins for 8-15 s.** The game holds a DISTANT teleport that long even when
+   you are already home; the mod now asks for distant only beyond 200 m. Waystone is unchanged.
+4. **A rung coming due is said three ways:** Hugin, a centre line, and the HUD state above.
+
+**What to look for:**
+- Take the Berserker: the axes appear ("Take his axes." ends his line). Equip: both hands, dual
+  combo, tooltip slash 22. `grep "Ulfr" Player.log` prints the source item's stats before they
+  were overwritten and which prefab resolved - tell me if it is not the dual axes.
+- The bench offers Ulfr's axes to a Berserker only. Switch way with `Shift+Keypad*`: the recipe
+  and the FORGE card vanish.
+- THE WAY: after Eikthyr, Blood Rage reads `at the graves` in bright text; after learning, `held`.
+- Homeward from 30 m away: no black screen, you are at the bed at once. From far away (>200 m):
+  the usual wait. If a NEAR hop ever says "portal blocked" and puts you back, tell me - that is
+  the game failing to find a floor at the bed + 2 m.
+- Kill a boss with a way held: the centre line AND Hugin both say "The one at the graves has more
+  to teach you."
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-09-27 - TASK: the pool refilled to 30 (`1.0.16-run.2026-09-27d`)
 
 **STAGED, NOT INSTALLED** - you were playing. When you quit: `.\dist\windows\Install-Mod.ps1 -ModOnly`.

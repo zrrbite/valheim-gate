@@ -99,6 +99,17 @@ Verdict (owner, 2026-09-27): the thane stood 61 m from the bed on level ground, 
       and republished (shipped with Milestone 3, `...27c`).
 - [x] Tags, release builds, installs — one per milestone.
 
+## Follow-up — the first play verdict answered (`1.0.16-run.2026-09-27e`, commit `e6ba1a6`)
+
+Installed. Three fixes from the Berserker play: THE WAY block lists the kit with each rung's state
+(`held` / `at the graves` / `after <god>`); **Ulfr's axes**, a dual-wield saga item (Ashlands
+Berserkir axes mesh, slash 22 +3/quality, no shield) granted once at the choice with a
+Berserker-only bench recipe (`SagaRecipeDefinition.RequiresClass`); Homeward asks for a distant
+teleport only beyond 200 m, because the game holds a distant one for 8-15 s regardless. A rung
+coming due is now raven + centre line + HUD state. Tests 634.
+
+Verdict: _pending_
+
 ## Follow-up — the general pool refilled (`1.0.16-run.2026-09-27d`, commit `4a1de8f`)
 
 Staged while the owner was testing; **not installed** until the game is closed
