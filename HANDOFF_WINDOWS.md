@@ -17,6 +17,38 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-28 - TASK: the way on the skill bar, respec for heat, panels off the health bar (`1.0.16-run.2026-09-28c`)
+
+Installed here already (`-ModOnly`). You said you would try the Hunter next; this build is what
+you will be playing it on.
+
+1. **The way is a skill now.** Once a way is held, the Skills window shows "The way of <name>"
+   with that way's icon (Bows for Eydís) at 33 after the choice, 66 after rung 2, 100 after rung 3.
+   It is a READOUT - never raised by play, earns nothing, and goes away when the saga ends. THE WAY
+   block on the HUD shows the same number.
+2. **Laying a way down.** Shift+E on the thane while holding a way gives its boons back, costs
+   **+3 heat**, writes a line in the BOOK, and reopens the card. Pick again and the new way's due
+   rungs and gifts arrive at once. His hover text shows the price.
+3. **The tracker and stash stand ABOVE the health bar**, wherever the game draws it, at your
+   resolution and UI scale. If you had dragged them, the drag is lost when the bar moves (max
+   health changes its size) - that is the trade.
+
+**What to look for (Hunter run):**
+- Take Eydís: the wolf comes on `[7]`; the Skills window has "The way of Eydís" at 33 with the bow
+  icon; THE WAY says "Way skill 33".
+- Kill Eikthyr: raven + centre line; go back by day; he teaches Menagerie `[0]` AND Elemental
+  Arrows `[→]/[←]`; the skill reads 66. (`Shift+Keypad/` if you want it now.)
+- Thor's bow with fire/frost: the flash and the burn/slow.
+- Shift+E on the thane: "You can put a name down..." then the card; heat +3 on the strip; the BOOK
+  says you laid the way down. Pick Berserker: axes arrive, "The way of Ulfr" replaces Eydís in the
+  Skills window (same row, renamed).
+- Die: the skill drops with the others and is back at 33/66 within a second.
+- The tracker's top edge and the health bar must not touch. Tell me the resolution if they do.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-09-28 - TASK: pins, a quieter FORGE, descriptions, stations, elemental arrows (`1.0.16-run.2026-09-28b`)
 
 Installed here already (`-ModOnly`). Five things from your notes:

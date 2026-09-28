@@ -108,6 +108,15 @@ in the design spec. Play list in `HANDOFF_WINDOWS.md` under `...28`.
 
 Verdict: _pending_
 
+## Follow-up — the way as a skill, respec, panels (`1.0.16-run.2026-09-28c`, commit `2d3e97b`)
+
+Installed. The way is a READOUT skill (an unused `SkillType` number, a `SkillDef` on the player's
+public list, a localisation word by reflection, level 33/66/100 lent through the skill loan and
+`ResetSkill` at run end — no Patcher change; the game drops the unknown skill on load and the poll
+recomputes it; skipped when `m_useSkillCap` is on). Shift+Use on the thane lays a way down for
++3 heat (`Thane.RespecHeat`), reopens the card. The tracker and stash read `Hud.m_healthPanel` and
+stand above it. Verdict: _pending_
+
 ## Follow-up — the queued four plus the elemental arrows (`1.0.16-run.2026-09-28b`, commit `8d764cb`)
 
 Installed. All five below are built; play list in `HANDOFF_WINDOWS.md` under `...28b`. Verdict: _pending_

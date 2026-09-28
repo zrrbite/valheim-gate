@@ -22,7 +22,9 @@ Everything below is what that file tells it.
 - **2026-09-27: the game is 1.0.16** (no source change, Unity still 6000.0.75) and **the class
   plan is in progress, in milestones** — read `2026-09-27-classes-progress.md` for how far it has
   got and what is waiting on a play verdict, and `specs/2026-09-27-classes-design.md` for why it
-  is shaped the way it is. Latest tag `1.0.16-run.2026-09-28b`, installed: **all seven ways**, the pool at 30, Ulfr's
+  is shaped the way it is. Latest tag `1.0.16-run.2026-09-28c`, installed (the way as a readout skill in the Skills
+  window, laying a way down at the thane for +3 heat, and the side panels anchored above the
+  game's own health panel). Before it, `...28b`: **all seven ways**, the pool at 30, Ulfr's
   axes, the kit on the HUD with descriptions and hover tips, NPC map pins, a FORGE page that
   shows only taught recipes, the Stormsworn on later stations, and the Hunter's Elemental
   Arrows (arrow keys cycle Thor's bow: lightning / fire / frost). Keypad7/0/Ins are now the three class rungs; the key notes
