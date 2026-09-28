@@ -17,6 +17,40 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-28 - TASK: pins, a quieter FORGE, descriptions, stations, elemental arrows (`1.0.16-run.2026-09-28b`)
+
+Installed here already (`-ModOnly`). Five things from your notes:
+
+1. **NPC map pins.** The thane, Thjalfi and the shade each get a dot on the map while they are
+   WANTED and their spot is known; it goes when they are not. Their gates are unchanged (day / rain
+   / night) - the pin says where, the strip says when. Not saved; rebuilt each session.
+2. **FORGE keeps its secrets.** A bench recipe shows only once Hugin has announced it. The anvil's
+   two conversions stay. Empty page reads "The bench knows nothing of the saga yet."
+3. **Descriptions.** Every held boon in BOONS and every rung in THE WAY has its one-line description
+   under it. Hover the NAME with the inventory open (cursor free) and a tooltip appears too.
+4. **Stations.** Stormsworn greaves (Act IV) want forge level 4; the mantle (Act V) is made at the
+   artisan table.
+5. **Elemental Arrows** - your idea. A Hunter learns it at rung 2 (with Menagerie). `→` and `←`
+   cycle Thor's bow: lightning → fire → frost. Exactly one element carries the bow's 22 (+4/level);
+   frost SLOWS what it hits (the game's own frost). The ability bar and BOONS show the element.
+   Saved with the run; the bow is lightning again when the run ends.
+
+**What to look for:**
+- Pins: after the bed step, a dot named "The thane" appears; the shade's dot after its step opens;
+  Thjalfi's when he is wanted. `grep "Map pin shown" Player.log`.
+- FORGE: fresh run shows only the anvil; after Hugin teaches a recipe it appears.
+- Tooltips: open the inventory, hover a boon name in the Run window - the tip must stay INSIDE
+  the window at its edges.
+- Arrows: as a Hunter with rung 2 learned, press `→`: "Thor’s bow: fire." Shoot a greydwarf -
+  fire flash, burning. `→` again: frost - frost flash, the target slows. `←` goes back. Quit and
+  resume: the element is remembered. Abandon: the bow reads lightning. `grep "Elemental\|element"
+  Player.log` says which flash prefabs resolved.
+- Stations: in Act IV the greaves card says "Forge, level 4"; Act V's mantle "Artisan table".
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-09-28 - TASK: the other four ways (`1.0.16-run.2026-09-28`)
 
 Installed here already (`-ModOnly`). All seven ways are in; the thane names seven and calls

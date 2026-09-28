@@ -108,7 +108,9 @@ in the design spec. Play list in `HANDOFF_WINDOWS.md` under `...28`.
 
 Verdict: _pending_
 
-## In progress (round of 2026-09-28) — the queued four plus the elemental arrows
+## Follow-up — the queued four plus the elemental arrows (`1.0.16-run.2026-09-28b`, commit `8d764cb`)
+
+Installed. All five below are built; play list in `HANDOFF_WINDOWS.md` under `...28b`. Verdict: _pending_
 
 - NPC map pins (thane, shade, Thjalfi) when wanted and placed.
 - FORGE page shows only recipes Hugin has taught.

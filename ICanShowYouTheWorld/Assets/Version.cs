@@ -3,7 +3,7 @@ namespace ICanShowYouTheWorld
 {
     public static class ModVersion
     {
-        public const string VERSION = "1.0.16-run.2026-09-28";
+        public const string VERSION = "1.0.16-run.2026-09-28b";
 
         /// <summary>
         /// Which flavour this DLL is: <c>"gm"</c> (the saga plus the old cheat mod) or
