@@ -17,9 +17,9 @@ Standing context for the Windows side:
 
 ---
 
-## 2026-09-28 - TASK: the way on the skill bar, respec for heat, panels off the health bar (`1.0.16-run.2026-09-28c`)
+## 2026-09-28 - TASK: the way on the skill bar, respec for heat, panels off the health bar (`1.0.16-run.2026-09-28c`, fixed in `...28d`)
 
-Installed here already (`-ModOnly`). You said you would try the Hunter next; this build is what
+Installed here already (`-ModOnly`). **`...28c` lost the tracker and stash entirely** (owner: "the tracking window and materials window are completely gone"): the health-panel anchor was measured in pixels inside a scaled GUI, so both panels landed below the screen. `...28d` scales it; everything else in this section is unchanged. You said you would try the Hunter next; this build is what
 you will be playing it on.
 
 1. **The way is a skill now.** Once a way is held, the Skills window shows "The way of <name>"
