@@ -6250,6 +6250,9 @@ namespace ICanShowYouTheWorld.RunMode
             ValidateSpawnEvents();
             ValidateQuestPrices();
             ValidateClassLadder();
+            // Thor's bow's flashes: every element's, so a missing fire or frost burst is in the log
+            // before the Hunter can switch to it.
+            _items.ValidateBowEffects();
         }
 
         /// <summary>

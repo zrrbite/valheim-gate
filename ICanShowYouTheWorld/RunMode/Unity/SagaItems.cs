@@ -364,6 +364,86 @@ namespace ICanShowYouTheWorld.RunMode
         private static readonly string[] FireHitPrefabs = { "vfx_FireballHit" };
         private static readonly string[] FrostHitPrefabs = { "vfx_frostarrow_hit" };
 
+        /// <summary>
+        /// The burst a fire arrow throws where it lands, sized for the ring rather than the arrow.
+        /// First that resolves wins, and the log says which.
+        /// </summary>
+        /// <remarks>
+        /// Why these exist at all (owner: "the hunter's elemental arrows fire and ice ... they're a bit
+        /// dull"): fire and frost always had lightning's ring - <c>Projectile.m_aoe</c> is set on
+        /// every Thor's bow arrow whatever it looses - but they SHOWED an arrow's worth of flame at
+        /// one point, while lightning threw Eikthyr's stomp. A three-metre blast that looks like a
+        /// match being struck reads as a single-target arrow, and the player judges the weapon by
+        /// what they see.
+        ///
+        /// All four are in 1.0.16's SoftRef manifest. In order: the Staff of Embers' own explosion
+        /// (the game's word for "fire, in an area"), the goblin shaman's fireball, the Surtling's
+        /// fireball hit, the Dvergr mage's fire hit. Only ever the VFX: the staff's damage lives on
+        /// its <c>staff_fireball_aoe</c>/projectile prefabs, which are deliberately not on this list,
+        /// and anything an effect does carry is stripped per instance (see SpawnBurstInstance).
+        /// </remarks>
+        private static readonly string[] FireBurstPrefabs =
+        {
+            "fx_fireball_staff_explosion", "fx_shaman_fireball_expl", "vfx_FireballHit", "fx_DvergerMage_Fire_hit",
+        };
+
+        /// <summary>The frost arrow's burst: the Staff of Frost's shard hit first, then the same idea smaller.</summary>
+        /// <remarks>
+        /// All five in 1.0.16's manifest: the frost staff's ice-shard hit, the Dvergr mage's ice hit,
+        /// the drake's cold ball, the drake's ice hit, and last the frost arrow's own hit - which is
+        /// what the bow showed before, so the worst case is exactly the old look, never nothing.
+        /// </remarks>
+        private static readonly string[] FrostBurstPrefabs =
+        {
+            "fx_iceshard_hit", "fx_DvergerMage_Ice_hit", "vfx_ColdBall_Hit", "vfx_dragon_ice_hit", "vfx_frostarrow_hit",
+        };
+
+        /// <summary>
+        /// Sound for a burst whose prefab has none of its own. Some <c>vfx_</c> prefabs are picture
+        /// only (the sound lives on a sibling <c>sfx_</c> the game lists beside it in an EffectList),
+        /// and a silent blast is the other half of "dull". Only spawned when the winning burst carries
+        /// no ZSFX/AudioSource, so a burst with its own sound is never doubled.
+        /// </summary>
+        private static readonly string[] FireBurstSounds = { "sfx_imp_fireball_explode", "sfx_bombdynamite_explosion" };
+        private static readonly string[] FrostBurstSounds = { "sfx_hatchling_coldball_explode", "sfx_dragon_coldball_explode", "sfx_ice_hit" };
+
+        /// <summary>
+        /// How long a burst instance lives before it is taken down, whatever the prefab says. Most
+        /// effects remove themselves well before this; the timer is for the one that would not, and
+        /// for the ZNetView ones, which must go through ZNetScene.Destroy rather than be left behind.
+        /// </summary>
+        private const float ElementBurstSeconds = 4f;
+
+        /// <summary>
+        /// The shortest slow a frost arrow's ring leaves on a hostile it chilled, in seconds.
+        /// </summary>
+        /// <remarks>
+        /// Read in the 1.0.16 IL. Frost damage reaches <c>Character.RPC_Damage</c>, which (after
+        /// resistances) calls <c>AddFrostDamage</c>, which adds or finds <c>SE_Frost</c> and calls
+        /// <c>SE_Frost.AddDamage(frost)</c>. The slow's DURATION is
+        /// <c>clamp01(frost / maxHealth) * m_freezeTimeEnemy</c> (10 s on the class default), and its
+        /// strength eases from 90 % off (<c>m_minSpeedFactor</c> 0.1) to nothing over that time. So it
+        /// is a slow sized for small things by design: 22 frost holds a 40-hp greydwarf for five and
+        /// a half seconds, and a 600-hp troll for about a third of one - which nobody can see.
+        ///
+        /// Raising the frost to fix that was the other option, and it is the wrong dial: the slow
+        /// scales with frost as a FRACTION of health, so a troll needs ~180 frost for three seconds,
+        /// and frost is also health damage, on everything in the ring, on a bow that was cut back
+        /// once already for being too strong. Stagger was the third, and is not a slow at all.
+        ///
+        /// So the duration gets a floor instead and the damage is untouched: an enemy the ring
+        /// actually frosted (it has SE_Frost, which the game only adds when frost got through its
+        /// resistances) is held for at least this long, from the full 90 %. The game's own rules
+        /// still decide WHO is slowed - <c>SE_Frost.ModifySpeed</c> ignores the resistant and the
+        /// immune never get the effect. 1.5 s because a bow draws in roughly that: a troll under
+        /// steady fire stays sluggish, one arrow does not freeze a group for long.
+        ///
+        /// Owner-side only: a status effect's clock runs on the machine that owns the creature. In a
+        /// solo run that is every creature; in company the ones owned elsewhere get the game's own
+        /// slow and no floor, and the log says so once.
+        /// </remarks>
+        private const float FrostSlowFloorSeconds = 1.5f;
+
         public static readonly SagaItemDefinition[] All =
         {
             new SagaItemDefinition
@@ -728,6 +808,22 @@ namespace ICanShowYouTheWorld.RunMode
         private readonly Dictionary<BowElement, EffectList.EffectData[]> _elementHits =
             new Dictionary<BowElement, EffectList.EffectData[]>();
 
+        /// <summary>What a fire or frost arrow throws where it lands: the burst, and a sound if it has none.</summary>
+        private sealed class ElementBurstFx
+        {
+            public GameObject Fx;
+            public GameObject Sound;
+        }
+
+        /// <summary>Resolved bursts, per element. An entry with a null Fx means "none resolved" - settled, not pending.</summary>
+        private readonly Dictionary<BowElement, ElementBurstFx> _elementBursts =
+            new Dictionary<BowElement, ElementBurstFx>();
+
+        /// <summary>Live burst instances and when each is taken down. See <see cref="ElementBurstSeconds"/>.</summary>
+        private readonly List<KeyValuePair<GameObject, float>> _bursts = new List<KeyValuePair<GameObject, float>>();
+
+        private readonly List<Character> _chillScratch = new List<Character>();
+
         private float _strikeTimer;
         private readonly HashSet<int> _tunedProjectiles = new HashSet<int>();
 
@@ -771,6 +867,9 @@ namespace ICanShowYouTheWorld.RunMode
             if (_strikeTimer < StrikePollSeconds) return;
             _strikeTimer = 0f;
 
+            // Before the bow checks: a burst thrown just before the player sheathed still has to go.
+            SweepBursts();
+
             try
             {
                 var player = Player.m_localPlayer;
@@ -782,13 +881,15 @@ namespace ICanShowYouTheWorld.RunMode
                 if (ProjectileOwner == null || ProjectileWeapon == null) return;
 
                 // What the arrow shows when it lands. Lightning is Thor's own flash, spawned; fire
-                // and frost are the vanilla arrows' hit effects, added to the arrow's own. Either
-                // may be missing (an asset name this build cannot see), and then the arrow still
-                // does the element's damage and its area - only the flash is absent, which the log
-                // has already said once.
+                // and frost throw a staff-sized burst from the arrow's hit hook, and fall back to the
+                // vanilla arrows' hit effects, added to the arrow's own, only when no burst resolved.
+                // Any of them may be missing (an asset name this build cannot see), and then the
+                // arrow still does the element's damage and its area - only the flash is absent,
+                // which the log has already said once.
                 var element = _bowElement;
                 var lightning = element == BowElement.Lightning ? Lightning() : null;
-                var elementHit = element == BowElement.Lightning ? null : ElementHit(element);
+                var burst = element == BowElement.Lightning ? null : ElementBurst(element);
+                var elementHit = element == BowElement.Lightning || burst?.Fx != null ? null : ElementHit(element);
 
                 var projectiles = UnityEngine.Object.FindObjectsByType<Projectile>(FindObjectsSortMode.None);
                 foreach (var p in projectiles)
@@ -820,6 +921,21 @@ namespace ICanShowYouTheWorld.RunMode
                         p.m_hitEffects = new EffectList { m_effectPrefabs = own.Concat(elementHit).ToArray() };
                     }
 
+                    if (element != BowElement.Lightning)
+                    {
+                        // The hit HOOK, not m_spawnOnHit, for the burst: SpawnOnHit instantiates the
+                        // raw prefab and hands nothing back, so an effect carrying an Aoe of its own
+                        // would deal damage the bow never asked for. m_onHit runs after the ring has
+                        // landed (Projectile.OnHit: DoAOE, then the hit effects, then m_onHit), which
+                        // is also exactly when the frost floor needs to run - the SE_Frost it extends
+                        // is the one the ring just put there. It is an instance field and starts null
+                        // on every projectile (delegates are not serialised), so nothing reaches the
+                        // arrow prefab; += all the same, in case the game ever hooks it itself.
+                        var el = element;
+                        var fx = burst;
+                        p.m_onHit += (collider, hitPoint, water) => OnElementArrowHit(el, fx, hitPoint);
+                    }
+
                     // And it strikes AROUND the arrow, not just through it (owner: "I really feel
                     // the Thors bow should have an Aoe component since it does lightning!"). Quite
                     // right: a bolt that stops at one deer is not lightning, it is a nail.
@@ -833,6 +949,14 @@ namespace ICanShowYouTheWorld.RunMode
                     // The bow's damage is not divided between the targets: m_aoe re-uses the hit,
                     // which is generous, and deliberately so - this is the reward for a whole craft
                     // track plus three lights won off the forest.
+                    //
+                    // It is ELEMENT-AGNOSTIC, and that is the whole of fire's and frost's area: DoAOE
+                    // builds each target's HitData from the projectile's m_damage, which Setup copied
+                    // from the bow's hit - pierce plus whichever ONE element ApplyBowElement left on
+                    // the item. So a fire arrow burns everything in the ring and a frost arrow chills
+                    // it, at the bow's own 22 + 4/level, through the game's own Burning and SE_Frost.
+                    // The direct target is not hit twice: with m_aoe set, OnHit takes the area branch
+                    // INSTEAD of the single-target one, and DoAOE's hit set counts each object once.
                     p.m_aoe = ThorsBowAoeRadius;
                     p.m_aoeMaxHitOnce = true;
                     p.m_hitOwner = false;
@@ -986,9 +1110,240 @@ namespace ICanShowYouTheWorld.RunMode
                 ReportOnce("element-hit-none-" + label,
                     $"[ICanShowYouTheWorld] No {label} hit effect resolved; Thor's bow does {label} damage without a flash.");
             else
-                Debug.Log($"[ICanShowYouTheWorld] Thor's bow {label} effect: {source}.");
+                Debug.Log($"[ICanShowYouTheWorld] Thor's bow {label} arrow-hit effect (used when no burst resolves): {source}.");
 
             return found;
+        }
+
+        /// <summary>
+        /// The fire or frost burst, resolved once and logged once: the first of
+        /// <see cref="FireBurstPrefabs"/> / <see cref="FrostBurstPrefabs"/> the scene knows, plus a
+        /// sound from the matching list if that prefab has none. Null while there is no scene to ask
+        /// (asked again on the next arrow); an entry with a null Fx once the answer is "none".
+        /// </summary>
+        private ElementBurstFx ElementBurst(BowElement element)
+        {
+            // ReferenceEquals for "settled on none", Unity's truthiness for "still alive": a destroyed
+            // prefab compares equal to null too, and that one is worth asking about again.
+            if (_elementBursts.TryGetValue(element, out var have) && have != null &&
+                (ReferenceEquals(have.Fx, null) || have.Fx))
+                return have;
+
+            var scene = ZNetScene.instance;
+            if (scene == null) return null;
+
+            string label = ElementName(element);
+            var burst = new ElementBurstFx();
+            try
+            {
+                var names = element == BowElement.Fire ? FireBurstPrefabs : FrostBurstPrefabs;
+                burst.Fx = names.Select(scene.GetPrefab).FirstOrDefault(g => g != null);
+
+                if (burst.Fx != null &&
+                    burst.Fx.GetComponentsInChildren<ZSFX>(true).Length == 0 &&
+                    burst.Fx.GetComponentsInChildren<AudioSource>(true).Length == 0)
+                {
+                    var sounds = element == BowElement.Fire ? FireBurstSounds : FrostBurstSounds;
+                    burst.Sound = sounds.Select(scene.GetPrefab).FirstOrDefault(g => g != null);
+                }
+            }
+            catch (Exception ex)
+            {
+                ReportOnce("element-burst-" + label, $"[ICanShowYouTheWorld] Thor's bow {label} burst could not be read: {ex.Message}");
+            }
+
+            _elementBursts[element] = burst;
+
+            if (burst.Fx == null)
+            {
+                var names = element == BowElement.Fire ? FireBurstPrefabs : FrostBurstPrefabs;
+                ReportOnce("element-burst-none-" + label,
+                    $"[ICanShowYouTheWorld] No {label} burst resolved from {string.Join(", ", names)}; " +
+                    $"Thor's bow {label} arrows fall back to the vanilla arrow's hit effect.");
+            }
+            else
+            {
+                bool armed = burst.Fx.GetComponentsInChildren<Aoe>(true).Length > 0 ||
+                             burst.Fx.GetComponentsInChildren<Projectile>(true).Length > 0;
+                Debug.Log($"[ICanShowYouTheWorld] Thor's bow {label} burst: '{burst.Fx.name}'" +
+                          (armed ? " (carries Aoe/Projectile; stripped from each instance)" : "") +
+                          (burst.Sound != null ? $", sound '{burst.Sound.name}'"
+                              : burst.Fx.GetComponentsInChildren<ZSFX>(true).Length > 0 ? ", its own sound" : ", no sound") +
+                          ".");
+            }
+
+            return burst;
+        }
+
+        /// <summary>
+        /// A fire or frost arrow has landed: throw its burst, and floor the frost slow on what the
+        /// ring chilled. Runs inside <c>Projectile.OnHit</c>, so it may not throw - an exception here
+        /// would skip the rest of OnHit, the skill raise included.
+        /// </summary>
+        private void OnElementArrowHit(BowElement element, ElementBurstFx burst, Vector3 point)
+        {
+            try
+            {
+                if (burst?.Fx != null)
+                {
+                    SpawnBurstInstance(burst.Fx, point);
+                    if (burst.Sound != null) SpawnBurstInstance(burst.Sound, point);
+                }
+
+                if (element == BowElement.Frost) ChillAround(point);
+            }
+            catch (Exception ex)
+            {
+                ReportOnce("element-arrow-hit", "[ICanShowYouTheWorld] Thor's bow element hit failed: " + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// One burst instance, disarmed: the same treatment Thor's Wrath gives its flash
+        /// (BoonEffects.SpawnWrathFlash). Any Aoe or Projectile on it is disabled and destroyed, so
+        /// the only damage an elemental arrow does is the ring's; a networked one is made
+        /// non-persistent, so it cannot outlive the session in the world save; and it is taken down
+        /// on our timer through ZNetScene.Destroy, so a ZDO is never orphaned.
+        /// </summary>
+        private void SpawnBurstInstance(GameObject prefab, Vector3 point)
+        {
+            GameObject inst = null;
+            try
+            {
+                inst = UnityEngine.Object.Instantiate(prefab, point, Quaternion.identity);
+                if (inst == null) return;
+
+                foreach (var aoe in inst.GetComponentsInChildren<Aoe>(true))
+                {
+                    aoe.enabled = false;
+                    UnityEngine.Object.Destroy(aoe);
+                }
+                foreach (var projectile in inst.GetComponentsInChildren<Projectile>(true))
+                {
+                    projectile.enabled = false;
+                    UnityEngine.Object.Destroy(projectile);
+                }
+
+                var view = inst.GetComponent<ZNetView>();
+                var zdo = (view != null && view.IsValid()) ? view.GetZDO() : null;
+                if (zdo != null) zdo.Persistent = false;
+
+                _bursts.Add(new KeyValuePair<GameObject, float>(inst, Time.time + ElementBurstSeconds));
+            }
+            catch (Exception ex)
+            {
+                ReportOnce("element-burst-spawn", "[ICanShowYouTheWorld] Thor's bow burst failed: " + ex.Message);
+                if (inst != null) TakeDownBurst(inst);
+            }
+        }
+
+        /// <summary>Takes down every burst whose time is up.</summary>
+        private void SweepBursts()
+        {
+            if (_bursts.Count == 0) return;
+
+            float now = Time.time;
+            for (int i = _bursts.Count - 1; i >= 0; i--)
+            {
+                // Unity's ==: an effect that removed itself is already gone, and is only forgotten.
+                var go = _bursts[i].Key;
+                if (go != null && _bursts[i].Value > now) continue;
+
+                _bursts.RemoveAt(i);
+                if (go != null) TakeDownBurst(go);
+            }
+        }
+
+        private static void TakeDownBurst(GameObject go)
+        {
+            try
+            {
+                var view = go.GetComponent<ZNetView>();
+                if (view != null && view.GetZDO() != null && ZNetScene.instance != null) ZNetScene.instance.Destroy(go);
+                else UnityEngine.Object.Destroy(go);
+            }
+            catch (Exception ex) { Debug.LogWarning("[ICanShowYouTheWorld] Thor's bow burst cleanup: " + ex.Message); }
+        }
+
+        /// <summary>
+        /// Holds every hostile the frost ring chilled for at least <see cref="FrostSlowFloorSeconds"/>.
+        /// Adds no damage and no status effect: it only lengthens an SE_Frost the ring's own damage
+        /// already put there, the same way <c>SE_Frost.AddDamage</c> lengthens one (a longer ttl and
+        /// the clock back to zero, which is the slow at full strength).
+        /// </summary>
+        private void ChillAround(Vector3 point)
+        {
+            var player = Player.m_localPlayer;
+            if (player == null) return;
+
+            // A metre past the ring: DoAOE finds targets by COLLIDER, this by transform, and a troll's
+            // collider reaches well past its feet. The margin cannot chill anything the ring missed -
+            // only a creature carrying SE_Frost is touched - so it costs nothing to be generous.
+            _chillScratch.Clear();
+            Character.GetCharactersInRange(point, ThorsBowAoeRadius + 1f, _chillScratch);
+
+            bool skippedRemote = false;
+            foreach (var c in _chillScratch)
+            {
+                if (c == null || ReferenceEquals(c, player) || c.IsDead()) continue;
+
+                // The arrow's own friend rule (m_noDamageFriendly zeroes a friend's damage, so no
+                // frost landed on it): a tame that caught a chill somewhere else is not ours to hold.
+                if (!BaseAI.IsEnemy(player, c)) continue;
+
+                var frost = c.GetSEMan()?.GetStatusEffect(SEMan.s_statusEffectFrost) as SE_Frost;
+                if (frost == null) continue;
+
+                if (!c.IsOwner()) { skippedRemote = true; continue; }
+
+                if (frost.GetRemaningTime() < FrostSlowFloorSeconds)
+                {
+                    frost.m_ttl = FrostSlowFloorSeconds;
+                    frost.ResetTime();
+                }
+            }
+            _chillScratch.Clear();
+
+            if (skippedRemote)
+                ReportOnce("frost-floor-remote",
+                    "[ICanShowYouTheWorld] Thor's bow frost: a chilled creature is owned by another player; " +
+                    "it gets the game's own slow without the saga's floor (logged once).");
+        }
+
+        /// <summary>
+        /// Resolves and logs every effect Thor's bow can show - lightning, the fire and frost bursts
+        /// and their arrow-hit fallbacks - and the frost status effect the slow floor extends. Called
+        /// at run start with the other validators, so a miss is in the log before the Hunter has
+        /// learned Elemental Arrows, not after the first dull shot. Diagnostics only.
+        /// </summary>
+        internal void ValidateBowEffects()
+        {
+            try
+            {
+                if (ZNetScene.instance == null || ObjectDB.instance == null)
+                {
+                    ReportOnce("bow-effects-early", "[ICanShowYouTheWorld] Thor's bow effects not checked at run start: no scene yet; they resolve on the first arrow.");
+                    return;
+                }
+
+                Lightning();
+                foreach (var element in new[] { BowElement.Fire, BowElement.Frost })
+                {
+                    ElementBurst(element);
+                    ElementHit(element);
+                }
+
+                var frost = ObjectDB.instance.GetStatusEffect(SEMan.s_statusEffectFrost) as SE_Frost;
+                if (frost == null)
+                    ReportOnce("bow-frost-se", "[ICanShowYouTheWorld] SE_Frost not found in ObjectDB; frost arrows will not slow.");
+                else if (_reported.Add("bow-frost-se-ok"))
+                    Debug.Log($"[ICanShowYouTheWorld] Thor's bow frost: SE_Frost ttl {frost.m_ttl:0.##}s, " +
+                              $"freeze time (enemy) {frost.m_freezeTimeEnemy:0.##}s, floor {FrostSlowFloorSeconds:0.##}s.");
+            }
+            catch (Exception ex)
+            {
+                ReportOnce("bow-effects-validate", "[ICanShowYouTheWorld] Thor's bow effects could not be checked: " + ex.Message);
+            }
         }
 
         /// <summary>Every source name a definition will accept, in order.</summary>
