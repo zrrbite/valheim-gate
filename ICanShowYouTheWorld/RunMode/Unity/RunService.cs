@@ -3714,6 +3714,7 @@ namespace ICanShowYouTheWorld.RunMode
             // works because of a filter elsewhere is one refactor away from a step that cannot be
             // completed by doing what it says.
             AutoStashMaterials();
+            SweepStrayLights();
             PollWhispers();
             PollStepOpenings();
             PollForest();
@@ -7870,6 +7871,66 @@ namespace ICanShowYouTheWorld.RunMode
         /// moved would be its own kind of noise, and the stash panel is where the answer lives.
         /// Saving is left to the run's ordinary autosave for the same reason.
         /// </summary>
+        /// <summary>
+        /// The hover names a light object wears while it drifts: the game's own wisp item, renamed
+        /// so the crosshair says what it is. If the player takes it with the wisp's OWN pickup rather
+        /// than ours, that renamed wisp lands in the pack as a material — and the light was credited
+        /// anyway, because StolenLights counts a light that vanished within reach as taken.
+        /// </summary>
+        private static readonly string[] StrayLightNames = { "Pale Light", "Deer's Light" };
+
+        /// <summary>
+        /// Removes the renamed wisps a light's own pickup leaves behind, from the pack and from the
+        /// stash. They are duplicates, never the light itself: the rescued light was granted by
+        /// the take, and nothing in the saga asks for a wisp before the Mistlands.
+        /// </summary>
+        /// <remarks>
+        /// Found 2026-09-28 (owner: "I had 1 deer light, 1 other light, 2 rescued light and couldn't
+        /// make the bow"). The pack held four things that all looked like lights and the anvil's
+        /// bill counted two. Deleting rather than converting, because the take ALREADY paid: a
+        /// conversion would hand out two rescued lights for one deer. A stash entry whose prefab is
+        /// the vanilla "Wisp" can only be one of these before Act VI, since wisps live in the mist.
+        /// </remarks>
+        private void SweepStrayLights()
+        {
+            if (!_active || _frozen) return;
+
+            try
+            {
+                var player = Player.m_localPlayer;
+                var inventory = player == null ? null : player.GetInventory();
+                int gone = 0;
+
+                if (inventory != null)
+                {
+                    foreach (var name in StrayLightNames)
+                    {
+                        int count = inventory.CountItems(name);
+                        if (count <= 0) continue;
+                        inventory.RemoveItem(name, count);
+                        gone += count;
+                    }
+                }
+
+                if (_stash != null && DefeatedBossCount() < 5)
+                {
+                    for (int i = _stash.Entries.Count - 1; i >= 0; i--)
+                    {
+                        if (_stash.Entries[i].Prefab != "Wisp") continue;
+                        gone += _stash.WithdrawAll(i);
+                    }
+                }
+
+                if (gone > 0)
+                {
+                    Debug.Log($"[ICanShowYouTheWorld] {gone} stray wisp(s) removed — the light they came from was already counted.");
+                    Message("A stray wisp gutters out. The light it came from is already yours.");
+                    SaveState();
+                }
+            }
+            catch (Exception ex) { LogOnce("stray-lights", ex); }
+        }
+
         private void AutoStashMaterials()
         {
             if (!_active || _frozen || _cfg == null || !_cfg.RunAutoStash) return;
@@ -7904,6 +7965,11 @@ namespace ICanShowYouTheWorld.RunMode
                 // CountHeld. Comparing prefab names here and tokens there is how the two halves
                 // would quietly stop agreeing.
                 .Where(i => exempt == null || !exempt.Contains(i.m_shared.m_name))
+                // A rescued light is a material by type and a KEY by meaning: Thjalfi and the
+                // Storm-Anvil both want it in the hand, and "what is in a chest at your house is
+                // not in your hands" is his own line. Never stashed, by button or by sweep — the
+                // 2026-09-28 Hunter run had lights sitting where no bill could see them.
+                .Where(i => i.m_shared.m_name != SagaItems.RescuedLightName)
                 .ToList();
 
             candidateCount = candidates.Count;
