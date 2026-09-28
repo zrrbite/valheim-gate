@@ -17,9 +17,15 @@ Standing context for the Windows side:
 
 ---
 
-## 2026-09-28 - TASK: lights that count, panels back, and Stuffed (`1.0.16-run.2026-09-28g`)
+## 2026-09-28 - TASK: lights that count, panels back, Stuffed, and arrows that burst (`1.0.16-run.2026-09-28h`)
 
-**STAGED, NOT INSTALLED** - you were playing. (`...28f` was the same without Stuffed.)
+Installed here (`-ModOnly`) once the game was closed. (`...28e/f/g` were staged along the way and never installed on their own; this carries all of them.)
+
+**Fire and frost arrows burst** like the lightning: the Staff of Embers explosion and the Staff of
+Frost shard burst on hit, with sound; the 3 m ring was already there for every element. Frost now
+holds everything in the ring for at least 1.5 s (the game's own slow scales by damage over max
+health, so 22 frost held a troll for a third of a second). Grep `Player.log` for `burst` to see
+which effects resolved.
 
 **Stuffed** - your ask, "food lasts for hours": a new general passive. Every meal burns at a quarter
 speed while it is held (a 25-minute meal lasts most of two hours). The minutes already banked stay
