@@ -137,6 +137,8 @@ static class ClassLadderTests
             "the Hunter and the Völva are handed nothing");
         Check.That(hunter.Description.EndsWith(" Later your arrows learn fire and frost."),
             "the Hunter's card says her arrows learn fire and frost");
+        Check.That(hunter.Description.Contains(" You move quietly. Later your arrows"),
+            "the Hunter's card says she moves quietly, before the arrows");
 
         var noElemental = Pool().Where(b => b.Id != "elemental").ToList();
         Check.That(ClassLadder.Validate(catalog, noElemental).Any(p => p.Contains("elemental")),

@@ -506,8 +506,16 @@ namespace ICanShowYouTheWorld.RunMode
                     ApplySharp();
                     break;
 
-                case "woodsman":
                 case "hunter":
+                    // Two halves, like the hirdman's: the loan (Bows and Sneak, in SkillBoons) and
+                    // a status effect that quiets the player. Both are re-run on respawn and
+                    // resume, and both are idempotent - the loan only ever raises, the effect is
+                    // not added twice.
+                    ApplySkillBoon(boonId);
+                    ApplyHunterHush();
+                    break;
+
+                case "woodsman":
                 case "warrior":
                 case "miner":
                 case "wayfarer":
@@ -662,6 +670,12 @@ namespace ICanShowYouTheWorld.RunMode
                     // Losing the boon mid-window (a death, most likely) must not leave the player
                     // permanently unseen - the flag is ours and nothing else would turn it back.
                     ForceGhostOff();
+                    break;
+
+                case "hunter":
+                    // The skill half is the host's to give back (RestoreLoanedSkills); the hush is
+                    // ours, and a permanent status effect has nothing else that would ever end it.
+                    UnapplyHunterHush();
                     break;
 
                 case "irongut":
@@ -842,6 +856,9 @@ namespace ICanShowYouTheWorld.RunMode
                 SafeInvoke(EndWarsong);
                 SafeInvoke(EndMarch);
                 SafeInvoke(EndTide);
+                // The Hunter's hush has no ttl, so a run that ended on a path where the held-boon
+                // loop threw would otherwise leave the player quiet for the rest of the session.
+                SafeInvoke(UnapplyHunterHush);
                 // Pugilist is run baseline rather than a held boon, so the held-boon loop above
                 // never reaches it — unwind it here so weapon stamina costs always come back.
                 SafeInvoke(UnapplyPugilist);
@@ -3350,7 +3367,13 @@ namespace ICanShowYouTheWorld.RunMode
             new Dictionary<string, (Skills.SkillType, float)[]>
             {
                 ["woodsman"] = new[] { (Skills.SkillType.WoodCutting, 60f) },
-                ["hunter"]   = new[] { (Skills.SkillType.Bows, 50f) },
+                // Sneak since 2026-09-28 (owner: "could the hunter make less sound?"). Sneak is
+                // the skill UpdateStealth reads while crouched; the noise half is ApplyHunterHush.
+                ["hunter"]   = new[]
+                {
+                    (Skills.SkillType.Bows, 50f),
+                    (Skills.SkillType.Sneak, 50f),
+                },
                 ["warrior"]  = new[]
                 {
                     (Skills.SkillType.Axes, 50f),
@@ -3404,6 +3427,146 @@ namespace ICanShowYouTheWorld.RunMode
             if (!SkillBoons.TryGetValue(boonId, out var grants)) return;
 
             foreach (var (skill, level) in grants) _loanSkill(skill, level);
+        }
+
+        // --- The Hunter's hush (a runtime status effect) ---
+
+        /// <summary>
+        /// Noise, as SE_Stats reads it: <c>noise += baseNoise * m_noiseModifier</c>
+        /// (SE_Stats.ModifyNoise, reached from Character.RPC_AddNoise, which every footstep, swing
+        /// and shout goes through). So it is an ADDITIVE FRACTION, not a multiplier: -0.4 leaves the
+        /// player's noise at 60 percent. The tooltip prints it as "-40%".
+        /// </summary>
+        private const float HunterNoise = -0.4f;
+
+        /// <summary>
+        /// Stealth, same shape: <c>stealth += baseStealth * m_stealthModifier</c> (SE_Stats.ModifyStealth,
+        /// read by Player.UpdateStealth and ONLY while crouched - standing, the factor is a flat 1).
+        /// The factor is the fraction of a creature's view range at which it can see you
+        /// (BaseAI.CanSeeTarget: viewRange * stealthFactor), so LOWER is stealthier and "stealth up
+        /// by 0.2" is a negative number: -0.2 means seen from 80 percent as far off.
+        /// </summary>
+        private const float HunterStealth = -0.2f;
+
+        /// <summary>
+        /// The asset name, which is what SEMan keys on: NameHash() is name.GetStableHashCode(), and
+        /// HaveStatusEffect/RemoveStatusEffect take the hash. Prefixed so it can never collide with a
+        /// vanilla effect's.
+        /// </summary>
+        private const string HunterHushName = "ICSYTW_HunterHush";
+
+        private static readonly int HunterHushHash = HunterHushName.GetStableHashCode();
+
+        /// <summary>
+        /// Made once and kept. SEMan.AddStatusEffect(StatusEffect) never looks the effect up in
+        /// ObjectDB - it MemberwiseClones the instance it is handed - so an effect the game has never
+        /// heard of works on the local player without being registered. The clone shares this
+        /// object's native half, which is why this one is never destroyed. Nothing about it is saved:
+        /// Player.Save does not write status effects, and death clears them (RemoveAllStatusEffects),
+        /// which is why the respawn's ReapplyPassiveBoonEffects puts it back.
+        /// </summary>
+        private static SE_Stats _hunterHush;
+
+        private static bool _hunterHushLogged;
+
+        private static SE_Stats HunterHush(Player player)
+        {
+            if (_hunterHush != null) return _hunterHush;
+
+            var se = ScriptableObject.CreateInstance<SE_Stats>();
+            se.name = HunterHushName;
+            se.m_name = "Hunter's Hush";
+            se.m_tooltip = "You move quietly.";
+            se.m_ttl = 0f;  // no ttl: IsDone never fires, so it lasts until we take it off
+            se.m_noiseModifier = HunterNoise;
+            se.m_stealthModifier = HunterStealth;
+
+            // The Sneak skill's own icon, so the HUD shows the effect by the skill it goes with. An
+            // effect with no icon would work just as well - GetHUDStatusEffects skips it - but the
+            // player would have no way to see the hush is on, or to read its tooltip.
+            try
+            {
+                var skills = player != null ? player.GetSkills() : null;
+                var def = skills?.m_skills?.FirstOrDefault(d => d != null && d.m_skill == Skills.SkillType.Sneak);
+                se.m_icon = def?.m_icon;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[ICanShowYouTheWorld] Hunter's hush: no Sneak icon ({ex.Message}); it will be invisible.");
+            }
+
+            _hunterHush = se;
+            return se;
+        }
+
+        private void ApplyHunterHush()
+        {
+            try
+            {
+                var player = Player.m_localPlayer;
+                if (player == null) return;
+
+                var seman = player.GetSEMan();
+                if (seman == null || seman.HaveStatusEffect(HunterHushHash)) return;
+
+                seman.AddStatusEffect(HunterHush(player));
+
+                if (!_hunterHushLogged)
+                {
+                    _hunterHushLogged = true;
+                    Debug.Log($"[ICanShowYouTheWorld] Hunter's hush on: SE '{HunterHushName}', " +
+                              $"m_noiseModifier {HunterNoise}, m_stealthModifier {HunterStealth}, " +
+                              $"icon {(_hunterHush.m_icon != null ? _hunterHush.m_icon.name : "none")}. " +
+                              VanillaStealthEffects());
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[ICanShowYouTheWorld] Hunter's hush failed: {ex.Message}");
+            }
+        }
+
+        private static void UnapplyHunterHush()
+        {
+            try
+            {
+                var player = Player.m_localPlayer;
+                if (player == null) return;
+                player.GetSEMan()?.RemoveStatusEffect(HunterHushHash, quiet: true);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[ICanShowYouTheWorld] Hunter's hush removal failed: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Every vanilla effect that touches noise or stealth, read out of ObjectDB, so the hush's
+        /// numbers can be set beside the game's own. The Trollstrap set bonus is the one to compare
+        /// against; it is looked for by name, and the scan catches it anyway if it was renamed.
+        /// </summary>
+        private static string VanillaStealthEffects()
+        {
+            try
+            {
+                var odb = ObjectDB.instance;
+                if (odb == null || odb.m_StatusEffects == null) return "No ObjectDB to compare against.";
+
+                var troll = odb.GetStatusEffect("SetEffect_TrollArmor".GetStableHashCode()) as SE_Stats;
+                string trollText = troll != null
+                    ? $"Trollstrap (SetEffect_TrollArmor): noise {troll.m_noiseModifier}, stealth {troll.m_stealthModifier}."
+                    : "SetEffect_TrollArmor not found.";
+
+                var others = odb.m_StatusEffects
+                    .OfType<SE_Stats>()
+                    .Where(s => s != null && (s.m_noiseModifier != 0f || s.m_stealthModifier != 0f))
+                    .Select(s => $"{s.name} (noise {s.m_noiseModifier}, stealth {s.m_stealthModifier})");
+                return trollText + " All vanilla: " + string.Join(", ", others) + ".";
+            }
+            catch (Exception ex)
+            {
+                return "Vanilla comparison failed: " + ex.Message;
+            }
         }
 
         // --- Packbrother (summoned companions) ---
