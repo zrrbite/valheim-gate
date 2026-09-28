@@ -17,6 +17,34 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-28 - TASK: lights that count, and panels back where they were (`1.0.16-run.2026-09-28f`)
+
+**STAGED, NOT INSTALLED** - you were playing. When you quit: `.\dist\windows\Install-Mod.ps1 -ModOnly`.
+(`...28e`, the panel revert, was staged and never installed either; this carries it.)
+
+**Your report:** "I had 1 deer light, 1 other light, 2 rescued light and couldn't make the bow."
+Two causes, both fixed:
+
+1. **Stray wisps.** A drifting light is the game's own wisp item renamed "Pale Light" / "Deer's
+   Light" for the crosshair. Take it with the wisp's OWN pickup (E on the item rather than on our
+   prompt) and the renamed wisp lands in your pack as a material - while the light was credited
+   anyway, because a light that vanishes within reach counts as taken. So those two were
+   duplicates, not lights. They are now removed from the pack and the stash once a second, with
+   "A stray wisp gutters out. The light it came from is already yours."
+2. **Rescued lights in the stash.** A Rescued light is a material, so "Deposit materials" (and the
+   auto-stash, when on) moved it out of your hands - and Thjalfi and the anvil want it IN your
+   hands. Rescued lights are never stashed now. If some are in the stash already, withdraw them.
+
+Also: the tracker and stash are back at the old bottom-left spot, 30 px further right.
+
+**What to look for:** take a light with E on the wisp itself; a second later the message fires
+and the pack holds one Rescued light, no "Pale Light". Press Deposit materials with a light in
+the pack: it stays. Grep `Player.log` for `stray wisp`.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-09-28 - TASK: the way on the skill bar, respec for heat, panels off the health bar (`1.0.16-run.2026-09-28c`, fixed in `...28d`)
 
 Installed here already (`-ModOnly`). **`...28c` lost the tracker and stash entirely** (owner: "the tracking window and materials window are completely gone"): the health-panel anchor was measured in pixels inside a scaled GUI, so both panels landed below the screen. `...28d` scales it; everything else in this section is unchanged. You said you would try the Hunter next; this build is what
