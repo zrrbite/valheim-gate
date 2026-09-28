@@ -2753,9 +2753,79 @@ namespace ICanShowYouTheWorld.RunMode
         };
 
         /// <summary>
-        /// Dev: none → Hunter → Völva → Berserker → none. Gives back the old way's boons first,
-        /// through <see cref="BoonEngine.Revoke"/> so each is repaid on the Lost path — a real run
-        /// never changes its way, so this is the only place a way is ever taken back.
+        /// Takes the held way back: every boon it taught, through <see cref="BoonEngine.Revoke"/> so
+        /// each is repaid on the Lost path exactly as a death's would be, then the way itself.
+        /// Returns how many boons went. Shared by the thane's respec and the dev cycle, the only two
+        /// doors a way ever leaves by mid-run.
+        /// </summary>
+        /// <remarks>
+        /// Gifts stay: they are items, in the pack and in the save, and taking them out of a pack is
+        /// a confiscation the saga does nowhere else. The Berserker's bench recipe goes by itself,
+        /// through the class filter that shows it. The bow goes back to lightning here as well as
+        /// through Elemental Arrows' own undo, because a Hunter who never reached rung 2 has no
+        /// boon to undo and the bow must still ship as it came.
+        /// </remarks>
+        private int RevokeWay()
+        {
+            int revoked = 0;
+            if (_classId != null && _boons != null)
+            {
+                foreach (var h in _boons.Held.Where(h => h.Def.ClassId == _classId).ToList())
+                    if (_boons.Revoke(h.Def.Id)) revoked++;
+            }
+            if (_classId == "hunter")
+                _items.SetThorsBowElement(ICanShowYouTheWorld.RunMode.BowElement.Lightning);
+
+            _classId = null;
+            _classChoicePending = false;
+            _classAnnouncedAt = -1;
+            return revoked;
+        }
+
+        /// <summary>
+        /// The respec: the held way laid down at the thane's graves, for <see cref="Thane.RespecHeat"/>
+        /// heat, and the card straight back up so the next stone can be chosen while standing there.
+        /// </summary>
+        /// <remarks>
+        /// Owner, 2026-09-28: "would it be possible to respec? ... Heat cost, go ahead." Choosing again
+        /// is the ordinary pick - ChooseClass learns every rung already due at once, and TakeUpWay
+        /// hands over the new way's gifts - so a respec after Bonemass is a whole new kit for three
+        /// heat, which is the point: the cost is the world's attention, not the climb again.
+        ///
+        /// Nothing here is new save data. The way is null, the boons are gone, the heat is heat; the
+        /// open card is not saved, and a run resumed in that gap reopens it at the next word to him.
+        /// </remarks>
+        private void LayDownWay()
+        {
+            var cls = ClassLadder.Find(_classId);
+            if (cls == null) return;
+
+            int revoked = RevokeWay();
+            SetLoanedSkillLevel(WaySkill, 0f);   // the mirror follows at once, not a poll later
+            _waySkillLevel = 0;
+
+            // Through AddHeat like every other rise, so Slow Burn and Stoker weigh it as they weigh
+            // the rest; the line says the price as the thane's hover text states it.
+            AddHeat(Thane.RespecHeat);
+            Message($"You lay down the way of the {cls.Display}. +{Thane.RespecHeat:0} heat.");
+
+            try
+            {
+                // The chronicle's encoding, as TakeUpWay writes the taking-up: numeral|step|line.
+                _chronicle.Add((CurrentAct?.Numeral ?? string.Empty) + "|The way|" +
+                               $"At the graves you laid down the way of {cls.Title}.");
+            }
+            catch (Exception ex) { LogOnce("chronicle-respec", ex); }
+
+            Debug.Log($"[ICanShowYouTheWorld] The thane: the way of the {cls.Display} laid down " +
+                      $"({revoked} boon{(revoked == 1 ? "" : "s")} given back, +{Thane.RespecHeat:0} heat).");
+            SaveState();
+            OpenClassCard();
+        }
+
+        /// <summary>
+        /// Dev: none → each way in card order → none. Gives back the old way's boons first (see
+        /// <see cref="RevokeWay"/>), and pays no heat - that price is the thane's respec.
         /// </summary>
         private void DevCycleClass()
         {
@@ -2765,15 +2835,8 @@ namespace ICanShowYouTheWorld.RunMode
             int at = _classId == null ? -1 : ids.IndexOf(_classId);
             string next = at + 1 < ids.Count ? ids[at + 1] : null;
 
-            int revoked = 0;
-            if (_classId != null)
-            {
-                foreach (var h in _boons.Held.Where(h => h.Def.ClassId == _classId).ToList())
-                    if (_boons.Revoke(h.Def.Id)) revoked++;
-            }
-            _classId = null;
-            _classChoicePending = false;
-            _classAnnouncedAt = -1;
+            // No heat: the dev cycle is a tester's lever, not a respec, and the price is the player's.
+            int revoked = RevokeWay();
 
             if (next == null)
             {
@@ -3632,6 +3695,8 @@ namespace ICanShowYouTheWorld.RunMode
             // EVERY act, unlike Thjalfi: the rungs come due after Eikthyr and Bonemass, which is to
             // say in Acts II and IV, and he is where they are learned.
             if (shadePlayer != null) PollThane(shadePlayer);
+            // After the thane, so a lesson or a respec he just gave shows in the same second.
+            if (shadePlayer != null) PollWaySkill(shadePlayer);
             PollDiscoveries();
             PollPlayerState();
             ReassertDevGod();
@@ -4283,9 +4348,16 @@ namespace ICanShowYouTheWorld.RunMode
                                  ClassLadder.NextThreshold(cls, _boons.DefeatedBosses,
                                                            _boons.Held.Select(h => h.Def.Id)) == null;
 
-                bool spoken, taught;
-                _thane.Tick(player, phase, exhausted, wanted, !IsNight, out spoken, out taught);
+                bool spoken, taught, respec;
+                _thane.Tick(player, phase, exhausted, cls != null, wanted, !IsNight,
+                            out spoken, out taught, out respec);
                 RefreshNpcPin(PinThane, wanted, _thane.Spot(), "The thane");
+
+                // Before `spoken`: laying the way down is what makes the card's "no way held" true,
+                // and LayDownWay opens the card itself, so the spoken branch below only restarts its
+                // clock. A respec with no way held cannot be raised (ThaneTalk gates it), but the
+                // guard is here too because the flag and the way are read a tick apart.
+                if (respec && _classId != null) LayDownWay();
 
                 if (spoken)
                 {
@@ -7231,9 +7303,257 @@ namespace ICanShowYouTheWorld.RunMode
             }
             finally
             {
+                // After the restore has written the mirror back to its 0, so the loan's own
+                // arithmetic is what zeroes it; this only takes away the row.
+                ForgetWaySkill();
+
                 // Cleared even if the writes threw: a retained loan would be re-applied by the next
                 // run's respawn path and hand out a level this run never snapshotted.
                 _skillLoans.Clear();
+            }
+        }
+
+        /// <summary>
+        /// Writes a loaned skill to exactly <paramref name="level"/>, up OR down, keeping the loan's
+        /// original. <see cref="LoanSkill"/> only ever raises, which is right for a grant and wrong
+        /// for a mirror: a laid-down way has to read 0 again, and a death's loss has to come back on
+        /// the next poll rather than wait for the respawn path.
+        /// </summary>
+        /// <remarks>
+        /// A first call snapshots the current level as the original, as LoanSkill does. The run-end
+        /// arithmetic in <see cref="RestoreLoanedSkills"/> then still lands on the original: lent is
+        /// Level - Original, the skill stands at Level, so restored is max(Original, Original).
+        /// </remarks>
+        private void SetLoanedSkillLevel(Skills.SkillType type, float level)
+        {
+            try
+            {
+                var skill = SkillObject(type);
+                if (skill == null) return;
+
+                bool had = _skillLoans.TryGetValue(type, out var loan);
+                if (!had) loan = new SkillLoan { Original = skill.m_level, Level = skill.m_level };
+
+                if (!had || loan.Level != level)
+                    Debug.Log($"[ICanShowYouTheWorld] {type} set to {level:0} (original {loan.Original:0.##}).");
+
+                loan.Level = level;
+                _skillLoans[type] = loan;
+                skill.m_level = level;
+                skill.m_accumulator = 0f;
+            }
+            catch (Exception ex)
+            {
+                LogOnce("skill-set", ex);
+            }
+        }
+
+        // --- The way as a skill: a MIRROR in the game's own Skills window ---
+        //
+        // Owner, 2026-09-28: "It would be nice to see your progress on a skillbar." The design keeps
+        // the ladder on the boss count (see the class spec), so this is a READOUT of it, never a
+        // skill that trains: nothing calls RaiseSkill on it, it earns no XP, and its level is
+        // written from ClassLadder.MirrorLevel every poll. No Patcher change: the Skills window
+        // lists whatever is in Skills.m_skillData, and an enum value the game never defined is still
+        // a SkillType to C#.
+        //
+        // What the IL (1.0.16) says, and each is load-bearing:
+        //  - SkillsDialog.Setup walks GetSkillList() and reads skill.m_info.m_icon, m_description,
+        //    and the name as Localize("$skill_" + m_info.m_skill.ToString().ToLower()). For 701 that
+        //    is "$skill_701", so the name is put into the translation table under "skill_701".
+        //  - Skills.GetSkill (private) makes an entry with `new Skill(GetSkillDef(type))`, and
+        //    GetSkillDef returns NULL for a type not in m_skills - no throw. But Skills.Save writes
+        //    m_info.m_skill for every entry and SkillsDialog reads m_info unguarded, so an entry made
+        //    before our SkillDef is in m_skills would break the SAVE. Hence SkillObject ensures the
+        //    def before it touches the entry, on every path (poll, respawn, resume, restore).
+        //  - Skills.Load DROPS it: IsSkillValid is Enum.IsDefined. The row does ride into the
+        //    character file while a run is live, and the next load throws it away - which is fine,
+        //    because the level is recomputed each poll and never read back.
+        //  - m_skillData is private, but Skills.ResetSkill(type) is public and is exactly a Remove,
+        //    so run end takes the row away without reflection.
+        //  - Localization.AddWord is PRIVATE, and Localize caches its results (an LRU of 100), so
+        //    the word is written into m_translations by reflection and the cache emptied with its own
+        //    public EvictAll - only when the name actually changes.
+
+        /// <summary>
+        /// The way's skill id. Vanilla runs 0-14, 100-110 and All = 999; 701 is nobody's, and far
+        /// enough from both runs that a new vanilla skill will not land on it by accident.
+        /// </summary>
+        private const Skills.SkillType WaySkill = (Skills.SkillType)701;
+
+        private const string WaySkillDescription =
+            "How far you walk the way you took up at the graves. It rises as the thane teaches you, " +
+            "and returns to nothing when the saga ends.";
+
+        /// <summary>The token SkillsDialog asks for, built the way it builds it.</summary>
+        private static readonly string WaySkillToken = "skill_" + WaySkill.ToString().ToLower();
+
+        /// <summary>One def for every Player instance: it is data, and only the icon moves.</summary>
+        private static Skills.SkillDef _wayDef;
+
+        /// <summary>
+        /// The Skills component the def was last added to. A respawn or a resume is a new Player
+        /// with the prefab's list, so the def goes in again (ReferenceEquals: a destroyed component
+        /// compares equal to null, and that must not read as "the same one").
+        /// </summary>
+        private static Skills _wayDefOwner;
+
+        private static System.Reflection.FieldInfo _locTranslations;
+        private static System.Reflection.FieldInfo _locCache;
+
+        /// <summary>What the HUD's THE WAY block prints beside the way; set by the poll.</summary>
+        private int _waySkillLevel;
+
+        public int WaySkillLevel => _active && _classId != null ? _waySkillLevel : 0;
+
+        /// <summary>
+        /// Once a second in a live run: the def in place, the icon and the name for the held way, and
+        /// the level written to the ladder's mirror.
+        /// </summary>
+        private void PollWaySkill(Player player)
+        {
+            try
+            {
+                var skills = player != null ? player.GetSkills() : null;
+                if (skills == null) return;
+
+                var cls = ClassLadder.Find(_classId);
+                int level = cls != null && _boons != null
+                    ? ClassLadder.MirrorLevel(cls, _boons.Held.Select(h => h.Def.Id))
+                    : 0;
+                _waySkillLevel = level;
+
+                // No way, no row. A skill called "The way" at zero, sitting in the window before
+                // the thane has been met, is a promise the player has not been made yet — and
+                // after a way is laid down it would be a ghost of the one just given back.
+                if (cls == null)
+                {
+                    if (_wayDefOwner != null) ForgetWaySkill();
+                    return;
+                }
+
+                // With the skill cap on, every RaiseSkill rebalances ALL other skills in m_skillData
+                // against the total - and a mirror at 100 would count in that total and push the
+                // player's real skills down. Vanilla never sets the flag in code, but it is a
+                // serialized field on the prefab, so it is asked rather than assumed.
+                if (skills.m_useSkillCap) return;
+
+                EnsureWaySkillDef(skills);
+                _wayDef.m_icon = WayIcon(skills, cls);
+                SetWaySkillName(cls != null ? $"The way of {cls.Title}" : "The way");
+
+                // Every poll, not only on change: a death's LowerAllSkills takes a quarter off like
+                // any skill, and this puts it straight back (the respawn path's ReapplyLoanedSkills
+                // also would, but only upward, and never after a respec).
+                var skill = SkillObject(WaySkill);
+                if (skill == null || skill.m_level != level || !_skillLoans.ContainsKey(WaySkill))
+                    SetLoanedSkillLevel(WaySkill, level);
+            }
+            catch (Exception ex)
+            {
+                LogOnce("way-skill", ex);
+            }
+        }
+
+        /// <summary>Puts the way's SkillDef into this Skills component's list, once per instance.</summary>
+        private static void EnsureWaySkillDef(Skills skills)
+        {
+            if (skills == null) return;
+            if (_wayDef == null)
+            {
+                _wayDef = new Skills.SkillDef
+                {
+                    m_skill = WaySkill,
+                    m_description = WaySkillDescription,
+                    m_increseStep = 1f,   // never used: nothing raises it
+                };
+            }
+            if (ReferenceEquals(_wayDefOwner, skills) && skills.m_skills.Contains(_wayDef)) return;
+
+            skills.m_skills.RemoveAll(d => d != null && d.m_skill == WaySkill);
+            skills.m_skills.Add(_wayDef);
+            _wayDefOwner = skills;
+        }
+
+        /// <summary>
+        /// The icon of the vanilla skill the way leans on, so the row looks like the way. Bows when
+        /// there is no way held, or the favoured skill's def is somehow missing.
+        /// </summary>
+        private static Sprite WayIcon(Skills skills, ClassDefinition cls)
+        {
+            Skills.SkillType favoured;
+            switch (cls?.Id)
+            {
+                case "berserker": favoured = Skills.SkillType.Axes; break;
+                case "volva": favoured = Skills.SkillType.BloodMagic; break;
+                case "huskarl": favoured = Skills.SkillType.Blocking; break;
+                case "skald": favoured = Skills.SkillType.Run; break;
+                case "saefari": favoured = Skills.SkillType.Swim; break;
+                case "smidr": favoured = Skills.SkillType.WoodCutting; break;
+                default: favoured = Skills.SkillType.Bows; break;
+            }
+
+            Sprite icon = null, bows = null;
+            foreach (var def in skills.m_skills)
+            {
+                if (def == null) continue;
+                if (def.m_skill == favoured) icon = def.m_icon;
+                if (def.m_skill == Skills.SkillType.Bows) bows = def.m_icon;
+            }
+            return icon != null ? icon : bows;
+        }
+
+        /// <summary>
+        /// The row's name, written into the translation table the Skills window reads. Re-checked
+        /// every poll because a language change clears the table; written (and the cache emptied)
+        /// only when it differs.
+        /// </summary>
+        private static void SetWaySkillName(string name)
+        {
+            var loc = Localization.instance;
+            if (loc == null) return;
+
+            const System.Reflection.BindingFlags Flags =
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+            if (_locTranslations == null) _locTranslations = typeof(Localization).GetField("m_translations", Flags);
+            if (_locCache == null) _locCache = typeof(Localization).GetField("m_cache", Flags);
+
+            if (!(_locTranslations?.GetValue(loc) is Dictionary<string, string> words)) return;
+            if (words.TryGetValue(WaySkillToken, out var current) && current == name) return;
+
+            words[WaySkillToken] = name;
+
+            // The cache is keyed by the whole input string, so "$skill_701" would keep answering
+            // with the old name (or "[skill_701]") until evicted. Emptying it costs a re-translate
+            // of at most a hundred strings, once per change of way.
+            var cache = _locCache?.GetValue(loc);
+            cache?.GetType().GetMethod("EvictAll")?.Invoke(cache, null);
+        }
+
+        /// <summary>
+        /// Run end: the row out of the player's skills and the def out of their list, so a finished
+        /// saga leaves no ghost skill behind in the window (a reload would drop it anyway - see the
+        /// notes above - but a player who ends the run and opens the window should not see it).
+        /// </summary>
+        private void ForgetWaySkill()
+        {
+            _waySkillLevel = 0;
+            try
+            {
+                var skills = Player.m_localPlayer != null ? Player.m_localPlayer.GetSkills() : null;
+                if (skills != null)
+                {
+                    skills.ResetSkill(WaySkill);
+                    skills.m_skills.RemoveAll(d => d != null && d.m_skill == WaySkill);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogOnce("way-skill-forget", ex);
+            }
+            finally
+            {
+                _wayDefOwner = null;
             }
         }
 
@@ -7261,6 +7581,11 @@ namespace ICanShowYouTheWorld.RunMode
 
             var skills = player.GetSkills();
             if (skills == null) return null;
+
+            // The way's mirror has no vanilla def, and an entry created without one has a null
+            // m_info that Skills.Save would throw on - so the def goes in before the entry is made,
+            // whichever path (poll, respawn, resume, restore) gets here first.
+            if (type == WaySkill) EnsureWaySkillDef(skills);
 
             skills.GetSkillLevel(type);   // forces the entry to exist
 

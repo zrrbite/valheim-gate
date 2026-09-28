@@ -119,6 +119,26 @@ in-flight arrows get on hit, taken from the vanilla fire and frost arrows' own p
 element is run state (`bowElement`) and the bow goes back to lightning at run end, since it
 outlives the run and ships as lightning.
 
+## The way as a skill, and laying it down (2026-09-28)
+
+**The mirror.** The owner wanted the way on a skill bar ("I still don't see the class skill under
+skills"). The custom-skill design was dropped for good reasons (it would fight the run's x3 skill
+rate and the loans), but a READOUT costs none of that and — on a second look — no Patcher change
+either: C# lets the mod cast an unused number to `Skills.SkillType`, the Skills window names a
+skill from a `$skill_<n>` localisation token the mod can add at runtime, and the player's skill
+definitions are a public list the mod can append to, icon included. So one skill, named "The way
+of <Title>" with the way's favoured vanilla icon, sits at 33 / 66 / 100 as the rungs are learned,
+recomputed from what is held every poll and lent through the existing skill loan so it returns to
+nothing when the saga ends. It raises no XP and gates nothing; it is the ladder, drawn where the
+player already looks for a bar.
+
+**Respec.** Shift + Use on the thane while a way is held lays it down: the way's boons are given
+back, the card reopens, and choosing again grants the new way's due rungs and gifts at once. It
+costs **heat, +3** — the saga's own currency, which needs no new item flow, makes the world notice
+a name changing hands, and stops idle switching without punishing a real change of mind (the
+owner's pick over "free" and "a boss trophy"). Gifts already given stay, since they are items; a
+class-only recipe leaves the bench through the class filter. The dev cycle pays nothing.
+
 ## Keys
 
 The keypad and the Home/End cluster are full. Moving brother, bonecaller and menagerie into classes

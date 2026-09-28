@@ -20,9 +20,17 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         public bool Exhausted;
 
+        /// <summary>
+        /// Set by the owner every tick: a way is held, so the alt-use lays it down. Not the same as
+        /// "Phase is not Choose" today, but said separately so the respec never hangs on how the
+        /// phases happen to be drawn.
+        /// </summary>
+        public bool WayHeld;
+
         /// <summary>Raised by an interact, read and cleared by the owner's tick.</summary>
         public bool SpokenPending;
         public bool TaughtPending;
+        public bool RespecPending;
 
         public bool Interact(Humanoid user, bool hold, bool alt)
         {
@@ -34,6 +42,18 @@ namespace ICanShowYouTheWorld.RunMode
                 // and a way already held when the step is live (a dev cycle, an old save) must not
                 // leave the HEARTH chain waiting on a phase it can never reach.
                 SpokenPending = true;
+
+                // The alt-use, and only while a way is held. Player.Update computes alt as AltPlace
+                // (Shift) or JoyAltPlace - or JoyAltKeys on a gamepad's non-classic layout - held
+                // while Use goes down: the same chord Tameable's "rename" and Sadle's "remove" ride.
+                // Checked before the phase, so a rung that is due does not swallow the respec into a
+                // lesson; with no way held, alt is simply speaking.
+                if (alt && WayHeld)
+                {
+                    Thane.Say(Thane.RespecLine);
+                    RespecPending = true;
+                    return true;
+                }
 
                 switch (Phase)
                 {
@@ -65,6 +85,15 @@ namespace ICanShowYouTheWorld.RunMode
         public string GetHoverText()
         {
             string text = Thane.Name + "\n[<color=yellow><b>$KEY_Use</b></color>] Speak";
+
+            // The alt chord spelled as Tameable spells its "rename": AltKeys on a gamepad's
+            // non-classic layout, AltPlace everywhere else - the two branches Player.Update reads.
+            if (WayHeld)
+            {
+                string alt = ZInput.IsNonClassicFunctionality() && ZInput.IsGamepadActive() ? "$KEY_AltKeys" : "$KEY_AltPlace";
+                text += $"\n[<color=yellow><b>{alt} + $KEY_Use</b></color>] Lay the way down (+{Thane.RespecHeat:0} heat)";
+            }
+
             try { return Localization.instance != null ? Localization.instance.Localize(text) : text; }
             catch { return text; }
         }
@@ -125,6 +154,20 @@ namespace ICanShowYouTheWorld.RunMode
 
         public const string AfterLine =
             "That is all of it. All I kept, anyway. The stones stay kept.";
+
+        /// <summary>Said when a held way is laid down at his graves (the alt-use). Owner's text, verbatim.</summary>
+        public const string RespecLine =
+            "You can put a name down. It costs — the world hears a name change hands, and it turns to look.\n\n" +
+            "Which stone, then? The others are still kept.";
+
+        /// <summary>
+        /// What laying a way down costs. Heat, because the world notices a change of name; and heat is
+        /// the saga's own price, so a respec needs no new item flow, no new save field and no new
+        /// shop - just the one number every other risk in the run is already paid in. Three, so it is
+        /// felt without being a punishment for having tried a way on. Here rather than in the host
+        /// because his hover text says the price.
+        /// </summary>
+        public const float RespecHeat = 3f;
 
         // One line each, in a bubble over his head as you come near - the way the trader greets and
         // Thjalfi does. The rune panel is for what he has to SAY; this is for him being there.
@@ -262,11 +305,13 @@ namespace ICanShowYouTheWorld.RunMode
         /// just the first meeting as Thjalfi's rain does: nothing about teaching is urgent enough to
         /// be worth breaking the one thing that makes him him, and the next morning is minutes away.
         /// </param>
-        public void Tick(Player player, Phase phase, bool exhausted, bool wanted, bool day,
-                         out bool spoken, out bool taught)
+        /// <param name="wayHeld">A way is held, so the alt-use lays it down (<paramref name="respec"/>).</param>
+        public void Tick(Player player, Phase phase, bool exhausted, bool wayHeld, bool wanted, bool day,
+                         out bool spoken, out bool taught, out bool respec)
         {
             spoken = false;
             taught = false;
+            respec = false;
 
             if (!wanted || !day || player == null)
             {
@@ -279,6 +324,7 @@ namespace ICanShowYouTheWorld.RunMode
 
             _talk.Phase = phase;
             _talk.Exhausted = exhausted;
+            _talk.WayHeld = wayHeld;
             Greet(player, phase);
 
             if (_talk.SpokenPending)
@@ -290,6 +336,11 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 _talk.TaughtPending = false;
                 taught = true;
+            }
+            if (_talk.RespecPending)
+            {
+                _talk.RespecPending = false;
+                respec = true;
             }
         }
 

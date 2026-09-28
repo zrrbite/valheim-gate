@@ -80,6 +80,12 @@ namespace ICanShowYouTheWorld.Services
         /// </summary>
         string BowElement { get; }
 
+        /// <summary>
+        /// The way's mirror in the Skills window - 0, 33, 66 or 100 by rungs learned - for the HUD's
+        /// THE WAY block. 0 with no way held or no run.
+        /// </summary>
+        int WaySkillLevel { get; }
+
         /// <summary>True while a way is on offer and not yet chosen.</summary>
         bool ClassChoicePending { get; }
 

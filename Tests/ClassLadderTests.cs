@@ -165,5 +165,21 @@ static class ClassLadderTests
         Check.That(ClassLadder.AfterLine(2) == "after the Elder" && ClassLadder.AfterLine(5) == "after Yagluth",
             "the table covers the gods between");
         Check.That(ClassLadder.AfterLine(9) == "after 9 gods", "a count past the table falls back to a number");
+
+        // The way's skill in the Skills window mirrors the ladder: 0 / 33 / 66 / 100.
+        Check.That(ClassLadder.MirrorLevel(null, new[] { "brother" }) == 0, "no way held: the mirror reads 0");
+        Check.That(ClassLadder.MirrorLevel(hunter, none) == 0, "a way with nothing learned reads 0");
+        Check.That(ClassLadder.MirrorLevel(hunter, new[] { "hunter", "shepherd" }) == 0,
+            "passives alone do not move the mirror");
+        Check.That(ClassLadder.MirrorLevel(hunter, new[] { "hunter", "shepherd", "brother" }) == 33,
+            "rung 1 learned reads 33");
+        Check.That(ClassLadder.MirrorLevel(hunter, new[] { "brother", "menagerie" }) == 33,
+            "a rung is learned only when all its boons are held (Menagerie without Elemental Arrows)");
+        Check.That(ClassLadder.MirrorLevel(hunter, new[] { "brother", "menagerie", "elemental" }) == 66,
+            "rung 2 learned reads 66, floored rather than rounded");
+        Check.That(ClassLadder.MirrorLevel(hunter, new[] { "brother", "menagerie", "elemental", "unseen" }) == 100,
+            "the whole way reads 100");
+        Check.That(ClassLadder.MirrorLevel(ClassLadder.Find("volva"), new[] { "brother", "menagerie", "elemental", "unseen" }) == 0,
+            "another way's boons do not count toward this one");
     }
 }

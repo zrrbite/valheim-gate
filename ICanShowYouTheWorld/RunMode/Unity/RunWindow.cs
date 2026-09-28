@@ -166,6 +166,43 @@ namespace ICanShowYouTheWorld.RunMode
         private readonly List<Character> _trackerBuffer = new List<Character>();
         private float _laidOutForWidth = -1f;
         private float _laidOutForHeight = -1f;
+        private float _laidOutForHealthTop = -1f;
+
+        /// <summary>
+        /// The top edge of Valheim's health panel in IMGUI coordinates (y down, pixels), or -1
+        /// when there is no HUD to ask. Read off <c>Hud.m_healthPanel</c>'s world corners through
+        /// its canvas camera, so resolution and UI scale are the game's problem, not ours.
+        /// </summary>
+        private static float HealthPanelTopGui()
+        {
+            try
+            {
+                var hud = Hud.instance;
+                var panel = hud != null ? hud.m_healthPanel : null;
+                if (panel == null || !panel.gameObject.activeInHierarchy) return -1f;
+
+                var canvas = panel.GetComponentInParent<Canvas>();
+                var cam = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay
+                    ? canvas.worldCamera : null;
+
+                var corners = new Vector3[4];
+                panel.GetWorldCorners(corners);
+
+                float top = float.MaxValue;
+                foreach (var corner in corners)
+                {
+                    Vector2 screen = RectTransformUtility.WorldToScreenPoint(cam, corner);
+                    float guiY = Screen.height - screen.y;
+                    if (guiY < top) top = guiY;
+                }
+
+                return top < float.MaxValue ? top : -1f;
+            }
+            catch
+            {
+                return -1f;
+            }
+        }
 
         private float _lastAbandonPress = float.NegativeInfinity;
         private float _lastDiscardPress = float.NegativeInfinity;
@@ -651,14 +688,30 @@ namespace ICanShowYouTheWorld.RunMode
 
         private void Layout(float viewWidth, float viewHeight)
         {
+            // Where the game's own health panel ENDS, read from the game rather than guessed.
+            // The bottom-left panels sat on the health bar for a month (owner, alpha40: "they
+            // block health and food"; again 2026-09-28: "the healthbar is still covered by the
+            // tracking window") because every fix was a number - 10, 320, 190, 75 - and a number
+            // is right for exactly one resolution and UI scale. Hud.m_healthPanel is public, so
+            // the panels can simply stand above it. Re-laid out when it moves by more than a few
+            // pixels (max health changes its size), which also resets a dragged position - the
+            // trade taken, since a panel that drifts back onto the bar is the bug being fixed.
+            float healthTop = HealthPanelTopGui();
+            bool healthMoved = Mathf.Abs(healthTop - _laidOutForHealthTop) > 4f;
+
             if (Mathf.Approximately(viewWidth, _laidOutForWidth) &&
-                Mathf.Approximately(viewHeight, _laidOutForHeight))
+                Mathf.Approximately(viewHeight, _laidOutForHeight) && !healthMoved)
             {
                 return;
             }
 
             _laidOutForWidth = viewWidth;
             _laidOutForHeight = viewHeight;
+            _laidOutForHealthTop = healthTop;
+
+            // The bottom edge the side panels sit on: just above the health panel when the game
+            // says where it is, the window's bottom otherwise (the lobby, or a HUD not yet built).
+            float panelBottom = healthTop > 0f ? healthTop - 10f : viewHeight - 10f;
 
             // Scales with the window instead of sitting at a fixed 480: the HUD carries a
             // questline step, three tasks, every held boon and a split per boss, and on a tall
@@ -675,12 +728,12 @@ namespace ICanShowYouTheWorld.RunMode
             // depends on the screen, so it cannot be a constant that is right for everyone.
             float panelX = _config?.RunSidePanelX ?? 75f;
 
-            _trackerRect = new Rect(panelX, Mathf.Max(10f, viewHeight - TrackerHeight - 10f),
+            _trackerRect = new Rect(panelX, Mathf.Max(10f, panelBottom - TrackerHeight),
                 TrackerWidth, TrackerHeight);
             // Immediately right of the tracker, sharing its bottom edge. Both are draggable and
             // keep their dragged positions until the game window resizes, so this is a starting
             // point rather than a decree.
-            _stashRect = new Rect(panelX + TrackerWidth + 10f, Mathf.Max(10f, viewHeight - StashHeight - 10f),
+            _stashRect = new Rect(panelX + TrackerWidth + 10f, Mathf.Max(10f, panelBottom - StashHeight),
                 StashWidth, StashHeight);
             _lobbyRect = new Rect((viewWidth - LobbyWidth) * 0.5f, (viewHeight - LobbyHeight) * 0.5f,
                 LobbyWidth, LobbyHeight);
@@ -2169,6 +2222,9 @@ namespace ICanShowYouTheWorld.RunMode
             else
             {
                 GUILayout.Label($"{way.Display} · the way of {way.Title}", RunTheme.Body);
+                // The same number the Skills window's mirror row shows (RunService.PollWaySkill),
+                // so the two readouts of one ladder can never be caught disagreeing.
+                GUILayout.Label($"  Way skill {run.WaySkillLevel}", RunTheme.Small);
                 DrawWayKit(run, way);
             }
 

@@ -80,6 +80,28 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
+        /// The level the way's skill shows in the Skills window: 100 times the share of rungs whose
+        /// every boon is held, floored - 0, 33, 66, 100 on a ladder of three. Passives do not count:
+        /// they come with rung 1, so the choice itself already reads 33.
+        /// </summary>
+        /// <remarks>
+        /// A MIRROR of the ladder, not a skill that is trained. The owner wanted to "see your progress
+        /// on a skillbar", and the ladder is the boss count by design (see the class spec), so the bar
+        /// reads the ladder and nothing ever raises it by use. Floored rather than rounded so the
+        /// middle rung says 66 and only the whole way says 100. Here, not in the host, because the
+        /// host's arithmetic is the kind the tests cannot see.
+        /// </remarks>
+        public static int MirrorLevel(ClassDefinition cls, IEnumerable<string> heldIds)
+        {
+            var rungs = cls?.Rungs;
+            if (rungs == null || rungs.Length == 0) return 0;
+            var held = new HashSet<string>(heldIds ?? Enumerable.Empty<string>());
+
+            int learned = rungs.Count(r => r != null && r.Length > 0 && r.All(held.Contains));
+            return 100 * learned / rungs.Length;
+        }
+
+        /// <summary>
         /// The table: Hunter, Völva, Berserker (v1), then Húskarl, Skald, Sæfari, Smiðr - the seven
         /// graves the thane names. Catalog order is card order and key order (Keypad1-7).
         ///
