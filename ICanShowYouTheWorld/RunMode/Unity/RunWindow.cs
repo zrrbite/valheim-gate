@@ -696,7 +696,12 @@ namespace ICanShowYouTheWorld.RunMode
             // the panels can simply stand above it. Re-laid out when it moves by more than a few
             // pixels (max health changes its size), which also resets a dragged position - the
             // trade taken, since a panel that drifts back onto the bar is the bug being fixed.
+            // In WINDOW units, not pixels: this is drawn inside UIManager's scaled GUI.matrix, so
+            // viewHeight is Screen.height / scale, and a raw pixel height put both panels below
+            // the visible area on any scale but 1 (2026-09-28: "the tracking window and materials
+            // window are completely gone"). The ratio is the scale, without asking UIManager.
             float healthTop = HealthPanelTopGui();
+            if (healthTop > 0f && Screen.height > 0) healthTop *= viewHeight / Screen.height;
             bool healthMoved = Mathf.Abs(healthTop - _laidOutForHealthTop) > 4f;
 
             if (Mathf.Approximately(viewWidth, _laidOutForWidth) &&
