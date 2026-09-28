@@ -17,6 +17,22 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-28 - TASK: the quieter Hunter (`1.0.16-run.2026-09-28i`)
+
+Installed here already (`-ModOnly`). The Hunter's passive now also lends **Sneak to 50** and puts a
+status effect on you, **Hunter's Hush** (the Sneak icon on the HUD): noise -40%, and creatures see
+a crouching you from 80% as far. The mod's first runtime status effect; it goes with the way and
+is never saved into the character.
+
+**What to look for:** take Eydís - the Hush icon appears beside your other effects with the game's
+own tooltip ("-40% noise"). Crouch past a greydwarf at a distance that used to wake it. Die: the
+effect is back on respawn. Lay the way down (Shift+E at the thane): the icon goes. `grep Hush
+Player.log` prints the values and, for comparison, the troll set's own numbers.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-09-28 - TASK: lights that count, panels back, Stuffed, and arrows that burst (`1.0.16-run.2026-09-28h`)
 
 Installed here (`-ModOnly`) once the game was closed. (`...28e/f/g` were staged along the way and never installed on their own; this carries all of them.)

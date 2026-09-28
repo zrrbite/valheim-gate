@@ -108,6 +108,17 @@ in the design spec. Play list in `HANDOFF_WINDOWS.md` under `...28`.
 
 Verdict: _pending_
 
+## Follow-ups of 2026-09-28 evening (all installed as `...28i`)
+
+- `...28e` panels back at the old spot, 30 px right (two health-panel anchors tried and reverted).
+- `...28f` stray wisps swept; rescued lights never stashed (the "couldn't make the bow" report).
+- `...28g` Stuffed (meals ×4). Pool 31.
+- `...28h` fire and frost arrows burst with the staff effects; 1.5 s frost floor in the ring.
+- `...28i` the quieter Hunter: Sneak 50 + a runtime SE_Stats (noise −40%, stealth −0.2).
+
+Verdicts: _pending_. Open question from the owner: whether the ability bar hides centre text —
+if so, move it to bottom centre above the hotbar.
+
 ## Follow-up — the way as a skill, respec, panels (`1.0.16-run.2026-09-28c`, commit `2d3e97b`)
 
 Installed. The way is a READOUT skill (an unused `SkillType` number, a `SkillDef` on the player's
