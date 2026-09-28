@@ -99,6 +99,23 @@ Verdict (owner, 2026-09-27): the thane stood 61 m from the bed on level ground, 
       and republished (shipped with Milestone 3, `...27c`).
 - [x] Tags, release builds, installs — one per milestone.
 
+## Follow-up — the other four ways (`1.0.16-run.2026-09-28`, commit `906eb0d`)
+
+Installed. Húskarl, Skald, Sæfari and Smiðr, same shape as the first three; the card picks with
+Keypad 1-7; the thane names seven. Three corrections the IL forced on the brief and three known
+edges (free-build refund after the minute, Field Forge teaches the forge, Sea Legs may flicker) are
+in the design spec. Play list in `HANDOFF_WINDOWS.md` under `...28`.
+
+Verdict: _pending_
+
+## Queued (owner, 2026-09-27 evening) — not started
+
+- NPC map pins (thane, shade, Thjalfi) when wanted and placed.
+- FORGE page shows only recipes Hugin has taught.
+- Boon descriptions: inline under each boon and rung, plus IMGUI hover when the cursor is free.
+- Stormsworn stations: greaves to forge 4, cape to the artisan table; Acts VI-VII to the black
+  forge and galdr table when they exist.
+
 ## Follow-up — the first play verdict answered (`1.0.16-run.2026-09-27e`, commit `e6ba1a6`)
 
 Installed. Three fixes from the Berserker play: THE WAY block lists the kit with each rung's state

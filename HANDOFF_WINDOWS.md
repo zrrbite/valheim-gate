@@ -17,6 +17,41 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-09-28 - TASK: the other four ways (`1.0.16-run.2026-09-28`)
+
+Installed here already (`-ModOnly`). All seven ways are in; the thane names seven and calls
+himself the eighth. THE WAY card is two rows now and picks with **Keypad 1-7**.
+
+| Way | Passive | `[7]` rung 1 | `[0]` rung 2 (Eikthyr) | `[Ins]` rung 3 (Bonemass) | Gift at the choice |
+|---|---|---|---|---|---|
+| Húskarl (Halvard) | Blocking/Spears 50, +20 HP | Shield Bash: stagger what is in front, 4 m | Shield Wall: 20 s Resistant to blunt/slash/pierce | Last Stand: 6 s you cannot drop below 1 HP, then half health back | wood shield, flint spear |
+| Skald (Ormr) | Run/Jump/Swim 50 | Marching Song: 20 s +25% speed, stamina regen | War Song: 20 s +15% damage | Saga of Bragi: Rested where you stand, +30% health | 3 minor healing meads |
+| Sæfari (Ragna) | Swim 60, Spears 50 | Tide-borne: 30 s the water cannot tire you | Fair Wind: 60 s the wind follows your ship | Sea Legs: 5 min neither cold nor wet | abyssal harpoon |
+| Smiðr (Dvalinn) | Woodcutting/Pickaxes 50, +100 carry | Field Forge: a bench and a forge at your feet for 90 s | Master's Minute: 60 s building costs nothing | Reinforce: 10 min no weather/support wear on your pieces within 20 m | hoe, cultivator |
+
+**What to look for** (dev: `Shift+Keypad*` cycles all seven, `Shift+Keypad/` learns every rung):
+1. The card: seven ways, two rows, readable; Keypad 5-7 pick the last three; his AskLine names all seven.
+2. Húskarl: Bash only hits what is IN FRONT; Last Stand - stand in a greydwarf pack at 6 s and
+   watch health sit at 1, then jump to half; press Second Wind mid-stand and the stand must NOT end.
+3. Skald: Marching Song with Fleet-footed also held - both apply, and both come off cleanly. Saga of
+   Bragi in the open gives Rested for 5 min.
+4. Sæfari: Fair Wind on a raft/karve - the wind arrow swings behind you within ~5 s and follows as
+   you turn; with no ship within 30 m: "No ship near enough to feel it." Sea Legs in rain: the Wet
+   icon may FLICKER (the game re-adds it each physics step) - tell me if it is ugly.
+5. Smiðr: Field Forge on solid ground raises a bench and a forge you can USE (no roof needed); they
+   vanish at 90 s; on a ship: "Solid ground first." Master's Minute: build costs nothing for a
+   minute; the "Building here already costs nothing" refusal means the world already has the key.
+   Reinforce: rain no longer wears the roof for 10 min.
+6. Known exploit, ruling wanted: a piece built during Master's Minute and taken down AFTER it
+   refunds its full bill. Also: standing at a Field Forge teaches the character the forge (like
+   Farsight teaches the map).
+7. Grep `Player.log` for `World key` (Master's Minute set/cleared) and `Field Forge` (prefabs
+   resolved).
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-09-27 - TASK: Ulfr's axes, the kit on the HUD, Homeward fixed (`1.0.16-run.2026-09-27e`)
 
 Installed here already (`-ModOnly`). This build also carries the refilled pool (`...27d`, never
