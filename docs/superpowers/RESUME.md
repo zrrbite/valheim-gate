@@ -583,14 +583,14 @@ went from 10 to 14 across the two.
 move stamina ×0.5, stamina regen ×2.5, all stamina costs ×0.75, free melee and
 tools (ranged pays 25%), and the Hunter's Eye tracker panel.
 
-**30 general boons** (nine moved into the WAYS on 2026-09-27 and nine new ones refilled the pool
+**31 general boons** (nine moved into the WAYS on 2026-09-27 and nine new ones refilled the pool
 the same day), never offering one already held. Six general actives - `Keypad 4-6` and `8`
 (Second Wind, Emberskin, Waystone, Windfall) plus `Keypad +` and `-` (Mending Hands, Farsight);
 the rest are passives, across seven kinds:
 
 | Kind | Boons |
 |---|---|
-| Stats | Fleet-footed, Sharpened, Packmule, Hearty, **Tireless** |
+| Stats | Fleet-footed, Sharpened, Packmule, Hearty, **Tireless**, Stuffed (meals last ×4, 2026-09-28) |
 | Skills | Woodsman, Miner (Pickaxes 50, from Act II), Wayfarer (Run/Jump/Swim 50), Steady Hands (Blocking 50), **Quick Study** (skill gain ×3 on the baseline) |
 | **Rates** | **Bountiful** (resource drops ×2 on the baseline) |
 | **Resistance** | Irongut (poison), Coldblooded (frost), Fire-blooded (fire), Thick-skinned (blunt), Hardshell (pierce, from Act III) |

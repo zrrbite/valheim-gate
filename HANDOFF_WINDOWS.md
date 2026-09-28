@@ -17,9 +17,14 @@ Standing context for the Windows side:
 
 ---
 
-## 2026-09-28 - TASK: lights that count, and panels back where they were (`1.0.16-run.2026-09-28f`)
+## 2026-09-28 - TASK: lights that count, panels back, and Stuffed (`1.0.16-run.2026-09-28g`)
 
-**STAGED, NOT INSTALLED** - you were playing. When you quit: `.\dist\windows\Install-Mod.ps1 -ModOnly`.
+**STAGED, NOT INSTALLED** - you were playing. (`...28f` was the same without Stuffed.)
+
+**Stuffed** - your ask, "food lasts for hours": a new general passive. Every meal burns at a quarter
+speed while it is held (a 25-minute meal lasts most of two hours). The minutes already banked stay
+when the boon goes. Pool is 31. Look for: eat, hold Stuffed, watch the food icons drain four times
+slower. When you quit: `.\dist\windows\Install-Mod.ps1 -ModOnly`.
 (`...28e`, the panel revert, was staged and never installed either; this carries it.)
 
 **Your report:** "I had 1 deer light, 1 other light, 2 rescued light and couldn't make the bow."

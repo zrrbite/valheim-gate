@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Linq;
 using ICanShowYouTheWorld.Core;
 using ICanShowYouTheWorld.Services;
@@ -540,6 +541,12 @@ namespace ICanShowYouTheWorld.RunMode
                     ApplyWeaponMultiplier(StokerDamageMultiplier, "stoker");
                     break;
 
+                case "stuffed":
+                    // Nothing to apply: HoldStuffed hands the meals their time back every frame
+                    // while the boon is held. Not a loan — the minutes a meal has already banked
+                    // when the boon leaves are the character's, like Farsight's map.
+                    break;
+
                 case "kindling":
                     // Nothing to apply. It doubles what each FUTURE completion lends
                     // (RunService.GrantCompletionHealth), so the loan it enlarges is the task-health
@@ -874,6 +881,7 @@ namespace ICanShowYouTheWorld.RunMode
             // undoing them every frame. See each method for what.
             SafeInvoke(HoldLastStand);
             SafeInvoke(HoldSeaLegs);
+            HoldStuffed(dt);
             SafeInvoke(SteerFairWind);
         }
 
@@ -2319,6 +2327,67 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>Per frame while the stand is up: puts the flag back if anything took it.</summary>
+        // --- Stuffed (2026-09-28, owner: "food lasts for hours") ---
+
+        /// <summary>How many times longer a meal lasts. Four turns a 25-minute meal into most of two hours.</summary>
+        private const float StuffedFactor = 4f;
+
+        /// <summary>
+        /// Player.m_foods is private; each Food's m_time is public. Read by name once, the way the
+        /// mod already reads Projectile's owner — the field is data the compiler cannot see, so a
+        /// rename in a game update is a null here and a warning in the log, not a crash.
+        /// </summary>
+        private static readonly FieldInfo FoodsField =
+            typeof(Player).GetField("m_foods", BindingFlags.Instance | BindingFlags.NonPublic);
+
+        private bool _stuffedWarned;
+
+        /// <summary>
+        /// Gives every eaten meal back (1 - 1/factor) of the time the game is about to take, so
+        /// the net burn is a quarter speed. Player.UpdateFood subtracts whole seconds on a one-second
+        /// timer; adding fractions every frame and clamping at the meal's full time comes out the
+        /// same on average and never overfills.
+        /// </summary>
+        private void HoldStuffed(float dt)
+        {
+            if (FindHeld("stuffed") == null) return;
+
+            try
+            {
+                var player = Player.m_localPlayer;
+                if (player == null) return;
+
+                if (FoodsField == null)
+                {
+                    if (!_stuffedWarned)
+                    {
+                        _stuffedWarned = true;
+                        Debug.LogWarning("[ICanShowYouTheWorld] Stuffed: Player.m_foods not found; meals burn at the usual rate.");
+                    }
+                    return;
+                }
+
+                var foods = FoodsField.GetValue(player) as List<Player.Food>;
+                if (foods == null) return;
+
+                float giveBack = dt * (1f - 1f / StuffedFactor);
+                foreach (var food in foods)
+                {
+                    if (food == null || food.m_item == null || food.m_item.m_shared == null) continue;
+                    float full = food.m_item.m_shared.m_foodBurnTime;
+                    food.m_time = Mathf.Min(full, food.m_time + giveBack);
+                }
+            }
+            catch (Exception ex)
+            {
+                if (!_stuffedWarned)
+                {
+                    _stuffedWarned = true;
+                    Debug.LogWarning("[ICanShowYouTheWorld] Stuffed failed: " + ex.Message);
+                }
+            }
+        }
+
         private void HoldLastStand()
         {
             if (!_lastStandOn) return;

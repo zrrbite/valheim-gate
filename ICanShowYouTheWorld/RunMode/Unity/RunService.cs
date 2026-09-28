@@ -11319,6 +11319,9 @@ namespace ICanShowYouTheWorld.RunMode
             new BoonDefinition { Id = "bonecaller", ClassId = "volva", Display = "Bonecaller", IsPassive = false, CooldownSeconds = 180f, Description = "Raise two skeletons to fight for you." },
             new BoonDefinition { Id = "mule",  Display = "Packmule",     IsPassive = true,  Description = "Carry 100 more weight." },
             new BoonDefinition { Id = "hearty", Display = "Hearty",      IsPassive = true,  Description = "+15 max health." },
+            // Owner, 2026-09-28: "We need another boon. 'stuffed' - food lasts for hours." Meals burn
+            // at a quarter speed while it is held; the minutes already banked stay when it goes.
+            new BoonDefinition { Id = "stuffed", Display = "Stuffed", IsPassive = true, Description = "Every meal lasts four times as long." },
             new BoonDefinition { Id = "tireless", Display = "Tireless",  IsPassive = true,  Description = "+25 max stamina, faster recovery, cheaper dodges." },
             new BoonDefinition { Id = "woodsman", Display = "Woodsman", IsPassive = true, Description = "Woodcutting skill to 60. Trees fall fast." },
             // --- Skills, refilled (2026-09-27) ---
