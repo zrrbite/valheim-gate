@@ -31,6 +31,24 @@ static class ClassLadderTests
         new BoonDefinition { Id = "rend", ClassId = "berserker" },
         new BoonDefinition { Id = "rage", ClassId = "berserker" },
         new BoonDefinition { Id = "warcry", ClassId = "berserker" },
+
+        // The four of 2026-09-28.
+        new BoonDefinition { Id = "hirdman", ClassId = "huskarl", IsPassive = true },
+        new BoonDefinition { Id = "bash", ClassId = "huskarl" },
+        new BoonDefinition { Id = "bulwark", ClassId = "huskarl" },
+        new BoonDefinition { Id = "laststand", ClassId = "huskarl" },
+        new BoonDefinition { Id = "poet", ClassId = "skald", IsPassive = true },
+        new BoonDefinition { Id = "march", ClassId = "skald" },
+        new BoonDefinition { Id = "warsong", ClassId = "skald" },
+        new BoonDefinition { Id = "bragi", ClassId = "skald" },
+        new BoonDefinition { Id = "seafarer", ClassId = "saefari", IsPassive = true },
+        new BoonDefinition { Id = "tide", ClassId = "saefari" },
+        new BoonDefinition { Id = "fairwind", ClassId = "saefari" },
+        new BoonDefinition { Id = "sealegs", ClassId = "saefari" },
+        new BoonDefinition { Id = "craftsman", ClassId = "smidr", IsPassive = true },
+        new BoonDefinition { Id = "fieldforge", ClassId = "smidr" },
+        new BoonDefinition { Id = "mastersminute", ClassId = "smidr" },
+        new BoonDefinition { Id = "reinforce", ClassId = "smidr" },
     };
 
     public static void Run()
@@ -56,14 +74,30 @@ static class ClassLadderTests
         Check.That(ClassLadder.NextThreshold(hunter, 1, learned) == 3, "then three");
         Check.That(ClassLadder.NextThreshold(hunter, 3, learned) == null, "and then the ladder is spent");
 
-        Check.That(ClassLadder.Find("skald") == null, "an unknown way is not found");
+        Check.That(ClassLadder.Find("jarl") == null, "an unknown way is not found");
         Check.That(!ClassLadder.Due(null, 5, none).Any(), "and owes nothing");
         Check.That(ClassLadder.NextThreshold(null, 0, none) == null, "and has no next threshold");
         Check.That(ClassLadder.Find(null) == null, "a null id finds nothing rather than throwing");
 
         var catalog = ClassLadder.Catalog();
-        Check.That(catalog.Count == 3, "v1 has three ways");
+        Check.That(catalog.Count == 7, "the thane names seven ways");
         Check.That(catalog.Select(c => c.Id).Distinct().Count() == catalog.Count, "way ids are distinct");
+        Check.That(catalog.Select(c => c.Title).Distinct().Count() == catalog.Count, "and seven different graves");
+        Check.That(catalog.Select(c => c.Id).SequenceEqual(new[] { "hunter", "volva", "berserker", "huskarl", "skald", "saefari", "smidr" }),
+            "in card order: the first three, then Halvard, Ormr, Ragna, Dvalinn");
+        Check.That(catalog.All(c => !string.IsNullOrEmpty(c.Description) && c.PassiveBoonIds.Length > 0),
+            "every way has a card and a passive");
+
+        var huskarl = ClassLadder.Find("huskarl");
+        Check.That(huskarl != null && huskarl.Title == "Halvard" && huskarl.Display == "Húskarl", "the Húskarl is Halvard's way");
+        Check.That(ClassLadder.Due(huskarl, 0, none).SequenceEqual(new[] { "hirdman", "bash" }),
+            "the Húskarl starts with Hirdman and Shield Bash");
+        Check.That(ClassLadder.Due(huskarl, 3, none).SequenceEqual(new[] { "hirdman", "bash", "bulwark", "laststand" }),
+            "and the wall and the last stand come with the gods");
+        Check.That(ClassLadder.Find("skald").Title == "Ormr" && ClassLadder.Find("saefari").Title == "Ragna" &&
+                   ClassLadder.Find("smidr").Title == "Dvalinn", "Ormr, Ragna and Dvalinn keep their graves");
+        Check.That(ClassLadder.Find("saefari").Display == "Sæfari" && ClassLadder.Find("smidr").Display == "Smiðr",
+            "and their names keep their letters");
         Check.That(catalog.All(c => c.Rungs.Length == ClassLadder.Thresholds.Length),
             "every way has one rung per threshold");
 
@@ -101,6 +135,20 @@ static class ClassLadderTests
         Check.That(berserker.Description.EndsWith(" Ulfr’s axes are yours the moment you take his name."),
             "and the card says so");
         Check.That(new ClassDefinition().GrantItems != null, "a way built without gifts has an empty list, not null");
+
+        // The four new ways each hand something over, and their cards say so.
+        Check.That(huskarl.GrantItems.SequenceEqual(new[] { ("ShieldWood", 1), ("SpearFlint", 1) }),
+            "the Húskarl is handed a wooden shield and a flint spear");
+        Check.That(ClassLadder.Find("skald").GrantItems.SequenceEqual(new[] { ("MeadHealthMinor", 3) }),
+            "the Skald is handed three minor healing meads");
+        Check.That(ClassLadder.Find("saefari").GrantItems.SequenceEqual(new[] { ("SpearChitin", 1) }),
+            "the Sæfari is handed the abyssal harpoon");
+        Check.That(ClassLadder.Find("smidr").GrantItems.SequenceEqual(new[] { ("Hoe", 1), ("Cultivator", 1) }),
+            "the Smiðr is handed a hoe and a cultivator");
+        Check.That(new[] { "huskarl", "skald", "saefari", "smidr" }
+                .All(id => ClassLadder.Find(id).Description.EndsWith(" the moment you take his name.") ||
+                           ClassLadder.Find(id).Description.EndsWith(" the moment you take her name.")),
+            "and each card says the gift is yours at the choice");
 
         // What the HUD says a rung waits on - read from the thresholds, so moving one keeps it true.
         Check.That(ClassLadder.AfterLine(ClassLadder.Thresholds[1]) == "after Eikthyr", "rung 2 waits on Eikthyr");

@@ -27,8 +27,10 @@ namespace ICanShowYouTheWorld.RunMode
     ///
     /// fleet/sharp never touch either cheat's shared/global counters (SpeedUp/SpeedDown collapse
     /// walk into run and stomp jump; the damage-counter mechanism writes an ABSOLUTE, per-prefab
-    /// value into the weapon's shared damage block). Instead they snapshot the player/item state
-    /// on Apply and restore that exact snapshot on Unapply — "power is loaned", never permanent.
+    /// value into the weapon's shared damage block). Instead sharp snapshots the item state on
+    /// Apply and restores that exact snapshot on Unapply, and fleet lends against the player's speed
+    /// fields through the ledger below (since 2026-09-28, so the Marching Song can share them) —
+    /// "power is loaned", never permanent.
     ///
     /// mule/hearty/enduring are the same bargain in its simplest form: one plain float field on
     /// Player each (carry weight, base HP, base stamina), snapshotted and restored. They go
@@ -146,6 +148,95 @@ namespace ICanShowYouTheWorld.RunMode
         private const float ClassDamagePerBoss = 0.25f;
         private const float ClassDamageMaxScale = 3f;
 
+        // --- The four ways of 2026-09-28: Húskarl, Skald, Sæfari, Smiðr ---
+        //
+        // Same rule again: DefaultBoons' descriptions and the passives' cards state these numbers
+        // ("+20 max health", "twenty seconds", "within twenty metres"), so a change here is a change
+        // to the card.
+
+        /// <summary>Hirdman's health: "+20", a little over Hearty's 15 because it is the way's only
+        /// passive stat, and the Húskarl is the one who is meant to be standing at the end.</summary>
+        private const float HirdmanBaseHpBonus = 20f;
+
+        /// <summary>Craftsman's carry: "100 more weight", Packmule's number.</summary>
+        private const float CraftsmanCarryWeightBonus = 100f;
+
+        /// <summary>Shield Bash's reach: a shield's length and a step. Shorter than Rend's five,
+        /// because it only reaches forward.</summary>
+        private const float BashRadius = 4f;
+
+        /// <summary>
+        /// How far off the look direction a foe may stand and still be "in front": the cosine of
+        /// sixty degrees, so a 120-degree wedge. Wide enough that a player who is not aiming
+        /// carefully still hits what they are facing; narrow enough that the thing behind them does
+        /// not get staggered by a shield pointed the other way.
+        /// </summary>
+        private const float BashFrontDot = 0.5f;
+
+        /// <summary>Shield Wall's window: "twenty seconds".</summary>
+        private const float BulwarkSeconds = 20f;
+
+        /// <summary>Last Stand's window: "six seconds nothing can end".</summary>
+        private const float LastStandSeconds = 6f;
+
+        /// <summary>Last Stand's close: "half your health back".</summary>
+        private const float LastStandHealFraction = 0.5f;
+
+        /// <summary>Marching Song's window: "twenty seconds".</summary>
+        private const float MarchSeconds = 20f;
+
+        /// <summary>
+        /// Marching Song's step, as a fraction of the player's own speed before any loan. A
+        /// fraction rather than Fleet-footed's flat increments, because the song is a window and
+        /// "a quarter faster" is the thing a player can feel in twenty seconds.
+        /// </summary>
+        private const float MarchSpeedFraction = 0.25f;
+
+        /// <summary>Marching Song's breath: +4 stamina a second on the regen field Tireless lends.</summary>
+        private const float MarchStaminaRegen = 4f;
+
+        /// <summary>War Song's window and edge: "twenty seconds", +15% on the weapon product.</summary>
+        private const float WarsongSeconds = 20f;
+        private const float WarsongMultiplier = 1.15f;
+
+        /// <summary>Saga of Bragi's heal: "some of your health back", which is 30%.</summary>
+        private const float BragiHealFraction = 0.3f;
+
+        /// <summary>Tide-borne's window and breath: "thirty seconds", +8 stamina a second - more than
+        /// swimming or rowing can spend.</summary>
+        private const float TideSeconds = 30f;
+        private const float TideStaminaRegen = 8f;
+
+        /// <summary>Fair Wind's window: "for a minute".</summary>
+        private const float FairWindSeconds = 60f;
+
+        /// <summary>How near a ship must be to feel Fair Wind: a stone's throw from the shore.</summary>
+        private const float FairWindShipRange = 30f;
+
+        /// <summary>Sea Legs' window: "five minutes".</summary>
+        private const float SeaLegsSeconds = 300f;
+
+        /// <summary>Field Forge's window: "ninety seconds".</summary>
+        private const float FieldForgeSeconds = 90f;
+
+        /// <summary>
+        /// Where the bench and the forge stand: this far ahead of the player, and this far either
+        /// side of that point. Four metres between centres leaves about a metre and a half of clear
+        /// ground between the two pieces, which is room to walk between them.
+        /// </summary>
+        private const float FieldForgeAhead = 3f;
+        private const float FieldForgeSide = 2f;
+
+        internal const string FieldBenchPrefab = "piece_workbench";
+        internal const string FieldForgePrefab = "forge";
+
+        /// <summary>Master's Minute: "one minute".</summary>
+        private const float MastersMinuteSeconds = 60f;
+
+        /// <summary>Reinforce's window and reach: "ten minutes", "within twenty metres".</summary>
+        private const float ReinforceSeconds = 600f;
+        private const float ReinforceRadius = 20f;
+
         // --- The general boons of 2026-09-27 ---
         //
         // Same rule as the ways' block above: DefaultBoons' descriptions state these numbers, so a
@@ -223,15 +314,6 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         private GameObject[] _emberFlames;
 
-        // fleet: a single snapshot — CreateOffer excludes held passives, so at most one fleet can
-        // ever be held at a time.
-        private struct FleetSnapshot
-        {
-            public float RunSpeed, WalkSpeed, JumpForce, JumpForceForward;
-        }
-        private FleetSnapshot _fleetSnapshot;
-        private bool _fleetSnapshotTaken;
-
         /// <summary>
         /// One plain float field on Player that a boon can lend against — carry weight, base health,
         /// the stamina numbers. All are read live by the game every frame (GetMaxCarryWeight reads
@@ -264,6 +346,15 @@ namespace ICanShowYouTheWorld.RunMode
                 ["StaminaRegen"]      = (p => p.m_staminaRegen,      (p, v) => p.m_staminaRegen = v),
                 ["StaminaRegenDelay"] = (p => p.m_staminaRegenDelay, (p, v) => p.m_staminaRegenDelay = v),
                 ["DodgeStamina"]      = (p => p.m_dodgeStaminaUsage, (p, v) => p.m_dodgeStaminaUsage = v),
+
+                // Speed joined the ledger with the Marching Song (2026-09-28). Fleet-footed used to
+                // snapshot these two and put the snapshot back, which is exactly the shape that
+                // cannot share a field: a song sung while Fleet-footed was held would be wiped by
+                // Fleet-footed's restore, or would restore Fleet-footed's boost as "original" and
+                // leave it on the character for good. Two lenders on one field is what this table
+                // is for.
+                ["RunSpeed"]          = (p => p.m_runSpeed,          (p, v) => p.m_runSpeed = v),
+                ["WalkSpeed"]         = (p => p.m_walkSpeed,         (p, v) => p.m_walkSpeed = v),
             };
 
         /// <summary>
@@ -287,6 +378,11 @@ namespace ICanShowYouTheWorld.RunMode
 
             // Glass Cannon's cost, on the same field Hearty raises — the pair the ledger exists for.
             new FieldLoan { BoonId = "glasscannon", Field = "BaseHp", Amount = -GlassCannonBaseHpPenalty },
+
+            // The ways' passives that carry a stat as well as skills (2026-09-28). Their skill half
+            // is in SkillBoons; Apply runs both for these ids.
+            new FieldLoan { BoonId = "hirdman",   Field = "BaseHp",         Amount = HirdmanBaseHpBonus },
+            new FieldLoan { BoonId = "craftsman", Field = "MaxCarryWeight", Amount = CraftsmanCarryWeightBonus },
         };
 
         /// <summary>
@@ -355,9 +451,22 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         private readonly Func<GameObject> _lightningFx;
 
+        /// <summary>
+        /// Switches the world's free-building key on or off — RunService, through WorldModifiers,
+        /// which records the key's pre-run state with the run's other world-key originals and
+        /// persists it in the save. Answers false when it would not act: the world already builds
+        /// for free on its own (the key is the world's, not ours to switch), or there is no world.
+        ///
+        /// Master's Minute goes through the host for the reason the rate boons do: a global key is
+        /// saved with the WORLD, so its original has to live where RestoreAll can reach it after a
+        /// crash, not in a field of this class that dies with the process.
+        /// </summary>
+        private readonly Func<bool, bool> _setFreeBuild;
+
         public BoonEffects(Func<IReadOnlyList<HeldBoon>> heldBoons, Func<IEnumerable<string>> undefeatedBossLocations,
             Func<int> defeatedBossCount = null, Action<Skills.SkillType, float> loanSkill = null,
-            Action<string, int> grantItem = null, Func<GameObject> lightningFx = null)
+            Action<string, int> grantItem = null, Func<GameObject> lightningFx = null,
+            Func<bool, bool> setFreeBuild = null)
         {
             _heldBoons = heldBoons ?? (() => Array.Empty<HeldBoon>());
             _undefeatedBossLocations = undefeatedBossLocations ?? (() => Enumerable.Empty<string>());
@@ -365,6 +474,7 @@ namespace ICanShowYouTheWorld.RunMode
             _loanSkill = loanSkill ?? ((_, __) => { });
             _grantItem = grantItem ?? ((_, __) => { });
             _lightningFx = lightningFx ?? (() => null);
+            _setFreeBuild = setFreeBuild ?? (_ => false);
         }
 
         // --- Public surface (RunService's boon seams) ---
@@ -387,7 +497,17 @@ namespace ICanShowYouTheWorld.RunMode
                 case "miner":
                 case "wayfarer":
                 case "steady":
+                case "poet":
+                case "seafarer":
                     ApplySkillBoon(boonId);
+                    break;
+
+                case "hirdman":
+                case "craftsman":
+                    // Two halves each: skills through the host's loan (SkillBoons), and one Player
+                    // field through the ledger (FieldLoans). Both are re-run safely on respawn.
+                    ApplySkillBoon(boonId);
+                    ApplyFieldBoost(boonId);
                     break;
 
                 case "irongut":
@@ -548,6 +668,20 @@ namespace ICanShowYouTheWorld.RunMode
                     EndRage();
                     break;
 
+                // The four ways' timed actives (2026-09-28). A way's boon is never taken by death,
+                // so these are reached from the dev Revoke and from UnapplyAll's held-boon loop -
+                // and each End is idempotent, because UnapplyAll's finally calls them again.
+                case "bulwark":       EndBulwark(); break;
+                case "laststand":     EndLastStand(heal: false); break;
+                case "march":         EndMarch(); break;
+                case "warsong":       EndWarsong(); break;
+                case "tide":          EndTide(); break;
+                case "fairwind":      EndFairWind(); break;
+                case "sealegs":       EndSeaLegs(); break;
+                case "fieldforge":    TakeDownFieldForge(); break;
+                case "mastersminute": EndMastersMinute(); break;
+                case "reinforce":     EndReinforce(); break;
+
                 case "shepherd":
                     try { WithLegacyGodModeBracket(() => PetBuff.ResetPetBuffs(quiet: true)); }
                     catch (Exception e) { Debug.LogWarning($"[ICanShowYouTheWorld] Shepherd reset: {e.Message}"); }
@@ -601,6 +735,18 @@ namespace ICanShowYouTheWorld.RunMode
                 case "wrath": return ActivateWrath();
                 case "mend": return ActivateMend();
                 case "farsight": return ActivateFarsight();
+                case "bash": return ActivateBash();
+                case "bulwark": return ActivateBulwark();
+                case "laststand": return ActivateLastStand();
+                case "march": return ActivateMarch();
+                case "warsong": return ActivateWarsong();
+                case "bragi": return ActivateBragi();
+                case "tide": return ActivateTide();
+                case "fairwind": return ActivateFairWind();
+                case "sealegs": return ActivateSeaLegs();
+                case "fieldforge": return ActivateFieldForge();
+                case "mastersminute": return ActivateMastersMinute();
+                case "reinforce": return ActivateReinforce();
                 default: return false;
             }
         }
@@ -616,6 +762,12 @@ namespace ICanShowYouTheWorld.RunMode
         {
             try
             {
+                // Last Stand FIRST, and without its heal: its pending off is the one timer whose Off
+                // gives something (half your health back), and a run that is being abandoned or
+                // failed must not hand the player a heal on the way out. EndLastStand removes its
+                // own pending entry, so the flush below never reaches it.
+                SafeInvoke(() => EndLastStand(heal: false));
+
                 foreach (var pending in _pending.ToList()) SafeInvoke(pending.Off);
                 _pending.Clear();
 
@@ -643,6 +795,20 @@ namespace ICanShowYouTheWorld.RunMode
                 SafeInvoke(EndRage);
                 // A borrowed lightning flash still standing when the run ends goes with it.
                 SafeInvoke(TakeDownWrathFlashes);
+                // The four ways' windows, each provably closed on a path where an earlier step
+                // threw - the same reasoning as Blood Rage above. The two that touch something other
+                // than the player come first: the world's wind and the world's free-building key are
+                // not the character's, and a run must not leave either behind.
+                SafeInvoke(() => EndLastStand(heal: false));
+                SafeInvoke(EndFairWind);
+                SafeInvoke(EndMastersMinute);
+                SafeInvoke(EndReinforce);
+                SafeInvoke(TakeDownFieldForge);
+                SafeInvoke(EndSeaLegs);
+                SafeInvoke(EndBulwark);
+                SafeInvoke(EndWarsong);
+                SafeInvoke(EndMarch);
+                SafeInvoke(EndTide);
                 // Pugilist is run baseline rather than a held boon, so the held-boon loop above
                 // never reaches it — unwind it here so weapon stamina costs always come back.
                 SafeInvoke(UnapplyPugilist);
@@ -677,44 +843,39 @@ namespace ICanShowYouTheWorld.RunMode
                     _pending[i] = entry;
                 }
             }
+
+            // The windows that must be HELD rather than set once: something in the game keeps
+            // undoing them every frame. See each method for what.
+            SafeInvoke(HoldLastStand);
+            SafeInvoke(HoldSeaLegs);
+            SafeInvoke(SteerFairWind);
         }
 
         // --- fleet ---
 
+        /// <summary>
+        /// Fleet-footed: run and walk speed up by the config's increment, twice.
+        ///
+        /// Through the field ledger since 2026-09-28, not a snapshot of its own: the Marching Song
+        /// lends against the same two fields, and a snapshot-and-restore cannot share a field with
+        /// anyone (see FieldAccess). The ledger replaces rather than adds on a second Apply, so the
+        /// respawn re-apply cannot stack it either. Jump was snapshotted before but never changed,
+        /// so there is nothing of it to carry over.
+        /// </summary>
         private void ApplyFleet()
         {
             var player = Player.m_localPlayer;
             if (player == null) return;
 
-            _fleetSnapshot = new FleetSnapshot
-            {
-                RunSpeed = player.m_runSpeed,
-                WalkSpeed = player.m_walkSpeed,
-                JumpForce = player.m_jumpForce,
-                JumpForceForward = player.m_jumpForceForward
-            };
-            _fleetSnapshotTaken = true;
+            SyncLoanOwner(player);
 
             float increment = Resolve<IConfiguration>()?.SpeedIncrement ?? 0.5f;
             float boost = increment * FleetSpeedIncrements;
-            player.m_runSpeed += boost;
-            player.m_walkSpeed += boost;
-            // Jump is snapshotted (for an exact restore) but deliberately left untouched here.
+            LendField(player, "RunSpeed", "fleet", boost);
+            LendField(player, "WalkSpeed", "fleet", boost);
         }
 
-        private void UnapplyFleet()
-        {
-            if (!_fleetSnapshotTaken) return;
-            _fleetSnapshotTaken = false;
-
-            var player = Player.m_localPlayer;
-            if (player == null) return;
-
-            player.m_runSpeed = _fleetSnapshot.RunSpeed;
-            player.m_walkSpeed = _fleetSnapshot.WalkSpeed;
-            player.m_jumpForce = _fleetSnapshot.JumpForce;
-            player.m_jumpForceForward = _fleetSnapshot.JumpForceForward;
-        }
+        private void UnapplyFleet() => RepayLender("fleet");
 
         // --- mule / hearty / enduring (single-field passives) ---
 
@@ -768,6 +929,20 @@ namespace ICanShowYouTheWorld.RunMode
             _loans.SetOriginal(field, access.Get(player));   // first lender only; ignored thereafter
             _loans.Lend(field, lender, amount);
             access.Set(player, _loans.Value(field));
+        }
+
+        /// <summary>
+        /// Lends a FRACTION of the field's pristine value - the Marching Song's "a quarter faster".
+        /// Measured from the ledger's original, never from the live value, so a song sung while
+        /// Fleet-footed is held is a quarter of the player's own pace, not a quarter of the boosted
+        /// one, and the result does not depend on which was taken first.
+        /// </summary>
+        private void LendFieldFraction(Player player, string field, string lender, float fraction)
+        {
+            if (!FieldAccess.TryGetValue(field, out var access)) return;
+
+            _loans.SetOriginal(field, access.Get(player));   // first lender only; ignored thereafter
+            LendField(player, field, lender, _loans.Original(field) * fraction);
         }
 
         /// <summary>
@@ -965,15 +1140,27 @@ namespace ICanShowYouTheWorld.RunMode
 
             var mods = _damageModOriginal;
 
-            if (_damageModBoons.Contains("irongut")) mods.m_poison = HitData.DamageModifier.Resistant;
-            if (_damageModBoons.Contains("coldblood")) mods.m_frost = HitData.DamageModifier.Resistant;
-            if (_damageModBoons.Contains("fireblood")) mods.m_fire = HitData.DamageModifier.Resistant;
+            // Every resistance RAISES to Resistant rather than assigning it (2026-09-28). Two claims
+            // on one slot arrived with the ways - Shield Wall beside Thick-skinned, Sea Legs beside
+            // Coldblooded - and an assignment would let whichever ran last decide; worse, it would
+            // write Resistant over an original that was already better. The better of the two is
+            // the only answer that means what both cards say.
+            if (_damageModBoons.Contains("irongut")) RaiseToResistant(ref mods.m_poison);
+            // Sea Legs holds frost at Resistant for its window, and that is the whole of how it
+            // keeps the cold off: Player.UpdateEnvStatusEffects never applies Cold or Freezing to a
+            // player whose frost modifier is Resistant (verified in the 1.0.16 IL).
+            if (_damageModBoons.Contains("coldblood") || _damageModBoons.Contains("sealegs")) RaiseToResistant(ref mods.m_frost);
+            if (_damageModBoons.Contains("fireblood")) RaiseToResistant(ref mods.m_fire);
 
-            // The two physical resistances (2026-09-27). Same game step as the elemental three.
-            bool thickskin = _damageModBoons.Contains("thickskin");
-            bool hardshell = _damageModBoons.Contains("hardshell");
-            if (thickskin) mods.m_blunt = HitData.DamageModifier.Resistant;
-            if (hardshell) mods.m_pierce = HitData.DamageModifier.Resistant;
+            // The physical three. Thick-skinned and Hardshell (2026-09-27) each claim one; Shield
+            // Wall (the Húskarl's rung 2) claims all three for its twenty seconds.
+            bool wall = _damageModBoons.Contains("bulwark");
+            bool thickskin = _damageModBoons.Contains("thickskin") || wall;
+            bool hardshell = _damageModBoons.Contains("hardshell") || wall;
+            bool slashResisted = wall;
+            if (thickskin) RaiseToResistant(ref mods.m_blunt);
+            if (hardshell) RaiseToResistant(ref mods.m_pierce);
+            if (slashResisted) RaiseToResistant(ref mods.m_slash);
 
             // Reckless's cost. "Weak" is the game's own one-step-worse modifier, which is roughly
             // the stated 25% and, more importantly, is a value Valheim already balances around
@@ -992,11 +1179,40 @@ namespace ICanShowYouTheWorld.RunMode
             if (_damageModBoons.Contains("reckless") || _damageModBoons.Contains("rage"))
             {
                 mods.m_blunt = thickskin ? HitData.DamageModifier.Normal : HitData.DamageModifier.Weak;
-                mods.m_slash = HitData.DamageModifier.Weak;
+                mods.m_slash = slashResisted ? HitData.DamageModifier.Normal : HitData.DamageModifier.Weak;
                 mods.m_pierce = hardshell ? HitData.DamageModifier.Normal : HitData.DamageModifier.Weak;
             }
 
             player.m_damageModifiers = mods;
+        }
+
+        /// <summary>
+        /// Sets a slot to Resistant unless it is already at least as good. The enum's order is not
+        /// its strength (Normal, Resistant, Weak, Immune, Ignore, VeryResistant, VeryWeak,
+        /// SlightlyResistant, SlightlyWeak - verified in the IL), so "better" is spelled out here.
+        /// </summary>
+        private static void RaiseToResistant(ref HitData.DamageModifier slot)
+        {
+            if (Protection(slot) < Protection(HitData.DamageModifier.Resistant))
+                slot = HitData.DamageModifier.Resistant;
+        }
+
+        /// <summary>How much a modifier protects, weakest first. Ignore counts as total: nothing lands.</summary>
+        private static int Protection(HitData.DamageModifier m)
+        {
+            switch (m)
+            {
+                case HitData.DamageModifier.VeryWeak: return 0;
+                case HitData.DamageModifier.Weak: return 1;
+                case HitData.DamageModifier.SlightlyWeak: return 2;
+                case HitData.DamageModifier.Normal: return 3;
+                case HitData.DamageModifier.SlightlyResistant: return 4;
+                case HitData.DamageModifier.Resistant: return 5;
+                case HitData.DamageModifier.VeryResistant: return 6;
+                case HitData.DamageModifier.Immune: return 7;
+                case HitData.DamageModifier.Ignore: return 8;
+                default: return 3;
+            }
         }
 
         /// <summary>Puts the pristine modifiers back and forgets every claim on them.</summary>
@@ -1874,6 +2090,966 @@ namespace ICanShowYouTheWorld.RunMode
             _wrathFlashes.Clear();
         }
 
+        // --- The four ways of 2026-09-28 ---
+        //
+        // Every one is Blood Rage's shape or Rend's. The timed ones switch something on, schedule
+        // its off, refuse a recast while the window is open (a recast that only restarted the timer
+        // would spend the cooldown on nothing the player could see), and have an End that is
+        // idempotent, because it is reached from the timer, from Unapply, from the pending flush and
+        // from UnapplyAll's finally. The instant ones refuse on an empty target, as Rend does, so a
+        // press at nothing spends no cooldown.
+
+        /// <summary>True while a timed window keyed <paramref name="key"/> has its off still to come.</summary>
+        private bool IsWindowOpen(string key)
+        {
+            for (int i = 0; i < _pending.Count; i++)
+                if (_pending[i].Key == key) return true;
+            return false;
+        }
+
+        // --- Húskarl ---
+
+        /// <summary>
+        /// Shield Bash: Warcry's stagger, narrowed to what stands in front of the player - the
+        /// flat look direction, a 120-degree wedge, four metres. Bosses are skipped for Warcry's
+        /// reason: RPC_Stagger only sets an animator trigger, and a boss's animator may have no
+        /// stagger state for it.
+        /// </summary>
+        private bool ActivateBash()
+        {
+            var held = FindHeld("bash");
+            if (held == null || held.CooldownRemaining > 0f) return false;
+
+            var player = Player.m_localPlayer;
+            if (player == null) return false;
+
+            try
+            {
+                // GetLookDir is the eye's forward, pitch and all; flattened, because a player
+                // looking at the ground in front of a Greydwarf is still facing it.
+                Vector3 look = player.GetLookDir();
+                look.y = 0f;
+                if (look.sqrMagnitude < 0.0001f) look = player.transform.forward;
+                look.Normalize();
+
+                Vector3 from = player.transform.position;
+                var foes = HostilesNear(from, BashRadius, player, skipBosses: true)
+                    .Where(c =>
+                    {
+                        Vector3 d = c.transform.position - from;
+                        d.y = 0f;
+                        // Standing ON the player counts as in front: there is no side to be on.
+                        return d.sqrMagnitude < 0.0001f || Vector3.Dot(d.normalized, look) > BashFrontDot;
+                    })
+                    .ToList();
+
+                if (foes.Count == 0)
+                {
+                    LastActivationMessage = "Nothing in front of the shield.";
+                    return false;
+                }
+
+                foreach (var c in foes)
+                {
+                    try { c.Stagger(AwayFrom(from, c)); }
+                    catch (Exception ex) { Debug.LogWarning("[ICanShowYouTheWorld] Shield Bash: " + ex.Message); }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[ICanShowYouTheWorld] Shield Bash failed: " + ex.Message);
+                return false;
+            }
+
+            held.CooldownRemaining = held.Def.CooldownSeconds;
+            return true;
+        }
+
+        /// <summary>
+        /// Shield Wall: Resistant to blunt, slash and pierce for twenty seconds. Blood Rage's cost
+        /// run the other way - a claim on the one damage-modifier struct, recomputed from the
+        /// pristine snapshot, so it composes with Thick-skinned, Hardshell and Reckless instead of
+        /// overwriting them (see RefreshDamageModifiers).
+        /// </summary>
+        private bool ActivateBulwark()
+        {
+            var held = FindHeld("bulwark");
+            if (held == null || held.CooldownRemaining > 0f) return false;
+
+            if (_damageModBoons.Contains("bulwark"))
+            {
+                LastActivationMessage = "The wall is already up.";
+                return false;
+            }
+
+            if (Player.m_localPlayer == null) return false;
+
+            try { ApplyDamageModifier("bulwark"); }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[ICanShowYouTheWorld] Shield Wall failed: " + ex.Message);
+                SafeInvoke(EndBulwark);
+                return false;
+            }
+            if (!_damageModBoons.Contains("bulwark")) return false;
+
+            RemovePending("bulwark");
+            SchedulePending("bulwark", BulwarkSeconds, EndBulwark);
+
+            held.CooldownRemaining = held.Def.CooldownSeconds;
+            return true;
+        }
+
+        private void EndBulwark()
+        {
+            RemovePending("bulwark");
+            UnapplyDamageModifier("bulwark");
+        }
+
+        /// <summary>Last Stand is up, on this player, and owes them god mode off (unless they had it).</summary>
+        private bool _lastStandOn;
+        private Player _lastStandPlayer;
+        private bool _lastStandHadGod;
+
+        /// <summary>
+        /// Last Stand: six seconds in which the player cannot drop below one hit point, then half
+        /// their health back.
+        ///
+        /// The game's own god mode is exactly that clamp and nothing more: Character.ApplyDamage
+        /// takes the hit in full and, only if the result is zero or less and InGodMode() is true,
+        /// sets health to 1 (verified in the 1.0.16 IL - the only other reader is the "cheated" flag
+        /// on a victim's ZDO, which touches achievement counters and nothing the saga reads). So
+        /// this sets Player.SetGodMode directly, and NOT CheatCommands.SetGodMode: the GM mod's
+        /// periodic regen (GodRegenTick) is gated on CheatCommands.GodMode, the static, which stays
+        /// false - the clamp without the regen, which is what "nothing can end" means and all it
+        /// means. The heal is the stand's reward, paid when it ends.
+        ///
+        /// Two things undo the flag while the window is open and are answered by HoldLastStand:
+        /// the legacy god-mode bracket's close (see WithLegacyGodModeBracket), and anything else
+        /// that writes Player.SetGodMode(false) mid-window.
+        /// </summary>
+        private bool ActivateLastStand()
+        {
+            var held = FindHeld("laststand");
+            if (held == null || held.CooldownRemaining > 0f) return false;
+
+            if (_lastStandOn)
+            {
+                LastActivationMessage = "You are already standing.";
+                return false;
+            }
+
+            var player = Player.m_localPlayer;
+            if (player == null || player.IsDead()) return false;
+
+            // Latched before the write, as Unseen's flag is: a throw after the write must not leave
+            // a god-mode player with nothing that knows to undo it.
+            _lastStandHadGod = player.InGodMode();
+            _lastStandPlayer = player;
+            _lastStandOn = true;
+            try
+            {
+                player.SetGodMode(true);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[ICanShowYouTheWorld] Last Stand failed: " + ex.Message);
+                SafeInvoke(() => EndLastStand(heal: false));
+                return false;
+            }
+
+            RemovePending("laststand");
+            SchedulePending("laststand", LastStandSeconds, () => EndLastStand(heal: true));
+
+            LastActivationMessage = "For six seconds, nothing can end you.";
+            held.CooldownRemaining = held.Def.CooldownSeconds;
+            return true;
+        }
+
+        /// <summary>Per frame while the stand is up: puts the flag back if anything took it.</summary>
+        private void HoldLastStand()
+        {
+            if (!_lastStandOn) return;
+
+            var player = _lastStandPlayer;
+            // Unity's ==: the player this was cast on is gone (a logout mid-window). Nothing to
+            // hold, and the next player spawns with god mode off of its own accord.
+            if (player == null)
+            {
+                _lastStandOn = false;
+                _lastStandPlayer = null;
+                RemovePending("laststand");
+                return;
+            }
+
+            if (!player.InGodMode()) player.SetGodMode(true);
+        }
+
+        /// <summary>
+        /// Closes the stand: god mode back to what it was (on only if the player had it before, or
+        /// the GM mod's static says so now), and - from the timer only - the heal.
+        /// </summary>
+        private void EndLastStand(bool heal)
+        {
+            RemovePending("laststand");
+            if (!_lastStandOn) return;
+            _lastStandOn = false;
+
+            var player = _lastStandPlayer;
+            _lastStandPlayer = null;
+            if (player == null) return;
+
+            player.SetGodMode(_lastStandHadGod || CheatCommands.GodMode);
+
+            if (heal && !player.IsDead())
+                player.Heal(player.GetMaxHealth() * LastStandHealFraction);
+        }
+
+        // --- Skald ---
+
+        /// <summary>
+        /// Marching Song: a quarter faster and +4 stamina a second for twenty seconds. All three
+        /// halves are LOANS in the field ledger under the lender "march", so Fleet-footed (lender
+        /// "fleet", the same two speed fields) and Tireless (the same regen field) compose with it,
+        /// and one RepayLender takes the song back without touching either.
+        /// </summary>
+        private bool ActivateMarch()
+        {
+            var held = FindHeld("march");
+            if (held == null || held.CooldownRemaining > 0f) return false;
+
+            if (IsWindowOpen("march"))
+            {
+                LastActivationMessage = "The song is already on your lips.";
+                return false;
+            }
+
+            var player = Player.m_localPlayer;
+            if (player == null) return false;
+
+            try
+            {
+                SyncLoanOwner(player);
+                LendFieldFraction(player, "RunSpeed", "march", MarchSpeedFraction);
+                LendFieldFraction(player, "WalkSpeed", "march", MarchSpeedFraction);
+                LendField(player, "StaminaRegen", "march", MarchStaminaRegen);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[ICanShowYouTheWorld] Marching Song failed: " + ex.Message);
+                SafeInvoke(EndMarch);
+                return false;
+            }
+
+            SchedulePending("march", MarchSeconds, EndMarch);
+
+            held.CooldownRemaining = held.Def.CooldownSeconds;
+            return true;
+        }
+
+        private void EndMarch()
+        {
+            RemovePending("march");
+            RepayLender("march");
+        }
+
+        /// <summary>
+        /// War Song: +15% on the weapon product for twenty seconds, Blood Rage without the price.
+        ///
+        /// The player only. The legacy pet blessing Shepherd rides (PetBuff.BuffAllPets) is not a
+        /// "harder blow" at all - it sets tamed max health to 5000, matches their speed to the
+        /// player's and rewrites their weapons from a group baseline - and its only undo,
+        /// ResetPetBuffs, would strip a held Shepherd's blessing along with the song's. A timed
+        /// version is not cheap, so the card promises the player's blows and nothing else.
+        /// </summary>
+        private bool ActivateWarsong()
+        {
+            var held = FindHeld("warsong");
+            if (held == null || held.CooldownRemaining > 0f) return false;
+
+            if (_weaponMultipliers.ContainsKey("warsong"))
+            {
+                LastActivationMessage = "The war song is already sung.";
+                return false;
+            }
+
+            if (Player.m_localPlayer == null) return false;
+
+            try { ApplyWeaponMultiplier(WarsongMultiplier, "warsong"); }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[ICanShowYouTheWorld] War Song failed: " + ex.Message);
+                SafeInvoke(EndWarsong);
+                return false;
+            }
+
+            RemovePending("warsong");
+            SchedulePending("warsong", WarsongSeconds, EndWarsong);
+
+            held.CooldownRemaining = held.Def.CooldownSeconds;
+            return true;
+        }
+
+        private void EndWarsong()
+        {
+            RemovePending("warsong");
+            RemoveWeaponMultiplier("warsong");
+        }
+
+        /// <summary>
+        /// Saga of Bragi: the game's own Rested, and 30% of max health.
+        ///
+        /// Not a loan, and deliberately: Rested is the character's own status, earned the way a
+        /// fire and a bench earn it, and it runs out on its own clock. SEMan.AddStatusEffect(int,
+        /// resetTime: true) looks the effect up in ObjectDB itself and, when Rested is already on,
+        /// only resets its time. Its length is the game's (SE_Rested.UpdateTTL): 300 s plus 60 s per
+        /// comfort level above 1, from the comfort the player stands in - five minutes in the open,
+        /// more by a hearth - and a reset never shortens what is left. "Rested where you stand"
+        /// is exactly that.
+        /// </summary>
+        private bool ActivateBragi()
+        {
+            var held = FindHeld("bragi");
+            if (held == null || held.CooldownRemaining > 0f) return false;
+
+            var player = Player.m_localPlayer;
+            var seman = player == null ? null : player.GetSEMan();
+            if (seman == null || player.IsDead()) return false;
+
+            try
+            {
+                seman.AddStatusEffect(SEMan.s_statusEffectRested, resetTime: true);
+
+                // AddStatusEffect answers null both for "reset an existing one" and for "could not",
+                // so the check is whether Rested is on now.
+                if (!seman.HaveStatusEffect(SEMan.s_statusEffectRested))
+                {
+                    Debug.LogWarning("[ICanShowYouTheWorld] Saga of Bragi: the Rested status effect did not take.");
+                    LastActivationMessage = "The saga will not come.";
+                    return false;
+                }
+
+                player.Heal(player.GetMaxHealth() * BragiHealFraction);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[ICanShowYouTheWorld] Saga of Bragi failed: " + ex.Message);
+                return false;
+            }
+
+            held.CooldownRemaining = held.Def.CooldownSeconds;
+            return true;
+        }
+
+        // --- Sæfari ---
+
+        /// <summary>
+        /// Tide-borne: +8 stamina a second for thirty seconds, a field loan under "tide". Swimming
+        /// and rowing drain less than that, so for the window the water cannot tire you - and it
+        /// is the same field Tireless and the Marching Song lend against, so all three compose.
+        /// </summary>
+        private bool ActivateTide()
+        {
+            var held = FindHeld("tide");
+            if (held == null || held.CooldownRemaining > 0f) return false;
+
+            if (IsWindowOpen("tide"))
+            {
+                LastActivationMessage = "The tide is already with you.";
+                return false;
+            }
+
+            var player = Player.m_localPlayer;
+            if (player == null) return false;
+
+            try
+            {
+                SyncLoanOwner(player);
+                LendField(player, "StaminaRegen", "tide", TideStaminaRegen);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[ICanShowYouTheWorld] Tide-borne failed: " + ex.Message);
+                SafeInvoke(EndTide);
+                return false;
+            }
+
+            SchedulePending("tide", TideSeconds, EndTide);
+
+            held.CooldownRemaining = held.Def.CooldownSeconds;
+            return true;
+        }
+
+        private void EndTide()
+        {
+            RemovePending("tide");
+            RepayLender("tide");
+        }
+
+        /// <summary>Fair Wind is blowing, on this EnvMan, for this ship, and owes the old wind back.</summary>
+        private bool _fairWindOn;
+        private EnvMan _fairWindEnv;
+        private Ship _fairWindShip;
+        private bool _windWasDebug;
+        private float _windWasAngle;
+        private float _windWasIntensity;
+
+        /// <summary>
+        /// Fair Wind: for a minute the wind blows the way the nearest ship is heading, at full
+        /// strength.
+        ///
+        /// Through the game's own wind override, the one the "wind" console command drives: when
+        /// EnvMan.m_debugWind is set, UpdateWind aims the target wind at (sin a, 0, cos a) for
+        /// a = m_debugWindAngle in degrees, at m_debugWindIntensity (all three public fields,
+        /// verified in the 1.0.16 IL). The ship's heading is re-read every frame (SteerFairWind), so
+        /// the wind follows the helm - it eases toward each new heading over the game's own five
+        /// second transition, as Moder's power does, rather than snapping.
+        ///
+        /// The three fields are snapshotted and put back exactly, so a player who had set the wind
+        /// themselves with the console gets their own wind back, not a cleared one. The wind is
+        /// LOCAL: EnvMan computes it per client, and the sail is pushed by whoever owns the ship -
+        /// which is the player at the helm, the case this is for.
+        /// </summary>
+        private bool ActivateFairWind()
+        {
+            var held = FindHeld("fairwind");
+            if (held == null || held.CooldownRemaining > 0f) return false;
+
+            if (_fairWindOn)
+            {
+                LastActivationMessage = "The wind is already yours.";
+                return false;
+            }
+
+            var player = Player.m_localPlayer;
+            var env = EnvMan.instance;
+            if (player == null || env == null) return false;
+
+            try
+            {
+                var ship = NearestShip(player.transform.position, FairWindShipRange);
+                if (ship == null)
+                {
+                    LastActivationMessage = "No ship near enough to feel it.";
+                    return false;
+                }
+
+                _windWasDebug = env.m_debugWind;
+                _windWasAngle = env.m_debugWindAngle;
+                _windWasIntensity = env.m_debugWindIntensity;
+                _fairWindEnv = env;
+                _fairWindShip = ship;
+                _fairWindOn = true;
+
+                env.m_debugWindAngle = HeadingDegrees(ship.transform.forward);
+                env.m_debugWindIntensity = 1f;
+                env.m_debugWind = true;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[ICanShowYouTheWorld] Fair Wind failed: " + ex.Message);
+                SafeInvoke(EndFairWind);
+                return false;
+            }
+
+            RemovePending("fairwind");
+            SchedulePending("fairwind", FairWindSeconds, EndFairWind);
+
+            held.CooldownRemaining = held.Def.CooldownSeconds;
+            return true;
+        }
+
+        /// <summary>
+        /// Per frame while the wind is ours: keeps it at the ship's back. If the ship is gone
+        /// (sunk, unloaded) the wind follows where the player looks for the rest of the minute -
+        /// the minute was paid for, and a wind that dropped dead mid-crossing would be the worse
+        /// surprise.
+        /// </summary>
+        private void SteerFairWind()
+        {
+            if (!_fairWindOn) return;
+
+            var env = _fairWindEnv;
+            if (env == null)
+            {
+                // The world this was cast in has gone (a logout). A fresh EnvMan starts with the
+                // override off, so there is nothing to put back - only the bookkeeping.
+                _fairWindOn = false;
+                _fairWindEnv = null;
+                _fairWindShip = null;
+                RemovePending("fairwind");
+                return;
+            }
+
+            Vector3 heading;
+            if (_fairWindShip != null) heading = _fairWindShip.transform.forward;
+            else
+            {
+                var player = Player.m_localPlayer;
+                if (player == null) return;
+                heading = player.GetLookDir();
+            }
+
+            env.m_debugWindAngle = HeadingDegrees(heading);
+        }
+
+        private void EndFairWind()
+        {
+            RemovePending("fairwind");
+            if (!_fairWindOn) return;
+            _fairWindOn = false;
+
+            var env = _fairWindEnv;
+            _fairWindEnv = null;
+            _fairWindShip = null;
+            if (env == null) return;
+
+            env.m_debugWind = _windWasDebug;
+            env.m_debugWindAngle = _windWasAngle;
+            env.m_debugWindIntensity = _windWasIntensity;
+        }
+
+        /// <summary>The compass angle UpdateWind reads back as (sin a, 0, cos a).</summary>
+        private static float HeadingDegrees(Vector3 direction)
+        {
+            direction.y = 0f;
+            if (direction.sqrMagnitude < 0.0001f) return 0f;
+            return Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg;
+        }
+
+        /// <summary>
+        /// The ship the player is aboard, else the nearest one within range. Ship keeps a static
+        /// list only of ships with the local player aboard (GetLocalShip), so a ship at the jetty
+        /// is found by a scene search - acceptable at a five-minute cooldown.
+        /// </summary>
+        private static Ship NearestShip(Vector3 at, float range)
+        {
+            var aboard = Ship.GetLocalShip();
+            if (aboard != null && Vector3.Distance(aboard.transform.position, at) <= range) return aboard;
+
+            Ship best = null;
+            float bestDistance = range;
+            foreach (var ship in UnityEngine.Object.FindObjectsByType<Ship>(FindObjectsSortMode.None))
+            {
+                if (ship == null) continue;
+                float d = Vector3.Distance(ship.transform.position, at);
+                if (d > bestDistance) continue;
+                best = ship;
+                bestDistance = d;
+            }
+            return best;
+        }
+
+        /// <summary>Sea Legs is up: cold and wet are shed every frame until it ends.</summary>
+        private bool _seaLegsOn;
+
+        /// <summary>
+        /// Sea Legs: five minutes in which neither cold nor wet can reach you.
+        ///
+        /// Cold and Freezing are kept off by the game itself: Player.UpdateEnvStatusEffects never
+        /// applies either while the player's frost modifier is Resistant or better (verified in
+        /// the 1.0.16 IL), so the window holds frost at Resistant through the damage-modifier set.
+        /// Wet has no such gate - rain adds it every physics step to anyone not under a roof, and
+        /// swimming adds it in UpdateWater - so it is removed, quietly, every frame (HoldSeaLegs),
+        /// and Cold/Freezing with it in case either was on when the song started.
+        /// </summary>
+        private bool ActivateSeaLegs()
+        {
+            var held = FindHeld("sealegs");
+            if (held == null || held.CooldownRemaining > 0f) return false;
+
+            if (_seaLegsOn)
+            {
+                LastActivationMessage = "Your sea legs are already under you.";
+                return false;
+            }
+
+            var player = Player.m_localPlayer;
+            if (player == null) return false;
+
+            try
+            {
+                ApplyDamageModifier("sealegs");
+                if (!_damageModBoons.Contains("sealegs")) return false;
+
+                _seaLegsOn = true;
+                ShedColdAndWet(player);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[ICanShowYouTheWorld] Sea Legs failed: " + ex.Message);
+                SafeInvoke(EndSeaLegs);
+                return false;
+            }
+
+            RemovePending("sealegs");
+            SchedulePending("sealegs", SeaLegsSeconds, EndSeaLegs);
+
+            held.CooldownRemaining = held.Def.CooldownSeconds;
+            return true;
+        }
+
+        private void HoldSeaLegs()
+        {
+            if (!_seaLegsOn) return;
+
+            var player = Player.m_localPlayer;
+            if (player == null) return;
+
+            // A respawn mid-window hands back a player with vanilla modifiers; the claim is still
+            // held, so re-applying against the new player snapshots them and puts frost back up.
+            if (!ReferenceEquals(_damageModOwner, player)) ApplyDamageModifier("sealegs");
+
+            ShedColdAndWet(player);
+        }
+
+        private static void ShedColdAndWet(Player player)
+        {
+            var seman = player.GetSEMan();
+            if (seman == null) return;
+
+            // quiet: true blanks the stop message, so the shedding is not announced every frame.
+            if (seman.HaveStatusEffect(SEMan.s_statusEffectWet)) seman.RemoveStatusEffect(SEMan.s_statusEffectWet, quiet: true);
+            if (seman.HaveStatusEffect(SEMan.s_statusEffectCold)) seman.RemoveStatusEffect(SEMan.s_statusEffectCold, quiet: true);
+            if (seman.HaveStatusEffect(SEMan.s_statusEffectFreezing)) seman.RemoveStatusEffect(SEMan.s_statusEffectFreezing, quiet: true);
+        }
+
+        private void EndSeaLegs()
+        {
+            RemovePending("sealegs");
+            if (!_seaLegsOn) return;
+            _seaLegsOn = false;
+
+            UnapplyDamageModifier("sealegs");
+        }
+
+        // --- Smiðr ---
+
+        /// <summary>The bench and forge standing now, by ZDOID - see DestroyByZdo for why not by object.</summary>
+        private readonly List<ZDOID> _fieldForge = new List<ZDOID>();
+        private bool _fieldForgeLogged;
+
+        /// <summary>
+        /// Field Forge: a workbench and a forge at the player's feet for ninety seconds.
+        ///
+        /// Raised the way the companions are - Instantiate, non-persistent ZDO, owned, tracked by
+        /// ZDOID - so they can never be saved into the world, and are taken down through the ZDO
+        /// even from an unloaded zone. Four things are changed on each INSTANCE (never the prefab),
+        /// each for a reason the IL gave:
+        ///
+        ///  - CraftingStation.m_craftRequireRoof and m_craftRequireFire go false. Both default TRUE
+        ///    in the class and CheckUsable refuses a station without a roof over it ("needs a
+        ///    roof") - a bench raised on open ground would otherwise be one you cannot use. Set
+        ///    before the station's Start, which is when it decides whether to poll for fire.
+        ///  - Piece.m_canBeRemoved goes false, so the hammer cannot take them down, and
+        ///    Piece.m_resources is emptied, so a Greydwarf that breaks one drops nothing: a raised
+        ///    bench taken apart would otherwise refund a real bench's wood, and the forge its copper.
+        ///
+        /// NOT claimed as the player's (no SetCreator): the built-piece scan counts pieces whose
+        /// creator is the player, and a station that stood for ninety seconds must not complete a
+        /// "build a workbench" step. Standing near a station does teach it (CraftingStation.
+        /// UpdateKnownStationsInRange) - that is how its recipes become craftable at all, and like
+        /// Farsight's map it is knowledge, not power: the player has seen a forge.
+        /// </summary>
+        private bool ActivateFieldForge()
+        {
+            var held = FindHeld("fieldforge");
+            if (held == null || held.CooldownRemaining > 0f) return false;
+
+            if (_fieldForge.Count > 0)
+            {
+                LastActivationMessage = "The bench and forge are already standing.";
+                return false;
+            }
+
+            var player = Player.m_localPlayer;
+            var scene = ZNetScene.instance;
+            if (player == null || scene == null) return false;
+
+            if (!player.IsOnGround() || player.IsSwimming() || player.GetStandingOnShip() != null || player.IsAttachedToShip())
+            {
+                LastActivationMessage = "Solid ground first.";
+                return false;
+            }
+
+            var bench = scene.GetPrefab(FieldBenchPrefab);
+            var forge = scene.GetPrefab(FieldForgePrefab);
+            if (!_fieldForgeLogged)
+            {
+                // Asset names are data: said once, whichever way it went.
+                _fieldForgeLogged = true;
+                Debug.Log($"[ICanShowYouTheWorld] Field Forge: '{FieldBenchPrefab}' " + (bench != null ? "resolved" : "NOT FOUND") +
+                          $", '{FieldForgePrefab}' " + (forge != null ? "resolved" : "NOT FOUND") + ".");
+            }
+            if (bench == null && forge == null)
+            {
+                LastActivationMessage = $"Missing prefabs: {FieldBenchPrefab}, {FieldForgePrefab}";
+                return false;
+            }
+
+            try
+            {
+                Vector3 ahead = player.transform.forward;
+                ahead.y = 0f;
+                if (ahead.sqrMagnitude < 0.0001f) ahead = Vector3.forward;
+                ahead.Normalize();
+                Vector3 side = Vector3.Cross(Vector3.up, ahead);
+                Vector3 centre = player.transform.position + ahead * FieldForgeAhead;
+                // Facing the player, so both are ready to use from where they were called.
+                Quaternion facing = Quaternion.LookRotation(-ahead);
+
+                if (bench != null) RaiseStation(bench, centre - side * FieldForgeSide, facing, player);
+                if (forge != null) RaiseStation(forge, centre + side * FieldForgeSide, facing, player);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[ICanShowYouTheWorld] Field Forge failed: " + ex.Message);
+            }
+
+            if (_fieldForge.Count == 0)
+            {
+                LastActivationMessage = "The ground would not take them.";
+                return false;
+            }
+
+            RemovePending("fieldforge");
+            SchedulePending("fieldforge", FieldForgeSeconds, TakeDownFieldForge);
+
+            LastActivationMessage = bench != null && forge != null
+                ? "A bench and a forge, for ninety seconds."
+                : bench != null ? "A bench, for ninety seconds." : "A forge, for ninety seconds.";
+            held.CooldownRemaining = held.Def.CooldownSeconds;
+            return true;
+        }
+
+        private void RaiseStation(GameObject prefab, Vector3 at, Quaternion facing, Player player)
+        {
+            // Thane's margin overload: a short ray from just above, which answers false over a cliff
+            // edge rather than guessing. On a miss, the player's own footing is the next best thing.
+            Vector3 pos = at;
+            pos.y = player.transform.position.y;
+            try
+            {
+                if (ZoneSystem.instance != null && ZoneSystem.instance.GetSolidHeight(at, out float ground, 5))
+                    pos.y = ground;
+            }
+            catch { }
+
+            var inst = UnityEngine.Object.Instantiate(prefab, pos, facing);
+            if (inst == null) return;
+
+            var view = inst.GetComponent<ZNetView>();
+            var zdo = (view != null && view.IsValid()) ? view.GetZDO() : null;
+            if (zdo == null)
+            {
+                // Untrackable without a ZDO, and so impossible to take down on time - never leave one.
+                UnityEngine.Object.Destroy(inst);
+                return;
+            }
+
+            zdo.Persistent = false;
+            if (!view.IsOwner()) view.ClaimOwnership();
+
+            var piece = inst.GetComponent<Piece>();
+            if (piece != null)
+            {
+                piece.m_canBeRemoved = false;
+                piece.m_resources = new Piece.Requirement[0];
+            }
+
+            foreach (var station in inst.GetComponentsInChildren<CraftingStation>(true))
+            {
+                station.m_craftRequireRoof = false;
+                station.m_craftRequireFire = false;
+            }
+
+            _fieldForge.Add(zdo.m_uid);
+        }
+
+        private void TakeDownFieldForge()
+        {
+            RemovePending("fieldforge");
+            foreach (var id in _fieldForge.ToList())
+            {
+                try { DestroyByZdo(id); }
+                catch (Exception ex) { Debug.LogWarning("[ICanShowYouTheWorld] Field Forge cleanup: " + ex.Message); }
+            }
+            _fieldForge.Clear();
+        }
+
+        /// <summary>Master's Minute switched the world's free-building key on and owes it an off.</summary>
+        private bool _mastersMinuteOn;
+
+        /// <summary>
+        /// Master's Minute: a minute in which building costs nothing.
+        ///
+        /// Through the world key GlobalKeys.NoBuildCost, NOT Player.m_noPlacementCost. The brief
+        /// named the player flag (the GM "nocost"), and the 1.0.16 IL says it is far more than
+        /// building: it is private, it shows every piece in the game whether learned or not
+        /// (PieceTable.UpdateAvailable), makes every RECIPE craftable with no station and no
+        /// materials (Player.GetAvailableRecipes, InventoryGui), skips the roof and fire checks on
+        /// every station, and toggles with a "No placement cost" line on screen. A minute of that
+        /// is a Flametal sword in Act I.
+        ///
+        /// The world key is only the building half. Player.HaveRequirements answers true for a
+        /// piece while the key is set but still demands the piece be KNOWN and its station in
+        /// range; placement skips ConsumeResources; crafting is untouched (that is the separate
+        /// NoCraftCost key). And while it is set, Piece.DropResources refunds nothing, so nothing
+        /// can be built free and taken down for its bill inside the minute.
+        ///
+        /// The key is saved with the world, so its original lives with the run's other world-key
+        /// originals (WorldModifiers) and is persisted with the run: a crash inside the minute is
+        /// put right on resume (RunService releases it) and at run end (RestoreAll).
+        /// </summary>
+        private bool ActivateMastersMinute()
+        {
+            var held = FindHeld("mastersminute");
+            if (held == null || held.CooldownRemaining > 0f) return false;
+
+            if (_mastersMinuteOn)
+            {
+                LastActivationMessage = "The minute is already running.";
+                return false;
+            }
+
+            if (ZoneSystem.instance == null || Player.m_localPlayer == null) return false;
+
+            bool switched;
+            try { switched = _setFreeBuild(true); }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[ICanShowYouTheWorld] Master's Minute failed: " + ex.Message);
+                return false;
+            }
+
+            if (!switched)
+            {
+                // The world builds free already, by its own setting. Nothing to give, and the key
+                // is the world's - switching it off after a minute would take the world's own away.
+                LastActivationMessage = "Building here already costs nothing.";
+                return false;
+            }
+
+            _mastersMinuteOn = true;
+            RemovePending("mastersminute");
+            SchedulePending("mastersminute", MastersMinuteSeconds, EndMastersMinute);
+
+            LastActivationMessage = "For one minute, building costs nothing.";
+            held.CooldownRemaining = held.Def.CooldownSeconds;
+            return true;
+        }
+
+        private void EndMastersMinute()
+        {
+            RemovePending("mastersminute");
+            if (!_mastersMinuteOn) return;
+            _mastersMinuteOn = false;
+
+            _setFreeBuild(false);
+        }
+
+        /// <summary>A piece Reinforce touched, and the two flags it had before.</summary>
+        private struct Reinforced
+        {
+            public WearNTear Piece;
+            public bool RoofWear;
+            public bool SupportWear;
+        }
+
+        private readonly List<Reinforced> _reinforced = new List<Reinforced>();
+
+        /// <summary>
+        /// Reinforce: for ten minutes, every player-built piece within twenty metres takes neither
+        /// weather wear nor support wear.
+        ///
+        /// Mind the names. WearNTear.m_noRoofWear and m_noSupportWear read as "no wear", and mean
+        /// the opposite: both default TRUE, and UpdateWear only applies rain damage when
+        /// m_noRoofWear is true and only runs the support check (100 damage to an unsupported
+        /// piece) when m_noSupportWear is true (verified in the 1.0.16 IL). So shoring a piece up
+        /// is setting both FALSE - the brief's "set them true" would have been a no-op on a normal
+        /// wall and would have added wear to a stone one.
+        ///
+        /// The flags are per-instance fields, never saved: each touched piece's own values are kept
+        /// and put back. A piece destroyed or unloaded meanwhile is skipped (Unity's ==), and comes
+        /// back from its prefab anyway. One consequence worth knowing: with the support check off,
+        /// a piece whose support is taken away stands until the ten minutes are up, then falls.
+        /// </summary>
+        private bool ActivateReinforce()
+        {
+            var held = FindHeld("reinforce");
+            if (held == null || held.CooldownRemaining > 0f) return false;
+
+            if (_reinforced.Count > 0)
+            {
+                LastActivationMessage = "Your walls are already shored up.";
+                return false;
+            }
+
+            var player = Player.m_localPlayer;
+            if (player == null) return false;
+
+            try
+            {
+                Vector3 centre = player.transform.position;
+                float r2 = ReinforceRadius * ReinforceRadius;
+
+                // A copy, for Mending Hands' reason: the game's list is rearranged when a piece is
+                // destroyed.
+                foreach (var wnt in WearNTear.GetAllInstances().ToList())
+                {
+                    if (wnt == null) continue;
+                    if ((wnt.transform.position - centre).sqrMagnitude > r2) continue;
+
+                    var piece = wnt.GetComponent<Piece>();
+                    if (piece == null || !piece.IsPlacedByPlayer()) continue;
+
+                    _reinforced.Add(new Reinforced { Piece = wnt, RoofWear = wnt.m_noRoofWear, SupportWear = wnt.m_noSupportWear });
+                    wnt.m_noRoofWear = false;
+                    wnt.m_noSupportWear = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[ICanShowYouTheWorld] Reinforce failed: " + ex.Message);
+                SafeInvoke(EndReinforce);
+                return false;
+            }
+
+            if (_reinforced.Count == 0)
+            {
+                LastActivationMessage = "Nothing of yours to shore up.";
+                return false;
+            }
+
+            RemovePending("reinforce");
+            SchedulePending("reinforce", ReinforceSeconds, EndReinforce);
+
+            LastActivationMessage = _reinforced.Count == 1
+                ? "One piece shored up for ten minutes."
+                : $"{_reinforced.Count} pieces shored up for ten minutes.";
+            held.CooldownRemaining = held.Def.CooldownSeconds;
+            return true;
+        }
+
+        private void EndReinforce()
+        {
+            RemovePending("reinforce");
+
+            foreach (var r in _reinforced)
+            {
+                // Unity's ==, deliberately: here the question IS "is it destroyed", and a destroyed
+                // piece has no flags left to restore.
+                if (r.Piece == null) continue;
+                try
+                {
+                    r.Piece.m_noRoofWear = r.RoofWear;
+                    r.Piece.m_noSupportWear = r.SupportWear;
+                }
+                catch { }
+            }
+            _reinforced.Clear();
+        }
+
         private bool ActivateWay()
         {
             var held = FindHeldWithCharge("way");
@@ -2072,6 +3248,34 @@ namespace ICanShowYouTheWorld.RunMode
                     (Skills.SkillType.Swim, 50f),
                 },
                 ["steady"]   = new[] { (Skills.SkillType.Blocking, 50f) },
+
+                // The four ways' passives (2026-09-28). Overlaps with the general skill boons are
+                // harmless - a loan only ever raises, and never lends a skill twice - so a Skald who
+                // also drew Wayfarer holds two cards that say the same thing, and the higher level
+                // wins where they differ (the Sæfari's Swim 60 over Wayfarer's 50).
+                ["hirdman"]  = new[]
+                {
+                    (Skills.SkillType.Blocking, 50f),
+                    (Skills.SkillType.Spears, 50f),
+                },
+                ["poet"]     = new[]
+                {
+                    (Skills.SkillType.Run, 50f),
+                    (Skills.SkillType.Jump, 50f),
+                    (Skills.SkillType.Swim, 50f),
+                },
+                // No Fishing, deliberately: the hearth track has a "Fishing skill 10" step, and a
+                // loan would complete it the moment the way was taken up.
+                ["seafarer"] = new[]
+                {
+                    (Skills.SkillType.Swim, 60f),
+                    (Skills.SkillType.Spears, 50f),
+                },
+                ["craftsman"] = new[]
+                {
+                    (Skills.SkillType.WoodCutting, 50f),
+                    (Skills.SkillType.Pickaxes, 50f),
+                },
             };
 
         private void ApplySkillBoon(string boonId)
@@ -2239,6 +3443,18 @@ namespace ICanShowYouTheWorld.RunMode
         private void DespawnCompanion(ZDOID id)
         {
             _companions.Remove(id);
+            DestroyByZdo(id);
+        }
+
+        /// <summary>
+        /// Takes a networked object out of the world by its ZDOID, loaded or not - the companions'
+        /// dismissal, shared since 2026-09-28 with the Field Forge's bench and forge, which have the
+        /// same problem: a station whose zone unloaded keeps its ZDO and would come back from the
+        /// PREFAB, a real bench, on the player's return.
+        /// </summary>
+        private static void DestroyByZdo(ZDOID id)
+        {
+            if (id == ZDOID.None) return;
 
             var scene = ZNetScene.instance;
             var go = scene == null ? null : scene.FindInstance(id);
@@ -2312,9 +3528,18 @@ namespace ICanShowYouTheWorld.RunMode
         /// RunService forces off for the whole run. The flag is bracketed on just long enough
         /// for the one synchronous toggle call it gates, and restored via CheatCommands.SetGodMode
         /// (the side-effect-free setter) — no frame is ever rendered with it set.
+        ///
+        /// Last Stand holds the player's OWN god-mode flag while it is up, and the bracket's close -
+        /// CheatCommands.SetGodMode(false) - writes Player.SetGodMode(false) straight through it.
+        /// Second Wind and Emberskin are general and bracketed, so pressing either mid-window would
+        /// end the stand early with nothing on screen to say so.
+        /// The hold is put back the instant the bracket closes, before any damage can be taken.
         /// </summary>
-        private static void WithLegacyGodModeBracket(Action action) =>
-            WithGodModeBracket(CheatCommands.SetGodMode, () => CheatCommands.GodMode, action);
+        private void WithLegacyGodModeBracket(Action action)
+        {
+            try { WithGodModeBracket(CheatCommands.SetGodMode, () => CheatCommands.GodMode, action); }
+            finally { HoldLastStand(); }
+        }
 
         /// <summary>Same bracket, for the modern-service god-mode flag that gates IPetService.BuffAllPets.</summary>
         private static void WithServiceGodModeBracket(Action action)

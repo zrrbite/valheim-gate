@@ -325,11 +325,12 @@ answer, practised before it was taught. Act VII spends it.
   debtor waits; and a man who tends a machine the sky powers should only be there
   when the sky is awake. It also completes the pair: the hunter's shade wants
   DARK, Thjalfi wants WEATHER, and neither can be found by simply walking about.
-- **The thane** (2026-09-27) — Act I's third speaker. He buried three of a hird that came
+- **The thane** (2026-09-27) — Act I's third speaker. He buried seven of a hird that came
   before you and was kept here to count their stones, since nobody came for any of them;
   he is one of the put-away, wears the Ghost in a third palette, and stands by DAY — the
   shade wants dark, Thjalfi wants weather, he wants to see which stone is whose. He
-  teaches the WAYS: Eydís (Hunter), Sigrún (Völva), Ulfr (Berserker) — a class, taken up
+  teaches the WAYS: Eydís (Hunter), Sigrún (Völva), Ulfr (Berserker), and since 2026-09-28
+  Halvard (Húskarl), Ormr (Skald), Ragna (Sæfari), Dvalinn (Smiðr) — a class, taken up
   at a grave, held for one run, a rung at a time as the gods fall (the choice, then
   Eikthyr, then Bonemass). Meeting him is a HEARTH step (`mq-thane`) that completes on
   speaking, so declining a way never stalls the chain. He keeps names, not light: he never

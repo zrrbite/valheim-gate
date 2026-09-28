@@ -80,7 +80,8 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
-        /// The v1 table: Hunter, Völva, Berserker.
+        /// The table: Hunter, Völva, Berserker (v1), then Húskarl, Skald, Sæfari, Smiðr - the seven
+        /// graves the thane names. Catalog order is card order and key order (Keypad1-7).
         ///
         /// The descriptions are what the thane's card (THE WAY) prints, in his voice: second person,
         /// and nothing promised that the kit does not do.
@@ -122,6 +123,51 @@ namespace ICanShowYouTheWorld.RunMode
                 // over. The name is SagaItems.UlfrsAxesPrefab; spelled out here because this file
                 // is pure and cannot see that one. The run-start validator checks it resolves.
                 GrantItems = new[] { ("Saga_UlfrsAxes", 1) },
+            },
+
+            // The four of 2026-09-28, completing the hird of seven the thane buries. Their gifts are
+            // vanilla prefabs, checked at run start with the other rewards like Ulfr's axes.
+            new ClassDefinition
+            {
+                Id = "huskarl", Display = "Húskarl", Title = "Halvard",
+                Description = "You stand and things break on you. A bash that staggers what is in front; later a wall " +
+                              "that shrugs off blows, and after that a last stand nothing can end. His shield and spear " +
+                              "are yours the moment you take his name.",
+                PassiveBoonIds = new[] { "hirdman" },
+                Rungs = new[] { new[] { "bash" }, new[] { "bulwark" }, new[] { "laststand" } },
+                GrantItems = new[] { ("ShieldWood", 1), ("SpearFlint", 1) },
+            },
+            new ClassDefinition
+            {
+                Id = "skald", Display = "Skald", Title = "Ormr",
+                Description = "You sing and the road shortens: a marching song that carries you; later a war song that " +
+                              "sharpens your blows, and after that Bragi’s own saga, which rests you where you stand. His " +
+                              "flask is yours the moment you take his name.",
+                PassiveBoonIds = new[] { "poet" },
+                Rungs = new[] { new[] { "march" }, new[] { "warsong" }, new[] { "bragi" } },
+                GrantItems = new[] { ("MeadHealthMinor", 3) },
+            },
+            new ClassDefinition
+            {
+                Id = "saefari", Display = "Sæfari", Title = "Ragna",
+                Description = "Water is yours: a tide that carries you without tiring; later a fair wind at your ship’s " +
+                              "back, and after that sea-legs that no cold or wet can touch. Her harpoon is yours the " +
+                              "moment you take her name.",
+                PassiveBoonIds = new[] { "seafarer" },
+                Rungs = new[] { new[] { "tide" }, new[] { "fairwind" }, new[] { "sealegs" } },
+                // The abyssal harpoon - a Mistlands weapon handed over in the Meadows, because it is
+                // the one spear the game makes for pulling things out of the water.
+                GrantItems = new[] { ("SpearChitin", 1) },
+            },
+            new ClassDefinition
+            {
+                Id = "smidr", Display = "Smiðr", Title = "Dvalinn",
+                Description = "You build where you stand: a bench and a forge raised from nothing for a minute and a " +
+                              "half; later the master’s minute, when building costs nothing, and after that walls that " +
+                              "no weather wears. His tools are yours the moment you take his name.",
+                PassiveBoonIds = new[] { "craftsman" },
+                Rungs = new[] { new[] { "fieldforge" }, new[] { "mastersminute" }, new[] { "reinforce" } },
+                GrantItems = new[] { ("Hoe", 1), ("Cultivator", 1) },
             },
         };
 

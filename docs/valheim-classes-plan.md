@@ -16,7 +16,7 @@
 > | Where a class lives | **Per run**, chosen DURING the saga from a trainer NPC — not in the lobby, not per character. One trainer for all classes in v1; later, each class's trainer stands somewhere else in the world. |
 > | How abilities unlock | **Saga progression**, not a custom skill: rung 1 at the choice, rung 2 *available* once 1 boss is down (Eikthyr), rung 3 at 3 bosses (Bonemass). Available → **learned** by returning to the trainer. All thresholds are data. |
 > | Boon migration | **Everything class-defining moves** out of the general boon pool into the classes (see table). |
-> | Roster v1 | **Hunter, Völva, Berserker.** Húskarl, Skald, Sæfari, Smiðr later. |
+> | Roster | **Hunter, Völva, Berserker** first (2026-09-27); **Húskarl, Skald, Sæfari, Smiðr** the next day, once the first three had been played. All seven are in. |
 > | Trainer | **A new NPC, "the thane of the graves"** — one of the put-away who remembers what the dead were in life. Stands by DAY (the shade wants dark, Thjalfi wants rain, the thane wants daylight). |
 > | When | After the bed step in Act I (`mq-bed`). |
 > | Step or encounter | A HEARTH-track questline step that completes on **speaking**; choosing a class is optional. |

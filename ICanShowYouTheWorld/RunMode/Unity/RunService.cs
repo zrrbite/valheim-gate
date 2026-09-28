@@ -381,7 +381,10 @@ namespace ICanShowYouTheWorld.RunMode
             // lazily whenever BoonEffects actually needs the held set.
             _boonEffects = new BoonEffects(
                 () => _boons?.Held, UndefeatedBossLocations, DefeatedBossCount, LoanSkill, GrantItem,
-                lightningFx: _items.Lightning);
+                lightningFx: _items.Lightning,
+                // Master's Minute. A world key, so it is written where the run's other world keys
+                // are, and its original is saved and restored with theirs.
+                setFreeBuild: on => _worldModifiers.SetFlag(GlobalKeys.NoBuildCost, on));
             ApplyBoonEffect = _boonEffects.Apply;
             UnapplyBoonEffect = _boonEffects.Unapply;
             UnapplyAllBoonEffects = _boonEffects.UnapplyAll;
@@ -2565,16 +2568,29 @@ namespace ICanShowYouTheWorld.RunMode
             }
         }
 
+        /// <summary>THE WAY card's keys, one per grave in catalog order. The card prints "1-N" from this length.</summary>
+        internal static readonly KeyCode[] WayCardKeys =
+        {
+            KeyCode.Keypad1, KeyCode.Keypad2, KeyCode.Keypad3, KeyCode.Keypad4,
+            KeyCode.Keypad5, KeyCode.Keypad6, KeyCode.Keypad7,
+        };
+
         private void HandleBoonOfferInput()
         {
             // THE WAY first: it outranks a boon offer, and no boon offer is dealt while it is up
             // (see OnChallengeCompleted), so the keys cannot mean two things at once.
             if (_classChoicePending)
             {
-                int pick = Input.GetKeyDown(KeyCode.Keypad1) ? 0
-                         : Input.GetKeyDown(KeyCode.Keypad2) ? 1
-                         : Input.GetKeyDown(KeyCode.Keypad3) ? 2
-                         : -1;
+                // Seven ways since 2026-09-28, so Keypad1-7. Four to seven are ability keys, but
+                // activation stands down while the card is up (HandleBoonActivationInput), so
+                // here they can only mean a grave.
+                int pick = -1;
+                for (int i = 0; i < WayCardKeys.Length; i++)
+                {
+                    if (!Input.GetKeyDown(WayCardKeys[i])) continue;
+                    pick = i;
+                    break;
+                }
                 if (pick >= 0 && pick < _classCatalog.Count) TakeUpWay(_classCatalog[pick]);
                 return;
             }
@@ -4665,7 +4681,7 @@ namespace ICanShowYouTheWorld.RunMode
 
         /// <summary>
         /// A random task completed while THE WAY card was up, and its boon offer is owed. Deferred
-        /// rather than dropped: the card owns Keypad1/2/3 while it is up, so an offer dealt beneath
+        /// rather than dropped: the card owns Keypad1-7 while it is up, so an offer dealt beneath
         /// it could not be picked and would time out unseen - a reward lost to a dialogue. Session
         /// state; a reload with one owed forfeits it, which is rare enough to accept.
         /// </summary>
@@ -6383,6 +6399,13 @@ namespace ICanShowYouTheWorld.RunMode
                         Debug.Log($"[ICanShowYouTheWorld] Spirit prefab '{name}': " +
                                   (scene != null && scene.GetPrefab(name) != null ? "available" : "NOT in this build"));
 
+                    // The Smiðr's Field Forge raises two stations by prefab name. The saga recipes
+                    // already name both, so a miss would show there too - said here as well, because
+                    // "the bench never appeared" is otherwise a play-test away.
+                    foreach (var name in new[] { BoonEffects.FieldBenchPrefab, BoonEffects.FieldForgePrefab })
+                        Debug.Log($"[ICanShowYouTheWorld] Field Forge prefab '{name}': " +
+                                  (scene != null && scene.GetPrefab(name) != null ? "available" : "NOT in this build - Field Forge will raise less"));
+
                     // The race's music cue, same discipline: the music table is asset data, and
                     // TriggerMusic on a wrong name plays nothing and throws nothing.
                     if (!string.IsNullOrEmpty(_cfg.RunLightMusic))
@@ -6659,7 +6682,7 @@ namespace ICanShowYouTheWorld.RunMode
                 }
 
                 AddHeat(def.HeatReward);
-                // Not beneath THE WAY card: it owns Keypad1/2/3 while it is up. Owed instead, and
+                // Not beneath THE WAY card: it owns Keypad1-7 while it is up. Owed instead, and
                 // dealt the moment the card closes - see TickClassCard.
                 if (_classChoicePending) _boonOfferOwed = true;
                 else _boons?.CreateOffer();
@@ -7960,6 +7983,11 @@ namespace ICanShowYouTheWorld.RunMode
             // and RestoreAll would make them permanent — Valheim saves valued global keys
             // with the world. Saves lacking these are refused before we ever get here.
             _worldModifiers.ImportOriginals(s.modifierKeys, s.modifierValues);
+
+            // A Master's Minute interrupted by a quit or a crash left the world building for free,
+            // and its sixty-second timer did not come back with the run. The original says the key
+            // was ours; take it off now rather than at run end.
+            _worldModifiers.ReleaseFlag(GlobalKeys.NoBuildCost);
 
             _worldModifiers.ApplyBaseline(_cfg);
             // AFTER the baseline, which writes the plain rates and would otherwise erase a held
@@ -10919,6 +10947,38 @@ namespace ICanShowYouTheWorld.RunMode
             new BoonDefinition { Id = "rend",   ClassId = "berserker", Display = "Rend",       IsPassive = false, CooldownSeconds = 20f,  Description = "A sweep of the blade around you: every foe within reach bleeds." },
             new BoonDefinition { Id = "rage",   ClassId = "berserker", Display = "Blood Rage", IsPassive = false, CooldownSeconds = 120f, Description = "Fifteen seconds of half again the damage. You take more while it lasts." },
             new BoonDefinition { Id = "warcry", ClassId = "berserker", Display = "Warcry",     IsPassive = false, CooldownSeconds = 90f,  Description = "Stagger every foe within eight metres. Not the gods." },
+
+            // --- The four ways of 2026-09-28 ---
+            //
+            // Each a passive and three rungs, like the first three. The numbers in these lines are
+            // BoonEffects' constants (the block under "The four ways"), so a change there is a change
+            // here.
+
+            // Húskarl - Halvard, who stood where he was put.
+            new BoonDefinition { Id = "hirdman",   ClassId = "huskarl", Display = "Hirdman",      IsPassive = true,  Description = "Blocking and spear skill to 50, and +20 max health." },
+            new BoonDefinition { Id = "bash",      ClassId = "huskarl", Display = "Shield Bash",  IsPassive = false, CooldownSeconds = 25f,  Description = "Stagger what stands in front of you." },
+            new BoonDefinition { Id = "bulwark",   ClassId = "huskarl", Display = "Shield Wall",  IsPassive = false, CooldownSeconds = 120f, Description = "Twenty seconds of a wall: blows of every kind land softer." },
+            new BoonDefinition { Id = "laststand", ClassId = "huskarl", Display = "Last Stand",   IsPassive = false, CooldownSeconds = 240f, Description = "Six seconds nothing can end, then half your health back." },
+
+            // Skald - Ormr, who sang the rest of them onward.
+            new BoonDefinition { Id = "poet",      ClassId = "skald",   Display = "Poet",           IsPassive = true,  Description = "Run, jump and swim skill to 50. The road is shorter for a singer." },
+            new BoonDefinition { Id = "march",     ClassId = "skald",   Display = "Marching Song",  IsPassive = false, CooldownSeconds = 120f, Description = "Twenty seconds of a quicker step and breath that does not run out." },
+            // "and so do your companions'" is not on this card: the legacy pet blessing is not a
+            // harder blow and has no timed undo that spares Shepherd's (see BoonEffects.ActivateWarsong).
+            new BoonDefinition { Id = "warsong",   ClassId = "skald",   Display = "War Song",       IsPassive = false, CooldownSeconds = 120f, Description = "Twenty seconds: your blows land harder." },
+            new BoonDefinition { Id = "bragi",     ClassId = "skald",   Display = "Saga of Bragi",  IsPassive = false, CooldownSeconds = 300f, Description = "Rested where you stand, and some of your health back." },
+
+            // Sæfari - Ragna, who was never once afraid of water.
+            new BoonDefinition { Id = "seafarer",  ClassId = "saefari", Display = "Seafarer",   IsPassive = true,  Description = "Swim skill to 60, spear skill to 50." },
+            new BoonDefinition { Id = "tide",      ClassId = "saefari", Display = "Tide-borne", IsPassive = false, CooldownSeconds = 120f, Description = "Thirty seconds in which the water cannot tire you." },
+            new BoonDefinition { Id = "fairwind",  ClassId = "saefari", Display = "Fair Wind",  IsPassive = false, CooldownSeconds = 300f, Description = "For a minute the wind is at your ship’s back." },
+            new BoonDefinition { Id = "sealegs",   ClassId = "saefari", Display = "Sea Legs",   IsPassive = false, CooldownSeconds = 300f, Description = "Five minutes in which neither cold nor wet can reach you." },
+
+            // Smiðr - Dvalinn, who built the hall they all died in.
+            new BoonDefinition { Id = "craftsman",     ClassId = "smidr", Display = "Craftsman",          IsPassive = true,  Description = "Woodcutting and pickaxe skill to 50, and 100 more weight carried." },
+            new BoonDefinition { Id = "fieldforge",    ClassId = "smidr", Display = "Field Forge",        IsPassive = false, CooldownSeconds = 300f, Description = "A bench and a forge rise at your feet for ninety seconds." },
+            new BoonDefinition { Id = "mastersminute", ClassId = "smidr", Display = "Master’s Minute", IsPassive = false, CooldownSeconds = 600f, Description = "One minute in which building costs nothing." },
+            new BoonDefinition { Id = "reinforce",     ClassId = "smidr", Display = "Reinforce",          IsPassive = false, CooldownSeconds = 600f, Description = "Ten minutes in which your walls within twenty metres take no wear." },
         };
     }
 }

@@ -75,6 +75,36 @@ slots, and a heal window anyone can draw is a different thing from a Völva's bu
 The general pool goes from 30 to 21. Refilling it is a follow-up; the offer still has plenty to draw
 from, and the pets and heals were the boons most often reported as "I already have that".
 
+## The other four (2026-09-28)
+
+Added the day after the first three were played (owner: "I tested the first 3 classes a bit. Can we
+do the rest?"). Same shape — a passive, three rungs, a gift at the choice — and the same rule: every
+effect is a legacy cheat or an existing loan with a cooldown and a reason, or it is not in v1.
+
+| Way | The fallen one | Passive | Rung 1 [7] | Rung 2 [0] | Rung 3 [Ins] | Gift |
+|---|---|---|---|---|---|---|
+| Húskarl | Halvard | Blocking/Spears 50, +20 HP | Shield Bash (stagger the front) | Shield Wall (20 s Resistant to physical) | Last Stand (6 s at ≥1 HP — the game's own god-mode clamp — then half health) | wood shield, flint spear |
+| Skald | Ormr | Run/Jump/Swim 50 | Marching Song (20 s speed + stamina) | War Song (20 s +15% damage) | Saga of Bragi (Rested where you stand, +30% health) | three minor meads |
+| Sæfari | Ragna | Swim 60, Spears 50 | Tide-borne (30 s the water cannot tire you) | Fair Wind (60 s wind at the ship's back) | Sea Legs (5 min neither cold nor wet) | abyssal harpoon |
+| Smiðr | Dvalinn | Woodcutting/Pickaxes 50, +100 carry | Field Forge (bench + forge at your feet, 90 s) | Master’s Minute (60 s building costs nothing — the `NoBuildCost` world key through `WorldModifiers.SetFlag`, NOT the `nocost` cheat, which would also make every recipe free and every station optional) | Reinforce (10 min no weather or support wear within 20 m) | hoe, cultivator |
+
+Two things decided the shape. The saga is solo, so the Skald's "crew" is you and your companions,
+and Sæfari's fishing is NOT lent — the hearth track has a fishing-skill step a loan would complete
+by itself. And the card now holds seven, so it picks with Keypad 1–7 rather than 1–3; activation
+is already off while the card is up, so the four boon keys are free at that moment.
+
+Three things the IL corrected in the brief, worth knowing: `Player.m_noPlacementCost` is private and IS the
+whole `nocost` cheat (free recipes, no stations), so the minute rides the world key instead;
+`WearNTear.m_noRoofWear`/`m_noSupportWear` default TRUE and true means the piece TAKES wear, so
+Reinforce sets them false; and the legacy `PetBuff` is not a damage boost and has no clean undo, so
+War Song sharpens you only. Known and accepted: a piece built free and taken down after the minute
+refunds its full bill (nothing can mark it without new save data); Field Forge teaches the forge
+to the character the way Farsight teaches the map; Sea Legs strips Wet every frame while rain
+re-adds it every physics step, so the icon may flicker.
+
+The thane's opening names seven and calls himself the eighth. Each of the four has a line in his
+voice and a past-tense line in the BOOK, like the first three.
+
 ## Keys
 
 The keypad and the Home/End cluster are full. Moving brother, bonecaller and menagerie into classes

@@ -64,16 +64,28 @@ namespace ICanShowYouTheWorld.RunMode
             new Binding { Id = "brother",   Key = KeyCode.Keypad7,     Label = "[7]" },
             new Binding { Id = "shaman",    Key = KeyCode.Keypad7,     Label = "[7]" },
             new Binding { Id = "rend",      Key = KeyCode.Keypad7,     Label = "[7]" },
+            new Binding { Id = "bash",      Key = KeyCode.Keypad7,     Label = "[7]" },
+            new Binding { Id = "march",     Key = KeyCode.Keypad7,     Label = "[7]" },
+            new Binding { Id = "tide",      Key = KeyCode.Keypad7,     Label = "[7]" },
+            new Binding { Id = "fieldforge",Key = KeyCode.Keypad7,     Label = "[7]" },
 
             // Rung 2.
             new Binding { Id = "menagerie", Key = KeyCode.Keypad0,     Label = "[0]" },
             new Binding { Id = "bonecaller",Key = KeyCode.Keypad0,     Label = "[0]" },
             new Binding { Id = "rage",      Key = KeyCode.Keypad0,     Label = "[0]" },
+            new Binding { Id = "bulwark",   Key = KeyCode.Keypad0,     Label = "[0]" },
+            new Binding { Id = "warsong",   Key = KeyCode.Keypad0,     Label = "[0]" },
+            new Binding { Id = "fairwind",  Key = KeyCode.Keypad0,     Label = "[0]" },
+            new Binding { Id = "mastersminute", Key = KeyCode.Keypad0, Label = "[0]" },
 
             // Rung 3.
             new Binding { Id = "unseen",    Key = KeyCode.Insert,      Label = "[Ins]" },
             new Binding { Id = "wrath",     Key = KeyCode.Insert,      Label = "[Ins]" },
             new Binding { Id = "warcry",    Key = KeyCode.Insert,      Label = "[Ins]" },
+            new Binding { Id = "laststand", Key = KeyCode.Insert,      Label = "[Ins]" },
+            new Binding { Id = "bragi",     Key = KeyCode.Insert,      Label = "[Ins]" },
+            new Binding { Id = "sealegs",   Key = KeyCode.Insert,      Label = "[Ins]" },
+            new Binding { Id = "reinforce", Key = KeyCode.Insert,      Label = "[Ins]" },
         };
 
         /// <summary>The key label for a boon, or empty for a passive. Never null.</summary>

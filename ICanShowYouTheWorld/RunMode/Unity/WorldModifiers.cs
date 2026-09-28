@@ -117,6 +117,60 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
+        /// Switches a FLAG key (one with no value, such as NoBuildCost) on or off for a boon, and
+        /// answers whether it acted.
+        ///
+        /// Only ever a key the world did NOT already have: that is the only case whose original is
+        /// unambiguous. A flag carries no number, so <see cref="SaveOriginal"/>'s float read would
+        /// report a key the world HAS as absent (GetGlobalKey(key, out float) fails to parse an
+        /// empty value), and RestoreAll would then remove the world's own setting at run end. So
+        /// the world's own flag is left alone - the answer is false and nothing is recorded - and
+        /// ours is recorded as absent, which RestoreAll undoes by removing it. The record rides the
+        /// run save with the rate originals, so a crash with the flag on is still put right.
+        /// </summary>
+        public bool SetFlag(GlobalKeys key, bool on)
+        {
+            var zone = ZoneSystem.instance;
+            if (zone == null) return false;
+
+            bool ours = _originalValues.TryGetValue(key, out float original) && original < 0f;
+
+            if (on)
+            {
+                if (!ours)
+                {
+                    if (zone.GetGlobalKey(key)) return false;   // the world's own
+                    _originalValues[key] = KeyWasAbsent;
+                }
+                zone.SetGlobalKey(key);
+                Debug.Log($"[ICanShowYouTheWorld] World key '{key}' set for a boon.");
+                return true;
+            }
+
+            if (!ours) return false;
+            zone.RemoveGlobalKey(key);
+            Debug.Log($"[ICanShowYouTheWorld] World key '{key}' cleared.");
+            return true;
+        }
+
+        /// <summary>
+        /// Clears a flag this run set, if it is still set - for a resume, where the window that set
+        /// it did not survive the reload (pending timers are not saved) and nothing else would ever
+        /// switch it off before the run ended.
+        /// </summary>
+        public void ReleaseFlag(GlobalKeys key)
+        {
+            var zone = ZoneSystem.instance;
+            if (zone == null) return;
+
+            if (_originalValues.TryGetValue(key, out float original) && original < 0f && zone.GetGlobalKey(key))
+            {
+                zone.RemoveGlobalKey(key);
+                Debug.Log($"[ICanShowYouTheWorld] World key '{key}' was left on by an interrupted window; cleared.");
+            }
+        }
+
+        /// <summary>
         /// Restores every world-modifier key touched by this instance back to its pre-run value —
         /// and REMOVES any key the world did not have before, rather than inventing a value for it.
         /// Returns false if the world is not loaded, in which case the saved originals are

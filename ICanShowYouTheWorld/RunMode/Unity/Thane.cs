@@ -91,7 +91,7 @@ namespace ICanShowYouTheWorld.RunMode
     /// whose. The three gates make a set, and a player who has met all three has had the Meadows'
     /// sky explained to them without a word of it being said.
     ///
-    /// WHY NO NAME. What he keeps is other people's names: Eydís, Sigrún, Ulfr. Thjalfi is the one
+    /// WHY NO NAME. What he keeps is other people's names: Eydís, Sigrún, Ulfr and four more. Thjalfi is the one
     /// somebody wrote down; this one only writes others down.
     ///
     /// He keeps names, not light. He never mentions the shortage and cannot answer it, so nothing he
@@ -107,10 +107,12 @@ namespace ICanShowYouTheWorld.RunMode
         private const string Prefab = "Ghost";
 
         public const string AskLine =
-            "I buried them. Three of a hird that came before you, and I am what is left of the fourth — kept " +
+            "I buried them. Seven of a hird that came before you, and I am what is left of the eighth — kept " +
             "here to count the stones, since nobody came for any of us.\n\n" +
             "Eydís, who hunted, and whom the beasts followed. Sigrún, who mended, and called up what the ground " +
-            "held. Ulfr, who never learned how to stop.\n\n" +
+            "held. Ulfr, who never learned how to stop. Halvard, who stood where he was put and did not move. " +
+            "Ormr, who sang the rest of us onward. Ragna, who was never once afraid of water. Dvalinn, who built " +
+            "the hall they all died in.\n\n" +
             "None of them needs the name any more. Take one up and I will teach you what they knew — a little " +
             "at a time, as the gods fall. Or take none, and go. The stones are kept either way.";
 
@@ -126,7 +128,7 @@ namespace ICanShowYouTheWorld.RunMode
 
         // One line each, in a bubble over his head as you come near - the way the trader greets and
         // Thjalfi does. The rune panel is for what he has to SAY; this is for him being there.
-        private const string GreetChoose = "Three stones. I know whose. Come and I will tell you.";
+        private const string GreetChoose = "Seven stones. I know whose. Come and I will tell you.";
         private const string GreetTeach = "They left more than names. Come — there is a thing to learn.";
         private const string GreetIdle = "Their stones are kept. Go on.";
 
@@ -147,6 +149,18 @@ namespace ICanShowYouTheWorld.RunMode
                 case "berserker":
                     return "Ulfr, then. He struck all round him and never once from behind a shield. The sweep " +
                            "is yours now. The rest of him comes when a god has fallen — and you may not want it. Take his axes.";
+                case "huskarl":
+                    return "Halvard, then. He stood where he was put, and what came at him met the shield first. The " +
+                           "bash is yours now; the wall and the last stand come as the gods fall. Take his shield and spear.";
+                case "skald":
+                    return "Ormr, then. He sang, and the rest of us kept walking when we should have dropped. The " +
+                           "marching song is yours now. The others come as the gods fall. Take his flask.";
+                case "saefari":
+                    return "Ragna, then. She was never once afraid of water, and it never once took her. The tide is " +
+                           "yours now; the wind and the sea-legs come as the gods fall. Take her harpoon.";
+                case "smidr":
+                    return "Dvalinn, then. He built the hall they all died in, and it is still standing. The field " +
+                           "forge is yours now; the master’s minute and the reinforcing come as the gods fall. Take his tools.";
                 default:
                     return null;
             }
@@ -158,11 +172,19 @@ namespace ICanShowYouTheWorld.RunMode
             switch (classId)
             {
                 case "hunter":
-                    return "At the graves the thane named three, and you took up the way of Eydís, who hunted.";
+                    return "At the graves the thane named seven, and you took up the way of Eydís, who hunted.";
                 case "volva":
-                    return "At the graves the thane named three, and you took up the way of Sigrún, who mended.";
+                    return "At the graves the thane named seven, and you took up the way of Sigrún, who mended.";
                 case "berserker":
-                    return "At the graves the thane named three, and you took up the way of Ulfr, who never stopped.";
+                    return "At the graves the thane named seven, and you took up the way of Ulfr, who never stopped.";
+                case "huskarl":
+                    return "At the graves the thane named seven, and you took up the way of Halvard, who stood.";
+                case "skald":
+                    return "At the graves the thane named seven, and you took up the way of Ormr, who sang.";
+                case "saefari":
+                    return "At the graves the thane named seven, and you took up the way of Ragna, who feared no water.";
+                case "smidr":
+                    return "At the graves the thane named seven, and you took up the way of Dvalinn, who built.";
                 default:
                     return null;
             }

@@ -610,6 +610,10 @@ rungs per way on `Keypad7`, `Keypad0`, `Insert`:
 | Hunter (Eydís) | Hunter (Bows 50), Shepherd | Packbrother | Menagerie | Unseen |
 | Völva (Sigrún) | Hearthlight | Mending (was Shaman's Mercy) | Bonecaller | Thor's Wrath |
 | Berserker (Ulfr) | Warrior | Rend | Blood Rage | Warcry |
+| Húskarl (Halvard), 2026-09-28 | Hirdman (Blocking/Spears 50, +20 HP) | Shield Bash | Shield Wall | Last Stand |
+| Skald (Ormr) | Poet (Run/Jump/Swim 50) | Marching Song | War Song | Saga of Bragi |
+| Sæfari (Ragna) | Seafarer (Swim 60, Spears 50) | Tide-borne | Fair Wind | Sea Legs |
+| Smiðr (Dvalinn) | Craftsman (Woodcutting/Pickaxes 50, +100 carry) | Field Forge | Master’s Minute | Reinforce |
 
 Reasoning in `specs/2026-09-27-classes-design.md`; progress and milestones in
 `2026-09-27-classes-progress.md`. The tracker panel (Hunter's Eye) is baseline, not a boon.

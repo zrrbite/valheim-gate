@@ -119,8 +119,16 @@ namespace ICanShowYouTheWorld.RunMode
         private const float OfferWidth = 460f;
         private const float OfferHeight = 200f;
 
-        /// <summary>THE WAY card: the offer window, taller for three paragraphs instead of three lines.</summary>
-        private const float WayCardHeight = 340f;
+        /// <summary>
+        /// THE WAY card. Seven graves since 2026-09-28, each a paragraph in the thane's voice, and
+        /// seven paragraphs do not fit the boon offer's 460: a column of 460/4 is a word a line. So
+        /// the card has its own width - two rows, four and three, at about 210 each - and its own
+        /// rect, centred for that width. The height is a floor; the layout grows past it if a
+        /// description runs long.
+        /// </summary>
+        private const float WayCardWidth = 900f;
+        private const float WayCardHeight = 420f;
+        private const int WayCardColumns = 4;
         private const float StripWidth = 300f;
         private const float StripHeight = 24f;
 
@@ -149,6 +157,7 @@ namespace ICanShowYouTheWorld.RunMode
         private Rect _hudRect;
         private Rect _lobbyRect;
         private Rect _offerRect;
+        private Rect _wayRect;
         private Rect _trackerRect;
         private Rect _stashRect;
         private Vector2 _stashScroll;
@@ -583,11 +592,17 @@ namespace ICanShowYouTheWorld.RunMode
                         GUI.color = new Color(1f, 1f, 1f, alpha);
                         try
                         {
-                            // Taller for THE WAY: each card carries a paragraph in the thane's voice
-                            // where a boon carries a line. Same width, same place, same fade.
-                            _offerRect = GUILayout.Window(OfferWindowId, _offerRect, wayCard ? (GUI.WindowFunction)DrawWayCard : DrawOffer,
-                                GUIContent.none, RunTheme.Panel,
-                                GUILayout.Width(OfferWidth), GUILayout.Height(wayCard ? WayCardHeight : OfferHeight));
+                            // THE WAY has its own rect and size (see WayCardWidth): seven paragraphs
+                            // in the thane's voice where a boon carries a line. Same window id,
+                            // same place on screen, same fade; the two are never up together.
+                            if (wayCard)
+                                _wayRect = GUILayout.Window(OfferWindowId, _wayRect, DrawWayCard,
+                                    GUIContent.none, RunTheme.Panel,
+                                    GUILayout.Width(_wayRect.width), GUILayout.MinHeight(WayCardHeight));
+                            else
+                                _offerRect = GUILayout.Window(OfferWindowId, _offerRect, DrawOffer,
+                                    GUIContent.none, RunTheme.Panel,
+                                    GUILayout.Width(OfferWidth), GUILayout.Height(OfferHeight));
                         }
                         finally
                         {
@@ -671,6 +686,10 @@ namespace ICanShowYouTheWorld.RunMode
                 LobbyWidth, LobbyHeight);
             _offerRect = new Rect((viewWidth - OfferWidth) * 0.5f, (viewHeight - OfferHeight) * 0.5f,
                 OfferWidth, OfferHeight);
+            // Narrower than the card on a small window rather than off its edge.
+            float wayWidth = Mathf.Min(WayCardWidth, viewWidth - 20f);
+            _wayRect = new Rect((viewWidth - wayWidth) * 0.5f, Mathf.Max(10f, (viewHeight - WayCardHeight) * 0.5f),
+                wayWidth, WayCardHeight);
         }
 
         private void EnsureStyles()
@@ -2795,39 +2814,51 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
-        /// The thane's three graves, drawn as the boon offer draws its three boons: numbered, side
-        /// by side, one key each. The same card on purpose - the player already knows how to read
-        /// it and which keys answer it.
+        /// The thane's seven graves, drawn as the boon offer draws its three boons: numbered, one
+        /// key each - the same card on purpose, so the player already knows how to read it and
+        /// which keys answer it. Two rows since there are seven (four, then three), because a
+        /// single row of seven paragraphs is a column of single words.
         /// </summary>
         private void DrawWayCardBody()
         {
             var classes = Service?.Classes;
             if (classes == null) return;
 
+            // As many graves as there are keys to pick them with, and no more: a way the card showed
+            // but no key could take would be a line the world does not back.
+            int count = Mathf.Min(classes.Count, RunService.WayCardKeys.Length);
+            float columnWidth = _wayRect.width / WayCardColumns - 12f;
+
             GUILayout.Label("THE WAY", RunTheme.Header);
 
-            GUILayout.BeginHorizontal();
-            for (int i = 0; i < classes.Count && i < 3; i++)
+            for (int row = 0; row * WayCardColumns < count; row++)
             {
-                var cls = classes[i];
-                GUILayout.BeginVertical(GUILayout.Width(OfferWidth / 3f - 12f));
-
                 GUILayout.BeginHorizontal();
-                GUI.contentColor = RunTheme.AccentGold;
-                GUILayout.Label($"{i + 1}", RunTheme.Header, GUILayout.Width(20f));
-                GUI.contentColor = Color.white;
-                GUILayout.Label(cls.Display, RunTheme.Header);
-                GUILayout.EndHorizontal();
+                for (int i = row * WayCardColumns; i < count && i < (row + 1) * WayCardColumns; i++)
+                {
+                    var cls = classes[i];
+                    GUILayout.BeginVertical(GUILayout.Width(columnWidth));
 
-                GUILayout.Label("the way of " + cls.Title, RunTheme.Small);
-                if (!string.IsNullOrEmpty(cls.Description))
-                    GUILayout.Label(cls.Description, RunTheme.Body);
-                GUILayout.EndVertical();
+                    GUILayout.BeginHorizontal();
+                    GUI.contentColor = RunTheme.AccentGold;
+                    GUILayout.Label($"{i + 1}", RunTheme.Header, GUILayout.Width(20f));
+                    GUI.contentColor = Color.white;
+                    GUILayout.Label(cls.Display, RunTheme.Header);
+                    GUILayout.EndHorizontal();
+
+                    GUILayout.Label("the way of " + cls.Title, RunTheme.Small);
+                    if (!string.IsNullOrEmpty(cls.Description))
+                        GUILayout.Label(cls.Description, RunTheme.Body);
+                    GUILayout.EndVertical();
+                }
+                // A short last row keeps its columns the width of the full one above it.
+                GUILayout.FlexibleSpace();
+                GUILayout.EndHorizontal();
+                GUILayout.Space(8f);
             }
-            GUILayout.EndHorizontal();
 
             GUILayout.FlexibleSpace();
-            GUILayout.Label("press Keypad 1/2/3", RunTheme.Small);
+            GUILayout.Label(count > 1 ? $"press Keypad 1–{count}" : "press Keypad 1", RunTheme.Small);
         }
 
         // --- Helpers ---
