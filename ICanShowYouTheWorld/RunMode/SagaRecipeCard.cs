@@ -39,11 +39,19 @@ namespace ICanShowYouTheWorld.RunMode
         /// False while the recipe is gated behind a questline step that is not done yet.
         /// </summary>
         /// <remarks>
-        /// Shown anyway, marked. Hiding the bill is what caused the complaint this page answers: a
-        /// player cannot gather for a craft they are not allowed to read. What is withheld is the
-        /// recipe's EXISTENCE in the game, which is the quest's business, not the page's.
+        /// Was "shown anyway, marked", on the argument that a player cannot gather for a craft they
+        /// cannot read. Reversed by the owner (2026-09-28): a bench recipe reaches the page only once
+        /// Hugin has announced it, because a page that lists the whole Stormsworn on the first night
+        /// has spent the reveal before the saga gets to it. So a bench card that is built at all is
+        /// normally known; the flag stays for the page to say so if a gate ever closes again.
         /// </remarks>
         public bool Known;
+
+        /// <summary>
+        /// True for a bench or forge recipe, false for one of the anvil's conversions - so the page
+        /// can tell "the bench knows nothing yet" from "there is nothing at all".
+        /// </summary>
+        public bool Bench;
 
         public List<SagaIngredient> Bill = new List<SagaIngredient>();
 

@@ -97,13 +97,27 @@ Three things the IL corrected in the brief, worth knowing: `Player.m_noPlacement
 whole `nocost` cheat (free recipes, no stations), so the minute rides the world key instead;
 `WearNTear.m_noRoofWear`/`m_noSupportWear` default TRUE and true means the piece TAKES wear, so
 Reinforce sets them false; and the legacy `PetBuff` is not a damage boost and has no clean undo, so
-War Song sharpens you only. Known and accepted: a piece built free and taken down after the minute
-refunds its full bill (nothing can mark it without new save data); Field Forge teaches the forge
-to the character the way Farsight teaches the map; Sea Legs strips Wet every frame while rain
+War Song sharpens you only. **Ruled by the owner, 2026-09-28: both accepted** — a piece built free and taken down after the
+minute refunds its full bill (nothing can mark it without new save data), and Field Forge teaches
+the forge to the character the way Farsight teaches the map; Sea Legs strips Wet every frame while rain
 re-adds it every physics step, so the icon may flicker.
 
 The thane's opening names seven and calls himself the eighth. Each of the four has a line in his
 voice and a past-tense line in the BOOK, like the first three.
+
+## Elemental arrows (owner's idea, 2026-09-28)
+
+> "A skill 'elemental arrow', that lets Thor's bow toggle either lightning (already exists), fire,
+> ice. Besides the slow arrow. Being able to toggle the 'ammo' of the bow would be cool."
+
+A Hunter grant at rung 2, beside Menagerie: `elemental`, an active with no cooldown that cycles
+Thor's bow between lightning, fire and frost on the arrow keys (unused by the saga and by vanilla
+play; the GM mod's arrow bindings are dead during a run). Frost IS the slow — the game's own frost
+damage applies its slow — so the "slow arrow" comes free with the element. The toggle rewrites the
+bow's own elemental damage (exactly one of the three at the bow’s own 22, +4 per level) and swaps the flash the
+in-flight arrows get on hit, taken from the vanilla fire and frost arrows' own projectiles. The
+element is run state (`bowElement`) and the bow goes back to lightning at run end, since it
+outlives the run and ships as lightning.
 
 ## Keys
 

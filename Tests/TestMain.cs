@@ -34,6 +34,7 @@ static class TestMain
         ActDefinitionTests.CarryCapTests();
         RunStashTests.Run();
         LoanLedgerTests.Run();
+        TooltipPlacementTests.Run();
         Console.WriteLine(Check.Failures == 0 ? "ALL PASS" : $"{Check.Failures} FAILURES");
         return Check.Failures == 0 ? 0 : 1;
     }

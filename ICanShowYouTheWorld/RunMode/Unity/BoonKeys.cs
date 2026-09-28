@@ -45,6 +45,13 @@ namespace ICanShowYouTheWorld.RunMode
 
             /// <summary>What the HUD and the offer card show. Short: the status column is 104px.</summary>
             public string Label;
+
+            /// <summary>
+            /// The second key of a boon that has two, pressed to go the other way. Only Elemental
+            /// Arrows has one: Right cycles Thor's bow forward, Left back. A reversed row is never
+            /// the one <see cref="Label"/> answers with, because the forward row is listed first.
+            /// </summary>
+            public bool Reverse;
         }
 
         /// <summary>
@@ -77,6 +84,12 @@ namespace ICanShowYouTheWorld.RunMode
             new Binding { Id = "warsong",   Key = KeyCode.Keypad0,     Label = "[0]" },
             new Binding { Id = "fairwind",  Key = KeyCode.Keypad0,     Label = "[0]" },
             new Binding { Id = "mastersminute", Key = KeyCode.Keypad0, Label = "[0]" },
+
+            // The Hunter's second rung-2 boon, beside Menagerie on [0]: a switch for Thor's bow,
+            // so it gets keys that read as "next / previous". The arrow keys are free in the saga
+            // and in vanilla play, and the GM mod's arrow bindings are gated dead during a run.
+            new Binding { Id = "elemental", Key = KeyCode.RightArrow,  Label = "[\u2192]" },
+            new Binding { Id = "elemental", Key = KeyCode.LeftArrow,   Label = "[\u2190]", Reverse = true },
 
             // Rung 3.
             new Binding { Id = "unseen",    Key = KeyCode.Insert,      Label = "[Ins]" },

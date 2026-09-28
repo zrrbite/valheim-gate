@@ -7,6 +7,18 @@ using UnityEngine;
 namespace ICanShowYouTheWorld.RunMode
 {
     /// <summary>
+    /// What Thor's bow looses: its own lightning, or - once the Hunter has learned Elemental Arrows -
+    /// fire or frost. Lightning is the default and what the bow ships as; see
+    /// <see cref="SagaItems.SetThorsBowElement"/>.
+    /// </summary>
+    internal enum BowElement
+    {
+        Lightning,
+        Fire,
+        Frost,
+    }
+
+    /// <summary>
     /// An item of the saga's own, made by cloning one of the game's item prefabs at runtime and
     /// changing its shared data — name, description, damage. No shipped assets: the model and
     /// icon are the source item's.
@@ -300,6 +312,9 @@ namespace ICanShowYouTheWorld.RunMode
         ///
         /// Both are one-line dials and neither is sacred. If it is still too strong, cut the pierce:
         /// the lightning is the part that makes it Thor's.
+        ///
+        /// The lightning pair is also the ELEMENT's number: the Hunter's Elemental Arrows moves it to
+        /// fire or frost unchanged (see ApplyBowElement), so turning this dial turns all three.
         /// </remarks>
         private const float ThorsBowPierce = 44f;
         private const float ThorsBowPiercePerLevel = 5f;
@@ -332,6 +347,22 @@ namespace ICanShowYouTheWorld.RunMode
             "fx_eikthyr_stomp", "fx_Eikthyr_stomp", "vfx_eikthyr_stomp",
             "lightningAOE", "fx_lightning", "vfx_lightning", "vfx_lightning_hit", "fx_lightning_hit",
         };
+
+        /// <summary>
+        /// The vanilla arrows whose projectiles carry the fire and frost hit effects Thor's bow
+        /// borrows when Elemental Arrows switches it. The game's own look for "this arrow was on
+        /// fire", read off the arrow at runtime rather than named here, so a game update that
+        /// changes the look changes ours with it.
+        /// </summary>
+        private const string FireArrowPrefab = "ArrowFire";
+        private const string FrostArrowPrefab = "ArrowFrost";
+
+        /// <summary>
+        /// Named fallbacks for when an arrow's projectile has no hit effects to lend. Both are in
+        /// 1.0.16's SoftRef manifest: the Surtling's fireball burst, and the frost arrow's own hit.
+        /// </summary>
+        private static readonly string[] FireHitPrefabs = { "vfx_FireballHit" };
+        private static readonly string[] FrostHitPrefabs = { "vfx_frostarrow_hit" };
 
         public static readonly SagaItemDefinition[] All =
         {
@@ -684,6 +715,19 @@ namespace ICanShowYouTheWorld.RunMode
 
         private GameObject _lightning;
         private bool _lightningResolved;
+
+        /// <summary>
+        /// What the bow looses now. Held HERE, beside the numbers it switches, rather than on the
+        /// boon: the clone can be rebuilt without the boon being asked, and must come back with the
+        /// element it had. The run owns the choice (it persists it, and puts it back to lightning
+        /// when it ends); this owns what the choice does to the item.
+        /// </summary>
+        private BowElement _bowElement = BowElement.Lightning;
+
+        /// <summary>Resolved fire/frost hit effects, per element. Null until resolved.</summary>
+        private readonly Dictionary<BowElement, EffectList.EffectData[]> _elementHits =
+            new Dictionary<BowElement, EffectList.EffectData[]>();
+
         private float _strikeTimer;
         private readonly HashSet<int> _tunedProjectiles = new HashSet<int>();
 
@@ -735,8 +779,16 @@ namespace ICanShowYouTheWorld.RunMode
                 var weapon = player.GetCurrentWeapon();
                 if (weapon == null || weapon.m_shared == null || weapon.m_shared.m_name != ThorsBowName) return;
 
-                var lightning = Lightning();
-                if (lightning == null || ProjectileOwner == null || ProjectileWeapon == null) return;
+                if (ProjectileOwner == null || ProjectileWeapon == null) return;
+
+                // What the arrow shows when it lands. Lightning is Thor's own flash, spawned; fire
+                // and frost are the vanilla arrows' hit effects, added to the arrow's own. Either
+                // may be missing (an asset name this build cannot see), and then the arrow still
+                // does the element's damage and its area - only the flash is absent, which the log
+                // has already said once.
+                var element = _bowElement;
+                var lightning = element == BowElement.Lightning ? Lightning() : null;
+                var elementHit = element == BowElement.Lightning ? null : ElementHit(element);
 
                 var projectiles = UnityEngine.Object.FindObjectsByType<Projectile>(FindObjectsSortMode.None);
                 foreach (var p in projectiles)
@@ -752,8 +804,21 @@ namespace ICanShowYouTheWorld.RunMode
                     var fired = ProjectileWeapon.GetValue(p) as ItemDrop.ItemData;
                     if (fired == null || fired.m_shared == null || fired.m_shared.m_name != ThorsBowName) continue;
 
-                    p.m_spawnOnHit = lightning;
-                    p.m_spawnOnHitChance = 1f;
+                    if (lightning != null)
+                    {
+                        p.m_spawnOnHit = lightning;
+                        p.m_spawnOnHitChance = 1f;
+                    }
+                    else if (elementHit != null && elementHit.Length > 0)
+                    {
+                        // A NEW list on this projectile, never an edit to the one it has: that one
+                        // may still be the prefab's, and adding fire to it would set every arrow of
+                        // its kind alight, from any bow, for the rest of the session.
+                        var own = p.m_hitEffects != null && p.m_hitEffects.m_effectPrefabs != null
+                            ? p.m_hitEffects.m_effectPrefabs
+                            : new EffectList.EffectData[0];
+                        p.m_hitEffects = new EffectList { m_effectPrefabs = own.Concat(elementHit).ToArray() };
+                    }
 
                     // And it strikes AROUND the arrow, not just through it (owner: "I really feel
                     // the Thors bow should have an Aoe component since it does lightning!"). Quite
@@ -784,6 +849,146 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 ReportOnce("strikes", "[ICanShowYouTheWorld] Thor's bow could not arm its arrows: " + ex.Message);
             }
+        }
+
+        /// <summary>The element Thor's bow looses now.</summary>
+        public BowElement ThorsBowElement => _bowElement;
+
+        /// <summary>
+        /// Switches Thor's bow to <paramref name="element"/>: the damage on the item now, and the
+        /// hit effect on every arrow armed from here on. Safe before the bow exists - the clone
+        /// picks the element up when it is made (see EnsureClones).
+        /// </summary>
+        public void SetThorsBowElement(BowElement element)
+        {
+            bool changed = element != _bowElement;
+            _bowElement = element;
+
+            try
+            {
+                if (_clones.TryGetValue(ThorsBowPrefab, out var clone) && clone != null)
+                {
+                    var shared = clone.GetComponent<ItemDrop>()?.m_itemData?.m_shared;
+                    if (shared != null) ApplyBowElement(shared, element);
+                }
+            }
+            catch (Exception ex)
+            {
+                ReportOnce("bow-element", "[ICanShowYouTheWorld] Thor's bow could not change element: " + ex.Message);
+            }
+
+            if (changed) Debug.Log($"[ICanShowYouTheWorld] Thor's bow looses {ElementName(element)}.");
+        }
+
+        /// <summary>
+        /// Exactly one elemental damage on the bow, at the lightning's own numbers, and the pierce
+        /// left as Tune set it.
+        /// </summary>
+        /// <remarks>
+        /// The element is a CHOICE of damage type, not a bonus: fire does what the lightning did, no
+        /// more, so the switch trades what the damage does to a target (fire burns on, frost slows -
+        /// both the game's own status effects, applied by <c>Character</c> whenever that damage
+        /// type lands) rather than how much there is. Writing the SHARED data is what makes it the
+        /// bow's rather than one copy's: every Thor's bow in the pack points at this block, and so
+        /// does the tooltip the player reads.
+        /// </remarks>
+        private static void ApplyBowElement(ItemDrop.ItemData.SharedData shared, BowElement element)
+        {
+            shared.m_damages.m_lightning = element == BowElement.Lightning ? ThorsBowLightning : 0f;
+            shared.m_damages.m_fire = element == BowElement.Fire ? ThorsBowLightning : 0f;
+            shared.m_damages.m_frost = element == BowElement.Frost ? ThorsBowLightning : 0f;
+
+            shared.m_damagesPerLevel.m_lightning = element == BowElement.Lightning ? ThorsBowLightningPerLevel : 0f;
+            shared.m_damagesPerLevel.m_fire = element == BowElement.Fire ? ThorsBowLightningPerLevel : 0f;
+            shared.m_damagesPerLevel.m_frost = element == BowElement.Frost ? ThorsBowLightningPerLevel : 0f;
+        }
+
+        /// <summary>The element as the HUD and the save spell it: "lightning", "fire", "frost".</summary>
+        public static string ElementName(BowElement element)
+        {
+            switch (element)
+            {
+                case BowElement.Fire: return "fire";
+                case BowElement.Frost: return "frost";
+                default: return "lightning";
+            }
+        }
+
+        /// <summary>
+        /// The element a save names, and lightning for anything else - null included, which is what
+        /// a save from before the switch carries, and lightning is what that run's bow was.
+        /// </summary>
+        public static BowElement ParseElement(string name)
+        {
+            switch (name)
+            {
+                case "fire": return BowElement.Fire;
+                case "frost": return BowElement.Frost;
+                default: return BowElement.Lightning;
+            }
+        }
+
+        /// <summary>
+        /// The fire or frost hit effects, resolved once and logged once: first the vanilla arrow's
+        /// own projectile's (<see cref="FireArrowPrefab"/> / <see cref="FrostArrowPrefab"/>), then the
+        /// named fallbacks. Empty when nothing resolved - the damage switches regardless.
+        /// </summary>
+        private EffectList.EffectData[] ElementHit(BowElement element)
+        {
+            if (_elementHits.TryGetValue(element, out var have) && have != null &&
+                have.All(d => d.m_prefab != null))
+                return have;
+
+            var odb = ObjectDB.instance;
+            if (odb == null) return null;   // too early to know; asked again on the next arrow
+
+            string arrow = element == BowElement.Fire ? FireArrowPrefab : FrostArrowPrefab;
+            string label = ElementName(element);
+            EffectList.EffectData[] found = null;
+            string source = null;
+
+            try
+            {
+                var projectile = odb.GetItemPrefab(arrow)?.GetComponent<ItemDrop>()?.m_itemData?.m_shared?
+                    .m_attack?.m_attackProjectile;
+                var hits = projectile != null ? projectile.GetComponent<Projectile>()?.m_hitEffects : null;
+                if (hits != null && hits.m_effectPrefabs != null)
+                {
+                    found = hits.m_effectPrefabs.Where(d => d != null && d.m_enabled && d.m_prefab != null).ToArray();
+                    if (found.Length > 0)
+                        source = $"{arrow}'s projectile '{projectile.name}' ({string.Join(", ", found.Select(d => d.m_prefab.name).ToArray())})";
+                }
+
+                if ((found == null || found.Length == 0) && ZNetScene.instance != null)
+                {
+                    var fallbacks = element == BowElement.Fire ? FireHitPrefabs : FrostHitPrefabs;
+                    var fx = fallbacks.Select(ZNetScene.instance.GetPrefab).FirstOrDefault(g => g != null);
+                    if (fx != null)
+                    {
+                        found = new[] { new EffectList.EffectData { m_prefab = fx, m_enabled = true } };
+                        source = $"fallback '{fx.name}'";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ReportOnce("element-hit-" + label, $"[ICanShowYouTheWorld] Thor's bow {label} effect could not be read: {ex.Message}");
+            }
+
+            found = found ?? new EffectList.EffectData[0];
+
+            // Not settled while the scene is still coming up: the fallbacks live there, and an
+            // empty answer cached now would be "no flash" for the rest of the session.
+            if (found.Length == 0 && ZNetScene.instance == null) return found;
+            _elementHits[element] = found;
+
+            if (found.Length == 0)
+                ReportOnce("element-hit-none-" + label,
+                    $"[ICanShowYouTheWorld] No {label} hit effect resolved; Thor's bow does {label} damage without a flash.");
+            else
+                Debug.Log($"[ICanShowYouTheWorld] Thor's bow {label} effect: {source}.");
+
+            return found;
         }
 
         /// <summary>Every source name a definition will accept, in order.</summary>
@@ -880,6 +1085,10 @@ namespace ICanShowYouTheWorld.RunMode
                 if (!string.IsNullOrEmpty(def.Description)) shared.m_description = def.Description;
                 try { def.Tune?.Invoke(shared); }
                 catch (Exception ex) { Debug.LogWarning($"[ICanShowYouTheWorld] Saga item '{def.PrefabName}' tuning failed: {ex.Message}"); }
+
+                // AFTER Tune, which writes the bow's lightning: a clone made while a run has the bow
+                // on fire (a resume, or the holder lost to a scene teardown) must come back on fire.
+                if (def.PrefabName == ThorsBowPrefab) ApplyBowElement(shared, _bowElement);
 
                 try { def.TuneWithScene?.Invoke(this, shared); }
                 catch (Exception ex) { Debug.LogWarning($"[ICanShowYouTheWorld] Saga item '{def.PrefabName}' scene tuning failed: {ex.Message}"); }
@@ -1718,7 +1927,14 @@ namespace ICanShowYouTheWorld.RunMode
         /// Counts come from the PLAYER's inventory rather than the anvil's box, because the question
         /// this answers is "what should I be picking up", asked out in the world.
         /// </remarks>
-        public List<SagaRecipeCard> DescribeRecipes(Func<string, bool> stepDone, string classId = null)
+        /// <param name="taught">
+        /// Whether Hugin has announced a bench recipe (<see cref="SagaRecipes.IsTaught"/>). A bench
+        /// recipe he has not announced is left off the page entirely; null lists them all, as the
+        /// page did before it learned to keep a secret. The anvil's conversions are never filtered:
+        /// the anvil is a place the player has found, not a thing they were told.
+        /// </param>
+        public List<SagaRecipeCard> DescribeRecipes(Func<string, bool> stepDone, string classId = null,
+                                                    Func<string, bool> taught = null)
         {
             var cards = new List<SagaRecipeCard>();
 
@@ -1773,6 +1989,11 @@ namespace ICanShowYouTheWorld.RunMode
                     // and a card for it would promise a Hunter something only a Berserker gets.
                     if (!SagaRecipes.ClassAllows(def, classId)) continue;
 
+                    // Not until Hugin has said so. The page used to list every recipe with a "not
+                    // learned yet" tag, which answered "what should I hoard" and also gave away four
+                    // acts of the Stormsworn on the first night - the reveal belongs to the raven.
+                    if (taught != null && !taught(def.Id)) continue;
+
                     var result = ItemPrefab(def.ResultPrefab);
                     if (result == null || result.m_itemData == null || result.m_itemData.m_shared == null) continue;
 
@@ -1782,6 +2003,7 @@ namespace ICanShowYouTheWorld.RunMode
                         Station = StationWords(def),
                         Known = string.IsNullOrEmpty(def.RequiresStepDone) ||
                                 (stepDone != null && stepDone(def.RequiresStepDone)),
+                        Bench = true,
                     };
 
                     foreach (var (prefab, amount) in def.Resources)
@@ -1818,6 +2040,7 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 case "piece_workbench": where = "Workbench"; break;
                 case "forge":           where = "Forge"; break;
+                case "piece_artisanstation": where = "Artisan table"; break;
                 case null:              where = "Anywhere"; break;
                 case "":                where = "Anywhere"; break;
                 default:                where = def.StationPrefab; break;

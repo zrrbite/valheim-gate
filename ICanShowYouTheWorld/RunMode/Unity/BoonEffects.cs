@@ -466,7 +466,8 @@ namespace ICanShowYouTheWorld.RunMode
         public BoonEffects(Func<IReadOnlyList<HeldBoon>> heldBoons, Func<IEnumerable<string>> undefeatedBossLocations,
             Func<int> defeatedBossCount = null, Action<Skills.SkillType, float> loanSkill = null,
             Action<string, int> grantItem = null, Func<GameObject> lightningFx = null,
-            Func<bool, bool> setFreeBuild = null)
+            Func<bool, bool> setFreeBuild = null, Func<int, string> stepBowElement = null,
+            Action resetBowElement = null)
         {
             _heldBoons = heldBoons ?? (() => Array.Empty<HeldBoon>());
             _undefeatedBossLocations = undefeatedBossLocations ?? (() => Enumerable.Empty<string>());
@@ -475,7 +476,20 @@ namespace ICanShowYouTheWorld.RunMode
             _grantItem = grantItem ?? ((_, __) => { });
             _lightningFx = lightningFx ?? (() => null);
             _setFreeBuild = setFreeBuild ?? (_ => false);
+            _stepBowElement = stepBowElement ?? (_ => null);
+            _resetBowElement = resetBowElement ?? (() => { });
         }
+
+        /// <summary>
+        /// Elemental Arrows: moves Thor's bow one element along the cycle (+1 forward, -1 back) and
+        /// answers the element's name, or null when it could not. Through the host, for the reason
+        /// the lightning effect is: the bow's numbers live in SagaItems, and the run persists the
+        /// choice - this class only knows that a key was pressed.
+        /// </summary>
+        private readonly Func<int, string> _stepBowElement;
+
+        /// <summary>Thor's bow back to lightning, what it ships as. Idempotent.</summary>
+        private readonly Action _resetBowElement;
 
         // --- Public surface (RunService's boon seams) ---
 
@@ -682,6 +696,10 @@ namespace ICanShowYouTheWorld.RunMode
                 case "mastersminute": EndMastersMinute(); break;
                 case "reinforce":     EndReinforce(); break;
 
+                // The bow outlives the boon and ships as lightning; losing the switch (the dev
+                // class cycle, or the run's end through UnapplyAll) puts it back there.
+                case "elemental":     _resetBowElement(); break;
+
                 case "shepherd":
                     try { WithLegacyGodModeBracket(() => PetBuff.ResetPetBuffs(quiet: true)); }
                     catch (Exception e) { Debug.LogWarning($"[ICanShowYouTheWorld] Shepherd reset: {e.Message}"); }
@@ -715,11 +733,16 @@ namespace ICanShowYouTheWorld.RunMode
             }
         }
 
-        public bool Activate(string boonId)
+        /// <param name="reverse">
+        /// Only Elemental Arrows reads it: its two keys cycle the bow's element forward and back.
+        /// Every other active has one key and ignores it.
+        /// </param>
+        public bool Activate(string boonId, bool reverse = false)
         {
             LastActivationMessage = null;
             switch (boonId)
             {
+                case "elemental": return ActivateElemental(reverse ? -1 : 1);
                 case "wind": return ActivateWind();
                 case "ember": return ActivateEmber();
                 case "way": return ActivateWay();
@@ -795,6 +818,9 @@ namespace ICanShowYouTheWorld.RunMode
                 SafeInvoke(EndRage);
                 // A borrowed lightning flash still standing when the run ends goes with it.
                 SafeInvoke(TakeDownWrathFlashes);
+                // And Thor's bow goes back to its own lightning: it outlives the run, and the run's
+                // fire or frost is not the bow's to keep.
+                SafeInvoke(_resetBowElement);
                 // The four ways' windows, each provably closed on a path where an earlier step
                 // threw - the same reasoning as Blood Rage above. The two that touch something other
                 // than the player come first: the world's wind and the world's free-building key are
@@ -1618,6 +1644,32 @@ namespace ICanShowYouTheWorld.RunMode
             typeof(Minimap).GetMethod("Explore",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
                 null, new[] { typeof(Vector3), typeof(float) }, null);
+
+        /// <summary>
+        /// Elemental Arrows: Thor's bow moves to its next element - lightning, fire, frost, and round.
+        /// </summary>
+        /// <remarks>
+        /// A switch, not a spell: no cooldown, no charges, and it works with the bow in the pack as
+        /// well as in the hand, so the player can set it before the fight rather than during it.
+        /// What it changes is the KIND of damage, never the amount (see SagaItems.ApplyBowElement),
+        /// which is why it needs no cooldown to stay honest. A loan like everything else a run
+        /// grants: the run's end and the boon's loss both put the bow back to lightning.
+        /// </remarks>
+        private bool ActivateElemental(int step)
+        {
+            var held = FindHeld("elemental");
+            if (held == null) return false;
+
+            string element = _stepBowElement(step);
+            if (string.IsNullOrEmpty(element))
+            {
+                LastActivationMessage = "Thor\u2019s bow does not answer.";
+                return false;
+            }
+
+            LastActivationMessage = $"Thor\u2019s bow: {element}.";
+            return true;
+        }
 
         /// <summary>
         /// Farsight: the map within <see cref="FarsightRadius"/> of the player is revealed.

@@ -74,6 +74,12 @@ namespace ICanShowYouTheWorld.Services
         /// <summary>The way this run has taken up (a ClassLadder id), or null for none or no run.</summary>
         string ClassId { get; }
 
+        /// <summary>
+        /// What Thor's bow looses now - "lightning", "fire" or "frost" - for the HUD's Elemental
+        /// Arrows row. Lightning outside a run and for any run not holding the switch.
+        /// </summary>
+        string BowElement { get; }
+
         /// <summary>True while a way is on offer and not yet chosen.</summary>
         bool ClassChoicePending { get; }
 

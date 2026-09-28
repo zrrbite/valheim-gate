@@ -1225,6 +1225,11 @@ namespace ICanShowYouTheWorld.RunMode
             }
             finally { GUILayout.EndScrollView(); }
 
+            // Read here, after the scroll view has closed: the pointer is back in the WINDOW's
+            // coordinates, which is what the panel is placed and clamped in. Drawn after the
+            // abandon button below so nothing paints over it.
+            string hoverTip = GUI.tooltip;
+
             // --- Abandon, behind a two-press confirm so a stray click can't end a run. Outside
             //     the scroll view, so it is always reachable however long the body gets. ---
             bool armed = Time.realtimeSinceStartup - _lastAbandonPress <= AbandonConfirmSeconds;
@@ -1242,6 +1247,8 @@ namespace ICanShowYouTheWorld.RunMode
                 }
             }
             GUI.contentColor = Color.white;
+
+            DrawHoverTip(hoverTip, HudWidth, _hudRect.height);
         }
 
         /// <summary>
@@ -1582,6 +1589,17 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 GUILayout.Label("  Nothing is known yet.", RunTheme.Small);
                 return;
+            }
+
+            // The bench's recipes reach this page only once Hugin has announced them (see
+            // SagaItems.DescribeRecipes), so for most of Act I the anvil is alone here. Said, rather
+            // than left as an absence: a page with no bench cards on it otherwise reads as a page
+            // that failed to load them.
+            if (!cards.Any(c => c.Bench))
+            {
+                GUI.contentColor = RunTheme.TextMuted;
+                GUILayout.Label("  The bench knows nothing of the saga yet.", RunTheme.Small);
+                GUI.contentColor = Color.white;
             }
 
             // Ready first, then closest to ready. A stable sort on a copy - the service hands out a
@@ -2183,11 +2201,12 @@ namespace ICanShowYouTheWorld.RunMode
                         (h.Def.CooldownSeconds > 0f || h.Charges > 0);
 
                     GUILayout.BeginHorizontal();
-                    GUILayout.Label("  " + h.Def.Display, RunTheme.Small,
+                    GUILayout.Label(new GUIContent("  " + h.Def.Display, h.Def.Description ?? ""), RunTheme.Small,
                         GUILayout.Width(HudContentWidth - BoonStatusWidth));
-                    GUILayout.Label(BoonStatus(h), ready ? RunTheme.Ready : RunTheme.Small,
+                    GUILayout.Label(BoonStatus(h, run), ready ? RunTheme.Ready : RunTheme.Small,
                         GUILayout.Width(BoonStatusWidth));
                     GUILayout.EndHorizontal();
+                    DrawDescriptionLine(h.Def.Description);
                 }
             }
 
@@ -2208,7 +2227,7 @@ namespace ICanShowYouTheWorld.RunMode
             foreach (var id in way.PassiveBoonIds ?? new string[0])
             {
                 bool held = heldIds.Contains(id);
-                DrawWayKitLine(KitName(boons, id), held ? "held" : "at the graves", !held);
+                DrawWayKitLine(KitName(boons, id), held ? "held" : "at the graves", !held, KitDescription(boons, id));
             }
 
             var rungs = way.Rungs ?? new string[0][];
@@ -2217,11 +2236,31 @@ namespace ICanShowYouTheWorld.RunMode
                 int threshold = ClassLadder.Thresholds[i];
                 foreach (var id in rungs[i] ?? new string[0])
                 {
-                    if (heldIds.Contains(id)) DrawWayKitLine(KitName(boons, id), "held", false);
-                    else if (threshold <= bosses) DrawWayKitLine(KitName(boons, id), "at the graves", true);
-                    else DrawWayKitLine(KitName(boons, id), ClassLadder.AfterLine(threshold), false);
+                    string desc = KitDescription(boons, id);
+                    if (heldIds.Contains(id)) DrawWayKitLine(KitName(boons, id), "held", false, desc);
+                    else if (threshold <= bosses) DrawWayKitLine(KitName(boons, id), "at the graves", true, desc);
+                    else DrawWayKitLine(KitName(boons, id), ClassLadder.AfterLine(threshold), false, desc);
                 }
             }
+        }
+
+        /// <summary>The boon's one-sentence description, or null when the pool does not know it.</summary>
+        private static string KitDescription(BoonEngine boons, string id) => boons?.Definition(id)?.Description;
+
+        /// <summary>
+        /// A boon's description, small and muted under its name (owner: "I have no idea what
+        /// Bloodthirst does"). A name was all the list ever gave, and a name is a promise the
+        /// player cannot read. Indented past the name so the eye keeps the pairs together, and
+        /// ALWAYS on rather than behind a setting: the BOONS section already scrolls, and a kit you
+        /// have to switch on an explanation for is the same kit you cannot see.
+        /// </summary>
+        private static void DrawDescriptionLine(string description)
+        {
+            if (string.IsNullOrEmpty(description)) return;
+
+            GUI.contentColor = RunTheme.TextMuted;
+            GUILayout.Label("      " + description, RunTheme.Small, GUILayout.Width(HudContentWidth));
+            GUI.contentColor = Color.white;
         }
 
         /// <summary>
@@ -2230,12 +2269,15 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         private static string KitName(BoonEngine boons, string id) => boons?.Definition(id)?.Display ?? id;
 
-        private static void DrawWayKitLine(string name, string state, bool due)
+        private static void DrawWayKitLine(string name, string state, bool due, string description)
         {
             GUILayout.BeginHorizontal();
-            GUILayout.Label("  " + name, RunTheme.Small, GUILayout.Width(HudContentWidth - BoonStatusWidth));
+            // The description rides the name as its tooltip too, for the pointer - see DrawHoverTip.
+            GUILayout.Label(new GUIContent("  " + name, description ?? ""), RunTheme.Small,
+                GUILayout.Width(HudContentWidth - BoonStatusWidth));
             GUILayout.Label(state, due ? RunTheme.Ready : RunTheme.Small, GUILayout.Width(BoonStatusWidth));
             GUILayout.EndHorizontal();
+            DrawDescriptionLine(description);
         }
 
         /// <summary>Cooldown/charges plus the activation key for the three active boons.</summary>
@@ -2268,8 +2310,13 @@ namespace ICanShowYouTheWorld.RunMode
             for (int i = 0; i < actives.Count; i++)
             {
                 var h = actives[i];
-                bool ready = h.CooldownRemaining <= 0f
-                    && (h.Def.CooldownSeconds > 0f || h.Charges > 0);
+
+                // Elemental Arrows has neither a cooldown nor charges - it is a switch - and the
+                // rule below would read that as "spent" and print x0. It is always ready, and its
+                // state is the element it is set to.
+                bool toggle = h.Def.Id == ElementalBoonId;
+                bool ready = toggle || (h.CooldownRemaining <= 0f
+                    && (h.Def.CooldownSeconds > 0f || h.Charges > 0));
 
                 var slot = new Rect(x + i * slotW, y, slotW - 4f, slotH);
 
@@ -2291,7 +2338,8 @@ namespace ICanShowYouTheWorld.RunMode
                 RunTheme.Frame(slot, ready ? RunTheme.AccentGold : RunTheme.PanelBorder);
 
                 string key = ShortActivationKey(h.Def.Id);
-                string state = h.CooldownRemaining > 0f
+                string state = toggle ? (run.BowElement ?? "lightning")
+                    : h.CooldownRemaining > 0f
                     ? $"{h.CooldownRemaining:0}s"
                     : h.Def.CooldownSeconds <= 0f ? $"x{h.Charges}" : "";
 
@@ -2317,8 +2365,57 @@ namespace ICanShowYouTheWorld.RunMode
         /// So it says what KIND of boon this is, matching the "always on" a passive prints in the
         /// same column, and nothing more. The key and the live state are not lost: the activation
         /// strip above the list already shows "[8] Windfall x1", which is the place to read them.
+        ///
+        /// Elemental Arrows is the exception: it is a switch, not a spell, so what the column says
+        /// is which way the switch is set - "lightning", "fire" or "frost" - which is the one thing
+        /// about it a player wants to read.
         /// </summary>
-        private static string BoonStatus(HeldBoon h) => h.Def.IsPassive ? "always on" : "Activated";
+        private static string BoonStatus(HeldBoon h, IRunService run)
+        {
+            if (h.Def.Id == ElementalBoonId) return run?.BowElement ?? "lightning";
+            return h.Def.IsPassive ? "always on" : "Activated";
+        }
+
+        /// <summary>The Hunter's bow switch. Named once; the HUD treats it as a toggle, not a cooldown.</summary>
+        private const string ElementalBoonId = "elemental";
+
+        /// <summary>
+        /// The description under the pointer, in a small panel beside it, for a row whose label
+        /// carries one (<c>GUIContent.tooltip</c>). Drawn LAST in the window so it sits over the rows.
+        /// </summary>
+        /// <remarks>
+        /// Only ever seen with the cursor free - the inventory open, which is when Valheim unlocks
+        /// it. The mod deliberately does NOT free the cursor for its own windows (RESUME: drawing
+        /// the bow dragged them around), so this reads the cursor's state and never writes it; with
+        /// the cursor locked the pointer is parked mid-screen and a tooltip would be a phantom.
+        ///
+        /// Placement is <see cref="TooltipPlacement"/>, which keeps the panel inside the window's
+        /// rect: a window clips what it draws, and a clipped tooltip loses the end of its sentence.
+        /// </remarks>
+        private static void DrawHoverTip(string tip, float windowWidth, float windowHeight)
+        {
+            if (string.IsNullOrEmpty(tip)) return;
+            if (Cursor.lockState == CursorLockMode.Locked) return;
+
+            const float pad = 6f;
+            float width = Mathf.Min(HoverTipWidth, windowWidth - 2f * HoverTipMargin);
+            var content = new GUIContent(tip);
+            float height = RunTheme.Small.CalcHeight(content, width - 2f * pad) + 2f * pad;
+            height = Mathf.Min(height, windowHeight - 2f * HoverTipMargin);
+
+            var mouse = Event.current.mousePosition;
+            var (x, y) = TooltipPlacement.Place(mouse.x, mouse.y, width, height, windowWidth, windowHeight, HoverTipMargin);
+            var rect = new Rect(x, y, width, height);
+
+            GUI.DrawTexture(rect, RunTheme.Solid(new Color(RunTheme.PanelFill.r, RunTheme.PanelFill.g, RunTheme.PanelFill.b, 0.97f)));
+            RunTheme.Frame(rect, RunTheme.AccentGold);
+            GUI.contentColor = RunTheme.TextParchment;
+            GUI.Label(new Rect(x + pad, y + pad, width - 2f * pad, height - 2f * pad), content, RunTheme.Small);
+            GUI.contentColor = Color.white;
+        }
+
+        private const float HoverTipWidth = 230f;
+        private const float HoverTipMargin = 4f;
 
         // --- Lobby ---
 

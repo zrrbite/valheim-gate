@@ -221,9 +221,11 @@ listeners are never both live:
    while either is up), `Keypad4-6` and `8` activate the general actives, **`Keypad7`, `0`
    and `Insert` are the three RUNGS of whichever class (way) the run took up** — several boon
    ids share each of those keys and the handler fires the HELD one — `Keypad9` is Homeward,
-   and `PageDown` gates back to where you died. Since 2026-09-27 `Keypad +` and `-` are
-   free for the player: Shaman's Mercy became the Völva's Mending on `Keypad7`, Unseen the
-   Hunter's third rung on `Insert`.
+   and `PageDown` gates back to where you died. Since 2026-09-27 `Keypad +` and `-` carry
+   two GENERAL actives (Mending Hands, Farsight): Shaman's Mercy became the Völva's Mending on
+   `Keypad7`, Unseen the Hunter's third rung on `Insert`. Since 2026-09-28 the **arrow keys**
+   `←`/`→` cycle Thor's bow's element for a Hunter holding Elemental Arrows — unused by vanilla
+   play, and the GM mod's arrow bindings are dead during a run.
 3. **Dev bindings** are read from that same handler, so the two layers ARE in one mode and
    a modifier is the only thing that can separate them — but only where there is a second
    layer to separate. Dev owns `Keypad . Enter`, `Delete`, `Home` and `PageUp` BARE, and

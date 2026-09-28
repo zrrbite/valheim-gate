@@ -295,6 +295,13 @@ namespace ICanShowYouTheWorld.RunMode
         public bool Standing => Position() != null;
 
         /// <summary>
+        /// Where it waits: its chosen spot, or before the first night it was wanted, the claimed bed
+        /// it will be found beside - the same fallback <see cref="Bearing"/> points at. Null with no
+        /// spot and no bed, when there is nowhere honest to put a pin.
+        /// </summary>
+        public Vector3? Spot() => _spot ?? Home(null);
+
+        /// <summary>
         /// Call about once a second, in Act I. Keeps the shade standing while it is wanted and the
         /// sun is down, dismisses it otherwise, and reports what the player did at it.
         /// </summary>

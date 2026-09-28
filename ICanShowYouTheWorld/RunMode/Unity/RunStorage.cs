@@ -216,6 +216,12 @@ namespace ICanShowYouTheWorld.RunMode
         public string classId;
 
         /// <summary>
+        /// Thor's bow's element while the Hunter's Elemental Arrows is held: "lightning", "fire" or
+        /// "frost". Null on an older save, which reads as lightning - what the bow was then.
+        /// </summary>
+        public string bowElement;
+
+        /// <summary>
         /// Boss altars this run has found (alpha36) — the latch behind the questline's discovery
         /// steps. Persisted so a resume does not ask the player to walk back to somewhere they have
         /// already been. Null on an older save, which reads as "nothing found yet".

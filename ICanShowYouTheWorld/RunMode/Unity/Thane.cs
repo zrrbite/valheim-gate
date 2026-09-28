@@ -246,6 +246,13 @@ namespace ICanShowYouTheWorld.RunMode
         public Vector3? Position() => _body != null ? _body.transform.position : (Vector3?)null;
 
         /// <summary>
+        /// The graves he stands at, once chosen; null before the first day he was wanted. For the
+        /// map pin, which wants the PLACE rather than the body - he is only standing by day, and
+        /// the pin is there to be read at night too.
+        /// </summary>
+        public Vector3? Spot() => _spot;
+
+        /// <summary>
         /// Call about once a second. Keeps him standing while he is wanted and it is day, and reports
         /// what the player did at him.
         /// </summary>

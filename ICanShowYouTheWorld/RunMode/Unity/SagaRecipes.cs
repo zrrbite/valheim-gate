@@ -159,7 +159,9 @@ namespace ICanShowYouTheWorld.RunMode
                 Id = "storm-legs",
                 ResultPrefab = SagaItems.StormLegsPrefab,
                 StationPrefab = "forge",
-                MinStationLevel = 3,
+                // Four since 2026-09-28, the owner's call: by the Mountain the forge should have
+                // been built up further than the swamp's chest asks of it.
+                MinStationLevel = 4,
                 Resources = new[] { ("Silver", 14), ("WolfPelt", 6), ("WolfFang", 4) },
                 RequiresStepDone = "mt-silver",
                 TaughtLine = "Silver, and the wolves that were standing on it. The mountain will go on " +
@@ -170,8 +172,13 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 Id = "storm-cape",
                 ResultPrefab = SagaItems.StormCapePrefab,
-                StationPrefab = "piece_workbench",
-                MinStationLevel = 3,
+                // The artisan table (owner, 2026-09-28): a mantle is cloth and hide, not metal, and
+                // the Plains' own station is where the last piece belongs - the act's new bench,
+                // the way the forge was Act II's. The prefab name is checked against the SoftRef
+                // manifest (Assets/GameElements/Pieces/piece_artisanstation.prefab) and again at run
+                // start by RunService.ValidateSagaRecipes, which logs one with no CraftingStation.
+                StationPrefab = "piece_artisanstation",
+                MinStationLevel = 1,
                 Resources = new[] { ("LoxPelt", 4), ("Needle", 10), ("Silver", 6) },
                 RequiresStepDone = "pl-berserker",
                 TaughtLine = "The last of it. Lox hide, cured in a country that burns — and this piece " +
@@ -213,6 +220,19 @@ namespace ICanShowYouTheWorld.RunMode
 
         /// <summary>False until the first Ensure of a run has looked; see Ensure.</summary>
         private bool _baselined;
+
+        /// <summary>
+        /// Whether Hugin has told this run about the recipe - or, for a resumed run, whether it was
+        /// already unlocked when the run came back, which is a recipe he told an earlier session.
+        /// </summary>
+        /// <remarks>
+        /// The FORGE page reads THIS rather than the step gate, because the page is the written-down
+        /// form of what Hugin said: a bench card for a recipe he has not announced would be the page
+        /// telling the player something the saga has not yet (owner: the page should reveal only
+        /// what has been taught). It is the same set that keeps a world load from re-teaching, so
+        /// the page and the raven cannot disagree about what counts as news.
+        /// </remarks>
+        public bool IsTaught(string id) => id != null && _taught.Contains(id);
 
         /// <summary>
         /// Makes sure every UNLOCKED recipe is present in the live database and every locked one

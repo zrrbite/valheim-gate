@@ -22,6 +22,7 @@ static class ClassLadderTests
         new BoonDefinition { Id = "shepherd", ClassId = "hunter", IsPassive = true },
         new BoonDefinition { Id = "brother", ClassId = "hunter" },
         new BoonDefinition { Id = "menagerie", ClassId = "hunter" },
+        new BoonDefinition { Id = "elemental", ClassId = "hunter" },
         new BoonDefinition { Id = "unseen", ClassId = "hunter" },
         new BoonDefinition { Id = "hearthlight", ClassId = "volva", IsPassive = true },
         new BoonDefinition { Id = "shaman", ClassId = "volva" },
@@ -59,16 +60,18 @@ static class ClassLadderTests
         var none = new string[0];
         Check.That(ClassLadder.Due(hunter, 0, none).SequenceEqual(new[] { "hunter", "shepherd", "brother" }),
             "at the choice: the passives and rung 1, passives first");
-        Check.That(ClassLadder.Due(hunter, 1, none).SequenceEqual(new[] { "hunter", "shepherd", "brother", "menagerie" }),
-            "one god down adds rung 2");
-        Check.That(ClassLadder.Due(hunter, 2, none).Count() == 4, "two is still only rung 2");
-        Check.That(ClassLadder.Due(hunter, 3, none).Last() == "unseen" && ClassLadder.Due(hunter, 3, none).Count() == 5,
+        Check.That(ClassLadder.Due(hunter, 1, none).SequenceEqual(new[] { "hunter", "shepherd", "brother", "menagerie", "elemental" }),
+            "one god down adds rung 2: Menagerie and Elemental Arrows, in that order");
+        Check.That(ClassLadder.Due(hunter, 2, none).Count() == 5, "two is still only rung 2");
+        Check.That(ClassLadder.Due(hunter, 3, none).Last() == "unseen" && ClassLadder.Due(hunter, 3, none).Count() == 6,
             "three down adds rung 3");
 
         var learned = new[] { "hunter", "shepherd", "brother" };
         Check.That(!ClassLadder.Due(hunter, 0, learned).Any(), "nothing is due twice");
-        Check.That(ClassLadder.Due(hunter, 1, learned).SequenceEqual(new[] { "menagerie" }),
-            "only the unlearned rung is due once Eikthyr falls");
+        Check.That(ClassLadder.Due(hunter, 1, learned).SequenceEqual(new[] { "menagerie", "elemental" }),
+            "only the unlearned rung is due once Eikthyr falls - both of its boons");
+        Check.That(ClassLadder.Due(hunter, 1, learned.Concat(new[] { "menagerie" })).SequenceEqual(new[] { "elemental" }),
+            "a rung half learned owes only its other half");
 
         Check.That(ClassLadder.NextThreshold(hunter, 0, learned) == 1, "next threshold after the choice is one boss");
         Check.That(ClassLadder.NextThreshold(hunter, 1, learned) == 3, "then three");
@@ -132,6 +135,12 @@ static class ClassLadderTests
             "the Berserker is handed one pair of Ulfr's axes");
         Check.That(ClassLadder.Find("hunter").GrantItems.Length == 0 && ClassLadder.Find("volva").GrantItems.Length == 0,
             "the Hunter and the Völva are handed nothing");
+        Check.That(hunter.Description.EndsWith(" Later your arrows learn fire and frost."),
+            "the Hunter's card says her arrows learn fire and frost");
+
+        var noElemental = Pool().Where(b => b.Id != "elemental").ToList();
+        Check.That(ClassLadder.Validate(catalog, noElemental).Any(p => p.Contains("elemental")),
+            "Elemental Arrows missing from the pool is caught");
         Check.That(berserker.Description.EndsWith(" Ulfr’s axes are yours the moment you take his name."),
             "and the card says so");
         Check.That(new ClassDefinition().GrantItems != null, "a way built without gifts has an empty list, not null");

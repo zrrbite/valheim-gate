@@ -108,13 +108,18 @@ in the design spec. Play list in `HANDOFF_WINDOWS.md` under `...28`.
 
 Verdict: _pending_
 
-## Queued (owner, 2026-09-27 evening) — not started
+## In progress (round of 2026-09-28) — the queued four plus the elemental arrows
 
 - NPC map pins (thane, shade, Thjalfi) when wanted and placed.
 - FORGE page shows only recipes Hugin has taught.
 - Boon descriptions: inline under each boon and rung, plus IMGUI hover when the cursor is free.
 - Stormsworn stations: greaves to forge 4, cape to the artisan table; Acts VI-VII to the black
   forge and galdr table when they exist.
+- Elemental arrows: a Hunter rung-2 grant that cycles Thor's bow between lightning, fire and frost
+  on the arrow keys (frost is the slow). See the design spec.
+
+Rulings taken 2026-09-28: the Master's Minute refund and the Field Forge teaching the forge are
+both accepted as they are.
 
 ## Follow-up — the first play verdict answered (`1.0.16-run.2026-09-27e`, commit `e6ba1a6`)
 

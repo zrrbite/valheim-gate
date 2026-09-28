@@ -96,9 +96,12 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 Id = "hunter", Display = "Hunter", Title = "Eydís",
                 Description = "Beasts answer you. A wolf comes when you call. Later, any creature on loan, " +
-                              "and the trick of going unseen. Your bow hand knows more than it did, and your tames are stronger.",
+                              "and the trick of going unseen. Your bow hand knows more than it did, and your tames are stronger." +
+                              " Later your arrows learn fire and frost.",
                 PassiveBoonIds = new[] { "hunter", "shepherd" },
-                Rungs = new[] { new[] { "brother" }, new[] { "menagerie" }, new[] { "unseen" } },
+                // Elemental Arrows beside Menagerie (owner, 2026-09-28): the Hunter is the bow's way,
+                // and the saga's bow is Thor's - so her second rung teaches it fire and frost.
+                Rungs = new[] { new[] { "brother" }, new[] { "menagerie", "elemental" }, new[] { "unseen" } },
             },
             new ClassDefinition
             {

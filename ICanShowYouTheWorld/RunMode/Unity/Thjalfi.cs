@@ -253,6 +253,12 @@ namespace ICanShowYouTheWorld.RunMode
         public Vector3? Position() => _body != null ? _body.transform.position : (Vector3?)null;
 
         /// <summary>
+        /// Where he waits, once chosen; null until the first rain he was wanted in. For the map pin,
+        /// which marks the shore in dry weather too - the pin says where, the strip says when.
+        /// </summary>
+        public Vector3? Spot() => _spot;
+
+        /// <summary>
         /// Call about once a second. Keeps him standing while he is wanted, and reports what the
         /// player did at him.
         /// </summary>

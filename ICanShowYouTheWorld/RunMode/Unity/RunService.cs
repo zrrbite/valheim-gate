@@ -384,7 +384,12 @@ namespace ICanShowYouTheWorld.RunMode
                 lightningFx: _items.Lightning,
                 // Master's Minute. A world key, so it is written where the run's other world keys
                 // are, and its original is saved and restored with theirs.
-                setFreeBuild: on => _worldModifiers.SetFlag(GlobalKeys.NoBuildCost, on));
+                setFreeBuild: on => _worldModifiers.SetFlag(GlobalKeys.NoBuildCost, on),
+                // Elemental Arrows. SagaItems holds the element beside the bow's numbers; the run
+                // saves it the moment it changes, because a quit straight after the key press
+                // would otherwise resume the bow on whatever the last autosave caught.
+                stepBowElement: StepBowElement,
+                resetBowElement: () => _items.SetThorsBowElement(ICanShowYouTheWorld.RunMode.BowElement.Lightning));
             ApplyBoonEffect = _boonEffects.Apply;
             UnapplyBoonEffect = _boonEffects.Unapply;
             UnapplyAllBoonEffects = _boonEffects.UnapplyAll;
@@ -610,7 +615,8 @@ namespace ICanShowYouTheWorld.RunMode
                 _recipeCardsAt = Time.time;
                 _recipeCards = _items.DescribeRecipes(
                     id => _challenges != null && StepPredicates.StepDone(_challenges.Tracks, id),
-                    _classId);
+                    _classId,
+                    _recipes.IsTaught);
 
                 return _recipeCards;
             }
@@ -1893,6 +1899,22 @@ namespace ICanShowYouTheWorld.RunMode
         public int DefeatedBosses => _active && _boons != null ? _boons.DefeatedBosses : 0;
 
         public string ClassId => _active ? _classId : null;
+
+        /// <summary>What Thor's bow looses now: "lightning", "fire" or "frost". See SagaItems.</summary>
+        public string BowElement => SagaItems.ElementName(_items.ThorsBowElement);
+
+        /// <summary>
+        /// Elemental Arrows' key: the bow one element along (<paramref name="step"/> +1 or -1),
+        /// saved at once, and the new element's name for the success line.
+        /// </summary>
+        private string StepBowElement(int step)
+        {
+            const int count = 3;   // Lightning, Fire, Frost - the enum's order is the cycle's
+            int next = (((int)_items.ThorsBowElement + step) % count + count) % count;
+            _items.SetThorsBowElement((ICanShowYouTheWorld.RunMode.BowElement)next);
+            SaveState();
+            return SagaItems.ElementName(_items.ThorsBowElement);
+        }
         public bool ClassChoicePending => _active && _classChoicePending;
         public IReadOnlyList<ClassDefinition> Classes => _classCatalog;
 
@@ -2234,6 +2256,9 @@ namespace ICanShowYouTheWorld.RunMode
                 _shade?.Reset();
                 _thjalfi?.Reset();
                 _thane?.Reset();
+                // Their spots were just forgotten, so their pins mark nowhere now. Re-drawn on the
+                // first poll that wants them, at the new spots.
+                SagaPins.HideAll();
                 _spirit?.Reset();
                 _strayOut = false;
                 _strayReadyAt = Time.time + 120f;
@@ -2252,6 +2277,8 @@ namespace ICanShowYouTheWorld.RunMode
                 _classChoicePending = false;
                 _boonOfferOwed = false;
                 _classAnnouncedAt = -1;
+                // Nobody holds Elemental Arrows at a run's first second, so the bow is its own.
+                _items.SetThorsBowElement(ICanShowYouTheWorld.RunMode.BowElement.Lightning);
                 _discovered.Clear();
                 _pinnedActIndex = -1;
                 _worldModifiers.ApplyBaseline(_cfg);
@@ -3387,7 +3414,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // so at most one row per key is held.
                 if (!Holds(binding.Id)) continue;
 
-                TryActivateHeldBoon(binding.Id);
+                TryActivateHeldBoon(binding.Id, binding.Reverse);
                 return;
             }
 
@@ -3401,12 +3428,12 @@ namespace ICanShowYouTheWorld.RunMode
             else if (Input.GetKeyDown(KeyCode.PageDown)) TryCorpseGate();
         }
 
-        private void TryActivateHeldBoon(string boonId)
+        private void TryActivateHeldBoon(string boonId, bool reverse = false)
         {
             var held = _boons.Held.FirstOrDefault(h => h.Def.Id == boonId);
             if (held == null) return; // Not held — key does nothing.
 
-            if (!_boonEffects.Activate(boonId))
+            if (!_boonEffects.Activate(boonId, reverse))
             {
                 Message(_boonEffects.LastActivationMessage ?? $"{held.Def.Display} not ready.");
             }
@@ -3599,6 +3626,9 @@ namespace ICanShowYouTheWorld.RunMode
             var shadePlayer = Player.m_localPlayer;
             if (shadePlayer != null) PollShade(shadePlayer);
             if (shadePlayer != null && ActIsMeadows) PollThjalfi(shadePlayer);
+            // He is not polled past the Meadows, so nothing there would ever say "not wanted" to
+            // his pin; he goes when the act does, and his mark on the map goes with him.
+            else if (!ActIsMeadows) SagaPins.Hide(PinThjalfi);
             // EVERY act, unlike Thjalfi: the rungs come due after Eikthyr and Bonemass, which is to
             // say in Acts II and IV, and he is where they are learned.
             if (shadePlayer != null) PollThane(shadePlayer);
@@ -4196,6 +4226,7 @@ namespace ICanShowYouTheWorld.RunMode
 
                 bool spoken, paid;
                 _thjalfi.Tick(player, phase, wanted, IsRaining || metHim, out spoken, out paid);
+                RefreshNpcPin(PinThjalfi, wanted, _thjalfi.Spot(), "Thjalfi");
 
                 if (spoken)
                 {
@@ -4254,6 +4285,7 @@ namespace ICanShowYouTheWorld.RunMode
 
                 bool spoken, taught;
                 _thane.Tick(player, phase, exhausted, wanted, !IsNight, out spoken, out taught);
+                RefreshNpcPin(PinThane, wanted, _thane.Spot(), "The thane");
 
                 if (spoken)
                 {
@@ -4272,6 +4304,23 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 LogOnce("thane", ex);
             }
+        }
+
+        // The saga's people on the map. See SagaPins for why they are never saved.
+        private const string PinThane = "thane";
+        private const string PinThjalfi = "thjalfi";
+        private const string PinShade = "shade";
+
+        /// <summary>
+        /// One actor's pin: up while the questline WANTS them and their spot is known, down
+        /// otherwise. Driven from each actor's own poll with the same <c>wanted</c> that stands them
+        /// up, so the pin and the person cannot disagree about whether there is anybody to find.
+        /// The day/rain/night gates are deliberately NOT part of it - those are the strip's to say.
+        /// </summary>
+        private static void RefreshNpcPin(string id, bool wanted, Vector3? spot, string name)
+        {
+            if (wanted && spot != null) SagaPins.Show(id, spot.Value, name);
+            else SagaPins.Hide(id);
         }
 
         /// <summary>Puts the Storm-Anvil down at Thjalfi's feet, in the player's name.</summary>
@@ -5055,6 +5104,7 @@ namespace ICanShowYouTheWorld.RunMode
                 bool spoken, delivered, remarked;
                 _shade.Tick(player, phase, wanted, IsNight, out spoken, out delivered, out remarked,
                             HuntersShade.RemarkLine(remark));
+                RefreshNpcPin(PinShade, wanted, _shade.Spot(), "A hunter’s shade");
 
                 if (spoken)
                 {
@@ -5600,6 +5650,16 @@ namespace ICanShowYouTheWorld.RunMode
             CreatureDressing.Forget();
             _corpseAt = null;
 
+            // Thor's bow ships as lightning. UnapplyAll has normally put it back already; this is the
+            // path that holds when an earlier unapply threw, because the bow outlives the run and a
+            // fire bow in the lobby is a loan that was never repaid.
+            _items.SetThorsBowElement(ICanShowYouTheWorld.RunMode.BowElement.Lightning);
+
+            // The pins are run-only for the same reason: a map with the thane's graves on it after
+            // the saga is over points at a man who is no longer there. Never saved, so nothing is
+            // left in the character's map data either way; this takes them off the live map.
+            SagaPins.HideAll();
+
             // Not an offer: the world the run ended in has just been asked and answered. Clearing
             // the WORLD would re-offer the saga the moment the abandon finished, which reads as the
             // mode arguing with the player.
@@ -6136,13 +6196,17 @@ namespace ICanShowYouTheWorld.RunMode
 
                 // Keys are shared ACROSS ways on purpose (a run holds one); within one way a
                 // shared key would hide an ability.
+                //
+                // Counted in distinct IDS, not rows: one boon may own two keys (Elemental Arrows
+                // cycles forward on Right and back on Left), and two rows of the same id on one key
+                // would hide nothing. What hides an ability is two different ids sharing a key.
                 var classOf = pool.Where(b => b.ClassId != null).ToDictionary(b => b.Id, b => b.ClassId);
                 foreach (var clash in BoonKeys.Actives
                     .Where(k => classOf.ContainsKey(k.Id))
                     .GroupBy(k => new { k.Key, Class = classOf[k.Id] })
-                    .Where(g => g.Count() > 1))
+                    .Where(g => g.Select(k => k.Id).Distinct().Count() > 1))
                 {
-                    problems.Add($"way '{clash.Key.Class}' binds {string.Join(", ", clash.Select(k => k.Id))} all to {clash.Key.Key}");
+                    problems.Add($"way '{clash.Key.Class}' binds {string.Join(", ", clash.Select(k => k.Id).Distinct())} all to {clash.Key.Key}");
                 }
 
                 // General actives share a key with NOTHING general: every run can hold all of them
@@ -6150,8 +6214,9 @@ namespace ICanShowYouTheWorld.RunMode
                 // rung is a different fault and is not checked here — no general active sits on
                 // [7], [0] or [Ins].)
                 var general = new HashSet<string>(pool.Where(b => b.ClassId == null).Select(b => b.Id));
-                foreach (var clash in BoonKeys.Actives.Where(k => general.Contains(k.Id)).GroupBy(k => k.Key).Where(g => g.Count() > 1))
-                    problems.Add($"general actives {string.Join(", ", clash.Select(k => k.Id))} all bind {clash.Key}");
+                foreach (var clash in BoonKeys.Actives.Where(k => general.Contains(k.Id)).GroupBy(k => k.Key)
+                             .Where(g => g.Select(k => k.Id).Distinct().Count() > 1))
+                    problems.Add($"general actives {string.Join(", ", clash.Select(k => k.Id).Distinct())} all bind {clash.Key}");
 
                 foreach (var p in problems)
                     Debug.LogError($"[ICanShowYouTheWorld] class ladder: {p}");
@@ -7969,6 +8034,14 @@ namespace ICanShowYouTheWorld.RunMode
 
             _boons.RestoreHeld(Zip(s.heldBoonIds, s.heldBoonCooldowns), BuildRestoreCharges(s));
 
+            // After the held boons, because the element is only the run's while the switch is held;
+            // a save that names fire for a run no longer holding it (a way changed under it) comes
+            // back as lightning. Null on an older save, which is lightning too. SagaItems applies it
+            // to the bow now if the bow exists, and when the bow is made if it does not yet.
+            _items.SetThorsBowElement(Holds("elemental")
+                ? SagaItems.ParseElement(s.bowElement)
+                : ICanShowYouTheWorld.RunMode.BowElement.Lightning);
+
             // RestoreHeld is silent by design, so reapply effects for whatever survived — but
             // only the snapshot/buff-type passives (fleet/sharp/pack/mule/hearty/enduring): their live player/item
             // state doesn't persist across a reload. Actives (wind/ember/way) keep their
@@ -8184,6 +8257,7 @@ namespace ICanShowYouTheWorld.RunMode
                 taskHealthReward = _taskHealthReward,
                 homewardCharges = _homewardCharges,
                 classId = _classId,
+                bowElement = SagaItems.ElementName(_items.ThorsBowElement),
                 stashPrefabs = _stash.Entries.Select(e => e.Prefab).ToList(),
                 stashCounts = _stash.Entries.Select(e => e.Count).ToList(),
                 stashQualities = _stash.Entries.Select(e => e.Quality).ToList(),
@@ -10841,6 +10915,10 @@ namespace ICanShowYouTheWorld.RunMode
             // Testable from Act I: you tame a boar on the hearth track, so this has something to
             // work on long before a boss falls.
             new BoonDefinition { Id = "menagerie", ClassId = "hunter", Display = "Menagerie", IsPassive = false, CooldownSeconds = 90f, Description = "Odin lends a beast \u2014 any beast. Cast again to trade it back." },
+            // Beside Menagerie on the Hunter's second rung (owner, 2026-09-28). A switch rather than
+            // a spell - no cooldown, no charges - because it changes the KIND of Thor's bow's
+            // elemental damage and never the amount; see BoonEffects.ActivateElemental.
+            new BoonDefinition { Id = "elemental", ClassId = "hunter", Display = "Elemental Arrows", IsPassive = false, CooldownSeconds = 0f, Description = "Thor\u2019s bow loosens lightning, fire or frost. Frost slows what it strikes." },
             new BoonDefinition { Id = "hearthlight", ClassId = "volva", Display = "Hearthlight", IsPassive = true, Description = "A mending warmth follows you. You and your animals heal near it." },
             new BoonDefinition { Id = "shepherd", ClassId = "hunter", Display = "Shepherd", IsPassive = true, Weight = 3, Description = "Your tamed animals are stronger, tougher and faster. New ones too." },
             // Act II onward. Skeletons in the Meadows would be a Black Forest answer to a Meadows
