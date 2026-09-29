@@ -49,7 +49,8 @@ with a modifier — the ways — while the bare press does what it always did.
 | `Home` | **Teleport to the map cursor** (the GM mod's own teleport) |
 | `PageUp` | **Dump what the creature in view is made of** to the log |
 | `mod` + `Backspace` | Plant a **Storm-Anvil**, claimed, plus the bow, the shield and both bills |
-| `mod` + `Keypad *` | **Cycle the way**: none → Hunter → Völva → Berserker → none. Gives back the old way's boons first |
+| `mod` + `Keypad *` | **Cycle the way** through all seven and back to none. Gives back the old way's boons first |
+| `mod` + `Delete` | **Thor's bow, the Stormward and five rescued lights** straight into the pack, no anvil, no lever (bare `Delete` slays) |
 | `mod` + `Keypad /` | **Learn every rung** of the held way now, without the bosses the ladder asks for |
 
 Keys only work during an active run.

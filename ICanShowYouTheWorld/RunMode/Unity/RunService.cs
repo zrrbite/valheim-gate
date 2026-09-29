@@ -2748,7 +2748,7 @@ namespace ICanShowYouTheWorld.RunMode
             "Home:map-tp   PgUp:probe",
             "Shift/Ctrl/Alt + [+] complete step   \u00b7   + [-] +2h AND cycle weather: fair/rain/storm",
             "Shift/Ctrl/Alt + [Bksp] Storm-Anvil + bow + shield + the combine's makings",
-            "Shift/Ctrl/Alt + [*] cycle way: none/Hunter/Völva/Berserker   ·   + [/] learn all its rungs",
+            "Shift/Ctrl/Alt + [*] cycle the way (all seven)   ·   + [/] learn all its rungs   ·   + [Del] bow + shield + 5 lights",
             "(+ and - keep their modifier though now free; bare * and / are items and god; Bksp BUILDS)",
         };
 
@@ -2977,7 +2977,19 @@ namespace ICanShowYouTheWorld.RunMode
                 }
                 catch (Exception ex) { LogOnce("dev-god", ex); }
             }
-            else if (Input.GetKeyDown(KeyCode.Delete))
+            else if (mod && Input.GetKeyDown(KeyCode.Delete))
+            {
+                // The finished things, no lever. Backspace plants the anvil and the BILLS and still
+                // makes the tester pull the lever in weather, which is right for testing the anvil
+                // and wrong for testing everything downstream of the bow (owner, 2026-09-29: "a dev
+                // key so I can just have those items without further ado"). Five lights on top, so
+                // the anvil's own bills can be paid too. Modifier because bare Delete slays.
+                GrantItem(SagaItems.ThorsBowPrefab, 1);
+                GrantItem(SagaItems.StormwardPrefab, 1);
+                GrantItem(SagaItems.RescuedLightPrefab, 5);
+                DevMessage("DEV: Thor's bow, the Stormward and five rescued lights are in the pack.");
+            }
+            else if (!mod && Input.GetKeyDown(KeyCode.Delete))
             {
                 // Clears a 10m circle, through the ordinary damage path ON PURPOSE: deaths fire
                 // the kill hook, so a nuked deer still drops its light, still counts its quest,
