@@ -22,7 +22,7 @@ Everything below is what that file tells it.
 - **2026-09-27: the game is 1.0.16** (no source change, Unity still 6000.0.75) and **the class
   plan is in progress, in milestones** — read `2026-09-27-classes-progress.md` for how far it has
   got and what is waiting on a play verdict, and `specs/2026-09-27-classes-design.md` for why it
-  is shaped the way it is. Latest tag `1.0.16-run.2026-09-28i`, installed: the quieter Hunter (Sneak 50 and a runtime SE_Stats, noise -40% / stealth -0.2 — the mod's first status effect). Before it, `...28h`: the side panels back at the old spot 30 px right (the health-panel anchor was tried twice and reverted), stray wisps swept and rescued lights never stashed, Stuffed, and fire/frost arrow bursts with a 1.5 s frost floor. Before it, `...28c` (the way as a readout skill in the Skills
+  is shaped the way it is. Latest tag `1.0.16-run.2026-09-29`, installed: dev `mod+Delete` hands over Thor's bow, the Stormward and five rescued lights with no anvil and no lever (bare Delete slays). Before it, `...28i`: the quieter Hunter (Sneak 50 and a runtime SE_Stats, noise -40% / stealth -0.2 — the mod's first status effect). Before it, `...28h`: the side panels back at the old spot 30 px right (the health-panel anchor was tried twice and reverted), stray wisps swept and rescued lights never stashed, Stuffed, and fire/frost arrow bursts with a 1.5 s frost floor. Before it, `...28c` (the way as a readout skill in the Skills
   window, laying a way down at the thane for +3 heat, and the side panels anchored above the
   game's own health panel). Before it, `...28b`: **all seven ways**, the pool at 30, Ulfr's
   axes, the kit on the HUD with descriptions and hover tips, NPC map pins, a FORGE page that
