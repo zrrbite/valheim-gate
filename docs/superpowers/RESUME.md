@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-10-05 at `1.0.16-run.2026-10-05n`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-10-05 at `1.0.16-run.2026-10-05o`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -31,6 +31,10 @@ Everything below is what that file tells it.
   item looks, flametal, plains foods, every quest name), OK / FALLBACK / MISSING, worst first. MISSING
   is a step that cannot finish; FALLBACK is a guess to correct. `RunService.LogSelfCheck`, pure
   `SagaSelfCheck`. A new guessed name belongs in it.
+- **2026-10-05, the saga so far** (`...05o`, `saga/story-so-far`). The BOOK and the myth stay two
+  texts, linked: each god felled writes its chapter, and the BOOK's title page gets **Read your saga
+  so far** (browser, cut at the last god felled, never the act being played; no epilogue or
+  reckoning; one overwritten file). Addendum in `specs/2026-10-05-saga-reward-design.md`.
 - **2026-10-05, the FORGE spoiler and the rest of the review** (`...05n`, `saga/forge-secrets`). The
   FORGE page listed the Storm-Anvil's conversions unfiltered, and the anvil's repair of the Ironbound
   Stormward put Act III's shield on it from the first night (owner: "major spoiler"). Anvil shapes now

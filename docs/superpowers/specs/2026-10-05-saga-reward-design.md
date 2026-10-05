@@ -59,3 +59,21 @@ lines land under their own act; HTML is escaped; the markdown subset converts.
 ## Not in this work
 
 Publishing the story online; a per-boon or per-death account in the page (the chronicle is the record).
+
+## Addendum, same day: the saga so far, from the BOOK
+
+The owner asked whether the BOOK (the Run window's chronicle) and the saga page should be one thing,
+and left it to judgement ("Do what you think is best. Keep them seperate?"). Ruling: **two texts, linked.**
+
+- The BOOK stays the short record, read mid-fight: each act's opening passage and closing line, the
+  deeds, the live quests. The myth's ~2,000 words an act would bury it, and reads better in a browser.
+- Each god felled writes that act's chapter of the myth. The BOOK's title page then says "The skalds
+  have written your saga as far as “<title>”" with a **Read your saga so far** button
+  (`RunService.ReadSagaSoFar`), and the god's fall says so in the chat log (only there: the card, the
+  raven and the rungs already fill the screen at that moment).
+- The page so far (`SagaPageInput.SoFar`) is cut at the last god felled. **The act being played is never
+  told**, because its tale names the speakers and how each one ends. It has no epilogue and no reckoning,
+  and closes on "the rest is not written yet". It is one file per character (`Saga of <name> - so far.html`),
+  overwritten each time; the lobby's "Read your saga" ignores it and opens only finished sagas.
+- One button, not one per chapter: a chapter link would need a `#fragment` on a `file://` URL, which
+  browsers opened this way often drop.

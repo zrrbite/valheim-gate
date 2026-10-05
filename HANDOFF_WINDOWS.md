@@ -17,6 +17,20 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-10-05 - TASK: the saga so far, from the BOOK (`1.0.16-run.2026-10-05o`)
+
+**Staged.** `git pull`, `.\dist\windows\Install-Mod.ps1 -ModOnly`. Badge `...05o · DEV`. Includes `...05n` below.
+
+- Fell Eikthyr (dev: `Delete` slays, or skip to the boss). Chat: "The skalds have written “The Stolen
+  Light”. It waits in your BOOK."
+- `End` → BOOK: under the title, "as far as “The Stolen Light”" and **Read your saga so far**. The
+  browser opens Act I's chapter with your deeds, then "the rest is not written yet" - **nothing of Act
+  II**, no reckoning. Before the first god falls the line is not there at all.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-10-05 - TASK: the FORGE spoiler, and a self-check (`1.0.16-run.2026-10-05n`)
 
 **Staged.** `git pull`, `.\dist\windows\Install-Mod.ps1 -ModOnly`. Badge `...05n · DEV`.
