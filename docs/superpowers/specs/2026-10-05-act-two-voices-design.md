@@ -134,7 +134,7 @@ Claim Eikthyr's power (`bf-power`) → hang a trophy (`bf-trophy`) → raise a r
 ### Cut
 
 `bf-sign` (name your holding), `bf-bees` (beehive), `bf-herd` (four penned). Three out, three
-in: **23 steps before and after, so Act II's questline heat is unchanged.** Cutting is safe
+in: **22 steps before and after, so Act II's questline heat is unchanged.** Cutting is safe
 under the one-act-per-build-category rule (`ValidateActs`), which only constrains additions.
 
 ### Re-voicing

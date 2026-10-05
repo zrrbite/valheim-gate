@@ -17,6 +17,45 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-10-05 - TASK: Act II gets voices — the barrow-keeper and Haldor (`1.0.16-run.2026-10-05d`)
+
+**Staged — no build needed here.** `git pull`, then `.\dist\windows\Install-Mod.ps1 -ModOnly`.
+The badge must read `SAGA v1.0.16-run.2026-10-05d · DEV`. This build also carries everything in
+the `...05c` task below (rungs at the kill), so play that list too.
+
+Design: `docs/superpowers/specs/2026-10-05-act-two-voices-design.md`. Fastest with
+`"runDevMode": true` — `+` skips steps, `Delete` slays, `Home` teleports to the map cursor.
+
+**The barrow-keeper** (CRAFT track, after "Take cores from the dead"):
+- After the cores step, a grey ghost with a green glow stands near the burial chamber's door.
+  A pin "The barrow-keeper" is on the map. He greets you; Use → his long speech; the step
+  "Speak with the barrow-keeper" completes.
+- After "Forge three things in bronze": "Carry a light down to him". Rob a courier at night,
+  take its light, bring it. Hover shows "0/1 light" → "1/1"; Use → he takes it, the step
+  completes, and the **Stormsworn helm** appears at the forge (8 bronze, 6 troll hide, 10 coal).
+- Report: where he stood (`grep "barrow-keeper's door" Player.log`), whether on a slope, in
+  rock, or fine.
+
+**Haldor** (HUNT track, after "Rob the couriers"):
+- "Find the trader" then "Bring Haldor a troll's trophy". Near him, his idle chatter is about
+  the couriers and a troll's head. Put a troll trophy on the hotbar and press its key while
+  looking at him → his reveal line, the trophy is taken, the step completes, and **the Elder's
+  altar pin appears** with "Find the Elder's altar".
+- **The pin must NOT appear earlier** — not while looking for the burial chambers or the trader.
+- Abandon the run, then talk to Haldor: his ordinary vanilla lines are back.
+- `grep "troll's trophy" Player.log` → the drop chance (if it is low, say so: the ask may change).
+- `grep "Trader in range" Player.log` → Haldor's internal name, for the record.
+
+**Cut:** "Name your holding", "Build a beehive", "Grow the herd" are gone; planting no longer
+gives a queen bee.
+
+**The thane** now says "When a god falls, the rest will find you where you stand" instead of
+"come back".
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-10-05 - TASK: rungs taught where the god falls, and dev mode only in dev builds (`1.0.16-run.2026-10-05c`)
 
 **Not installed here yet.** Built on the Mac; the staged `dist/windows/patcher` DLL is still
