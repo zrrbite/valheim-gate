@@ -19,6 +19,13 @@ Everything below is what that file tells it.
 
 ## Where things stand
 
+- **Going back (owner, 2026-10-05): every major build gets a named, annotated milestone tag** on its
+  `build:` commit (the one carrying the staged Windows DLL), so any of them can be checked out and
+  installed as-is. `git tag -l 'saga/*' -n1` lists them. Today's: `saga/before-2026-10-05` (the last
+  build the owner played — undo the whole day here), `saga/rungs-at-the-kill`, `saga/act2-voices` …
+  `saga/act6-voices`. The `saga/` prefix keeps them out of the version scripts, which only read tags
+  starting with a digit. To go back on Windows: `git checkout saga/act4-voices`, then
+  `.\dist\windows\Install-Mod.ps1 -ModOnly`; on the Mac, check out, build, `Scripts/deploy_local.sh`.
 - **2026-10-05, night: Act VI has a voice + review fixes** (tag `1.0.16-run.2026-10-05i`). `LanternKeeper.cs`
   (the fifth `SagaSpeaker`, a live dvergr), the Borrowed Light. Fixes from the III–IV review: lights tick
   in every act, speakers immune to non-player damage, FireNear skips build previews, fallbacks. **Known,
