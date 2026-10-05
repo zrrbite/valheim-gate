@@ -30,7 +30,10 @@ DEST="$ROOT/dist/windows/patcher"
 TAG="$(git tag --merged HEAD --list '[0-9]*' --sort=-v:refname --sort=-creatordate | head -n1)"
 DLL_VERSION="$(python3 - "$BUILT" <<'PY'
 import re, sys
-data = open(sys.argv[1], 'rb').read().decode('utf-16-le', 'ignore')
+raw = open(sys.argv[1], 'rb').read()
+# Both alignments: a UTF-16 string in the #US heap can start on an odd byte, and a decode
+# from byte 0 then reads it as garbage (2026-10-05: the flavour of 1.0.16-run.2026-10-05g).
+data = raw.decode('utf-16-le', 'ignore') + '\n' + raw[1:].decode('utf-16-le', 'ignore')
 m = re.search(r'\d+\.\d+\.\d+-run\.\d{4}-\d{2}-\d{2}[a-z]{0,2}|\d+\.\d+\.\d+-run\.alpha[0-9.]+|\d+\.\d+\.\d+-\d+', data)
 print(m.group(0) if m else '')
 PY

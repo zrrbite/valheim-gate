@@ -86,7 +86,10 @@ function Get-ModVersion {
     try {
         if (-not (Test-Path $Dll)) { return $null }
 
-        $text = [Text.Encoding]::Unicode.GetString([IO.File]::ReadAllBytes($Dll))
+        # Both alignments: a UTF-16 literal can start on an odd byte, and decoding from byte 0
+        # then reads it as garbage (2026-10-05, build 1.0.16-run.2026-10-05g's flavour).
+        $bytes = [IO.File]::ReadAllBytes($Dll)
+        $text = [Text.Encoding]::Unicode.GetString($bytes) + "`n" + [Text.Encoding]::Unicode.GetString($bytes, 1, $bytes.Length - 1)
 
         # Newest shape first: the DATE build (0.221.12-run.2026-08-31b), then the old
         # alpha counter (0.221.12-run.alpha42.1), then the plain pre-Run-Mode shape

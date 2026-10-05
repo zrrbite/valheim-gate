@@ -69,7 +69,10 @@ green "Built"
 read_version() {
     python3 - "$1" <<'PY'
 import re, sys
-data = open(sys.argv[1], 'rb').read().decode('utf-16-le', 'ignore')
+raw = open(sys.argv[1], 'rb').read()
+# Both alignments: a UTF-16 string in the #US heap can start on an odd byte, and a decode
+# from byte 0 then reads it as garbage (2026-10-05: the flavour of 1.0.16-run.2026-10-05g).
+data = raw.decode('utf-16-le', 'ignore') + '\n' + raw[1:].decode('utf-16-le', 'ignore')
 m = re.search(r'\d+\.\d+\.\d+-run\.\d{4}-\d{2}-\d{2}[a-z]{0,2}|\d+\.\d+\.\d+-run\.alpha[0-9.]+|\d+\.\d+\.\d+-\d+', data)
 print(m.group(0) if m else '')
 PY
@@ -83,7 +86,10 @@ BUILT="$ROOT/ICanShowYouTheWorld/bin/Debug/ICanShowYouTheWorld.dll"
 read_flavour() {
     python3 - "$1" <<'PYEOF'
 import re, sys
-data = open(sys.argv[1], 'rb').read().decode('utf-16-le', 'ignore')
+raw = open(sys.argv[1], 'rb').read()
+# Both alignments: a UTF-16 string in the #US heap can start on an odd byte, and a decode
+# from byte 0 then reads it as garbage (2026-10-05: the flavour of 1.0.16-run.2026-10-05g).
+data = raw.decode('utf-16-le', 'ignore') + '\n' + raw[1:].decode('utf-16-le', 'ignore')
 m = re.search(r'ICSYTW_FLAVOUR_(dev|gm|saga)', data)
 # "gm" is what dev builds were called before 2026-10-05.
 print(('dev' if m.group(1) == 'gm' else m.group(1)) if m else '')
