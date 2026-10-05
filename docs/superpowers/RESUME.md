@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-10-05 at `1.0.16-run.2026-10-05l`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-10-05 at `1.0.16-run.2026-10-05m`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -26,6 +26,9 @@ Everything below is what that file tells it.
   `saga/act6-voices`. The `saga/` prefix keeps them out of the version scripts, which only read tags
   starting with a digit. To go back on Windows: `git checkout saga/act4-voices`, then
   `.\dist\windows\Install-Mod.ps1 -ModOnly`; on the Mac, check out, build, `Scripts/deploy_local.sh`.
+- **2026-10-05, review fixes for V–VII** (`...05m`, `saga/review-fixes-v-vii`): real speaker immunity
+  (all damage types; `m_nonPlayer` is a damage TYPE, a trap worth knowing), the charred one placed only on
+  dry ash ground, the freed light a pure visual, the anvil refusing to burn leftover lights, biome fallbacks.
 - **2026-10-05, the saga's reward** (tag `1.0.16-run.2026-10-05l`, `saga/story-reward`). A won run
   writes **The Saga of <character>** (HTML, next to the config) and opens it: the myth
   (`docs/THE-SAGA.md`, EMBEDDED in the DLL — edit the story and the next build carries it) cut at the

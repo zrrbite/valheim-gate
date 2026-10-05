@@ -17,6 +17,19 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-10-05 - TASK: review fixes for Acts V–VII (`1.0.16-run.2026-10-05m`)
+
+**Staged.** `git pull`, `.\dist\windows\Install-Mod.ps1 -ModOnly`. Badge `...05m · DEV`.
+
+- Speakers can no longer be killed by monsters (any act); the drowned one still can be, by you, at the end.
+- The charred one appears only once you are standing on dry Ashlands ground.
+- The lantern-keeper's freed light rises and fades — it can't be picked up again.
+- The anvil refuses a box where a repair would let rescued lights burn.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-10-05 - TASK: the saga's reward page (`1.0.16-run.2026-10-05l`)
 
 **Staged.** `git pull`, `.\dist\windows\Install-Mod.ps1 -ModOnly`. Badge `...05l · DEV`.
