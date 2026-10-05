@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
@@ -70,6 +71,10 @@ namespace ICanShowYouTheWorld.RunMode
         /// guessed body is wrong still stands (in the wrong clothes) rather than never appearing.
         /// </summary>
         protected virtual string[] BodyFallbacks => new string[0];
+
+        /// <summary>Every body this speaker will wear, in the order tried: its own, its fallbacks, then the Ghost.</summary>
+        internal IList<string> BodyCandidates =>
+            new[] { BodyPrefab }.Concat(BodyFallbacks ?? new string[0]).Concat(new[] { "Ghost" }).Distinct().ToList();
 
         /// <summary>Only CREATED once the player is near the spot, so never culled at birth.</summary>
         protected virtual float SpawnRange => 70f;
@@ -219,7 +224,7 @@ namespace ICanShowYouTheWorld.RunMode
             string bodyUsed = null;
             if (scene != null)
             {
-                foreach (var candidate in new[] { BodyPrefab }.Concat(BodyFallbacks).Concat(new[] { "Ghost" }))
+                foreach (var candidate in BodyCandidates)
                 {
                     prefab = scene.GetPrefab(candidate);
                     if (prefab != null) { bodyUsed = candidate; break; }
@@ -275,18 +280,7 @@ namespace ICanShowYouTheWorld.RunMode
             // (m_nonPlayer, tried first, is a damage TYPE nothing deals - not "damage from
             // non-players" - and changed nothing; the second review caught it.) The drowned one
             // lifts this for his last beat (Unshield).
-            try
-            {
-                _originalModifiers = ch.m_damageModifiers;
-                var mods = ch.m_damageModifiers;
-                var immune = HitData.DamageModifier.Immune;
-                mods.m_blunt = immune; mods.m_slash = immune; mods.m_pierce = immune;
-                mods.m_chop = immune; mods.m_pickaxe = immune; mods.m_fire = immune;
-                mods.m_frost = immune; mods.m_lightning = immune; mods.m_poison = immune;
-                mods.m_spirit = immune;
-                ch.m_damageModifiers = mods;
-            }
-            catch { }
+            _originalModifiers = MakeImmune(ch);
             ch.m_name = Name;
             try
             {
@@ -321,6 +315,30 @@ namespace ICanShowYouTheWorld.RunMode
         protected virtual void OnSpawned(Character body) { }
 
         private HitData.DamageModifiers _originalModifiers;
+
+        /// <summary>
+        /// Makes a speaker's body immune to every real damage type, and returns the modifiers it had.
+        /// Static so Act I's three (the shade, Thjalfi, the thane), which predate this base class,
+        /// share it: they are tamed too, and so hunted by every monster that passes.
+        /// </summary>
+        internal static HitData.DamageModifiers MakeImmune(Character ch)
+        {
+            var original = default(HitData.DamageModifiers);
+            if (ch == null) return original;
+            try
+            {
+                original = ch.m_damageModifiers;
+                var mods = ch.m_damageModifiers;
+                var immune = HitData.DamageModifier.Immune;
+                mods.m_blunt = immune; mods.m_slash = immune; mods.m_pierce = immune;
+                mods.m_chop = immune; mods.m_pickaxe = immune; mods.m_fire = immune;
+                mods.m_frost = immune; mods.m_lightning = immune; mods.m_poison = immune;
+                mods.m_spirit = immune;
+                ch.m_damageModifiers = mods;
+            }
+            catch { }
+            return original;
+        }
 
         /// <summary>Gives the body back the damage modifiers it was made with - killable again.</summary>
         protected void Unshield(Character body)

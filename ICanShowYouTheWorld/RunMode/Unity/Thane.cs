@@ -133,7 +133,7 @@ namespace ICanShowYouTheWorld.RunMode
         public const string Name = "The thane";
 
         /// <summary>The Ghost prefab, as the shade and Thjalfi use - he is one of the put-away too.</summary>
-        private const string Prefab = "Ghost";
+        internal const string Prefab = "Ghost";
 
         public const string AskLine =
             "I buried them. Seven of a hird that came before you, and I am what is left of the eighth — kept " +
@@ -462,6 +462,9 @@ namespace ICanShowYouTheWorld.RunMode
             // Tamed so he never fights and nothing fights him; parked so he stays put. A teacher who
             // wanders off is a way the player can never take up.
             try { ch.SetTamed(true); } catch { }
+            // And immune, as every later speaker is: tamed means an enemy to every monster, and a
+            // greyling or a passing troll would otherwise kill a quest-giver mid-errand (review, 2026-10-05).
+            SagaSpeaker.MakeImmune(ch);
             ch.m_name = Name;
             try
             {

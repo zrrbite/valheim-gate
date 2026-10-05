@@ -1000,7 +1000,13 @@ namespace ICanShowYouTheWorld.RunMode
                 if (player == null) return;
 
                 var weapon = player.GetCurrentWeapon();
-                if (weapon == null || weapon.m_shared == null || !IsThorsBow(weapon.m_shared.m_name)) return;
+                if (weapon == null || weapon.m_shared == null) return;
+                if (!IsThorsBow(weapon.m_shared.m_name))
+                {
+                    // Another bow drawn: what it looses is its own, whatever the last storm arrow was.
+                    if (weapon.m_shared.m_skillType == Skills.SkillType.Bows) LastStormArrowAt = float.NegativeInfinity;
+                    return;
+                }
 
                 if (ProjectileOwner == null || ProjectileWeapon == null) return;
 
@@ -1028,6 +1034,9 @@ namespace ICanShowYouTheWorld.RunMode
 
                     var fired = ProjectileWeapon.GetValue(p) as ItemDrop.ItemData;
                     if (fired == null || fired.m_shared == null || !IsThorsBow(fired.m_shared.m_name)) continue;
+
+                    // For the kill count: whatever element it carries, this arrow is the storm's.
+                    LastStormArrowAt = Time.time;
 
                     if (lightning != null)
                     {
@@ -1098,6 +1107,12 @@ namespace ICanShowYouTheWorld.RunMode
                 ReportOnce("strikes", "[ICanShowYouTheWorld] Thor's bow could not arm its arrows: " + ex.Message);
             }
         }
+
+        /// <summary>
+        /// When Thor's bow (or Last Light) last loosed an arrow, by Time.time; negative infinity once
+        /// another bow is drawn. The kill count reads it - see StormBowCredit.
+        /// </summary>
+        public float LastStormArrowAt { get; private set; } = float.NegativeInfinity;
 
         /// <summary>The element Thor's bow looses now.</summary>
         public BowElement ThorsBowElement => _bowElement;
@@ -1479,7 +1494,7 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>Every source name a definition will accept, in order.</summary>
-        private static IEnumerable<string> Candidates(SagaItemDefinition def)
+        internal static IEnumerable<string> Candidates(SagaItemDefinition def)
         {
             if (!string.IsNullOrEmpty(def.SourcePrefab)) yield return def.SourcePrefab;
             if (def.SourceFallbacks == null) yield break;
@@ -1912,6 +1927,17 @@ namespace ICanShowYouTheWorld.RunMode
             // a repair that cannot fire is refused rather than burned to coal.
             (StormwardPrefab, new[] { (StormwardPrefab, 1) }, 0),
             (IronboundPrefab, new[] { (IronboundPrefab, 1) }, 0),
+        };
+
+        /// <summary>
+        /// The step whose opening teaches each of the anvil's shapes, for the FORGE page. A shape
+        /// missing here is never shown there (<see cref="ForgeReveal"/>) - add its teacher when the
+        /// anvil learns something new.
+        /// </summary>
+        public static readonly Dictionary<string, string> AnvilTaughtBy = new Dictionary<string, string>
+        {
+            [ThorsBowPrefab] = "mq-bow",
+            [StormwardPrefab] = "mq-shield",
         };
 
         private readonly HashSet<int> _alteredAltars = new HashSet<int>();
@@ -2436,11 +2462,16 @@ namespace ICanShowYouTheWorld.RunMode
         /// <param name="taught">
         /// Whether Hugin has announced a bench recipe (<see cref="SagaRecipes.IsTaught"/>). A bench
         /// recipe he has not announced is left off the page entirely; null lists them all, as the
-        /// page did before it learned to keep a secret. The anvil's conversions are never filtered:
-        /// the anvil is a place the player has found, not a thing they were told.
+        /// page did before it learned to keep a secret.
+        /// </param>
+        /// <param name="reached">
+        /// Whether a step has opened (live or done). The anvil's shapes follow the bench's rule since
+        /// 2026-10-05: each is shown once the step that teaches it (<see cref="AnvilTaughtBy"/>) has
+        /// opened, and a repair is never shown - see <see cref="ForgeReveal"/>. Null shows none.
         /// </param>
         public List<SagaRecipeCard> DescribeRecipes(Func<string, bool> stepDone, string classId = null,
-                                                    Func<string, bool> taught = null)
+                                                    Func<string, bool> taught = null,
+                                                    Func<string, bool> reached = null)
         {
             var cards = new List<SagaRecipeCard>();
 
@@ -2460,6 +2491,15 @@ namespace ICanShowYouTheWorld.RunMode
                         if (conv.m_result == null || conv.m_result.m_itemData == null ||
                             conv.m_result.m_itemData.m_shared == null) continue;
                         if (conv.m_requirements == null) continue;
+
+                        // Not until the saga has said so, and never a repair: the Ironbound's mending
+                        // gave Act III's shield a card on the first night (owner, 2026-10-05).
+                        string resultName = conv.m_result.gameObject.name;
+                        var billNames = conv.m_requirements
+                            .Select(r => r?.m_resItem != null ? r.m_resItem.gameObject.name : null)
+                            .ToList();
+                        AnvilTaughtBy.TryGetValue(resultName, out string taughtBy);
+                        if (!ForgeReveal.ShowAnvilCard(resultName, billNames, taughtBy, reached)) continue;
 
                         var card = new SagaRecipeCard
                         {

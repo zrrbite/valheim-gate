@@ -186,9 +186,18 @@ namespace ICanShowYouTheWorld.RunMode
             }
         }
 
-        private bool IsMatch(Trader t) =>
-            (t.m_name != null && t.m_name.IndexOf(_match, StringComparison.OrdinalIgnoreCase) >= 0) ||
-            (t.gameObject != null && t.gameObject.name.IndexOf(_match, StringComparison.OrdinalIgnoreCase) >= 0);
+        private bool IsMatch(Trader t) => Matches(t, _match);
+
+        /// <summary>Whether this voice would speak through <paramref name="t"/> - live or a prefab. The self-check asks it of the prefabs.</summary>
+        public bool Fits(Trader t) => Matches(t, _match);
+
+        /// <summary>What the voice looks for in a trader's m_name or object name.</summary>
+        public string MatchText => _match;
+
+        private static bool Matches(Trader t, string match) =>
+            t != null && !string.IsNullOrEmpty(match) &&
+            ((t.m_name != null && t.m_name.IndexOf(match, StringComparison.OrdinalIgnoreCase) >= 0) ||
+             (t.gameObject != null && t.gameObject.name.IndexOf(match, StringComparison.OrdinalIgnoreCase) >= 0));
 
         private Trader Find(Vector3 near, bool giveLive)
         {

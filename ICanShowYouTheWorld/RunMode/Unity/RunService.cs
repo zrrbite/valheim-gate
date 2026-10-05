@@ -708,7 +708,9 @@ namespace ICanShowYouTheWorld.RunMode
                 _recipeCards = _items.DescribeRecipes(
                     id => _challenges != null && StepPredicates.StepDone(_challenges.Tracks, id),
                     _classId,
-                    _recipes.IsTaught);
+                    _recipes.IsTaught,
+                    // An anvil shape's step has opened: live now, or done in this act or an earlier one.
+                    id => _challenges != null && (StepPredicates.StepLive(_challenges.Tracks, id) || RecipeStepDone(id)));
 
                 return _recipeCards;
             }
@@ -5180,14 +5182,16 @@ namespace ICanShowYouTheWorld.RunMode
         /// <remarks>
         /// The injected death hook hands over the victim and nothing else, so the evidence comes from
         /// the victim's own last hit - <c>Character.m_lastHit</c>, a HitData the game fills in on the
-        /// way down. Three things together identify the bow and nothing else can satisfy all three:
-        /// the attacker is the local player, the skill is Bows, and the hit carried LIGHTNING. No
-        /// other bow in the game does lightning, and the shield's own discharge is a Blocking-skill
-        /// hit rather than a Bows one, so the two saga items cannot be confused for each other.
+        /// way down: the attacker is the local player and the skill is Bows. The shield's own
+        /// discharge is a Blocking-skill hit, so the two saga items cannot be confused.
         ///
-        /// That precision is the point. The alternative - "was the player holding the bow when
-        /// something died" - would credit a wolf's kill to the archer standing next to it, and a
-        /// counter that lies is worse than a counter that is missing.
+        /// Which bow is the part HitData cannot say. It used to be read from LIGHTNING in the hit,
+        /// which no other bow does - and which Thor's bow stops doing the moment a Hunter turns it to
+        /// fire or frost, so their kills went uncounted (review, 2026-10-05). Now the bow is known
+        /// from its arrows: lightning still counts, and so does any Bows kill within a few seconds of
+        /// a storm arrow leaving the string (<see cref="StormBowCredit"/>). Never "was the player
+        /// holding the bow when something died", which would credit a wolf's kill to the archer
+        /// standing next to it - a counter that lies is worse than one that is missing.
         /// </remarks>
         private void CountThorsBowKill(Character victim)
         {
@@ -5204,9 +5208,11 @@ namespace ICanShowYouTheWorld.RunMode
                 var hit = _lastHitField?.GetValue(victim) as HitData;
                 if (hit == null) return;
 
-                if (!hit.m_attacker.Equals(player.GetZDOID())) return;
-                if (hit.m_skill != Skills.SkillType.Bows) return;
-                if (hit.m_damage.m_lightning <= 0f) return;
+                float sinceStormArrow = _items != null ? Time.time - _items.LastStormArrowAt : float.PositiveInfinity;
+                if (!StormBowCredit.Credits(hit.m_attacker.Equals(player.GetZDOID()),
+                                            hit.m_skill == Skills.SkillType.Bows,
+                                            hit.m_damage.m_lightning,
+                                            sinceStormArrow)) return;
 
                 _thorsBowKills++;
                 SaveCountersSoon();
@@ -7096,16 +7102,24 @@ namespace ICanShowYouTheWorld.RunMode
 
             // Every act's chain, not just the current one: Act V's creature names are worth knowing
             // about during Act I, when there is still time to fix them.
+            //
+            // And every one of those guesses lands in ONE block as well (see SagaSelfCheck): the
+            // validators fill it as they go, and LogSelfCheck writes it out last. The loud lines stay
+            // where they were; the block is what the first launch of a build gets read for.
+            _selfCheck = new SagaSelfCheck();
             ValidateAssetNames(pool.Concat(AllActChains()));
             ValidateSpawnEvents();
             ValidateQuestPrices();
             LogTrollTrophyChance();
             LogLocationRegistry();
             CheckSagaMyth();
+            CheckSpeakersAndTraders();
+            CheckSagaItems();
             ValidateClassLadder();
             // Thor's bow's flashes: every element's, so a missing fire or frost burst is in the log
             // before the Hunter can switch to it.
             _items.ValidateBowEffects();
+            LogSelfCheck();
         }
 
         /// <summary>
@@ -7191,6 +7205,8 @@ namespace ICanShowYouTheWorld.RunMode
                     if (missing.Count > 0)
                         Debug.LogError("[ICanShowYouTheWorld] Unknown CREATURE names — their kill quests can " +
                                        $"never progress: {string.Join(", ", missing.ToArray())}");
+                    _selfCheck?.AllOf("Quest creatures", manifest.CreaturePrefabs.Count(n => !SyntheticCreatureNames.Contains(n)),
+                                      missing, "their kill quests never progress");
                 }
 
                 // CollectItem compares against m_shared.m_name, as the game itself does —
@@ -7213,6 +7229,7 @@ namespace ICanShowYouTheWorld.RunMode
                     if (missing.Count > 0)
                         Debug.LogError("[ICanShowYouTheWorld] Unknown ITEM names — their collect quests can " +
                                        $"never progress: {string.Join(", ", missing.ToArray())}");
+                    _selfCheck?.AllOf("Quest items", manifest.ItemNames.Count(), missing, "their collect quests never progress");
                 }
 
                 // Not a Valheim name at all — a typo in OUR vocabulary, checked against the same
@@ -7252,6 +7269,8 @@ namespace ICanShowYouTheWorld.RunMode
                 if (knownLocations.Count > 0)
                 {
                     var badLocations = manifest.Locations.Where(l => !knownLocations.Contains(l)).ToList();
+                    _selfCheck?.AllOf("Quest places", manifest.Locations.Count(), badLocations,
+                                      "their discovery steps never complete (the Location registry line lists real names)");
 
                     if (badLocations.Count > 0)
                     {
@@ -7420,15 +7439,16 @@ namespace ICanShowYouTheWorld.RunMode
 
                     // The ways' gifts ride the same check: they are rewards too, handed over once at
                     // the graves, and a wrong name there is a way that silently gives nothing.
-                    var rewards = QuestRewards.Values
+                    var rewardNames = QuestRewards.Values
                         .Concat(BossSpoils)
                         .Concat(ClassLadder.Catalog().Select(c => c.GrantItems ?? new (string, int)[0]))
                         .SelectMany(entries => entries)
                         .Select(entry => entry.prefab)
                         .Where(name => !string.IsNullOrEmpty(name))
                         .Distinct()
-                        .Where(name => ResolveItemPrefab(name) == null)
                         .ToList();
+                    var rewards = rewardNames.Where(name => ResolveItemPrefab(name) == null).ToList();
+                    _selfCheck?.AllOf("Reward items", rewardNames.Count, rewards, "those rewards are never granted");
 
                     if (rewards.Count > 0)
                         Debug.LogError("[ICanShowYouTheWorld] Unknown REWARD prefabs — those rewards will not " +
@@ -10468,7 +10488,12 @@ namespace ICanShowYouTheWorld.RunMode
                         .Where(d => d?.m_itemData?.m_shared != null)
                         .Select(d => d.m_itemData.m_shared.m_name));
 
-                foreach (var (who, token, amount) in QuestPrices())
+                var prices = QuestPrices().ToList();
+                _selfCheck?.AllOf("Quest prices", prices.Count,
+                                  prices.Where(p => !known.Contains(p.token)).Select(p => $"{p.who}: '{p.token}'").ToList(),
+                                  "refused however much the player carries");
+
+                foreach (var (who, token, amount) in prices)
                 {
                     if (known.Contains(token)) continue;
 
@@ -10519,6 +10544,7 @@ namespace ICanShowYouTheWorld.RunMode
 
                 foreach (var p in problems)
                     Debug.LogError($"[ICanShowYouTheWorld] Saga recipe {p}.");
+                _selfCheck?.AllOf("Saga recipes", SagaRecipes.All.Length, problems, "those recipes are never registered");
             }
             catch (Exception ex) { LogOnce("validate-saga-recipes", ex); }
         }
@@ -10536,10 +10562,16 @@ namespace ICanShowYouTheWorld.RunMode
                 var drops = troll != null ? troll.GetComponent<CharacterDrop>() : null;
                 var trophy = drops?.m_drops?.FirstOrDefault(d => d.m_prefab != null && d.m_prefab.name == HaldorVoice.TrophyPrefab);
                 if (trophy == null)
+                {
                     Debug.LogError($"[ICanShowYouTheWorld] The troll's trophy: no '{HaldorVoice.TrophyPrefab}' in Troll's drops - Haldor's ask may be unfinishable.");
+                    _selfCheck?.Missing("Haldor's troll head", $"no '{HaldorVoice.TrophyPrefab}' in the Troll's drops - his ask may be unfinishable");
+                }
                 else
+                {
                     Debug.Log($"[ICanShowYouTheWorld] The troll's trophy: chance {trophy.m_chance:0.##}, " +
                               $"{trophy.m_amountMin}-{trophy.m_amountMax} per kill.");
+                    _selfCheck?.Ok("Haldor's troll head", $"{HaldorVoice.TrophyPrefab}, chance {trophy.m_chance:0.##} per kill");
+                }
             }
             catch (Exception ex) { LogOnce("troll-trophy", ex); }
         }
@@ -10569,6 +10601,145 @@ namespace ICanShowYouTheWorld.RunMode
             catch (Exception ex) { LogOnce("location-registry", ex); }
         }
 
+        /// <summary>The run-start self-check, filled by the validators and logged by <see cref="LogSelfCheck"/>.</summary>
+        private SagaSelfCheck _selfCheck;
+
+        /// <summary>
+        /// Writes the self-check out as one block, every line tagged "Saga self-check" so one grep
+        /// reads the lot. A warning when anything is MISSING, so it stands out in a scroll too.
+        /// </summary>
+        private void LogSelfCheck()
+        {
+            if (_selfCheck == null) return;
+            try
+            {
+                string block = string.Join("\n", _selfCheck.Format(ModVersion.VERSION)
+                    .Select(l => "[ICanShowYouTheWorld] " + l).ToArray());
+                if (_selfCheck.Count(SelfCheckVerdict.Missing) > 0) Debug.LogWarning(block);
+                else Debug.Log(block);
+            }
+            catch (Exception ex) { LogOnce("self-check", ex); }
+        }
+
+        /// <summary>
+        /// The speakers' bodies and places, the three traders the saga speaks through, and Hildir's
+        /// two chests - every one a name this assembly cannot see, and until now each was found out
+        /// only when its act was reached.
+        /// </summary>
+        private void CheckSpeakersAndTraders()
+        {
+            if (_selfCheck == null) return;
+            try
+            {
+                var scene = ZNetScene.instance;
+                if (scene == null)
+                {
+                    _selfCheck.Fallback("Speakers and traders", "the scene was not ready - not checked this run");
+                    return;
+                }
+
+                Func<string, bool> isBody = n => scene.GetPrefab(n)?.GetComponent<Character>() != null;
+                const string unmade = "cannot be made, and their steps stall";
+
+                // Act I's three predate SagaSpeaker and always wear the Ghost.
+                foreach (var (who, body) in new[] { (HuntersShade.Name, HuntersShade.Prefab), (Thjalfi.Name, Thjalfi.Prefab), (Thane.Name, Thane.Prefab) })
+                    _selfCheck.Pick(who + "'s body", new[] { body }, isBody, unmade, stalls: true);
+
+                var speakers = new SagaSpeaker[]
+                {
+                    _keeper ?? new BarrowKeeper(_rng), _drowned ?? new DrownedOne(_rng), _frozenOne ?? new FrozenOne(_rng),
+                    _harvester ?? new Harvester(_rng), _lantern ?? new LanternKeeper(_rng), _charred ?? new CharredOne(_rng),
+                };
+                foreach (var speaker in speakers)
+                    _selfCheck.Pick(speaker.Name + "'s body", speaker.BodyCandidates, isBody, unmade, stalls: true);
+
+                var places = KnownLocationNames();
+                if (places.Count == 0)
+                {
+                    _selfCheck.Fallback("Speakers' places", "the game's location table was empty - not checked this run");
+                }
+                else
+                {
+                    Func<string, bool> isPlace = places.Contains;
+                    _selfCheck.Pick(BarrowKeeper.KeeperName + "'s chamber", new[] { BarrowKeeper.ChamberLocation }, isPlace,
+                                    "he never stands, and Act II's keeper steps stall", stalls: true);
+                    _selfCheck.Pick(DrownedOne.DrownedName + "'s crypt", new[] { DrownedOne.CryptLocation }, isPlace,
+                                    "he never stands, and Act III's drowned steps stall", stalls: true);
+                    _selfCheck.AnyOf(Harvester.HarvesterName + "'s stone ring", Harvester.RingLocations, isPlace,
+                                     "he stands on plains ground near the player instead", stalls: false);
+                    _selfCheck.AnyOf(LanternKeeper.KeeperName + "'s dvergr site", LanternKeeper.SiteLocations, isPlace,
+                                     "he stands in the mist near the player instead", stalls: false);
+                }
+
+                var traders = scene.m_prefabs
+                    .Where(p => p != null)
+                    .Select(p => p.GetComponent<Trader>())
+                    .Where(t => t != null)
+                    .ToList();
+                string known = string.Join(", ", traders.Select(t => $"{t.name} ({t.m_name})").ToArray());
+                foreach (var voice in new[] { _haldor, _witch, _hildir })
+                {
+                    var trader = traders.FirstOrDefault(voice.Fits);
+                    if (trader != null)
+                        _selfCheck.Ok(voice.Label, $"speaks through '{trader.name}' ({trader.m_name})");
+                    else
+                        _selfCheck.Missing(voice.Label, $"no trader matches '{voice.MatchText}' (the game has: {known}) - " +
+                                                        "their steps cannot be answered");
+                }
+
+                // Her chests, from her PREFAB's give list - the same entries PollHildir reads off her in
+                // the world, so a wrong guess shows here in Act I rather than at her camp in Act IV.
+                var hildir = traders.FirstOrDefault(_hildir.Fits);
+                if (hildir != null)
+                {
+                    var gives = hildir.m_useItems != null ? hildir.m_useItems.ToList() : new List<Trader.TraderUseItem>();
+                    string accepts = string.Join(", ", gives
+                        .Where(u => u?.m_prefab != null)
+                        .Select(u => $"{u.m_prefab.name} -> '{u.m_setsGlobalKey}'")
+                        .ToArray());
+                    foreach (var (what, chest) in new[]
+                    {
+                        ("Hildir's cavern chest (Act IV)", HildirVoice.CavernChest(gives)),
+                        ("Hildir's tower chest (Act V)", HildirVoice.TowerChest(gives)),
+                    })
+                    {
+                        if (chest != null) _selfCheck.Ok(what, $"'{chest.m_prefab.name}' sets '{chest.m_setsGlobalKey}'");
+                        else _selfCheck.Missing(what, $"none of her gives is it (she accepts: {accepts}) - the step cannot complete");
+                    }
+                }
+            }
+            catch (Exception ex) { LogOnce("self-check-speakers", ex); }
+        }
+
+        /// <summary>
+        /// The saga's own items' looks (each cloned from a vanilla item, with a chain of fallbacks),
+        /// the pyre's flametal and the harvester's plains foods.
+        /// </summary>
+        private void CheckSagaItems()
+        {
+            if (_selfCheck == null) return;
+            try
+            {
+                if (ObjectDB.instance == null)
+                {
+                    _selfCheck.Fallback("Saga items", "the item database was not ready - not checked this run");
+                    return;
+                }
+
+                Func<string, bool> isItem = n => ResolveItemPrefab(n)?.GetComponent<ItemDrop>() != null;
+
+                foreach (var def in SagaItems.All)
+                    _selfCheck.Pick(def.DisplayName + "'s look", SagaItems.Candidates(def).ToList(), isItem,
+                                    "the item is never made", stalls: true);
+
+                _selfCheck.Pick("Flametal for the charred one's pyre", new[] { "FlametalNew", "Flametal" }, isItem,
+                                "the pyre cannot be paid, and Last Light is never forged", stalls: true);
+                _selfCheck.AnyOf("Plains foods for the harvester", PlainsMeal.PlainsFoods, isItem,
+                                 "no table counts as from the field, and his ask stalls", stalls: true);
+            }
+            catch (Exception ex) { LogOnce("self-check-items", ex); }
+        }
+
         /// <summary>
         /// The reward page needs a tale for every act the myth tells. Logged at run start: an act the
         /// myth has not reached (the Deep North) is expected; any other missing title means a heading
@@ -10582,12 +10753,17 @@ namespace ICanShowYouTheWorld.RunMode
                 if (string.IsNullOrEmpty(myth))
                 {
                     Debug.LogWarning("[ICanShowYouTheWorld] Saga myth: NOT embedded - a won run will get no page.");
+                    _selfCheck?.Missing("The saga's myth", "not embedded - a won run gets no page");
                     return;
                 }
                 var tale = SagaTale.Split(myth, _acts.Select(a => a.Title).ToList());
                 Debug.Log("[ICanShowYouTheWorld] Saga myth: " + (tale.Missing.Count == 0
                     ? "a tale for every act."
                     : "no tale yet for " + string.Join(", ", tale.Missing.ToArray()) + "."));
+                // An untold act is expected while the Deep North is a stand-in: its run gets the coda.
+                if (tale.Missing.Count == 0) _selfCheck?.Ok("The saga's myth", "a tale for every act");
+                else _selfCheck?.Fallback("The saga's myth", "no tale yet for " + string.Join(", ", tale.Missing.ToArray()) +
+                                                             " - a run ending there gets the coda");
             }
             catch (Exception ex) { LogOnce("saga-myth", ex); }
         }

@@ -136,7 +136,7 @@ namespace ICanShowYouTheWorld.RunMode
         public const string Name = "Thjalfi";
 
         /// <summary>The Ghost prefab, as the shade uses - he is one of the put-away too.</summary>
-        private const string Prefab = "Ghost";
+        internal const string Prefab = "Ghost";
 
         /// <summary>
         /// What he asks for: the altar's body, and its eye.
@@ -413,6 +413,9 @@ namespace ICanShowYouTheWorld.RunMode
             // Tamed so he never fights and nothing fights him; parked so he stays put. A quest-giver
             // that wanders off is a quest-giver lost.
             try { ch.SetTamed(true); } catch { }
+            // And immune, as every later speaker is: tamed means an enemy to every monster, and a
+            // greyling or a passing troll would otherwise kill a quest-giver mid-errand (review, 2026-10-05).
+            SagaSpeaker.MakeImmune(ch);
             ch.m_name = Name;
             try
             {

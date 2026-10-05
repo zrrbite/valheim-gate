@@ -459,6 +459,9 @@ namespace ICanShowYouTheWorld.RunMode
             // Tamed so it never fights and nothing fights it; parked so it stays put. A ghost's
             // AI otherwise drifts, and a quest-giver that wanders off is a quest-giver lost.
             try { ch.SetTamed(true); } catch { }
+            // And immune, as every later speaker is: tamed means an enemy to every monster, and a
+            // greyling or a passing troll would otherwise kill a quest-giver mid-errand (review, 2026-10-05).
+            SagaSpeaker.MakeImmune(ch);
             ch.m_name = Name;
             // SetPatrolPoint() takes the creature's CURRENT position as its patrol centre; the
             // overload taking a point is not public in this build, and it stands where it spawned.

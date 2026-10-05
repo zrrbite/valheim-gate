@@ -1581,10 +1581,10 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         /// <remarks>
         /// Ordered ready-first, because the only reason to open this page mid-run is to find out
-        /// whether it is worth walking home. Unlearned recipes are shown with their bill and marked,
-        /// rather than hidden: a player cannot gather for a craft they are not allowed to read, and
-        /// not being able to read them is the complaint this page answers. What the quest still
-        /// withholds is the recipe's existence in the game, which is the quest's business.
+        /// whether it is worth walking home. Only what the saga has already told is listed: a bench
+        /// recipe once Hugin has announced it, an anvil shape once its step has opened, and never a
+        /// repair (owner, 2026-09-28 and 2026-10-05 - a page listing the whole saga on the first night
+        /// spends every reveal before the story gets to it).
         /// </remarks>
         private void DrawForge(IRunService run)
         {
@@ -1597,10 +1597,10 @@ namespace ICanShowYouTheWorld.RunMode
                 return;
             }
 
-            // The bench's recipes reach this page only once Hugin has announced them (see
-            // SagaItems.DescribeRecipes), so for most of Act I the anvil is alone here. Said, rather
-            // than left as an absence: a page with no bench cards on it otherwise reads as a page
-            // that failed to load them.
+            // The bench's recipes reach this page only once Hugin has announced them, and the anvil's
+            // once the step that teaches them has opened (see SagaItems.DescribeRecipes), so for most
+            // of Act I the anvil is alone here. Said, rather than left as an absence: a page with no
+            // bench cards on it otherwise reads as a page that failed to load them.
             if (!cards.Any(c => c.Bench))
             {
                 GUI.contentColor = RunTheme.TextMuted;
