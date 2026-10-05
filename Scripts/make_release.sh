@@ -130,6 +130,9 @@ trap 'rm -rf "$STAGE"' EXIT
 
 mkdir -p "$OUT_DIR" "$STAGE/$NAME"
 cp -R dist/windows/. "$STAGE/$NAME/"
+# A saga-only build ignores runDevMode (RunService.DevMode), so its page would document keys
+# that do nothing.
+[[ "$FLAVOUR" == "saga" ]] && rm -f "$STAGE/$NAME/DEV-MODE.md"
 
 # A tester unzipping this has no repo and no context. Tell them what it is and
 # what to run, in the first file they will see.

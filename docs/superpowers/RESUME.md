@@ -339,6 +339,10 @@ nobody being able to tell.
 stops a determined person - it stops an idle one, and it stops the saga's score from being quietly
 meaningless for someone who never asked for GM. That is worth doing; "security" is not the claim.
 
+> **Reversed 2026-10-05 (owner):** a release is handed to somebody who will never need dev mode or
+> its red line, so `RunService.DevMode` now requires a GM build as well as `runDevMode`. The
+> paragraph below is the original ruling, kept for its reasoning.
+
 **`runDevMode` keeps its name and its meaning.** It stays the TESTER's switch - step-skips, kits,
 the clock - and does not become the GM switch after all, since those are now two different things
 living in two different places. Renaming it would also have dropped the owner's 25-August config

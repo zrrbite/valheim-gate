@@ -167,6 +167,9 @@ What a saga-only build changes, and what it must not:
 - `Cheat.cs` does not **register** the GM bindings (only `F1` and `End` survive, and neither is a
   cheat), so `CommandRegistry.All` is empty and there is nothing to press or to list.
 - `UIManager.OnGUI` does not draw the GM windows.
+- **Dev mode is off whatever the config says** (`RunService.DevMode` reads `ModVersion.GmEnabled`
+  first): no step-skips, slay, kit or teleport, and no red dev line in the Run window. A recipient
+  owns their config file, so `runDevMode` alone could not be the lock (owner, 2026-10-05).
 - **`CheatCommands` itself stays alive in both flavours.** Run Mode's boons ride that pipeline
   through `WithLegacyGodModeBracket`. This removes GM's doors, never its floor.
 

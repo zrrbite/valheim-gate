@@ -5,6 +5,9 @@ material farming, and the light race's setup.
 
 ## Turning it on
 
+**GM builds only.** A saga-only build (the one handed to somebody else) ignores this setting
+entirely — no shortcuts, no red line in the Run window. Check the main menu badge ends in `· GM`.
+
 Edit the mod's config JSON and set:
 
 ```json

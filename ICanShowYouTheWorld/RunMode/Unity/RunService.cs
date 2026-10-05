@@ -1890,7 +1890,13 @@ namespace ICanShowYouTheWorld.RunMode
         public void LobbyOfferTaken() => _lobbyOfferPending = false;
 
         /// <summary>True when testing shortcuts are live. The HUD says so; see HandleDevInput.</summary>
-        public bool DevMode => _cfg != null && _cfg.RunDevMode;
+        /// <remarks>
+        /// GM builds only (owner, 2026-10-05): a saga-only build is the one handed to somebody else,
+        /// who never needs step-skips, slay or the kit - and owns the config file, so the setting
+        /// alone cannot be the lock. This reverses the 2026-09-20 ruling that kept dev mode as a
+        /// tester's switch in both flavours. Every dev path reads THIS, so the HUD's red line goes too.
+        /// </remarks>
+        public bool DevMode => ModVersion.GmEnabled && _cfg != null && _cfg.RunDevMode;
 
         public HearthRecords Records => _records;
 
@@ -2873,7 +2879,7 @@ namespace ICanShowYouTheWorld.RunMode
 
         private void HandleDevInput()
         {
-            if (_cfg == null || !_cfg.RunDevMode || !_active || _frozen) return;
+            if (!DevMode || !_active || _frozen) return;
 
             // A modifier on TWO keys, not on nine.
             //
@@ -4211,7 +4217,7 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         private void ReassertDevGod()
         {
-            if (_cfg == null || !_cfg.RunDevMode) return;
+            if (!DevMode) return;
 
             try
             {
