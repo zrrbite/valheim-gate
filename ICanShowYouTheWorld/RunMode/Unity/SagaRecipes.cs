@@ -189,6 +189,20 @@ namespace ICanShowYouTheWorld.RunMode
                              "at a table for the fine work - the storm's set, whole.",
             },
 
+            new SagaRecipeDefinition
+            {
+                // Act VI (2026-10-05): taught by the lantern-keeper once a light has been set free.
+                // The galdr table, the Mistlands' own station; wisps and silver, like the wisplight.
+                Id = "borrowed-light",
+                ResultPrefab = SagaItems.BorrowedLightPrefab,
+                StationPrefab = "piece_magetable",
+                MinStationLevel = 1,
+                Resources = new[] { ("Wisp", 5), ("Silver", 12) },
+                RequiresStepDone = "mi-free",
+                TaughtLine = "How the dvergr carry it: five wisps and silver, at a galdr table. It pushes the " +
+                             "mist back and lights the way. Borrowed, mind.",
+            },
+
             // The Berserker's own: a second pair when the first is lost, and the bench is where the
             // pair is tempered - quality comes from the recipe, so without one the axes the thane
             // gave would stay at 1 for the whole run. Meadows materials, because the way is taken

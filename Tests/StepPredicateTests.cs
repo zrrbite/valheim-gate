@@ -240,6 +240,13 @@ static class StepPredicateTests
         Check.That(!PlainsMeal.FullPlainsTable(new[] { "LoxPie", "FishWraps" }), "two plains foods is not a full table");
         Check.That(!PlainsMeal.FullPlainsTable(null) && !PlainsMeal.FullPlainsTable(new[] { "Bread", null, "" }), "nothing, or blanks, is not a meal");
 
+        // --- 2026-10-05: Act VI's voice ----------------------------------------------------
+        var lanternFind = new List<QuestTrack> { Track("craft", Step("mi-lantern", ChallengeKind.PlayerEvent, SagaNames.LanternFound)) };
+        var lightFree = new List<QuestTrack> { Track("craft", Step("mi-free", ChallengeKind.PlayerEvent, SagaNames.LightFreed)) };
+        Check.That(StepPredicates.LanternFind(lanternFind) && !StepPredicates.LanternFree(lanternFind), "the lantern-keeper is spoken to first");
+        Check.That(StepPredicates.LanternFree(lightFree) && StepPredicates.Lantern(lightFree) && !StepPredicates.Lantern(feast),
+                   "then a light is set free; he is wanted for his own steps only");
+
         // --- Degenerate input ---------------------------------------------------------------
         Check.That(!StepPredicates.DeerHunt(null), "a null track list is not a hunt");
         Check.That(!StepPredicates.DeerHunt(new List<QuestTrack>()), "nor is an empty one");

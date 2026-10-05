@@ -209,6 +209,12 @@ namespace ICanShowYouTheWorld.RunMode
 
         /// <summary>Act V's speaker at a plains stone ring: wants to see someone eat from the field.</summary>
         private Harvester _harvester;
+
+        /// <summary>Act VI's speaker at a dvergr site: one light set free, the Borrowed Light taught.</summary>
+        private LanternKeeper _lantern;
+
+        /// <summary>The real light the Borrowed Light casts while equipped, on the player. See PollBorrowedLight.</summary>
+        private GameObject _borrowedGlow;
         private SpiritChase _spirit;
         private StolenLights _lights;
         private TheGatherer _gatherer;
@@ -581,6 +587,13 @@ namespace ICanShowYouTheWorld.RunMode
                         string graves = _thane.Bearing(player, !IsNight, toLearn);
                         if (!string.IsNullOrEmpty(graves)) return graves;
                     }
+                }
+
+                // The lantern-keeper while he is to be found or paid.
+                if (_lantern != null && _challenges != null && StepPredicates.Lantern(_challenges.Tracks))
+                {
+                    string site = _lantern.Bearing(player, "A dvergr waits with a lantern");
+                    if (!string.IsNullOrEmpty(site)) return site;
                 }
 
                 // The harvester while he is to be found or fed.
@@ -1236,6 +1249,7 @@ namespace ICanShowYouTheWorld.RunMode
             _drowned = new DrownedOne(_rng);
             _frozenOne = new FrozenOne(_rng);
             _harvester = new Harvester(_rng);
+            _lantern = new LanternKeeper(_rng);
             _witch.AltAction = ReforgeAtWitch;
             _witch.AltProgress = ReforgeProgress;
             _spirit = new SpiritChase(_cfg, _rng);
@@ -2352,6 +2366,7 @@ namespace ICanShowYouTheWorld.RunMode
                 _hildirTowerMissingLogged = false;
                 _hildirTalkAct = -1;
                 _harvester?.Reset();
+                _lantern?.Reset();
                 // A key from a run that crashed before it could end would otherwise answer "already
                 // told" the first time this run asks him.
                 TraderVoice.ClearKeys(SagaNames.IsHaldorKey);
@@ -3815,6 +3830,9 @@ namespace ICanShowYouTheWorld.RunMode
             // Act V.
             if (shadePlayer != null) PollHarvester(shadePlayer);
             if (shadePlayer != null) PollFeast(shadePlayer);
+            // Act VI.
+            if (shadePlayer != null) PollLanternKeeper(shadePlayer);
+            PollBorrowedLight(shadePlayer);
             // After the thane, so a lesson or a respec he just gave shows in the same second.
             if (shadePlayer != null) PollWaySkill(shadePlayer);
             PollDiscoveries();
@@ -4878,6 +4896,87 @@ namespace ICanShowYouTheWorld.RunMode
             }
         }
 
+        /// <summary>
+        /// The lantern-keeper: at a dvergr site from the moment the Mistlands are reached, in every act
+        /// after. His ask - set one light free - can only be paid at night.
+        /// </summary>
+        private void PollLanternKeeper(Player player)
+        {
+            if (_lantern == null || _challenges == null) return;
+
+            try
+            {
+                var tracks = _challenges.Tracks;
+                bool pastMist = _actIndex >= 6;
+                bool wanted = _actIndex >= 5 &&
+                              (pastMist || StepPredicates.Lantern(tracks) || StepPredicates.StepDone(tracks, "mi-arrive"));
+
+                bool queenDown = false;
+                try { queenDown = ZoneSystem.instance != null && ZoneSystem.instance.GetGlobalKey("defeated_queen"); } catch { }
+
+                var phase = StepPredicates.LanternFind(tracks) ? LanternKeeper.Phase.Speak
+                          : StepPredicates.LanternFree(tracks) ? LanternKeeper.Phase.Free
+                          : (pastMist || queenDown) ? LanternKeeper.Phase.After
+                          : LanternKeeper.Phase.Idle;
+
+                bool spoken;
+                Vector3? freedAt;
+                _lantern.Tick(player, phase, IsNight, wanted, out spoken, out freedAt);
+                RefreshNpcPin(PinLantern, wanted, _lantern.Spot(), LanternKeeper.KeeperName);
+
+                if (spoken && phase == LanternKeeper.Phase.Speak)
+                {
+                    _challenges.ReportEvent(ChallengeKind.PlayerEvent, SagaNames.LanternFound);
+                    Message("He wants one light set free, after dark.");
+                }
+                if (freedAt != null && StepPredicates.LanternFree(tracks))
+                {
+                    // Up and out of reach: it is let go, not handed back to be taken again.
+                    try { _lights?.Release(freedAt.Value + Vector3.up * 3.5f, 20f, "A Borrowed Light"); }
+                    catch (Exception ex) { LogOnce("lantern-release", ex); }
+                    _challenges.ReportEvent(ChallengeKind.PlayerEvent, SagaNames.LightFreed);
+                    Message("The light rises into the mist and is gone.");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogOnce("lantern", ex);
+            }
+        }
+
+        /// <summary>While the Borrowed Light is equipped, a warm point light rides on the player.</summary>
+        private void PollBorrowedLight(Player player)
+        {
+            try
+            {
+                bool equipped = false;
+                var items = player?.GetInventory()?.GetEquippedItems();
+                if (items != null)
+                    foreach (var i in items)
+                        if (i?.m_shared != null && i.m_shared.m_name == SagaItems.BorrowedLightName) { equipped = true; break; }
+
+                if (!equipped || player == null) { ClearBorrowedGlow(); return; }
+                if (_borrowedGlow != null) return;
+
+                _borrowedGlow = new GameObject("saga_borrowed_light");
+                _borrowedGlow.transform.SetParent(player.transform, false);
+                _borrowedGlow.transform.localPosition = new Vector3(0f, 2.2f, 0f);
+                var light = _borrowedGlow.AddComponent<Light>();
+                light.type = LightType.Point;
+                light.range = 12f;
+                light.intensity = 1.2f;
+                light.color = new Color(1.0f, 0.9f, 0.7f);
+                light.shadows = LightShadows.None;
+            }
+            catch (Exception ex) { LogOnce("borrowed-light", ex); }
+        }
+
+        private void ClearBorrowedGlow()
+        {
+            try { if (_borrowedGlow != null) UnityEngine.Object.Destroy(_borrowedGlow); } catch { }
+            _borrowedGlow = null;
+        }
+
         /// <summary>The steading's feast: a full table with something from the field, at home.</summary>
         private void PollFeast(Player player)
         {
@@ -4914,6 +5013,7 @@ namespace ICanShowYouTheWorld.RunMode
 
         // The saga's people on the map. See SagaPins for why they are never saved.
         private const string PinHarvester = "harvester";
+        private const string PinLantern = "lantern";
         private const string PinFrozen = "frozen";
         private const string PinDrowned = "drowned";
         private const string PinKeeper = "keeper";
@@ -6269,6 +6369,8 @@ namespace ICanShowYouTheWorld.RunMode
             _drowned?.Reset();
             _frozenOne?.Reset();
             _harvester?.Reset();
+            _lantern?.Reset();
+            ClearBorrowedGlow();
             _haldor.Detach();
             _witch.Detach();
             _hildir.Detach();
@@ -10256,7 +10358,7 @@ namespace ICanShowYouTheWorld.RunMode
                 var zone = ZoneSystem.instance;
                 if (zone?.m_locations == null) return;
 
-                var keys = new[] { "Sunken", "BogWitch", "Vendor", "Hildir", "Cave", "Crypt", "Henge", "Stone" };
+                var keys = new[] { "Sunken", "BogWitch", "Vendor", "Hildir", "Cave", "Crypt", "Henge", "Stone", "Dvergr", "Mistlands" };
                 var names = zone.m_locations
                     .Where(l => l != null && !string.IsNullOrEmpty(l.m_prefabName) &&
                                 keys.Any(k => l.m_prefabName.IndexOf(k, StringComparison.OrdinalIgnoreCase) >= 0))
@@ -10277,6 +10379,9 @@ namespace ICanShowYouTheWorld.RunMode
             foreach (var p in BarrowKeeper.Price) yield return (BarrowKeeper.KeeperName, p.token, p.amount);
             foreach (var p in BogWitchVoice.ReforgePrice) yield return ("The Bog Witch", p.token, p.amount);
             foreach (var p in FrozenOne.Price) yield return (FrozenOne.FrozenName, p.token, p.amount);
+            // Either light pays the lantern-keeper; both must be real items.
+            yield return (LanternKeeper.KeeperName, SagaItems.RescuedLightName, 1);
+            yield return (LanternKeeper.KeeperName, LanternKeeper.WispToken, 1);
         }
 
         /// <summary>
@@ -10312,6 +10417,8 @@ namespace ICanShowYouTheWorld.RunMode
             SagaNames.HarvesterFed,
             SagaNames.HildirTowerChest,
             SagaNames.SteadingFeast,
+            SagaNames.LanternFound,
+            SagaNames.LightFreed,
         };
 
         /// <summary>
@@ -11720,6 +11827,28 @@ namespace ICanShowYouTheWorld.RunMode
                 Id = "mi-arrive", MainQuest = true, Kind = ChallengeKind.ReachBiome, Param = "Mistlands",
                 Target = 1, Display = "Reach the Mistlands",
                 Hint = "Grey mist over black rock. Nothing shows in it until a wisp is at your belt.",
+            },
+            new ChallengeDefinition
+            {
+                // The lantern-keeper (2026-10-05), a living dvergr at a dvergr site: the saga's payoff.
+                Id = "mi-lantern", MainQuest = true, Track = CraftTrackId, Kind = ChallengeKind.PlayerEvent,
+                Param = SagaNames.LanternFound, Target = 1, Display = "Speak with the lantern-keeper",
+                Hint = "A dvergr with a lantern, by one of their sites in the mist. He is marked on your map.",
+            },
+            new ChallengeDefinition
+            {
+                // His ask: one light set free, at night - a rescued light from the meadows or a wisp from
+                // the roots, so it can always be paid.
+                Id = "mi-free", MainQuest = true, Track = CraftTrackId, Kind = ChallengeKind.PlayerEvent,
+                Param = SagaNames.LightFreed, Target = 1, Display = "Set a light free",
+                Hint = "After dark, bring him one light \u2014 a rescued light you kept, or a wisp from the roots \u2014 and let it go.",
+                Opening = "Borrowed, and given back. The only answer anyone in this world ever got right.",
+            },
+            new ChallengeDefinition
+            {
+                Id = "mi-borrowed", MainQuest = true, Track = CraftTrackId, Kind = ChallengeKind.CollectItem,
+                Param = SagaItems.BorrowedLightName, Target = 1, Display = "Carry the Borrowed Light",
+                Hint = "At a galdr table: five wisps and twelve silver. It pushes the mist back and lights the way.",
             },
             new ChallengeDefinition
             {

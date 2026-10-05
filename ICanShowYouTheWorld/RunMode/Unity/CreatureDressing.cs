@@ -518,6 +518,18 @@ namespace ICanShowYouTheWorld.RunMode
             LightIntensity = 0.7f,
         };
 
+        /// <summary>
+        /// The lantern-keeper: a dvergr left a dvergr - colours untouched - but carrying a warm lantern
+        /// glow, because he is the one person in the saga whose light is honestly his to carry.
+        /// </summary>
+        public static Look LanternKeeper() => new Look
+        {
+            Emission = new Color(0.30f, 0.24f, 0.10f),
+            LightRange = 7f,
+            LightColor = new Color(1.0f, 0.86f, 0.55f),
+            LightIntensity = 1.1f,
+        };
+
         public static Look Keeper() => new Look
         {
             Saturation = -0.8f,

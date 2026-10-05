@@ -97,6 +97,14 @@ namespace ICanShowYouTheWorld.RunMode
         /// ancient bark where the frame was, the storm still in it. Shares every piece of the
         /// Stormward's machinery - the discharge, the flash, the wear, the answers counted.
         /// </summary>
+        /// <summary>
+        /// Act VI's lantern, taught by the lantern-keeper: the wisplight (its mist-clearing equip
+        /// effect comes with the clone), and while it is equipped the host also keeps a real light on
+        /// the player. Borrowed, as all light is.
+        /// </summary>
+        public const string BorrowedLightPrefab = "Saga_BorrowedLight";
+        public const string BorrowedLightName = "Borrowed Light";
+
         public const string IronboundPrefab = "Saga_StormwardIronbound";
         public const string IronboundName = "Ironbound Stormward";
 
@@ -841,6 +849,19 @@ namespace ICanShowYouTheWorld.RunMode
                     // ingredient that cannot be carried through a portal is a walk, not a cost.
                     shared.m_teleportable = true;
                 },
+            },
+
+            new SagaItemDefinition
+            {
+                // The game's wisplight. Everything that makes it push the mist back is its equip
+                // status effect (SE_Demister), which the clone keeps; the saga adds the light on the
+                // player from the host (RunService.PollBorrowedLight), not here.
+                SourcePrefab = "Demister",
+                PrefabName = BorrowedLightPrefab,
+                DisplayName = BorrowedLightName,
+                Description = "A wisp in dvergr glass, the way they carry theirs. It pushes the mist back, and " +
+                              "it gives you light to see by. None of it is yours. The dvergr were the only ones " +
+                              "who ever understood that, and now you are the second.",
             },
         };
 
