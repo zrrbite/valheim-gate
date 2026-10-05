@@ -125,6 +125,20 @@ namespace ICanShowYouTheWorld.RunMode
         public static bool HildirChest(IReadOnlyList<QuestTrack> tracks) =>
             Live(tracks).Any(d => d.Kind == ChallengeKind.PlayerEvent && d.Param == SagaNames.HildirChest);
 
+        public static bool Harvester(IReadOnlyList<QuestTrack> tracks) => HarvesterFind(tracks) || HarvesterAsk(tracks);
+
+        public static bool HarvesterFind(IReadOnlyList<QuestTrack> tracks) =>
+            Live(tracks).Any(d => d.Kind == ChallengeKind.PlayerEvent && d.Param == SagaNames.HarvesterFound);
+
+        public static bool HarvesterAsk(IReadOnlyList<QuestTrack> tracks) =>
+            Live(tracks).Any(d => d.Kind == ChallengeKind.PlayerEvent && d.Param == SagaNames.HarvesterFed);
+
+        public static bool HildirTowerChest(IReadOnlyList<QuestTrack> tracks) =>
+            Live(tracks).Any(d => d.Kind == ChallengeKind.PlayerEvent && d.Param == SagaNames.HildirTowerChest);
+
+        public static bool SteadingFeast(IReadOnlyList<QuestTrack> tracks) =>
+            Live(tracks).Any(d => d.Kind == ChallengeKind.PlayerEvent && d.Param == SagaNames.SteadingFeast);
+
         /// <summary>This exact step is current on some unblocked track.</summary>
         public static bool StepLive(IReadOnlyList<QuestTrack> tracks, string stepId) =>
             !string.IsNullOrEmpty(stepId) && Live(tracks).Any(d => d.Id == stepId);

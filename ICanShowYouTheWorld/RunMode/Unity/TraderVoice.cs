@@ -77,8 +77,8 @@ namespace ICanShowYouTheWorld.RunMode
 
         public string Label;
         private readonly string _match;
-        private readonly string[] _talk;
-        private readonly string[] _talkAfter;
+        private string[] _talk;
+        private string[] _talkAfter;
 
         /// <summary>Optional give entry: the item prefab and the line said on acceptance.</summary>
         public string GivePrefab;
@@ -110,6 +110,17 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         public bool Attached => _trader != null;
+
+        /// <summary>
+        /// Changes what the voice says, for a trader who speaks in more than one act (Hildir: the
+        /// cold in Act IV, the harvest in Act V). Applied on the next tick if attached.
+        /// </summary>
+        public void SetTalk(string[] talk, string[] talkAfter)
+        {
+            _talk = talk ?? new string[0];
+            _talkAfter = talkAfter ?? _talk;
+            _afterTalk = !_afterTalk; // forces the next SyncTalk to rewrite
+        }
 
         /// <summary>True when attached and the player stands within <see cref="MetRange"/>.</summary>
         public bool Near { get; private set; }

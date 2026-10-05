@@ -353,6 +353,8 @@
     <Compile Include="RunMode\Unity\BarrowKeeper.cs" />
     <Compile Include="RunMode\Unity\DrownedOne.cs" />
     <Compile Include="RunMode\Unity\FrozenOne.cs" />
+    <Compile Include="RunMode\Unity\Harvester.cs" />
+    <Compile Include="RunMode\PlainsMeal.cs" />
     <Compile Include="RunMode\Unity\TraderVoice.cs" />
     <Compile Include="RunMode\Unity\HaldorVoice.cs" />
     <Compile Include="RunMode\Unity\SagaItems.cs" />

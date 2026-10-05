@@ -507,6 +507,17 @@ namespace ICanShowYouTheWorld.RunMode
             LightIntensity = 0.9f,
         };
 
+        /// <summary>The harvester: dull gold - the golden ruin's colour, faded, like grain gone grey.</summary>
+        public static Look Harvester() => new Look
+        {
+            Saturation = -0.45f,
+            Value = 0.1f,
+            Emission = new Color(0.40f, 0.33f, 0.12f),
+            LightRange = 5f,
+            LightColor = new Color(0.95f, 0.82f, 0.48f),
+            LightIntensity = 0.7f,
+        };
+
         public static Look Keeper() => new Look
         {
             Saturation = -0.8f,

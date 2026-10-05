@@ -224,6 +224,22 @@ static class StepPredicateTests
         Check.That(StepPredicates.HildirFind(hildirFind) && !StepPredicates.HildirChest(hildirFind), "Hildir is found first");
         Check.That(StepPredicates.HildirChest(hildirChest) && !StepPredicates.HildirFind(hildirChest), "then her chest is brought back");
 
+        // --- 2026-10-05: Act V's voices ----------------------------------------------------
+        var harvFind = new List<QuestTrack> { Track("craft", Step("pl-harvester", ChallengeKind.PlayerEvent, SagaNames.HarvesterFound)) };
+        var harvAsk = new List<QuestTrack> { Track("craft", Step("pl-meal", ChallengeKind.PlayerEvent, SagaNames.HarvesterFed)) };
+        var tower = new List<QuestTrack> { Track("steading", Step("st-chest", ChallengeKind.PlayerEvent, SagaNames.HildirTowerChest)) };
+        var feast = new List<QuestTrack> { Track("steading", Step("st-feast", ChallengeKind.PlayerEvent, SagaNames.SteadingFeast)) };
+        Check.That(StepPredicates.HarvesterFind(harvFind) && !StepPredicates.HarvesterAsk(harvFind), "the harvester is spoken to first");
+        Check.That(StepPredicates.HarvesterAsk(harvAsk) && StepPredicates.Harvester(harvAsk) && !StepPredicates.Harvester(tower),
+                   "then fed; he is wanted for his own steps only");
+        Check.That(StepPredicates.HildirTowerChest(tower) && !StepPredicates.HildirChest(tower), "the tower chest is not the cavern's");
+        Check.That(StepPredicates.SteadingFeast(feast) && !StepPredicates.SteadingFeast(harvAsk), "the feast is its own step");
+
+        Check.That(PlainsMeal.FullPlainsTable(new[] { "Bread", "CookedMeat", "Raspberry" }), "three foods, one of them bread, is a meal from the field");
+        Check.That(!PlainsMeal.FullPlainsTable(new[] { "CookedMeat", "Raspberry", "Honey" }), "three foods with nothing from the plains is not");
+        Check.That(!PlainsMeal.FullPlainsTable(new[] { "LoxPie", "FishWraps" }), "two plains foods is not a full table");
+        Check.That(!PlainsMeal.FullPlainsTable(null) && !PlainsMeal.FullPlainsTable(new[] { "Bread", null, "" }), "nothing, or blanks, is not a meal");
+
         // --- Degenerate input ---------------------------------------------------------------
         Check.That(!StepPredicates.DeerHunt(null), "a null track list is not a hunt");
         Check.That(!StepPredicates.DeerHunt(new List<QuestTrack>()), "nor is an empty one");

@@ -196,6 +196,16 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>The Howling Cavern chest's world key, read off Hildir's own give entries once she is near.</summary>
         private string _hildirChestKey;
         private bool _hildirChestMissingLogged;
+
+        /// <summary>The Sealed Tower chest's key (Act V), read the same way.</summary>
+        private string _hildirTowerKey;
+        private bool _hildirTowerMissingLogged;
+
+        /// <summary>Which act's talk Hildir's voice carries now, so it is only re-set on a change.</summary>
+        private int _hildirTalkAct = -1;
+
+        /// <summary>Act V's speaker at a plains stone ring: wants to see someone eat from the field.</summary>
+        private Harvester _harvester;
         private SpiritChase _spirit;
         private StolenLights _lights;
         private TheGatherer _gatherer;
@@ -568,6 +578,13 @@ namespace ICanShowYouTheWorld.RunMode
                         string graves = _thane.Bearing(player, !IsNight, toLearn);
                         if (!string.IsNullOrEmpty(graves)) return graves;
                     }
+                }
+
+                // The harvester while he is to be found or fed.
+                if (_harvester != null && _challenges != null && StepPredicates.Harvester(_challenges.Tracks))
+                {
+                    string ring = _harvester.Bearing(player, "Someone waits by the standing stones");
+                    if (!string.IsNullOrEmpty(ring)) return ring;
                 }
 
                 // The frozen one while he is to be woken or paid.
@@ -1209,6 +1226,7 @@ namespace ICanShowYouTheWorld.RunMode
             _keeper = new BarrowKeeper(_rng);
             _drowned = new DrownedOne(_rng);
             _frozenOne = new FrozenOne(_rng);
+            _harvester = new Harvester(_rng);
             _witch.AltAction = ReforgeAtWitch;
             _witch.AltProgress = ReforgeProgress;
             _spirit = new SpiritChase(_cfg, _rng);
@@ -2320,6 +2338,10 @@ namespace ICanShowYouTheWorld.RunMode
                 _hildir.Detach();
                 _hildirChestKey = null;
                 _hildirChestMissingLogged = false;
+                _hildirTowerKey = null;
+                _hildirTowerMissingLogged = false;
+                _hildirTalkAct = -1;
+                _harvester?.Reset();
                 // A key from a run that crashed before it could end would otherwise answer "already
                 // told" the first time this run asks him.
                 TraderVoice.ClearKeys(SagaNames.IsHaldorKey);
@@ -3779,6 +3801,9 @@ namespace ICanShowYouTheWorld.RunMode
             // Act IV's two.
             if (shadePlayer != null) PollFrozenOne(shadePlayer);
             PollHildir(shadePlayer);
+            // Act V.
+            if (shadePlayer != null) PollHarvester(shadePlayer);
+            if (shadePlayer != null) PollFeast(shadePlayer);
             // After the thane, so a lesson or a respec he just gave shows in the same second.
             if (shadePlayer != null) PollWaySkill(shadePlayer);
             PollDiscoveries();
@@ -4693,10 +4718,19 @@ namespace ICanShowYouTheWorld.RunMode
             try
             {
                 var tracks = _challenges?.Tracks;
-                bool returned = tracks != null && StepPredicates.StepDone(tracks, "pk-chest");
-                // Her act, OR one of her steps still live: PEAK carries into Act V unfinished.
-                bool wanted = _active && (_actIndex == 3 || (tracks != null &&
-                              (StepPredicates.HildirFind(tracks) || StepPredicates.HildirChest(tracks))));
+                bool plains = _actIndex >= 4;
+                bool returned = tracks != null && StepPredicates.StepDone(tracks, plains ? "st-chest" : "pk-chest");
+                // Acts IV and V, OR one of her steps still live: PEAK and STEADING carry unfinished.
+                bool wanted = _active && (_actIndex == 3 || _actIndex == 4 || (tracks != null &&
+                              (StepPredicates.HildirFind(tracks) || StepPredicates.HildirChest(tracks) ||
+                               StepPredicates.HildirTowerChest(tracks))));
+                int talkAct = plains ? 4 : 3;
+                if (_hildirTalkAct != talkAct)
+                {
+                    _hildirTalkAct = talkAct;
+                    if (plains) _hildir.SetTalk(HildirVoice.PlainsTalk, HildirVoice.PlainsTalkAfter);
+                    else _hildir.SetTalk(HildirVoice.Talk, HildirVoice.TalkAfter);
+                }
                 _hildir.Tick(player, wanted, returned, null, false);
 
                 if (tracks == null || !wanted) return;
@@ -4728,6 +4762,29 @@ namespace ICanShowYouTheWorld.RunMode
                     _challenges.ReportEvent(ChallengeKind.PlayerEvent, SagaNames.HildirChest);
                     Message("Hildir has her chest back. The cold gave it up.");
                 }
+
+                // Her last chest, from the Sealed Tower (Act V's STEADING).
+                if (_hildirTowerKey == null && _hildir.Attached)
+                {
+                    var tower = HildirVoice.TowerChest(_hildir.VanillaGives);
+                    if (tower != null)
+                    {
+                        _hildirTowerKey = tower.m_setsGlobalKey;
+                        Debug.Log($"[ICanShowYouTheWorld] Hildir's Sealed Tower chest: '{tower.m_prefab.name}', key '{_hildirTowerKey}'.");
+                    }
+                    else if (!_hildirTowerMissingLogged && StepPredicates.HildirTowerChest(tracks))
+                    {
+                        _hildirTowerMissingLogged = true;
+                        Debug.LogError("[ICanShowYouTheWorld] Hildir's give entries name no Sealed Tower chest - " +
+                                       "st-chest cannot complete. See the 'Hildir accepts' lines.");
+                    }
+                }
+
+                if (_hildirTowerKey != null && StepPredicates.HildirTowerChest(tracks) && TraderVoice.KeySet(_hildirTowerKey))
+                {
+                    _challenges.ReportEvent(ChallengeKind.PlayerEvent, SagaNames.HildirTowerChest);
+                    Message("Hildir has the last of her things. The tower gave it up.");
+                }
             }
             catch (Exception ex)
             {
@@ -4735,7 +4792,90 @@ namespace ICanShowYouTheWorld.RunMode
             }
         }
 
+        /// <summary>
+        /// The harvester: at a plains stone ring from the moment the plains are reached, in every act
+        /// after. Wants to see someone eat from the field.
+        /// </summary>
+        private void PollHarvester(Player player)
+        {
+            if (_harvester == null || _challenges == null) return;
+
+            try
+            {
+                var tracks = _challenges.Tracks;
+                bool pastPlains = _actIndex >= 5;
+                bool wanted = _actIndex >= 4 &&
+                              (pastPlains || StepPredicates.Harvester(tracks) || StepPredicates.StepDone(tracks, "pl-arrive"));
+
+                // After Yagluth: his defeat key, since Yagluth is usually the last god and the act
+                // index does not move past the final act.
+                bool yagluthDown = false;
+                try { yagluthDown = ZoneSystem.instance != null && ZoneSystem.instance.GetGlobalKey("defeated_goblinking"); } catch { }
+
+                var phase = StepPredicates.HarvesterFind(tracks) ? Harvester.Phase.Speak
+                          : StepPredicates.HarvesterAsk(tracks) ? Harvester.Phase.Ask
+                          : (pastPlains || yagluthDown) ? Harvester.Phase.After
+                          : Harvester.Phase.Idle;
+
+                bool fed = PlainsMeal.FullPlainsTable(FoodPrefabs(player));
+
+                bool spoken, fedNow;
+                _harvester.Tick(player, phase, fed, wanted, out spoken, out fedNow);
+                RefreshNpcPin(PinHarvester, wanted, _harvester.Spot(), Harvester.HarvesterName);
+
+                if (spoken && phase == Harvester.Phase.Speak)
+                {
+                    _challenges.ReportEvent(ChallengeKind.PlayerEvent, SagaNames.HarvesterFound);
+                    Message("He wants to see someone eat from the field.");
+                }
+                if (fedNow && phase == Harvester.Phase.Ask)
+                {
+                    _challenges.ReportEvent(ChallengeKind.PlayerEvent, SagaNames.HarvesterFed);
+                    Debug.Log("[ICanShowYouTheWorld] The harvester saw someone eat from the field; the Stormsworn mantle is taught.");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogOnce("harvester", ex);
+            }
+        }
+
+        /// <summary>The steading's feast: a full table with something from the field, at home.</summary>
+        private void PollFeast(Player player)
+        {
+            try
+            {
+                if (_challenges == null || !StepPredicates.SteadingFeast(_challenges.Tracks)) return;
+                if (!player.IsSafeInHome()) return;
+
+                var foods = FoodPrefabs(player);
+                if (!PlainsMeal.FullPlainsTable(foods)) return;
+
+                Debug.Log("[ICanShowYouTheWorld] The feast: " + string.Join(", ", foods) + ", at home.");
+                _challenges.ReportEvent(ChallengeKind.PlayerEvent, SagaNames.SteadingFeast);
+                Message("A full table, in a house you built, with bread from your own field.");
+            }
+            catch (Exception ex)
+            {
+                LogOnce("feast", ex);
+            }
+        }
+
+        /// <summary>What the player has eaten, as prefab names (Player.Food.m_name).</summary>
+        private static List<string> FoodPrefabs(Player player)
+        {
+            var names = new List<string>();
+            try
+            {
+                var foods = player?.GetFoods();
+                if (foods != null) foreach (var f in foods) if (f != null) names.Add(f.m_name);
+            }
+            catch { }
+            return names;
+        }
+
         // The saga's people on the map. See SagaPins for why they are never saved.
+        private const string PinHarvester = "harvester";
         private const string PinFrozen = "frozen";
         private const string PinDrowned = "drowned";
         private const string PinKeeper = "keeper";
@@ -6090,6 +6230,7 @@ namespace ICanShowYouTheWorld.RunMode
             _keeper?.Reset();
             _drowned?.Reset();
             _frozenOne?.Reset();
+            _harvester?.Reset();
             _haldor.Detach();
             _witch.Detach();
             _hildir.Detach();
@@ -9881,6 +10022,9 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>Act IV's third track (2026-10-05): Hildir's errand - optional heat, never a gate on Moder.</summary>
         public const string PeakTrackId = "peak";
 
+        /// <summary>Act V's third track (2026-10-05): the windmill, Hildir's last chest, the feast at home.</summary>
+        public const string SteadingTrackId = "steading";
+
         /// <summary>
         /// Every track a saga can have, in DISPLAY order, with the label each shows.
         ///
@@ -9899,6 +10043,7 @@ namespace ICanShowYouTheWorld.RunMode
             (ForgeTrackId,  "FORGE"),
             (MarshTrackId,  "MARSH"),
             (PeakTrackId,   "PEAK"),
+            (SteadingTrackId, "STEADING"),
         };
 
         /// <summary>
@@ -10067,7 +10212,7 @@ namespace ICanShowYouTheWorld.RunMode
                 var zone = ZoneSystem.instance;
                 if (zone?.m_locations == null) return;
 
-                var keys = new[] { "Sunken", "BogWitch", "Vendor", "Hildir", "Cave", "Crypt" };
+                var keys = new[] { "Sunken", "BogWitch", "Vendor", "Hildir", "Cave", "Crypt", "Henge", "Stone" };
                 var names = zone.m_locations
                     .Where(l => l != null && !string.IsNullOrEmpty(l.m_prefabName) &&
                                 keys.Any(k => l.m_prefabName.IndexOf(k, StringComparison.OrdinalIgnoreCase) >= 0))
@@ -10119,6 +10264,10 @@ namespace ICanShowYouTheWorld.RunMode
             SagaNames.FrozenPaid,
             SagaNames.HildirMet,
             SagaNames.HildirChest,
+            SagaNames.HarvesterFound,
+            SagaNames.HarvesterFed,
+            SagaNames.HildirTowerChest,
+            SagaNames.SteadingFeast,
         };
 
         /// <summary>
@@ -11401,6 +11550,21 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
+                // The harvester (2026-10-05), at the plains stone ring nearest the player.
+                Id = "pl-harvester", MainQuest = true, Track = CraftTrackId, Kind = ChallengeKind.PlayerEvent,
+                Param = SagaNames.HarvesterFound, Target = 1, Display = "Speak with the harvester",
+                Hint = "A faded gold ghost by the standing stones on the plains. He is marked on your map.",
+            },
+            new ChallengeDefinition
+            {
+                // His ask: eat from the field. A full table with something the plains grew (PlainsMeal),
+                // shown to him - his people never once sat down to what they harvested.
+                Id = "pl-meal", MainQuest = true, Track = CraftTrackId, Kind = ChallengeKind.PlayerEvent,
+                Param = SagaNames.HarvesterFed, Target = 1, Display = "Eat from the field",
+                Hint = "Three foods at once, one of them from the plains: barley bread, lox pie or fish wraps. Then let him see.",
+            },
+            new ChallengeDefinition
+            {
                 // The plains' four dangers on ONE list — see "mq-cull".
                 Id = "pl-cull", MainQuest = true, Kind = ChallengeKind.KillPrefab,
                 Display = "Break the plains",
@@ -11437,9 +11601,24 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
-                Id = "pl-windmill", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Windmill",
+                Id = "pl-windmill", MainQuest = true, Track = SteadingTrackId, Kind = ChallengeKind.BuildPiece, Param = "Windmill",
                 Target = 1, Display = "Build a windmill", RewardText = "Barley and flour for the last feast",
                 Hint = "Stone and wood, on flat open ground. It grinds barley into flour.",
+            },
+            new ChallengeDefinition
+            {
+                // Hildir's last chest, from the Sealed Tower - her own vanilla quest, its key read off her.
+                Id = "st-chest", MainQuest = true, Track = SteadingTrackId, Kind = ChallengeKind.PlayerEvent,
+                Param = SagaNames.HildirTowerChest, Target = 1, Display = "Bring back Hildir\u2019s chest from the Sealed Tower",
+                Hint = "A sealed tower on the plains, fulings all round it. Bring her chest out and hand it to her.",
+            },
+            new ChallengeDefinition
+            {
+                // The saga's closing rhyme: Act I's first meal, five biomes later, in a house you built.
+                Id = "st-feast", MainQuest = true, Track = SteadingTrackId, Kind = ChallengeKind.PlayerEvent,
+                Param = SagaNames.SteadingFeast, Target = 1, Display = "A feast at your own table",
+                Hint = "At home \u2014 roof, fire, comfort \u2014 with three foods at once, one of them from your own field.",
+                Opening = "You sat down to a meal in the meadows once, under a roof you had just raised. Do it again.",
             },
             // The deathsquitos, lox and berserkers are clauses of "pl-cull" above now.
             new ChallengeDefinition

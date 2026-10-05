@@ -115,6 +115,33 @@ namespace ICanShowYouTheWorld.RunMode
         public static TraderVoice Create() =>
             new TraderVoice("Hildir", "hildir", Talk, TalkAfter) { MetRange = 6f };
 
+        /// <summary>Act V: what a harvest leaves behind, and her last chest.</summary>
+        public static readonly string[] PlainsTalk =
+        {
+            "The plains were a field once. All of it. You can still see the lines if you stand on a hill.",
+            "They took everything and kept it, and then they were gone, and the keeping stayed. That's a harvest for you.",
+            "The last of my things is in a sealed tower out on the plains. The little ones built around it. Fetch it?",
+            "Eat well before you go out there. The ones who built it never did.",
+        };
+
+        public static readonly string[] PlainsTalkAfter = { PlainsTalk[0], PlainsTalk[1], PlainsTalk[3] };
+
+        /// <summary>The Sealed Tower's chest among her give entries: a name naming the tower, else the one numbered 3.</summary>
+        public static Trader.TraderUseItem TowerChest(System.Collections.Generic.IReadOnlyList<Trader.TraderUseItem> gives)
+        {
+            if (gives == null) return null;
+            Trader.TraderUseItem numbered = null;
+            foreach (var u in gives)
+            {
+                string n = u?.m_prefab != null ? u.m_prefab.name : null;
+                if (string.IsNullOrEmpty(n) || string.IsNullOrEmpty(u.m_setsGlobalKey)) continue;
+                if (n.IndexOf("tower", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    n.IndexOf("fort", System.StringComparison.OrdinalIgnoreCase) >= 0) return u;
+                if (numbered == null && n.EndsWith("3")) numbered = u;
+            }
+            return numbered;
+        }
+
         /// <summary>
         /// Picks the Howling Cavern's chest among Hildir's own give entries: a prefab name naming the
         /// cave, else one numbered 2 (the game numbers her chests 1-3: Minimap.PinType.Hildir2, and the

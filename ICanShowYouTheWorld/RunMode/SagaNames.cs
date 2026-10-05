@@ -119,6 +119,18 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>Act IV: Hildir's chest from the Howling Cavern, returned - her own vanilla quest's key.</summary>
         public const string HildirChest = "HildirChest";
 
+        /// <summary>Act V: the harvester, first spoken to.</summary>
+        public const string HarvesterFound = "HarvesterFound";
+
+        /// <summary>Act V: the harvester has seen someone eat from the field.</summary>
+        public const string HarvesterFed = "HarvesterFed";
+
+        /// <summary>Act V: Hildir's third chest, from the Sealed Tower, returned.</summary>
+        public const string HildirTowerChest = "HildirTowerChest";
+
+        /// <summary>Act V: a full table with something from the field, at home.</summary>
+        public const string SteadingFeast = "SteadingFeast";
+
         public static bool IsHaldorKey(string key) =>
             !string.IsNullOrEmpty(key) && key.StartsWith(HaldorKeyPrefix, System.StringComparison.OrdinalIgnoreCase);
 

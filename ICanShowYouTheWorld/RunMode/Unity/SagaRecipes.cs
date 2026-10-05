@@ -184,9 +184,9 @@ namespace ICanShowYouTheWorld.RunMode
                 StationPrefab = "piece_artisanstation",
                 MinStationLevel = 1,
                 Resources = new[] { ("LoxPelt", 4), ("Needle", 10), ("Silver", 6) },
-                RequiresStepDone = "pl-berserker",
-                TaughtLine = "The last of it. Lox hide, cured in a country that burns — and this piece " +
-                             "asks nothing back.",
+                RequiresStepDone = "pl-meal",
+                TaughtLine = "The harvester's mantle, woven against the midday fire. Lox pelt, needles and silver, " +
+                             "at a table for the fine work - the storm's set, whole.",
             },
 
             // The Berserker's own: a second pair when the first is lost, and the bench is where the
