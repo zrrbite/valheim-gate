@@ -137,6 +137,9 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>Act VI: a light set free at the lantern-keeper's side, at night.</summary>
         public const string LightFreed = "LightFreed";
 
+        /// <summary>Act VII: the charred one, first spoken to.</summary>
+        public const string CharredFound = "CharredFound";
+
         public static bool IsHaldorKey(string key) =>
             !string.IsNullOrEmpty(key) && key.StartsWith(HaldorKeyPrefix, System.StringComparison.OrdinalIgnoreCase);
 

@@ -147,6 +147,9 @@ namespace ICanShowYouTheWorld.RunMode
         public static bool LanternFree(IReadOnlyList<QuestTrack> tracks) =>
             Live(tracks).Any(d => d.Kind == ChallengeKind.PlayerEvent && d.Param == SagaNames.LightFreed);
 
+        public static bool CharredFind(IReadOnlyList<QuestTrack> tracks) =>
+            Live(tracks).Any(d => d.Kind == ChallengeKind.PlayerEvent && d.Param == SagaNames.CharredFound);
+
         /// <summary>This exact step is current on some unblocked track.</summary>
         public static bool StepLive(IReadOnlyList<QuestTrack> tracks, string stepId) =>
             !string.IsNullOrEmpty(stepId) && Live(tracks).Any(d => d.Id == stepId);

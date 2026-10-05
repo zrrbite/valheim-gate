@@ -355,6 +355,7 @@
     <Compile Include="RunMode\Unity\FrozenOne.cs" />
     <Compile Include="RunMode\Unity\Harvester.cs" />
     <Compile Include="RunMode\Unity\LanternKeeper.cs" />
+    <Compile Include="RunMode\Unity\CharredOne.cs" />
     <Compile Include="RunMode\PlainsMeal.cs" />
     <Compile Include="RunMode\Unity\TraderVoice.cs" />
     <Compile Include="RunMode\Unity\HaldorVoice.cs" />

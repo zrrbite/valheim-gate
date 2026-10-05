@@ -530,6 +530,16 @@ namespace ICanShowYouTheWorld.RunMode
             LightIntensity = 1.1f,
         };
 
+        /// <summary>The charred one: burned dark, an ember glow inside - burned, not gone.</summary>
+        public static Look Charred() => new Look
+        {
+            Value = -0.2f,
+            Emission = new Color(0.55f, 0.18f, 0.04f),
+            LightRange = 5.5f,
+            LightColor = new Color(1.0f, 0.45f, 0.15f),
+            LightIntensity = 1.0f,
+        };
+
         public static Look Keeper() => new Look
         {
             Saturation = -0.8f,

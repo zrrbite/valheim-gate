@@ -213,6 +213,10 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>Act VI's speaker at a dvergr site: one light set free, the Borrowed Light taught.</summary>
         private LanternKeeper _lantern;
 
+        /// <summary>Act VII's speaker at the landing: the pyre that makes Last Light.</summary>
+        private CharredOne _charred;
+        private bool _flametalLogged;
+
         /// <summary>The real light the Borrowed Light casts while equipped, on the player. See PollBorrowedLight.</summary>
         private GameObject _borrowedGlow;
         private SpiritChase _spirit;
@@ -587,6 +591,14 @@ namespace ICanShowYouTheWorld.RunMode
                         string graves = _thane.Bearing(player, !IsNight, toLearn);
                         if (!string.IsNullOrEmpty(graves)) return graves;
                     }
+                }
+
+                // The charred one while he is to be found or his pyre is live.
+                if (_charred != null && _challenges != null &&
+                    (StepPredicates.CharredFind(_challenges.Tracks) || StepPredicates.StepLive(_challenges.Tracks, "as-lastlight")))
+                {
+                    string pyre = _charred.Bearing(player, "Someone waits at the landing");
+                    if (!string.IsNullOrEmpty(pyre)) return pyre;
                 }
 
                 // The lantern-keeper while he is to be found or paid.
@@ -1250,6 +1262,7 @@ namespace ICanShowYouTheWorld.RunMode
             _frozenOne = new FrozenOne(_rng);
             _harvester = new Harvester(_rng);
             _lantern = new LanternKeeper(_rng);
+            _charred = new CharredOne(_rng);
             _witch.AltAction = ReforgeAtWitch;
             _witch.AltProgress = ReforgeProgress;
             _spirit = new SpiritChase(_cfg, _rng);
@@ -2367,6 +2380,7 @@ namespace ICanShowYouTheWorld.RunMode
                 _hildirTalkAct = -1;
                 _harvester?.Reset();
                 _lantern?.Reset();
+                _charred?.Reset();
                 // A key from a run that crashed before it could end would otherwise answer "already
                 // told" the first time this run asks him.
                 TraderVoice.ClearKeys(SagaNames.IsHaldorKey);
@@ -3833,6 +3847,8 @@ namespace ICanShowYouTheWorld.RunMode
             // Act VI.
             if (shadePlayer != null) PollLanternKeeper(shadePlayer);
             PollBorrowedLight(shadePlayer);
+            // Act VII.
+            if (shadePlayer != null) PollCharredOne(shadePlayer);
             // After the thane, so a lesson or a respec he just gave shows in the same second.
             if (shadePlayer != null) PollWaySkill(shadePlayer);
             PollDiscoveries();
@@ -4947,6 +4963,85 @@ namespace ICanShowYouTheWorld.RunMode
             }
         }
 
+        /// <summary>
+        /// The charred one: waiting where the player came ashore, from the moment the Ashlands are
+        /// reached. His pyre - a fire beside him - takes the bow, flametal and three lights.
+        /// </summary>
+        private void PollCharredOne(Player player)
+        {
+            if (_charred == null || _challenges == null) return;
+
+            try
+            {
+                if (_charred.FlametalToken == null) _charred.FlametalToken = ResolveFlametal();
+
+                var tracks = _challenges.Tracks;
+                bool pastAsh = _actIndex >= 7;
+                bool wanted = _actIndex >= 6 &&
+                              (pastAsh || StepPredicates.CharredFind(tracks) || StepPredicates.StepDone(tracks, "as-arrive"));
+
+                bool faderDown = false;
+                try { faderDown = ZoneSystem.instance != null && ZoneSystem.instance.GetGlobalKey("defeated_fader"); } catch { }
+
+                var phase = StepPredicates.CharredFind(tracks) ? CharredOne.Phase.Speak
+                          : StepPredicates.StepLive(tracks, "as-lastlight") ? CharredOne.Phase.Pyre
+                          : (pastAsh || faderDown) ? CharredOne.Phase.After
+                          : CharredOne.Phase.Idle;
+
+                Vector3? at = _charred.Position() ?? _charred.Spot();
+                bool fire = phase == CharredOne.Phase.Pyre && at != null &&
+                            Vector3.Distance(player.transform.position, at.Value) < 40f && FrozenOne.FireNear(at.Value);
+
+                bool spoken, burned;
+                _charred.Tick(player, phase, fire, wanted, out spoken, out burned);
+                RefreshNpcPin(PinCharred, wanted, _charred.Spot(), CharredOne.CharredName);
+
+                if (spoken && phase == CharredOne.Phase.Speak)
+                {
+                    _challenges.ReportEvent(ChallengeKind.PlayerEvent, SagaNames.CharredFound);
+                    Message("A fire beside him: the bow, flametal and three lights. Let it burn.");
+                }
+                if (burned)
+                {
+                    GrantItem(SagaItems.LastLightPrefab, 1);
+                    Message("Last Light. The light that strung it is in it now, spent.");
+                    Debug.Log("[ICanShowYouTheWorld] The charred one's pyre made Last Light.");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogOnce("charred", ex);
+            }
+        }
+
+        /// <summary>
+        /// The game's flametal, by shared name: the Ashlands made it 'FlametalNew' and older builds
+        /// call it 'Flametal'. Resolved from ObjectDB rather than guessed, and logged once.
+        /// </summary>
+        private string ResolveFlametal()
+        {
+            var odb = ObjectDB.instance;
+            if (odb == null) return null;
+            foreach (var name in new[] { "FlametalNew", "Flametal" })
+            {
+                var drop = odb.GetItemPrefab(name)?.GetComponent<ItemDrop>();
+                var shared = drop?.m_itemData?.m_shared;
+                if (shared == null) continue;
+                if (!_flametalLogged)
+                {
+                    _flametalLogged = true;
+                    Debug.Log($"[ICanShowYouTheWorld] Flametal for the charred one's pyre: '{name}' ('{shared.m_name}').");
+                }
+                return shared.m_name;
+            }
+            if (!_flametalLogged)
+            {
+                _flametalLogged = true;
+                Debug.LogError("[ICanShowYouTheWorld] No flametal item found ('FlametalNew' or 'Flametal') - the pyre cannot be paid.");
+            }
+            return null;
+        }
+
         /// <summary>While the Borrowed Light is equipped, a warm point light rides on the player.</summary>
         private void PollBorrowedLight(Player player)
         {
@@ -5017,6 +5112,7 @@ namespace ICanShowYouTheWorld.RunMode
         // The saga's people on the map. See SagaPins for why they are never saved.
         private const string PinHarvester = "harvester";
         private const string PinLantern = "lantern";
+        private const string PinCharred = "charred";
         private const string PinFrozen = "frozen";
         private const string PinDrowned = "drowned";
         private const string PinKeeper = "keeper";
@@ -6373,6 +6469,7 @@ namespace ICanShowYouTheWorld.RunMode
             _frozenOne?.Reset();
             _harvester?.Reset();
             _lantern?.Reset();
+            _charred?.Reset();
             ClearBorrowedGlow();
             _haldor.Detach();
             _witch.Detach();
@@ -9764,10 +9861,10 @@ namespace ICanShowYouTheWorld.RunMode
             // appeared. StatDelta snapshots the counter when the slot is dealt and counts up from
             // there - "eight MORE", which is what the task says.
             new ChallengeDefinition { Id = "c-bowkill", Tier = 1, Kind = ChallengeKind.StatDelta, Param = SagaNames.BowKillsStat,
-                                      Target = 6, HeatReward = 2, RequiresItem = SagaItems.ThorsBowPrefab,
+                                      Target = 6, HeatReward = 2, RequiresItem = SagaItems.ThorsBowPrefab + "|" + SagaItems.LastLightPrefab,
                                       Display = "Thunder at range (6 kills)" },
             new ChallengeDefinition { Id = "c-bowkill2", Tier = 2, Kind = ChallengeKind.StatDelta, Param = SagaNames.BowKillsStat,
-                                      Target = 15, HeatReward = 3, RequiresItem = SagaItems.ThorsBowPrefab,
+                                      Target = 15, HeatReward = 3, RequiresItem = SagaItems.ThorsBowPrefab + "|" + SagaItems.LastLightPrefab,
                                       Display = "The storm hunts with you (15 kills)" },
             new ChallengeDefinition { Id = "c-stormward", Tier = 1, Kind = ChallengeKind.StatDelta, Param = SagaNames.StormAnswersStat,
                                       Target = 4, HeatReward = 2, RequiresItem = SagaItems.StormwardPrefab + "|" + SagaItems.IronboundPrefab,
@@ -10127,6 +10224,13 @@ namespace ICanShowYouTheWorld.RunMode
                     "In the mist there were lamps, and the lamps were not stolen. The dvergr had " +
                     "worked out how to borrow light and hand it back, and had no intention of " +
                     "explaining it to something as new as you.",
+                // Written 2026-10-05: the BOOK stopped after the Queen with nothing to close her act.
+                ChapterClose =
+                    "The Queen came apart in the dark under the mist, and the dvergr took their lanterns " +
+                    "back down without a fight. Nobody in the tenth world had ever owned a light. The " +
+                    "dvergr had simply been the only ones honest enough to say so - and you had been " +
+                    "carrying yours that way since the meadows. But borrowed light still has to go " +
+                    "somewhere in the end. Everything in the world had been running south to find out where.",
                 BossDefeatKey = "defeated_queen", Tracks = Split(MistlandsChain()),
             },
             new ActDefinition
@@ -10138,6 +10242,13 @@ namespace ICanShowYouTheWorld.RunMode
                 Chapter =
                     "Every thread you had pulled ran the same direction, and it ran here, where " +
                     "everything has already burned once. You followed it in.",
+                // The saga's ending whenever Fader is the final boss (2026-10-05).
+                ChapterClose =
+                    "Fader went down in his own fire, and everything that had come south went with him. " +
+                    "That was where the light had been going all along: here, to the end of it, the way " +
+                    "light should. The meadows', the forest's, the marsh's, the mountain's - all of it " +
+                    "had been on its way to burn out. Odin had sent you to find out where. You found out, " +
+                    "and the last of yours you let go of yourself.",
                 BossDefeatKey = "defeated_fader", Tracks = Split(AshlandsChain()),
             },
             new ActDefinition
@@ -10422,6 +10533,7 @@ namespace ICanShowYouTheWorld.RunMode
             SagaNames.SteadingFeast,
             SagaNames.LanternFound,
             SagaNames.LightFreed,
+            SagaNames.CharredFound,
         };
 
         /// <summary>
@@ -11892,6 +12004,22 @@ namespace ICanShowYouTheWorld.RunMode
                 Id = "as-arrive", MainQuest = true, Kind = ChallengeKind.ReachBiome, Param = "AshLands",
                 Target = 1, Display = "Reach the Ashlands",
                 Hint = "Far south, across a sea that boils. The shore itself burns.",
+            },
+            new ChallengeDefinition
+            {
+                // The charred one (2026-10-05), waiting where the player came ashore.
+                Id = "as-charred", MainQuest = true, Track = CraftTrackId, Kind = ChallengeKind.PlayerEvent,
+                Param = SagaNames.CharredFound, Target = 1, Display = "Speak with the charred one",
+                Hint = "A burned man who does not attack, near where you came ashore. He is marked on your map.",
+            },
+            new ChallengeDefinition
+            {
+                // His pyre: a fire beside him, then the bow (Thor's, or any bow), ten flametal and three
+                // lights (rescued or wisps). CollectItem on the result, so however it was made counts.
+                Id = "as-lastlight", MainQuest = true, Track = CraftTrackId, Kind = ChallengeKind.CollectItem,
+                Param = SagaItems.LastLightName, Target = 1, Display = "Carry Last Light",
+                Hint = "Build a fire beside the charred one. Bring the bow you were given in the meadows, ten flametal and three lights. Let it burn.",
+                Opening = "Where light goes to end. Let it.",
             },
             new ChallengeDefinition
             {

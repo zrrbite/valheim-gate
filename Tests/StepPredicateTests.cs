@@ -247,6 +247,11 @@ static class StepPredicateTests
         Check.That(StepPredicates.LanternFree(lightFree) && StepPredicates.Lantern(lightFree) && !StepPredicates.Lantern(feast),
                    "then a light is set free; he is wanted for his own steps only");
 
+        // --- 2026-10-05: Act VII's voice ---------------------------------------------------
+        var charred = new List<QuestTrack> { Track("craft", Step("as-charred", ChallengeKind.PlayerEvent, SagaNames.CharredFound)) };
+        Check.That(StepPredicates.CharredFind(charred) && !StepPredicates.CharredFind(lanternFind),
+                   "the charred one's step is his own");
+
         // --- Degenerate input ---------------------------------------------------------------
         Check.That(!StepPredicates.DeerHunt(null), "a null track list is not a hunt");
         Check.That(!StepPredicates.DeerHunt(new List<QuestTrack>()), "nor is an empty one");

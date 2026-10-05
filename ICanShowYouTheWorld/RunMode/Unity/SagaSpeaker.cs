@@ -64,6 +64,13 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         protected virtual string BodyPrefab => "Ghost";
 
+        /// <summary>
+        /// Tried in order when <see cref="BodyPrefab"/> does not resolve - a body name is asset data
+        /// this assembly cannot verify. The Ghost is always the last resort, so a speaker whose
+        /// guessed body is wrong still stands (in the wrong clothes) rather than never appearing.
+        /// </summary>
+        protected virtual string[] BodyFallbacks => new string[0];
+
         /// <summary>Only CREATED once the player is near the spot, so never culled at birth.</summary>
         protected virtual float SpawnRange => 70f;
 
@@ -208,12 +215,23 @@ namespace ICanShowYouTheWorld.RunMode
             if (Vector3.Distance(player.transform.position, spot) > SpawnRange) return;
 
             var scene = ZNetScene.instance;
-            var prefab = scene == null ? null : scene.GetPrefab(BodyPrefab);
+            GameObject prefab = null;
+            string bodyUsed = null;
+            if (scene != null)
+            {
+                foreach (var candidate in new[] { BodyPrefab }.Concat(BodyFallbacks).Concat(new[] { "Ghost" }))
+                {
+                    prefab = scene.GetPrefab(candidate);
+                    if (prefab != null) { bodyUsed = candidate; break; }
+                }
+            }
             if (prefab == null)
             {
-                Debug.LogError($"[ICanShowYouTheWorld] Cannot spawn {Name}: no '{BodyPrefab}' prefab.");
+                Debug.LogError($"[ICanShowYouTheWorld] Cannot spawn {Name}: no '{BodyPrefab}' prefab, nor any fallback.");
                 return;
             }
+            if (bodyUsed != BodyPrefab)
+                Debug.LogWarning($"[ICanShowYouTheWorld] {Name}: no '{BodyPrefab}' body - wearing '{bodyUsed}'.");
 
             // The MARGIN overload: the plain GetSolidHeight(Vector3) raycasts from a kilometre up and
             // takes the first collider. A few metres above the generated height cannot reach over a

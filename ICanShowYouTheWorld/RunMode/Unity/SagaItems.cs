@@ -356,6 +356,26 @@ namespace ICanShowYouTheWorld.RunMode
         private const float ThorsBowLightningPerLevel = 4f;
 
         /// <summary>
+        /// Act VII: Thor's bow burned at the charred one's pyre with flametal and three lights, and
+        /// reforged. Everything Thor's bow does, it does (IsThorsBow): the strike on impact, the
+        /// element the Hunter cycles, the kill count. Heavier, and it keeps a standing fire on top of
+        /// whichever element it carries - let it burn.
+        /// </summary>
+        public const string LastLightPrefab = "Saga_LastLight";
+        public const string LastLightName = "Last Light";
+
+        private const float LastLightPierce = 80f;
+        private const float LastLightPiercePerLevel = 6f;
+        private const float LastLightElement = 44f;
+        private const float LastLightElementPerLevel = 6f;
+        private const float LastLightFire = 20f;
+        private const float LastLightFirePerLevel = 3f;
+
+        /// <summary>Thor's bow or what it became: every bow hook (strike, flash, element) asks this.</summary>
+        public static bool IsThorsBow(string sharedName) =>
+            sharedName == ThorsBowName || sharedName == LastLightName;
+
+        /// <summary>
         /// How far the lightning reaches around an arrow's impact, in metres.
         /// </summary>
         /// <remarks>
@@ -513,6 +533,26 @@ namespace ICanShowYouTheWorld.RunMode
                     shared.m_damagesPerLevel.m_fire = 0f;
                     shared.m_damagesPerLevel.m_frost = 0f;
                     shared.m_damagesPerLevel.m_spirit = 0f;
+                },
+            },
+
+            new SagaItemDefinition
+            {
+                // Act VII: Thor's bow, reforged in the charred one's pyre. Thor's bow's own Tune runs
+                // first, so nothing it does can drift between the two; then the heavier numbers. The
+                // element (and Last Light's standing fire) is applied by the clone pass, as Thor's is.
+                SourcePrefab = "BowAshlands",
+                SourceFallbacks = new[] { "BowSpineSnap", "BowDraugrFang", "BowHuntsman", "BowFineWood", "Bow" },
+                PrefabName = LastLightPrefab,
+                DisplayName = LastLightName,
+                Description = "Thor's bow, burned. The meadows' hide is ash now, and the light that strung it went " +
+                              "into the fire on purpose — so the fire stayed in it. It still answers with the " +
+                              "storm, and everything it touches burns a little.",
+                Tune = shared =>
+                {
+                    All.First(d => d.PrefabName == ThorsBowPrefab).Tune(shared);
+                    shared.m_damages.m_pierce = LastLightPierce;
+                    shared.m_damagesPerLevel.m_pierce = LastLightPiercePerLevel;
                 },
             },
 
@@ -960,7 +1000,7 @@ namespace ICanShowYouTheWorld.RunMode
                 if (player == null) return;
 
                 var weapon = player.GetCurrentWeapon();
-                if (weapon == null || weapon.m_shared == null || weapon.m_shared.m_name != ThorsBowName) return;
+                if (weapon == null || weapon.m_shared == null || !IsThorsBow(weapon.m_shared.m_name)) return;
 
                 if (ProjectileOwner == null || ProjectileWeapon == null) return;
 
@@ -987,7 +1027,7 @@ namespace ICanShowYouTheWorld.RunMode
                     if (!ReferenceEquals(owner, player)) continue;
 
                     var fired = ProjectileWeapon.GetValue(p) as ItemDrop.ItemData;
-                    if (fired == null || fired.m_shared == null || fired.m_shared.m_name != ThorsBowName) continue;
+                    if (fired == null || fired.m_shared == null || !IsThorsBow(fired.m_shared.m_name)) continue;
 
                     if (lightning != null)
                     {
@@ -1074,10 +1114,12 @@ namespace ICanShowYouTheWorld.RunMode
 
             try
             {
-                if (_clones.TryGetValue(ThorsBowPrefab, out var clone) && clone != null)
+                // Both bows: the element is the run's, whichever bow carries it now.
+                foreach (var prefab in new[] { ThorsBowPrefab, LastLightPrefab })
                 {
+                    if (!_clones.TryGetValue(prefab, out var clone) || clone == null) continue;
                     var shared = clone.GetComponent<ItemDrop>()?.m_itemData?.m_shared;
-                    if (shared != null) ApplyBowElement(shared, element);
+                    if (shared != null) ApplyBowElement(shared, element, prefab == LastLightPrefab);
                 }
             }
             catch (Exception ex)
@@ -1100,15 +1142,21 @@ namespace ICanShowYouTheWorld.RunMode
         /// bow's rather than one copy's: every Thor's bow in the pack points at this block, and so
         /// does the tooltip the player reads.
         /// </remarks>
-        private static void ApplyBowElement(ItemDrop.ItemData.SharedData shared, BowElement element)
+        private static void ApplyBowElement(ItemDrop.ItemData.SharedData shared, BowElement element, bool lastLight = false)
         {
-            shared.m_damages.m_lightning = element == BowElement.Lightning ? ThorsBowLightning : 0f;
-            shared.m_damages.m_fire = element == BowElement.Fire ? ThorsBowLightning : 0f;
-            shared.m_damages.m_frost = element == BowElement.Frost ? ThorsBowLightning : 0f;
+            float e = lastLight ? LastLightElement : ThorsBowLightning;
+            float ep = lastLight ? LastLightElementPerLevel : ThorsBowLightningPerLevel;
+            // Last Light keeps a standing fire on top of whichever element it carries.
+            float baseFire = lastLight ? LastLightFire : 0f;
+            float baseFireP = lastLight ? LastLightFirePerLevel : 0f;
 
-            shared.m_damagesPerLevel.m_lightning = element == BowElement.Lightning ? ThorsBowLightningPerLevel : 0f;
-            shared.m_damagesPerLevel.m_fire = element == BowElement.Fire ? ThorsBowLightningPerLevel : 0f;
-            shared.m_damagesPerLevel.m_frost = element == BowElement.Frost ? ThorsBowLightningPerLevel : 0f;
+            shared.m_damages.m_lightning = element == BowElement.Lightning ? e : 0f;
+            shared.m_damages.m_fire = (element == BowElement.Fire ? e : 0f) + baseFire;
+            shared.m_damages.m_frost = element == BowElement.Frost ? e : 0f;
+
+            shared.m_damagesPerLevel.m_lightning = element == BowElement.Lightning ? ep : 0f;
+            shared.m_damagesPerLevel.m_fire = (element == BowElement.Fire ? ep : 0f) + baseFireP;
+            shared.m_damagesPerLevel.m_frost = element == BowElement.Frost ? ep : 0f;
         }
 
         /// <summary>The element as the HUD and the save spell it: "lightning", "fire", "frost".</summary>
@@ -1527,7 +1575,8 @@ namespace ICanShowYouTheWorld.RunMode
 
                 // AFTER Tune, which writes the bow's lightning: a clone made while a run has the bow
                 // on fire (a resume, or the holder lost to a scene teardown) must come back on fire.
-                if (def.PrefabName == ThorsBowPrefab) ApplyBowElement(shared, _bowElement);
+                if (def.PrefabName == ThorsBowPrefab || def.PrefabName == LastLightPrefab)
+                    ApplyBowElement(shared, _bowElement, def.PrefabName == LastLightPrefab);
 
                 try { def.TuneWithScene?.Invoke(this, shared); }
                 catch (Exception ex) { Debug.LogWarning($"[ICanShowYouTheWorld] Saga item '{def.PrefabName}' scene tuning failed: {ex.Message}"); }
