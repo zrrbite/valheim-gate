@@ -6125,11 +6125,6 @@ namespace ICanShowYouTheWorld.RunMode
             _boons.DefeatedBosses = Bosses.Count(b => SafeGetGlobalKey(zone, b.defeatKey));
         }
 
-        /// <summary>True when a questline track is currently asking the player to find a location.</summary>
-        private bool DiscoveryStepIsCurrent() =>
-            _challenges != null && _challenges.Tracks.Any(t =>
-                t.Current != null && t.Current.Def.Kind == ChallengeKind.DiscoverLocation);
-
         /// <summary>
         /// Which act the run is in: the number of bosses the WORLD records as dead, clamped to the
         /// last act.
@@ -6661,15 +6656,19 @@ namespace ICanShowYouTheWorld.RunMode
             // The vanilla Vegvisir near spawn still works — reading it is the player choosing to
             // skip the mystery, which is their business. Removing it would be a permanent change to
             // a world this mode otherwise leaves exactly as it found it.
-            if (!DiscoveryStepIsCurrent()) return;
+            //
+            // The ALTAR's discovery, not any discovery (2026-10-05): burial chambers and the trader
+            // are DiscoverLocation steps too, and keying on the kind pinned the Elder while the
+            // player was still looking for the crypt. Act II's altar step now waits behind Haldor,
+            // and this is what makes his lead the thing that puts it on the map.
+            string key = _acts[_actIndex].BossDefeatKey;
+            var boss = Bosses.FirstOrDefault(b => b.defeatKey == key);
+            if (boss.locName == null) return;
+            if (_challenges == null || !StepPredicates.AltarDiscovery(_challenges.Tracks, boss.locName)) return;
 
             var game = Game.instance;
             var player = Player.m_localPlayer;
             if (game == null || player == null) return;
-
-            string key = _acts[_actIndex].BossDefeatKey;
-            var boss = Bosses.FirstOrDefault(b => b.defeatKey == key);
-            if (boss.locName == null) return;
 
             try
             {
