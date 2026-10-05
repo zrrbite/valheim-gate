@@ -255,6 +255,15 @@ Stormsworn greaves when it is warm in his hands. **Hildir** keeps her camp where
 says what the mountain is: *the cold doesn't steal, it keeps*. Her own chest, lost in the Howling
 Cavern, is the act's optional third track.
 
+**Act V, as built (2026-10-05)** — `specs/2026-10-05-act-five-voices-design.md`. The act's answer is
+*industrialise it*, and **the harvester**, one of Yagluth's own people, is what that answer left: they
+cut the country into straight lines, took everything and stored it, and never once sat down. He asks
+to see someone *eat from the field* and gives the storm's last piece, the mantle. **Hildir** speaks of
+what a harvest leaves behind and wants her last chest from the Sealed Tower. And the act — the saga's
+usual last — closes its optional STEADING track on **a feast at your own table**: Act I's first meal,
+five biomes later. After Yagluth the harvester says it plainly: *the field is still there. You can eat
+from it now. Nobody is counting.*
+
 **The arc's payoff, planned:** the wisp you pocket from every race is the
 same species of thing the dvergr carry in lanterns. By Act VI the player
 discovers they have been collecting honestly since Act I — the dvergr's
@@ -397,6 +406,9 @@ answer, practised before it was taught. Act VII spends it.
 - **Hildir, in the saga** (2026-10-05) — the game's own trader, voiced for Act IV: the cold does not
   steal, it keeps. Her own vanilla quest (the Howling Cavern chest) is the PEAK track; its key is
   read off her own give entries. A `TraderVoice` configuration.
+- **The harvester** (2026-10-05) — Act V's speaker: one of Yagluth's own people, a ghost in dull gold
+  at the plains' standing stones. Wants to see someone eat from the field; gives the Stormsworn mantle.
+  His last line, after Yagluth, is the saga's usual ending. `Harvester.cs`.
 - **A way** (2026-09-27) — a class. Mechanically a set of boons the wheel never deals and
   death never takes, because what the thane taught was not lent. Everything else about it
   is a boon: applied, repaid at run end, saved and restored on the one path.

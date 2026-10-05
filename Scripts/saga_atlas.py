@@ -125,7 +125,7 @@ STATUS = {
     'thin':        ('Thin stand-in', 'thin'),
     'placeholder': ('Placeholder', 'no'),
 }
-SLUG = {'HUNT': 'hunt', 'CRAFT': 'craft', 'HEARTH': 'hearth', 'FORGE': 'forge', 'MARSH': 'marsh', 'PEAK': 'peak'}
+SLUG = {'HUNT': 'hunt', 'CRAFT': 'craft', 'HEARTH': 'hearth', 'FORGE': 'forge', 'MARSH': 'marsh', 'PEAK': 'peak', 'STEADING': 'steading'}
 
 total = 0
 acts_html = []
@@ -172,7 +172,7 @@ PAGE = u"""<title>Saga Atlas</title>
   :root {
     --ground:#eceeec; --panel:#fbfcfb; --sunk:#e2e6e3; --ink:#1c2220; --soft:#55605c; --faint:#818b87;
     --rule:#ccd3cf; --gold:#8c6a15; --gold2:#6f5307; --accent-wash:#f3ecd8;
-    --hunt:#993a26; --craft:#8c6a15; --hearth:#4f6b38; --forge:#8a5124; --marsh:#2f6b60; --peak:#4a5f86;
+    --hunt:#993a26; --craft:#8c6a15; --hearth:#4f6b38; --forge:#8a5124; --marsh:#2f6b60; --peak:#4a5f86; --steading:#7a6a2a;
     --ok:#3f6b2c; --mid:#8c6a15; --thin:#6a6f7a; --no:#993a26;
     --plate:#12161a; --plate-edge:#2b333d; --plate-gold:#cf9f37;
     --shadow:0 1px 2px rgba(20,30,26,.06), 0 8px 20px -14px rgba(20,30,26,.22);
@@ -180,14 +180,14 @@ PAGE = u"""<title>Saga Atlas</title>
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
     --ground:#0f1214; --panel:#171b1f; --sunk:#12161a; --ink:#dfe4e2; --soft:#9aa39f; --faint:#6f7874;
     --rule:#282f34; --gold:#dfae44; --gold2:#f0c96f; --accent-wash:#1d1f19;
-    --hunt:#d4735a; --craft:#dfae44; --hearth:#93b36f; --forge:#c98c56; --marsh:#5ea99a; --peak:#8fa6d4;
+    --hunt:#d4735a; --craft:#dfae44; --hearth:#93b36f; --forge:#c98c56; --marsh:#5ea99a; --peak:#8fa6d4; --steading:#d6c27a;
     --ok:#8cb36a; --mid:#dfae44; --thin:#8d949e; --no:#d4735a;
     --shadow:0 1px 2px rgba(0,0,0,.45), 0 10px 26px -14px rgba(0,0,0,.75);
   } }
   :root[data-theme="dark"] {
     --ground:#0f1214; --panel:#171b1f; --sunk:#12161a; --ink:#dfe4e2; --soft:#9aa39f; --faint:#6f7874;
     --rule:#282f34; --gold:#dfae44; --gold2:#f0c96f; --accent-wash:#1d1f19;
-    --hunt:#d4735a; --craft:#dfae44; --hearth:#93b36f; --forge:#c98c56; --marsh:#5ea99a; --peak:#8fa6d4;
+    --hunt:#d4735a; --craft:#dfae44; --hearth:#93b36f; --forge:#c98c56; --marsh:#5ea99a; --peak:#8fa6d4; --steading:#d6c27a;
     --ok:#8cb36a; --mid:#dfae44; --thin:#8d949e; --no:#d4735a;
     --shadow:0 1px 2px rgba(0,0,0,.45), 0 10px 26px -14px rgba(0,0,0,.75);
   }
@@ -251,7 +251,7 @@ PAGE = u"""<title>Saga Atlas</title>
          border-bottom:2px solid currentColor; display:flex; justify-content:space-between; align-items:baseline; }
   .ct { font-size:.66rem; opacity:.65; }
   .lane.hunt .lbl{color:var(--hunt)} .lane.craft .lbl{color:var(--craft)}
-  .lane.hearth .lbl{color:var(--hearth)} .lane.forge .lbl{color:var(--forge)} .lane.marsh .lbl{color:var(--marsh)} .lane.peak .lbl{color:var(--peak)}
+  .lane.hearth .lbl{color:var(--hearth)} .lane.forge .lbl{color:var(--forge)} .lane.marsh .lbl{color:var(--marsh)} .lane.peak .lbl{color:var(--peak)} .lane.steading .lbl{color:var(--steading)}
   .lane ol { list-style:none; margin:0; padding:0; }
   .lane li { display:flex; gap:8px; align-items:baseline; padding:.3rem 0;
              font-size:.9rem; border-bottom:1px dotted var(--rule); }
@@ -287,7 +287,7 @@ PAGE = u"""<title>Saga Atlas</title>
   <h1>Saga Atlas</h1>
   <p class="lede">Every questline in the saga, lane by lane, with the story each act is telling
   and an honest note on how finished it is.</p>
-  <p class="meta">Generated from RunService.cs at 1.0.16-run.2026-10-05g &middot; 5 October 2026</p>
+  <p class="meta">Generated from RunService.cs at 1.0.16-run.2026-10-05h &middot; 5 October 2026</p>
 
   <div class="tally">
     <div><b>__TOTAL__</b><span>quest steps</span></div>
@@ -396,6 +396,7 @@ __ACTS__
     <h2>The log</h2>
     <p>Two days of building, newest first. Every line shipped as its own installed build.</p>
     <ul class="log">
+      <li class="today"><span class="d">5 Oct</span><span>Act V gets voices &mdash; the harvester at the standing stones (eat from the field, the mantle), Hildir&rsquo;s last chest, and a STEADING track ending on a feast at your own table</span></li>
       <li class="today"><span class="d">5 Oct</span><span>Act IV gets voices &mdash; the frozen one at the treeline (a fire to wake him, a dragon egg carried down, the greaves) and Hildir&rsquo;s cold, on a new PEAK track: her own Howling Cavern chest</span></li>
       <li class="today"><span class="d">5 Oct</span><span>Act III gets voices &mdash; the drowned one at the sunken crypt (the cuirass, then let him go), the Bog Witch (preparation, and the Stormward reforged into the Ironbound Stormward)</span></li>
       <li class="today"><span class="d">5 Oct</span><span>Act II gets voices &mdash; the barrow-keeper at the burial chamber&rsquo;s door (a light for the Stormsworn helm) and Haldor, who trades the couriers&rsquo; road for a troll&rsquo;s head and marks the altar</span></li>

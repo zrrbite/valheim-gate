@@ -17,6 +17,29 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-10-05 - TASK: Act V gets voices — the harvester, Hildir's last chest, the feast (`1.0.16-run.2026-10-05h`)
+
+**Staged — no build needed here.** `git pull`, then `.\dist\windows\Install-Mod.ps1 -ModOnly`.
+Badge: `SAGA v1.0.16-run.2026-10-05h · DEV`. Carries the Act II–IV tasks below too.
+Design: `docs/superpowers/specs/2026-10-05-act-five-voices-design.md`.
+
+**The harvester** (CRAFT, after "Reach the Plains"): a faded-gold ghost by the nearest standing
+stones (map pin; `grep "harvester's ring"` — which stone ring, and where he stood). Use → his speech,
+"Speak with the harvester" completes. Then "Eat from the field": eat three foods at once, one of them
+barley bread, lox pie or fish wraps, and Use on him → the step completes and the **Stormsworn mantle**
+is at the artisan table (4 lox pelt, 10 needles, 6 silver). Without a full table he says what he wants.
+
+**STEADING** (a new third track, optional): the windmill (moved here from CRAFT); Hildir's chest from
+the Sealed Tower (`grep "Sealed Tower chest"` — which of her entries the mod picked); and "A feast at
+your own table": at home (roof, fire, comfort), three foods with one from the plains → completes.
+Yagluth must NOT wait for this track.
+
+**After Yagluth** (the usual end): the harvester's last line.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-10-05 - TASK: Act IV gets voices — the frozen one, Hildir, a PEAK track (`1.0.16-run.2026-10-05g`)
 
 **Staged — no build needed here.** `git pull`, then `.\dist\windows\Install-Mod.ps1 -ModOnly`.

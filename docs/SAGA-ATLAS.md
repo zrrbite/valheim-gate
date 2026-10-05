@@ -7,7 +7,7 @@ note on how finished it is.
 > step and target is read out of the source, so the page cannot drift from the code. The prose
 > (epigraphs, chapters, status) lives in the generator.
 
-`110` quest steps &middot; `8` acts &middot; `1` played through &middot; `6` tracks in use
+`114` quest steps &middot; `8` acts &middot; `1` played through &middot; `7` tracks in use
 
 ## How to read a lane
 
@@ -179,7 +179,7 @@ Above the treeline nothing moved and nothing rotted and nothing was hungry. The 
 
 ### Act V &mdash; The Golden Ruin
 
-`Written, not yet played` &middot; `8 steps` &middot; `2 tracks`
+`Written, not yet played` &middot; `12 steps` &middot; `3 tracks`
 
 > *They harvested a god’s herd before you. See how it ended.*
 
@@ -189,8 +189,9 @@ Somebody had done all of this before you. The plains were built out of their lea
 |--:| --- | --- |
 | 1 | Break the plains `10` | Claim Moder’s power |
 | 2 | Kill 2 Fuling Berserkers `2` | Reach the Plains |
-| 3 | Find Yagluth's altar | Cure the Stormsworn mantle |
-| 4 | **Defeat Yagluth** | Build a windmill |
+| 3 | Find Yagluth's altar | Speak with the harvester |
+| 4 | **Defeat Yagluth** | Eat from the field |
+| 5 |  | Cure the Stormsworn mantle |
 
 **Chapter ends.** The first harvesters were dust in the fields they had cleared, and you were standing in their answer. It had not worked for them either.
 

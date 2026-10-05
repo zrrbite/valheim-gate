@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-10-05 at `1.0.16-run.2026-10-05g`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-10-05 at `1.0.16-run.2026-10-05h`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -19,6 +19,10 @@ Everything below is what that file tells it.
 
 ## Where things stand
 
+- **2026-10-05, late: Act V has voices** (tag `1.0.16-run.2026-10-05h`, dev, staged + on the Mac).
+  `Harvester.cs` (fourth `SagaSpeaker`), `PlainsMeal.cs` (pure, tested), Hildir's Act V talk and Sealed
+  Tower chest, a STEADING track ending on a feast at home. Spec `specs/2026-10-05-act-five-voices-design.md`.
+  Acts II–V are all voiced now; **VI–VIII are stand-ins** (the dvergr, the Ashlands, the Deep North).
 - **2026-10-05, evening: Act IV has voices** (tag `1.0.16-run.2026-10-05g`, dev, staged + on the
   Mac). `FrozenOne.cs` (third `SagaSpeaker`; woken by a fire, paid a dragon egg), Hildir as a third
   `TraderVoice` (her vanilla Howling Cavern chest key read at runtime), a new PEAK track. Spec
