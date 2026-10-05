@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-10-05 at `1.0.16-run.2026-10-05f`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-10-05 at `1.0.16-run.2026-10-05g`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -19,6 +19,11 @@ Everything below is what that file tells it.
 
 ## Where things stand
 
+- **2026-10-05, evening: Act IV has voices** (tag `1.0.16-run.2026-10-05g`, dev, staged + on the
+  Mac). `FrozenOne.cs` (third `SagaSpeaker`; woken by a fire, paid a dragon egg), Hildir as a third
+  `TraderVoice` (her vanilla Howling Cavern chest key read at runtime), a new PEAK track. Spec
+  `specs/2026-10-05-act-four-voices-design.md`. **Next: the same exercise for Act V** (owner: "we'll
+  do the same exercise for the remaining acts").
 - **2026-10-05, later still: Act III has voices** (tag `1.0.16-run.2026-10-05f`, dev, staged + on
   the Mac). `DrownedOne.cs` (the second `SagaSpeaker`, a Draugr body), `TraderVoice.cs` (Haldor and
   the Bog Witch as configurations; the witch's reforge is an alt-use through a child trigger), the

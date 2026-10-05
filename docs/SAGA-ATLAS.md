@@ -7,7 +7,7 @@ note on how finished it is.
 > step and target is read out of the source, so the page cannot drift from the code. The prose
 > (epigraphs, chapters, status) lives in the generator.
 
-`106` quest steps &middot; `8` acts &middot; `1` played through &middot; `5` tracks in use
+`110` quest steps &middot; `8` acts &middot; `1` played through &middot; `6` tracks in use
 
 ## How to read a lane
 
@@ -160,7 +160,7 @@ The marsh had taken for longer than the forest and had never spent a thing. You 
 
 ### Act IV &mdash; The White Silence
 
-`Written, not yet played` &middot; `8 steps` &middot; `2 tracks`
+`Written, not yet played` &middot; `12 steps` &middot; `3 tracks`
 
 > *Above the treeline, even light freezes.*
 
@@ -170,8 +170,10 @@ Above the treeline nothing moved and nothing rotted and nothing was hungry. The 
 |--:| --- | --- |
 | 1 | Hunt the white silence `6` | Claim Bonemass’ power |
 | 2 | Kill 2 Stone Golems `2` | Reach the Mountains |
-| 3 | Find Moder's altar | Bring up 15 Silver Ore `15` |
-| 4 | **Defeat Moder** | Work the Stormsworn greaves |
+| 3 | Find Moder's altar | Wake the frozen one |
+| 4 | **Defeat Moder** | Bring up 15 Silver Ore `15` |
+| 5 |  | Carry an egg down to him |
+| 6 |  | Work the Stormsworn greaves |
 
 **Chapter ends.** Moder fell out of her own sky and the mountain gave up what it had been keeping. It was still warm, which was worse than any answer you had had so far.
 

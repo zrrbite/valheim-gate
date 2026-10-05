@@ -17,6 +17,32 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-10-05 - TASK: Act IV gets voices — the frozen one, Hildir, a PEAK track (`1.0.16-run.2026-10-05g`)
+
+**Staged — no build needed here.** `git pull`, then `.\dist\windows\Install-Mod.ps1 -ModOnly`.
+Badge: `SAGA v1.0.16-run.2026-10-05g · DEV`. Carries the Act II and III tasks below too.
+Design: `docs/superpowers/specs/2026-10-05-act-four-voices-design.md`.
+
+**The frozen one** (CRAFT, after "Reach the Mountains"):
+- A frost-white ghost with a warm amber glow at the treeline nearest home (map pin; the strip says
+  "Someone stands in the ice at the treeline"). `grep "frozen one's treeline"` — how far from the
+  bed, and on what ground. Use before a fire: "He does not move..." and nothing completes.
+- Build any fire within ~5 m of him, light it, Use → "Is it back?" and "Wake the frozen one" completes.
+- After the silver: "Carry an egg down to him". Bring a dragon egg from the peaks (heavy, no
+  portal); hover shows 0/1 → 1/1; Use → he takes it, the step completes, the **Stormsworn greaves**
+  are at the forge (level 4: 14 silver, 6 wolf pelt, 4 wolf fang).
+
+**Hildir** (PEAK, a new third track):
+- Walk up to her (her camp, wherever this world put it) → "Find Hildir" completes.
+- `grep "Hildir accepts"` — her own chest entries and keys; `grep "Howling Cavern chest"` — which
+  one the mod picked. If it logged an ERROR instead, paste the "Hildir accepts" lines back.
+- Bring her chest out of the Howling Cavern and hand it to her (her own quest) → "Bring back her
+  chest" completes. Moder must NOT wait for this track.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-10-05 - TASK: Act III gets voices — the drowned one, the Bog Witch, the Ironbound Stormward (`1.0.16-run.2026-10-05f`)
 
 **Staged — no build needed here.** `git pull`, then `.\dist\windows\Install-Mod.ps1 -ModOnly`.

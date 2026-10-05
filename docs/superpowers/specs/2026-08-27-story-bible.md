@@ -247,6 +247,14 @@ preparation (*the big one is decided before you ever see him*), and at her hands
 reforged into the **Ironbound Stormward** — iron where the hide was, ancient bark where the frame
 was, the storm still in it.
 
+**Act IV, as built (2026-10-05)** — `specs/2026-10-05-act-four-voices-design.md`. The act's answer
+is *it is already gone*, and **the frozen one** refuses it: he climbed to watch the light come back
+and froze at the treeline still believing. A fire beside him reaches the warmth still in him; he
+asks to hold a dragon egg — light that has not woken — before he will believe, and gives the
+Stormsworn greaves when it is warm in his hands. **Hildir** keeps her camp where it is warm and
+says what the mountain is: *the cold doesn't steal, it keeps*. Her own chest, lost in the Howling
+Cavern, is the act's optional third track.
+
 **The arc's payoff, planned:** the wisp you pocket from every race is the
 same species of thing the dvergr carry in lanterns. By Act VI the player
 discovers they have been collecting honestly since Act I — the dvergr's
@@ -382,6 +390,13 @@ answer, practised before it was taught. Act VII spends it.
   on her). Her shop stays her own. A `TraderVoice` configuration, like Haldor.
 - **The Ironbound Stormward** (2026-10-05) — the Stormward reforged in Act III: heavier block,
   more durability, a stronger discharge, less wear per discharge. Same storm.
+- **The frozen one** (2026-10-05) — Act IV's speaker, at the treeline nearest home: frost-white
+  with a warm amber core. Ice until a fire burns beside him; then "Is it back?" He asks for a
+  dragon egg carried down from the peaks, holds it, finds it warm, and gives the Stormsworn
+  greaves. After Moder: "It was warm. I was right. It did not help me." `FrozenOne.cs`.
+- **Hildir, in the saga** (2026-10-05) — the game's own trader, voiced for Act IV: the cold does not
+  steal, it keeps. Her own vanilla quest (the Howling Cavern chest) is the PEAK track; its key is
+  read off her own give entries. A `TraderVoice` configuration.
 - **A way** (2026-09-27) — a class. Mechanically a set of boons the wheel never deals and
   death never takes, because what the thane taught was not lent. Everything else about it
   is a boon: applied, repaid at run end, saved and restored on the one path.
