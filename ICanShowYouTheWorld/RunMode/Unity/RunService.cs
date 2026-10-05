@@ -171,6 +171,15 @@ namespace ICanShowYouTheWorld.RunMode
         /// after Eikthyr and Bonemass, and he is where they are learned. See PollThane.
         /// </summary>
         private Thane _thane;
+
+        /// <summary>
+        /// Act II's speaker, at the burial chamber's door: wants one rescued light, teaches the
+        /// Stormsworn helm. The first speaker on SagaSpeaker. See PollBarrowKeeper.
+        /// </summary>
+        private BarrowKeeper _keeper;
+
+        /// <summary>Haldor's Act II voice: the couriers' road, for a troll's head. See PollHaldor.</summary>
+        private readonly HaldorVoice _haldor = new HaldorVoice();
         private SpiritChase _spirit;
         private StolenLights _lights;
         private TheGatherer _gatherer;
@@ -1159,6 +1168,7 @@ namespace ICanShowYouTheWorld.RunMode
             _shade = new HuntersShade(_rng);
             _thjalfi = new Thjalfi(_rng);
             _thane = new Thane(_rng);
+            _keeper = new BarrowKeeper(_rng);
             _spirit = new SpiritChase(_cfg, _rng);
             _lights = new StolenLights(_cfg);
             _gatherer = new TheGatherer(_cfg, _rng);
@@ -2260,6 +2270,11 @@ namespace ICanShowYouTheWorld.RunMode
                 _shade?.Reset();
                 _thjalfi?.Reset();
                 _thane?.Reset();
+                _keeper?.Reset();
+                _haldor.Detach();
+                // A key from a run that crashed before it could end would otherwise answer "already
+                // told" the first time this run asks him.
+                HaldorVoice.ClearKeys();
                 // Their spots were just forgotten, so their pins mark nowhere now. Re-drawn on the
                 // first poll that wants them, at the new spots.
                 SagaPins.HideAll();
@@ -3709,6 +3724,10 @@ namespace ICanShowYouTheWorld.RunMode
             // EVERY act, unlike Thjalfi: the rungs come due after Eikthyr and Bonemass, which is to
             // say in Acts II and IV, and he is where they are learned.
             if (shadePlayer != null) PollThane(shadePlayer);
+            // Act II's two voices. The keeper in every act from his chamber on, like the thane;
+            // Haldor only while Act II is current.
+            if (shadePlayer != null) PollBarrowKeeper(shadePlayer);
+            PollHaldor(shadePlayer);
             // After the thane, so a lesson or a respec he just gave shows in the same second.
             if (shadePlayer != null) PollWaySkill(shadePlayer);
             PollDiscoveries();
@@ -4393,7 +4412,79 @@ namespace ICanShowYouTheWorld.RunMode
             }
         }
 
+        /// <summary>
+        /// The barrow-keeper: standing at the nearest burial chamber's door from the moment cores
+        /// have been taken (<c>bf-crypt</c> done) until the run ends.
+        /// </summary>
+        /// <remarks>
+        /// Polled in every act past the Meadows, like the thane, because StepDone reads only the
+        /// current act's chains: past Act II the cores were necessarily taken long ago. After the
+        /// Elder he has one remark and then an idle line.
+        /// </remarks>
+        private void PollBarrowKeeper(Player player)
+        {
+            if (_keeper == null || _challenges == null) return;
+
+            try
+            {
+                var tracks = _challenges.Tracks;
+                bool pastForest = _actIndex >= 2;
+                bool wanted = !ActIsMeadows &&
+                              (pastForest || StepPredicates.Keeper(tracks) || StepPredicates.StepDone(tracks, "bf-crypt"));
+
+                var phase = StepPredicates.KeeperFind(tracks) ? BarrowKeeper.Phase.Speak
+                          : StepPredicates.KeeperPayment(tracks) ? BarrowKeeper.Phase.Pay
+                          : pastForest ? BarrowKeeper.Phase.After
+                          : BarrowKeeper.Phase.Idle;
+
+                bool spoken, paid;
+                _keeper.Tick(player, phase, wanted, out spoken, out paid);
+                RefreshNpcPin(PinKeeper, wanted, _keeper.Spot(), BarrowKeeper.KeeperName);
+
+                if (spoken && phase == BarrowKeeper.Phase.Speak)
+                {
+                    _challenges.ReportEvent(ChallengeKind.PlayerEvent, SagaNames.KeeperFound);
+                    Message("He wants one of the couriers' lights carried down to him.");
+                }
+
+                if (paid)
+                {
+                    _challenges.ReportEvent(ChallengeKind.PlayerEvent, SagaNames.KeeperPaid);
+                    Debug.Log("[ICanShowYouTheWorld] The barrow-keeper took a light; the Stormsworn helm is taught.");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogOnce("keeper", ex);
+            }
+        }
+
+        /// <summary>
+        /// Haldor's Act II voice: attached while Act II is current, detached otherwise; and his ask
+        /// completes when the run's key appears in the world.
+        /// </summary>
+        private void PollHaldor(Player player)
+        {
+            try
+            {
+                bool actTwo = _active && _actIndex == 1;
+                string key = SagaNames.HaldorKey(_rngSeed);
+                _haldor.Tick(player, actTwo, key);
+
+                if (actTwo && _challenges != null && StepPredicates.HaldorAsk(_challenges.Tracks) && HaldorVoice.Told(key))
+                {
+                    _challenges.ReportEvent(ChallengeKind.PlayerEvent, SagaNames.HaldorTold);
+                    Debug.Log("[ICanShowYouTheWorld] Haldor took the troll's head and told where the couriers go.");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogOnce("haldor", ex);
+            }
+        }
+
         // The saga's people on the map. See SagaPins for why they are never saved.
+        private const string PinKeeper = "keeper";
         private const string PinThane = "thane";
         private const string PinThjalfi = "thjalfi";
         private const string PinShade = "shade";
@@ -5740,6 +5831,12 @@ namespace ICanShowYouTheWorld.RunMode
             // left in the character's map data either way; this takes them off the live map.
             SagaPins.HideAll();
 
+            // Act II's voices are run-only too. Haldor gets his own talk back and the world loses
+            // the key his answer set - global keys are saved with the world.
+            _keeper?.Reset();
+            _haldor.Detach();
+            HaldorVoice.ClearKeys();
+
             // Not an offer: the world the run ended in has just been asked and answered. Clearing
             // the WORLD would re-offer the saga the moment the abandon finished, which reads as the
             // mode arguing with the player.
@@ -6261,6 +6358,7 @@ namespace ICanShowYouTheWorld.RunMode
             ValidateAssetNames(pool.Concat(AllActChains()));
             ValidateSpawnEvents();
             ValidateQuestPrices();
+            LogTrollTrophyChance();
             ValidateClassLadder();
             // Thor's bow's flashes: every element's, so a missing fire or frost burst is in the log
             // before the Hunter can switch to it.
@@ -9642,11 +9740,33 @@ namespace ICanShowYouTheWorld.RunMode
             catch (Exception ex) { LogOnce("validate-saga-recipes", ex); }
         }
 
+        /// <summary>
+        /// Haldor asks for a troll's head, and whether that is a fair ask depends on a number the
+        /// assembly cannot see: the trophy's drop chance on the Troll prefab. Logged at run start,
+        /// like carry weights and the raid registry. Grep the log for "troll's trophy".
+        /// </summary>
+        private void LogTrollTrophyChance()
+        {
+            try
+            {
+                var troll = ZNetScene.instance != null ? ZNetScene.instance.GetPrefab("Troll") : null;
+                var drops = troll != null ? troll.GetComponent<CharacterDrop>() : null;
+                var trophy = drops?.m_drops?.FirstOrDefault(d => d.m_prefab != null && d.m_prefab.name == HaldorVoice.TrophyPrefab);
+                if (trophy == null)
+                    Debug.LogError($"[ICanShowYouTheWorld] The troll's trophy: no '{HaldorVoice.TrophyPrefab}' in Troll's drops - Haldor's ask may be unfinishable.");
+                else
+                    Debug.Log($"[ICanShowYouTheWorld] The troll's trophy: chance {trophy.m_chance:0.##}, " +
+                              $"{trophy.m_amountMin}-{trophy.m_amountMax} per kill.");
+            }
+            catch (Exception ex) { LogOnce("troll-trophy", ex); }
+        }
+
         /// <summary>Every price every quest-giver asks, flattened for validation.</summary>
         private static IEnumerable<(string who, string token, int amount)> QuestPrices()
         {
             foreach (var p in HuntersShade.Price) yield return (HuntersShade.Name, p.token, p.amount);
             foreach (var p in Thjalfi.Price) yield return (Thjalfi.Name, p.token, p.amount);
+            foreach (var p in BarrowKeeper.Price) yield return (BarrowKeeper.KeeperName, p.token, p.amount);
         }
 
         /// <summary>
@@ -9669,6 +9789,9 @@ namespace ICanShowYouTheWorld.RunMode
             SagaNames.ThjalfiFound,
             SagaNames.ThjalfiPaid,
             SagaNames.ThaneFound,
+            SagaNames.KeeperFound,
+            SagaNames.KeeperPaid,
+            SagaNames.HaldorTold,
         };
 
         /// <summary>
@@ -10405,25 +10528,7 @@ namespace ICanShowYouTheWorld.RunMode
                 Param = "Cart", Target = 1, Display = "Raise a cart",
                 RewardText = "Bronze nails, and iron to come",
                 Hint = "Wood and bronze nails, at the workbench. It hates hills.",
-            },
-            new ChallengeDefinition
-            {
-                // Wood only, and pure ceremony — the second homestead gets a name. Cheap on
-                // purpose: after the cart and the smelter, something that costs nothing.
-                Id = "bf-sign", MainQuest = true, Track = ForgeTrackId, Kind = ChallengeKind.BuildPiece,
-                Param = "SignPost", Target = 1, Display = "Name your holding",
-                RewardText = "Timber and resin",
-                Hint = "A sign at the door. Interact to write on it.",
-            },
-            new ChallengeDefinition
-            {
-                // LAST on the track deliberately. Haldor's camp is the one name here this assembly
-                // cannot verify, and a track is a linear chain — anything behind an unfindable
-                // step is unreachable, as Act I learned. Behind it there is nothing.
-                Id = "bf-haldor", MainQuest = true, Track = ForgeTrackId, Kind = ChallengeKind.DiscoverLocation,
-                Param = "Vendor_BlackForest", Target = 1, Display = "Find the trader",
-                RewardText = "Coin enough to spend",
-                Hint = "Haldor keeps a camp in the black forest. He does not move.",
+                Opening = "Goods have to move. The couriers know it, and so does the trader.",
             },
             new ChallengeDefinition
             {
@@ -10465,6 +10570,14 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
+                // The barrow-keeper (2026-10-05). He stands at the chamber's door once cores have
+                // been taken from it, and speaking to him is the step - so declining nothing stalls.
+                Id = "bf-keeper", MainQuest = true, Kind = ChallengeKind.PlayerEvent, Param = SagaNames.KeeperFound,
+                Target = 1, Display = "Speak with the barrow-keeper",
+                Hint = "At the door of the burial chambers you took the cores from. He has been waiting since you came out.",
+            },
+            new ChallengeDefinition
+            {
                 Id = "bf-smelter", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Smelter",
                 Target = 1, Display = "Build a smelter",
                 // Was "cores enough to never crawl a crypt again", and it paid thirty to prove it.
@@ -10472,12 +10585,22 @@ namespace ICanShowYouTheWorld.RunMode
                 // one-off errand and the real supply arrived by post.
                 RewardText = "Ore to feed it, and cores enough for a portal home",
                 Hint = "Stone, and surtling cores from the burial chambers.",
+                Opening = "The cores burn as well in a smelter as in a wall. Know what you are burning.",
             },
             new ChallengeDefinition
             {
                 Id = "bf-bronze", MainQuest = true, Kind = ChallengeKind.StatDelta, Param = "CraftsOrUpgrades",
                 Target = 3, Display = "Forge three things in bronze", RewardText = "Bronze for armour",
                 Hint = "Copper and tin smelted together, then forged at a workbench.",
+                Opening = "Copper and tin. The first thing in this forest anyone has made instead of taken.",
+            },
+            new ChallengeDefinition
+            {
+                // His price: one rescued light, from the couriers. Lights exist only in Acts I-II,
+                // and the couriers run every night of this one, so the step cannot stall.
+                Id = "bf-keeper-light", MainQuest = true, Kind = ChallengeKind.PlayerEvent, Param = SagaNames.KeeperPaid,
+                Target = 1, Display = "Carry a light down to him",
+                Hint = "The couriers carry the lights, at night. Cut one down, take the light that rises from it, and bring it to the barrow-keeper.",
             },
             // The act's saga item, and the second piece of the Stormsworn. One per act from here to
             // the Plains - see SagaItems for why each resists what its own act kills people with.
@@ -10498,6 +10621,7 @@ namespace ICanShowYouTheWorld.RunMode
                 Id = "bf-portal", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Portal",
                 Target = 1, Display = "Build a portal", RewardText = "Fine wood and cores for its twin",
                 Hint = "Fine wood, greydwarf eyes and surtling cores. Build two.",
+                Opening = "The couriers walk every mile of their road. You need not.",
             },
             // --- Farming (alpha41) ---
             //
@@ -10511,23 +10635,8 @@ namespace ICanShowYouTheWorld.RunMode
             new ChallengeDefinition
             {
                 Id = "bf-plant", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Plant",
-                Target = 10, Display = "Plant a crop (10 seeds)", RewardText = "More seeds, and a queen for a hive",
+                Target = 10, Display = "Plant a crop (10 seeds)", RewardText = "More seeds",
                 Hint = "Seeds from the forest floor, and a cultivator to break the ground. Sow at whichever homestead you keep — the first one, or a new one out here.",
-            },
-            new ChallengeDefinition
-            {
-                Id = "bf-bees", MainQuest = true, Kind = ChallengeKind.BuildPiece, Param = "Beehive",
-                Target = 1, Display = "Build a beehive", RewardText = "Honey, and mead to come",
-                Hint = "Needs a queen bee — one came with your seeds. Hive it under a roof, outdoors.",
-            },
-            new ChallengeDefinition
-            {
-                // Act I tamed one boar and penned three; Act II grows the holding. Same measure,
-                // bigger herd — husbandry scales with the biome's own farming beat.
-                Id = "bf-herd", MainQuest = true, Kind = ChallengeKind.PlayerState, Param = "TamedNearby",
-                Target = 4, Display = "Grow the herd (4 penned)",
-                RewardText = "Feed for the winter",
-                Hint = "Fed boar breed on their own. Keep them penned, keep them fed.",
             },
             new ChallengeDefinition
             {
@@ -10578,6 +10687,27 @@ namespace ICanShowYouTheWorld.RunMode
                 Param = StolenLights.TakenEvent, Target = 4, Display = "Rob the couriers (4 lights)",
                 RewardText = "What the Elder was owed",
                 Hint = "Starred and named, hurrying through the dark. The brand is the cargo \u2014 cut them down.",
+            },
+            new ChallengeDefinition
+            {
+                // LAST on the track deliberately. Haldor's camp is the one name here this assembly
+                // cannot verify, and a track is a linear chain — anything behind an unfindable
+                // step is unreachable, as Act I learned. Behind it there is nothing.
+                Id = "bf-haldor", MainQuest = true, Track = HuntTrackId, Kind = ChallengeKind.DiscoverLocation,
+                Param = "Vendor_BlackForest", Target = 1, Display = "Find the trader",
+                RewardText = "Coin enough to spend",
+                Hint = "Haldor keeps a camp in the black forest. He does not move.",
+                Opening = "Somebody in this forest has watched the couriers longer than you have. He sells things, at the forest\u2019s edge.",
+            },
+            new ChallengeDefinition
+            {
+                // Haldor's ask (2026-10-05). His own give-item mechanism: m_useItems sets the run's
+                // global key on acceptance, and the host reports HaldorTold when it sees the key.
+                // On HUNT, right before the altar, because his answer is what pins the altar - a
+                // hunt-only player must not reach "find the altar" with no pin and no reason.
+                Id = "bf-haldor-ask", MainQuest = true, Track = HuntTrackId, Kind = ChallengeKind.PlayerEvent,
+                Param = SagaNames.HaldorTold, Target = 1, Display = "Bring Haldor a troll\u2019s trophy",
+                Hint = "He fears only trolls, and knows where the couriers go. Kill a troll for its head, put it on your hotbar, and press its key while looking at him.",
             },
             new ChallengeDefinition
             {
@@ -11217,10 +11347,8 @@ namespace ICanShowYouTheWorld.RunMode
                 ["bf-portal"] = new[] { ("FineWood", 20), ("SurtlingCore", 4), ("GreydwarfEye", 10) },
                 // The plant step pays the QUEEN BEE the hive step needs, so the beehive is
                 // buildable when asked — the same lesson the smelter's surtling cores taught.
-                ["bf-plant"] = new[] { ("CarrotSeeds", 20), ("QueenBee", 1) },
+                ["bf-plant"] = new[] { ("CarrotSeeds", 20) },
                 ["mq-tame"] = new[] { ("Carrot", 20), ("RawMeat", 10) },
-                ["bf-bees"] = new[] { ("Honey", 20) },
-                ["bf-herd"] = new[] { ("Carrot", 30), ("Raspberry", 30) },
                 // Thirty cores, which is a smelter, a kiln and eleven portals — a lifetime
                 // supply by any honest reckoning (owner: "getting surtling cores is not fun").
                 //
@@ -11240,7 +11368,6 @@ namespace ICanShowYouTheWorld.RunMode
                 ["bf-intercept"] = new[] { ("Bronze", 5), ("MeadHealthMedium", 4) },
                 ["bf-raft"] = new[] { ("Sausages", 10), ("Wood", 40) },
                 ["bf-cart"] = new[] { ("BronzeNails", 40), ("Wood", 40) },
-                ["bf-sign"] = new[] { ("Wood", 30), ("Resin", 20) },
                 ["bf-haldor"] = new[] { ("Coins", 300) },
                 ["bf-bronze"] = new[] { ("Bronze", 10), ("ArrowBronze", 40) },
                 ["bf-storm"] = new[] { ("Coal", 20), ("LeatherScraps", 20), ("MeadHealthMedium", 3) },

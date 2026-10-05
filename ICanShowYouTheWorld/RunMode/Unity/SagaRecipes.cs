@@ -137,9 +137,10 @@ namespace ICanShowYouTheWorld.RunMode
                 StationPrefab = "forge",
                 MinStationLevel = 1,
                 Resources = new[] { ("Bronze", 8), ("TrollHide", 6), ("Coal", 10) },
-                RequiresStepDone = "bf-bronze",
-                TaughtLine = "You have made three things in bronze, so the forge will make a fourth. " +
-                             "This one is for what the forest swings.",
+                // Taught by the barrow-keeper for a light (2026-10-05), no longer open after bronze.
+                RequiresStepDone = "bf-keeper-light",
+                TaughtLine = "The keeper gave back what the storm left buried. Bronze, troll hide and coal, " +
+                             "at a forge — this one is for what the forest swings.",
             },
 
             new SagaRecipeDefinition
