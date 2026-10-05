@@ -29,7 +29,7 @@ From this folder, in PowerShell:
 
 Then just start Valheim — since 2026-09-19 the mod loads itself at startup. There is no
 popup unless something failed; the main menu's version line is where it says so. **The installer prints the exact
-version the popup should read**, taken from the DLL it just installed, so it is right on
+version the menu line should read**, taken from the DLL it just installed, so it is right on
 every build rather than whatever was current when this page was written.
 
 **How to tell it loaded**, at a glance and at any time: the main menu's version line gains a
@@ -46,8 +46,7 @@ A build that also carries the old GM cheat mod says so, and a saga-only one does
 SAGA v1.0.15-run.2026-09-20c · GM
 ```
 
-That is the standing answer. The popup says the same thing once and is then dismissed
-forever, which is no use an hour later.
+That is the standing answer. A popup appears only if the mod FAILED to load.
 
 Opening the **Credits** menu still works and is now simply unnecessary. The move was not
 cosmetic: a saga item is only known to the game while the mod is loaded, so loading a
@@ -114,7 +113,7 @@ The mod DLL itself is pure IL and identical on every platform, so the one in
 | `patcher\ICanShowYouTheWorld.dll` | The mod — also the symbol source the patcher reads |
 
 Built from the **`feature/run-mode`** branch (Run Mode preview). The installer
-prints the version it installed and the popup should match it — nothing here
+prints the version it installed and the main menu's SAGA line should match it — nothing here
 names a version, so nothing here can go stale. The game version the mod was
 built against is the first part of that version (`1.0.12-run.2026-09-12` was
 built against Valheim 1.0.12).

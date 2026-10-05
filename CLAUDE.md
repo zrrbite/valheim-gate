@@ -81,14 +81,16 @@ loaded. Load a character without visiting Credits and Thor's bow is an unresolve
 name — `Inventory.AddItem` logs `Failed to find item prefab`, drops it, and the next save
 writes the pack without it. Gone, silently. `Start` rather than `Awake` because every
 `Awake` in the menu scene has run by then, including `UnifiedPopup`'s, which owns the
-version popup. `Run()` catches everything for the same reason: an exception escaping it
+failure popup. `Run()` catches everything for the same reason: an exception escaping it
 would now take the main menu with it.
 
 Two consequences worth knowing. `Start` runs again every time the player returns to the
 main menu from a world, so `Run()`'s re-entry path logs and returns rather than popping a
-dialog. And the activation popup is queued, not pushed: `UnifiedPopup.instance` is assigned
-in its `OnEnable`, so `CheatController.Update` shows the popup on the first frame
-`UnifiedPopup.IsAvailable()` says yes.
+dialog. There is **no popup on success** (removed 2026-09-19): the build is read off the gold
+`SAGA v<build>` line under the main menu's version (`MenuBadge`). A popup appears only when
+initialisation FAILS, and it is queued rather than pushed when the popup system is not live
+yet: `UnifiedPopup.instance` is assigned in its `OnEnable`, so `CheatController.Update` shows
+it on the first frame `UnifiedPopup.IsAvailable()` says yes.
 
 The Patcher also stamps an empty marker type, `ICSYTW_EntryPoint_FejdStartup_Start`, into
 the patched assembly. A byte scan for `NotACheater` only answers "patched at some point",

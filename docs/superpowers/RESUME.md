@@ -437,7 +437,7 @@ Tests/run_tests.sh                                      # must say ALL PASS
 # 2. bump ICanShowYouTheWorld/Assets/Version.cs
 #    alpha<N>   for a mechanic/content change worth a play-test brief
 #    alpha<N>.<B> for a fix, a tuning number, a nudged panel
-#    ALWAYS bump one of them: the popup is the only proof of what is being played
+#    ALWAYS bump one of them: the menu badge is the only proof of what is being played
 # 3. refresh the Windows kit + docs
 cp ICanShowYouTheWorld/bin/Debug/ICanShowYouTheWorld.dll dist/windows/patcher/
 sed -i '' 's/alphaN/alphaN+1/g' dist/windows/README.md HANDOFF_WINDOWS.md
@@ -451,10 +451,10 @@ git push origin feature/run-mode && git push origin 0.221.12-run.alphaN+1
 Scripts/deploy_local.sh
 ```
 
-On Windows: `git pull` → `.\Install-Mod.ps1` → the popup at the main menu must read
-the tag you just pushed. **The version popup is the whole point of tagging every
-build** — it is the only way to be certain which one is being played. Since the entry
-point moved it appears on its own, with no Credits visit.
+On Windows: `git pull` → `.\Install-Mod.ps1` → the gold `SAGA v<build>` line under the
+main menu's version must read the tag you just pushed. **That badge is the whole point of
+tagging every build** — it is the only way to be certain which one is being played. There
+is no popup on success since 2026-09-19; one appears only if the mod failed to load.
 
 `-ModOnly` is the fast path for a mod-only change, and it now refuses an assembly
 patched by an older Patcher (it looks for the `ICSYTW_EntryPoint_FejdStartup_Start`
