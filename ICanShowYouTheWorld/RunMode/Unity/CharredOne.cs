@@ -189,23 +189,36 @@ namespace ICanShowYouTheWorld.RunMode
         protected override Vector3? ChooseSpot(Player player)
         {
             if (player == null) return null;
-            Vector3 from = player.transform.position;
             var gen = WorldGenerator.instance;
+            if (gen == null) return null;
+            Vector3 from = player.transform.position;
 
-            for (int i = 0; i < 4; i++)
+            // Not yet - and the base asks again next second - until the player is standing on DRY
+            // Ashlands ground (review, 2026-10-05). The world generator calls the boiling sea
+            // AshLands, and "Reach the Ashlands" completes while the boat is still at sea: a spot
+            // chosen then was in the water for good, and his pyre needs a fire beside him.
+            try
+            {
+                if (player.IsSwimming() || player.InWater() || player.GetStandingOnShip() != null) return null;
+            }
+            catch { }
+            if (gen.GetBiome(from) != Heightmap.Biome.AshLands || gen.GetHeight(from.x, from.z) <= 31f) return null;
+
+            for (int i = 0; i < 6; i++)
             {
                 var land = BiomeCompass.LandNear(from, 12f, 30f, _rng);
-                if (land == null) continue;
-                if (gen == null || gen.GetBiome(land.Value) == Heightmap.Biome.AshLands)
+                if (land != null && gen.GetBiome(land.Value) == Heightmap.Biome.AshLands)
                 {
                     Debug.Log($"[ICanShowYouTheWorld] The charred one waits at the landing: {land.Value:0.0}.");
                     return land;
                 }
             }
 
-            var any = BiomeCompass.LandNear(from, 12f, 30f, _rng);
-            Debug.Log($"[ICanShowYouTheWorld] The charred one waits near the player (no ash ground found close): {(any ?? from):0.0}.");
-            return any ?? from;
+            // The player is on dry ash ground right now: beside them is a landing too.
+            Vector3 beside = from + player.transform.forward * 6f;
+            beside.y = gen.GetHeight(beside.x, beside.z);
+            Debug.Log($"[ICanShowYouTheWorld] The charred one waits beside the player on the ash: {beside:0.0}.");
+            return beside;
         }
     }
 }

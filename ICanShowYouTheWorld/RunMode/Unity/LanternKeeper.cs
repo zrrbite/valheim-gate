@@ -17,6 +17,40 @@ namespace ICanShowYouTheWorld.RunMode
     /// spend them), and an ask that cannot be paid stalls an act. Light rises only in the dark, so by
     /// day he says to come back after sundown.
     /// </remarks>
+    /// <summary>
+    /// A light let go: rises and fades, and is never an item. The freed light used to be a race light
+    /// (StolenLights.Release) - which can be picked up, refunding the very payment it stood for
+    /// (review, 2026-10-05). Borrowed, returned: nobody gets to take it back.
+    /// </summary>
+    internal sealed class RisingLight : MonoBehaviour
+    {
+        private const float Seconds = 9f;
+        private const float Speed = 1.4f;
+        private Light _light;
+        private float _age;
+
+        public static void At(Vector3 at)
+        {
+            var go = new GameObject("saga_rising_light");
+            go.transform.position = at;
+            var l = go.AddComponent<Light>();
+            l.type = LightType.Point;
+            l.range = 8f;
+            l.intensity = 2.2f;
+            l.color = new Color(0.75f, 0.9f, 1.0f);
+            l.shadows = LightShadows.None;
+            go.AddComponent<RisingLight>()._light = l;
+        }
+
+        private void Update()
+        {
+            _age += Time.deltaTime;
+            transform.position += Vector3.up * Speed * Time.deltaTime;
+            if (_light != null) _light.intensity = Mathf.Lerp(2.2f, 0f, _age / Seconds);
+            if (_age >= Seconds) Destroy(gameObject);
+        }
+    }
+
     internal sealed class LanternKeeper : SagaSpeaker
     {
         public enum Phase { Speak, Free, Idle, After }
@@ -199,11 +233,16 @@ namespace ICanShowYouTheWorld.RunMode
 
             if (site == null)
             {
-                var land = BiomeCompass.LandNear(player.transform.position, 30f, 60f, _rng);
-                if (land == null) return null;
-                Debug.LogWarning("[ICanShowYouTheWorld] The lantern-keeper found no dvergr site by name; " +
-                                 $"standing on dry ground near the player at {land.Value:0.0}. See the location registry.");
-                return land;
+                var gen0 = WorldGenerator.instance;
+                for (int i = 0; i < 6; i++)
+                {
+                    var land = BiomeCompass.LandNear(player.transform.position, 30f, 60f, _rng);
+                    if (land == null || (gen0 != null && gen0.GetBiome(land.Value) != Heightmap.Biome.Mistlands)) continue;
+                    Debug.LogWarning("[ICanShowYouTheWorld] The lantern-keeper found no dvergr site by name; " +
+                                     $"standing in the mist near the player at {land.Value:0.0}. See the location registry.");
+                    return land;
+                }
+                return null;   // not in the mist yet - asked again next second
             }
 
             Vector3 chosen = site.Value + new Vector3(MaxDistance, 0f, 0f);

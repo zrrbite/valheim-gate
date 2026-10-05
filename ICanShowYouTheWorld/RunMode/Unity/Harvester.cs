@@ -165,7 +165,22 @@ namespace ICanShowYouTheWorld.RunMode
                 }
                 catch { }
             }
-            if (ring == null) return null;
+            if (ring == null)
+            {
+                // No stone ring by any guessed name: stand on Plains ground near the player rather
+                // than never at all - his two steps and the mantle would stall (review, 2026-10-05).
+                var gen0 = WorldGenerator.instance;
+                for (int i = 0; i < 6; i++)
+                {
+                    var land = BiomeCompass.LandNear(player.transform.position, 20f, 45f, _rng);
+                    if (land != null && (gen0 == null || gen0.GetBiome(land.Value) == Heightmap.Biome.Plains))
+                    {
+                        Debug.LogWarning($"[ICanShowYouTheWorld] The harvester found no stone ring by name; standing on the plains at {land.Value:0.0}.");
+                        return land;
+                    }
+                }
+                return null;   // not on the plains yet - asked again next second
+            }
 
             Vector3 chosen = ring.Value + new Vector3(MaxDistance, 0f, 0f);
             string pass = "no level ground by the stones - placed anyway";

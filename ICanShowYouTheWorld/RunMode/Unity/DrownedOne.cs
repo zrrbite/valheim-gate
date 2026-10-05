@@ -114,6 +114,7 @@ namespace ICanShowYouTheWorld.RunMode
             try
             {
                 body.SetTamed(false);
+                Unshield(body);   // killable again - by the player, which is the point
                 body.SetHealth(body.GetMaxHealth() * LetGoHealthFraction);
                 Debug.Log("[ICanShowYouTheWorld] The drowned one lifts his blade, out of habit.");
             }

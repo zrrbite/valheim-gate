@@ -4950,8 +4950,8 @@ namespace ICanShowYouTheWorld.RunMode
                 }
                 if (freedAt != null && StepPredicates.LanternFree(tracks))
                 {
-                    // Up and out of reach: it is let go, not handed back to be taken again.
-                    try { _lights?.Release(freedAt.Value + Vector3.up * 3.5f, 20f, "A Borrowed Light"); }
+                    // A rising light that is never an item: let go, not handed back to be taken again.
+                    try { RisingLight.At(freedAt.Value + Vector3.up * 2f); }
                     catch (Exception ex) { LogOnce("lantern-release", ex); }
                     _challenges.ReportEvent(ChallengeKind.PlayerEvent, SagaNames.LightFreed);
                     Message("The light rises into the mist and is gone.");
@@ -11969,7 +11969,7 @@ namespace ICanShowYouTheWorld.RunMode
                 Param = SagaItems.StormCapeName, Target = 1,
                 Display = "Cure the Stormsworn mantle",
                 RewardText = "Provisions, and nothing asked back",
-                Hint = "A workbench at level 3: 4 lox pelt, 10 needles, 6 silver. The last piece of the set.",
+                Hint = "At the artisan table, once the harvester has seen you eat: 4 lox pelt, 10 needles, 6 silver. The last piece of the set.",
                 Opening = "The last piece. Wear all of it into what is left — that is what it was for.",
             },
             new ChallengeDefinition

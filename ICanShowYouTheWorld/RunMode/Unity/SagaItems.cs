@@ -2671,6 +2671,7 @@ namespace ICanShowYouTheWorld.RunMode
                     box.CountItems(IronboundName, -1, true) <= 0) return false;
 
                 var shortfalls = new List<string>();
+                bool anyReady = false, readyUsesLight = false;
 
                 foreach (var conv in inc.m_conversions)
                 {
@@ -2698,8 +2699,15 @@ namespace ICanShowYouTheWorld.RunMode
                         short_.Add($"{req.m_amount - counted} more {Localization.instance.Localize(want)}");
                     }
 
-                    // Something in here CAN be made. Let the game get on with it.
-                    if (ready) return false;
+                    // Something in here CAN be made - but a repair being ready must not let a half-paid
+                    // bill's LIGHTS burn beside it (review, 2026-10-05). Noted, decided after the loop.
+                    if (ready)
+                    {
+                        anyReady = true;
+                        if (conv.m_requirements.Any(r => r?.m_resItem?.m_itemData?.m_shared?.m_name == RescuedLightName))
+                            readyUsesLight = true;
+                        continue;
+                    }
 
                     string name = conv.m_result != null && conv.m_result.m_itemData != null &&
                                   conv.m_result.m_itemData.m_shared != null
@@ -2707,6 +2715,17 @@ namespace ICanShowYouTheWorld.RunMode
                         : "something";
 
                     shortfalls.Add($"{name} wants {string.Join(", ", short_.ToArray())}");
+                }
+
+                bool lightsInBox = box.CountItems(RescuedLightName, -1, true) > 0;
+                if (anyReady && (!lightsInBox || readyUsesLight)) return false;   // let the game get on with it
+
+                if (anyReady)
+                {
+                    // Something is ready, and rescued lights would be left to the coal.
+                    missing = "Take the lights out first, or finish their bill - " +
+                              (shortfalls.Count > 0 ? string.Join("  \u2014  ", shortfalls.ToArray()) : "nothing here would use them") + ".";
+                    return true;
                 }
 
                 if (shortfalls.Count == 0) return false;

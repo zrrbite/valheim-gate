@@ -271,12 +271,19 @@ namespace ICanShowYouTheWorld.RunMode
 
             // But the game counts a tamed creature as an ENEMY of every monster (review, 2026-10-05):
             // at a sunken crypt the drowned one was hunted by draugr, died, dropped loot and was made
-            // again every second. Immune to non-player damage, so the world cannot kill a speaker -
-            // only the player can, which is exactly what the drowned one's last beat needs.
+            // again every second. So a speaker is IMMUNE to every real damage type while it speaks.
+            // (m_nonPlayer, tried first, is a damage TYPE nothing deals - not "damage from
+            // non-players" - and changed nothing; the second review caught it.) The drowned one
+            // lifts this for his last beat (Unshield).
             try
             {
+                _originalModifiers = ch.m_damageModifiers;
                 var mods = ch.m_damageModifiers;
-                mods.m_nonPlayer = HitData.DamageModifier.Immune;
+                var immune = HitData.DamageModifier.Immune;
+                mods.m_blunt = immune; mods.m_slash = immune; mods.m_pierce = immune;
+                mods.m_chop = immune; mods.m_pickaxe = immune; mods.m_fire = immune;
+                mods.m_frost = immune; mods.m_lightning = immune; mods.m_poison = immune;
+                mods.m_spirit = immune;
                 ch.m_damageModifiers = mods;
             }
             catch { }
@@ -312,6 +319,15 @@ namespace ICanShowYouTheWorld.RunMode
 
         /// <summary>After a body is made, tamed and dressed. The drowned one untames himself here when it is time.</summary>
         protected virtual void OnSpawned(Character body) { }
+
+        private HitData.DamageModifiers _originalModifiers;
+
+        /// <summary>Gives the body back the damage modifiers it was made with - killable again.</summary>
+        protected void Unshield(Character body)
+        {
+            if (body == null) return;
+            try { body.m_damageModifiers = _originalModifiers; } catch { }
+        }
 
         /// <summary>The standing body's Character, or null.</summary>
         protected Character BodyCharacter => _body != null ? _body.GetComponent<Character>() : null;
