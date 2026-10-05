@@ -91,6 +91,13 @@ namespace ICanShowYouTheWorld.RunMode
         public string Time;
         public float Heat;
         public float Score;
+
+        /// <summary>
+        /// The saga SO FAR, read from the BOOK while the run is still going: the chapters of the gods
+        /// already felled, then a line saying the rest is not written yet. No epilogue and no
+        /// reckoning - those belong to the end.
+        /// </summary>
+        public bool SoFar;
     }
 
     /// <summary>
@@ -118,7 +125,8 @@ namespace ICanShowYouTheWorld.RunMode
             html.Append("<title>The Saga of ").Append(Escape(input.Character)).Append("</title>");
             html.Append("<style>").Append(Css).Append("</style></head><body><main>");
 
-            html.Append("<header><p class=\"eyebrow\">A saga of the tenth world</p>");
+            html.Append("<header><p class=\"eyebrow\">")
+                .Append(input.SoFar ? "A saga still being told" : "A saga of the tenth world").Append("</p>");
             html.Append("<h1>The Saga of ").Append(Escape(input.Character)).Append("</h1>");
             var sub = new List<string>();
             if (!string.IsNullOrEmpty(input.Date)) sub.Add(Escape(input.Date));
@@ -152,21 +160,40 @@ namespace ICanShowYouTheWorld.RunMode
                 html.Append("</section>");
             }
 
-            if (wholeSaga && !string.IsNullOrEmpty(tale.Epilogue))
+            if (input.SoFar)
+                html.Append("<section class=\"coda\"><p>Here the skalds put down the pen. The rest is not written " +
+                            "yet &mdash; it is still being done, and the next god to fall adds a chapter.</p></section>");
+            else if (wholeSaga && !string.IsNullOrEmpty(tale.Epilogue))
                 html.Append("<section class=\"epilogue\">").Append(MarkdownToHtml(tale.Epilogue)).Append("</section>");
             else
                 html.Append("<section class=\"coda\"><p>That is as far as the skalds can tell it of you. There is more of " +
                             "the saga &mdash; the world is wider than the gods you felled &mdash; and it waits for " +
                             "whoever goes further.</p></section>");
 
-            html.Append("<footer><h4>The reckoning</h4><dl>");
-            html.Append("<dt>Gods felled</dt><dd>").Append(input.Gods.ToString(CultureInfo.InvariantCulture)).Append("</dd>");
-            if (!string.IsNullOrEmpty(input.Time)) html.Append("<dt>Time</dt><dd>").Append(Escape(input.Time)).Append("</dd>");
-            html.Append("<dt>Heat</dt><dd>").Append(input.Heat.ToString("0", CultureInfo.InvariantCulture)).Append("</dd>");
-            html.Append("<dt>Saga score</dt><dd>").Append(input.Score.ToString("0.#", CultureInfo.InvariantCulture)).Append("</dd>");
-            html.Append("</dl></footer></main></body></html>");
+            if (!input.SoFar)
+            {
+                html.Append("<footer><h4>The reckoning</h4><dl>");
+                html.Append("<dt>Gods felled</dt><dd>").Append(input.Gods.ToString(CultureInfo.InvariantCulture)).Append("</dd>");
+                if (!string.IsNullOrEmpty(input.Time)) html.Append("<dt>Time</dt><dd>").Append(Escape(input.Time)).Append("</dd>");
+                html.Append("<dt>Heat</dt><dd>").Append(input.Heat.ToString("0", CultureInfo.InvariantCulture)).Append("</dd>");
+                html.Append("<dt>Saga score</dt><dd>").Append(input.Score.ToString("0.#", CultureInfo.InvariantCulture)).Append("</dd>");
+                html.Append("</dl></footer>");
+            }
+            html.Append("</main></body></html>");
             return html.ToString();
         }
+
+        private const string SoFarSuffix = "so far.html";
+
+        /// <summary>
+        /// "Saga of &lt;character&gt; - so far.html": ONE file per character, written over each time the
+        /// BOOK opens it, so reading it every evening does not fill the folder.
+        /// </summary>
+        public static string SoFarFileName(string character) => FilePrefix(character) + SoFarSuffix;
+
+        /// <summary>Whether a path is a "so far" page rather than a finished saga's dated one.</summary>
+        public static bool IsSoFar(string path) =>
+            !string.IsNullOrEmpty(path) && path.EndsWith(" - " + SoFarSuffix, System.StringComparison.Ordinal);
 
         /// <summary>"Saga of &lt;character&gt; - &lt;stamp&gt;.html", with anything a file system refuses removed.</summary>
         public static string FileName(string character, string stamp) => FilePrefix(character) + stamp + ".html";

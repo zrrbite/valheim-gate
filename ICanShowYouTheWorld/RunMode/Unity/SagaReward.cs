@@ -38,12 +38,17 @@ namespace ICanShowYouTheWorld.RunMode
             }
         }
 
-        /// <summary>Writes the page and returns its path, or null.</summary>
-        public static string Write(string character, string html)
+        /// <summary>
+        /// Writes the page and returns its path, or null. A finished saga gets a dated file of its own;
+        /// the saga so far (<paramref name="soFar"/>) is one file per character, written over.
+        /// </summary>
+        public static string Write(string character, string html, bool soFar = false)
         {
             try
             {
-                string name = SagaPage.FileName(character, DateTime.Now.ToString("yyyy-MM-dd HHmm"));
+                string name = soFar
+                    ? SagaPage.SoFarFileName(character)
+                    : SagaPage.FileName(character, DateTime.Now.ToString("yyyy-MM-dd HHmm"));
                 string path = Path.Combine(Folder, name);
                 File.WriteAllText(path, html, new System.Text.UTF8Encoding(false));
                 Debug.Log($"[ICanShowYouTheWorld] The saga's page: {path}");
@@ -64,7 +69,7 @@ namespace ICanShowYouTheWorld.RunMode
             catch (Exception ex) { Debug.LogWarning("[ICanShowYouTheWorld] The saga's page could not be opened: " + ex.Message); }
         }
 
-        /// <summary>The newest page written for this character, or null.</summary>
+        /// <summary>The newest FINISHED saga written for this character, or null - never a "so far" page.</summary>
         public static string Latest(string character)
         {
             try
@@ -72,7 +77,7 @@ namespace ICanShowYouTheWorld.RunMode
                 if (!Directory.Exists(Folder)) return null;
                 string prefix = SagaPage.FilePrefix(character);
                 return Directory.GetFiles(Folder, "*.html")
-                    .Where(f => Path.GetFileName(f).StartsWith(prefix, StringComparison.Ordinal))
+                    .Where(f => Path.GetFileName(f).StartsWith(prefix, StringComparison.Ordinal) && !SagaPage.IsSoFar(f))
                     .OrderByDescending(File.GetLastWriteTimeUtc)
                     .FirstOrDefault();
             }

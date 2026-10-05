@@ -1396,6 +1396,7 @@ namespace ICanShowYouTheWorld.RunMode
         private void DrawQuestLog(IRunService run)
         {
             DrawTitlePage();
+            DrawSagaSoFar();
 
             // The book opens on what has HAPPENED. The live tracks come after it, because a book
             // whose first page is a to-do list is a to-do list.
@@ -1560,6 +1561,27 @@ namespace ICanShowYouTheWorld.RunMode
                           + "what was done about it.", RunTheme.Small);
             GUI.contentColor = Color.white;
 
+            GUILayout.Space(8f);
+        }
+
+        /// <summary>
+        /// The long telling, a chapter per god felled: one line and a button under the title page.
+        /// </summary>
+        /// <remarks>
+        /// The BOOK and the myth stay two texts (owner, 2026-10-05) - this page is the short record,
+        /// read mid-fight, and two thousand words of prose an act would bury it. So the book points at
+        /// the myth instead, which opens in the browser cut at the last god felled. Nothing shows until
+        /// the first one falls, and the act being played is never told.
+        /// </remarks>
+        private void DrawSagaSoFar()
+        {
+            string through = _concrete?.SagaWrittenThrough;
+            if (through == null) return;
+
+            GUI.contentColor = RunTheme.TextMuted;
+            GUILayout.Label($"The skalds have written your saga as far as “{through}”.", RunTheme.Small);
+            GUI.contentColor = Color.white;
+            if (GUILayout.Button("Read your saga so far")) _concrete.ReadSagaSoFar();
             GUILayout.Space(8f);
         }
 

@@ -78,6 +78,33 @@ static class SagaPageTests
         });
         Check.That(untold.Contains("The raven went home"), "a run at the last told act gets the epilogue even with an untold act after it");
 
+        // The saga SO FAR, read from the BOOK mid-run: the chapters of the gods already felled, and
+        // nothing that belongs to the end - no epilogue, no reckoning.
+        string soFar = SagaPage.Compose(new SagaPageInput
+        {
+            Character = "Astrid", Tale = tale, ActTitles = Titles, ActNumerals = numerals, LastActIndex = 1, Deeds = deeds,
+            Gods = 2, Time = "1:00:00", Heat = 30f, Score = 50f, SoFar = true,
+        });
+        Check.That(soFar.Contains("The forest was fed") && !soFar.Contains("The harvesters never sat down"),
+                   "so far: the finished chapters, and not the act being played");
+        Check.That(!soFar.Contains("The reckoning") && !soFar.Contains("Saga score"),
+                   "so far: no reckoning - the run is not over");
+        Check.That(soFar.Contains("not written yet") && !soFar.Contains("whoever goes further"),
+                   "so far: a coda saying the rest is still being done, not the ending's coda");
+        Check.That(soFar.Contains("still being told"), "so far: the title page says the saga is unfinished");
+
+        string soFarAll = SagaPage.Compose(new SagaPageInput
+        {
+            Character = "Astrid", Tale = tale, ActTitles = Titles, ActNumerals = numerals, LastActIndex = 3, Deeds = deeds, SoFar = true,
+        });
+        Check.That(!soFarAll.Contains("The raven went home"),
+                   "so far: never the epilogue, even with every told act behind the player");
+
+        Check.That(SagaPage.SoFarFileName("Ast/rid") == "Saga of Astrid - so far.html" &&
+                   SagaPage.IsSoFar("/x/Saga of Astrid - so far.html") &&
+                   !SagaPage.IsSoFar("/x/Saga of Astrid - 2026-10-05 2215.html"),
+                   "one 'so far' file per character, told apart from a finished saga's dated page");
+
         Check.That(SagaPage.MarkdownToHtml("a < b & **c**") == "<p>a &lt; b &amp; <strong>c</strong></p>",
                    "escape first, then the markup");
         Check.That(SagaPage.FileName("Ast/rid:", "2026-10-05 2215") == "Saga of Astrid - 2026-10-05 2215.html",

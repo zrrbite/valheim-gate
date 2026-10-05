@@ -6436,7 +6436,7 @@ namespace ICanShowYouTheWorld.RunMode
 
             // The reward (2026-10-05): "The Saga of <character>". Composed BEFORE EndRun, which
             // clears the chronicle this page is woven from.
-            string sagaPage = WriteSagaPage();
+            string sagaPage = WriteSagaPage(_acts.FindIndex(a => a.BossDefeatKey == _finalBossKey), soFar: false);
 
             _restorePending = !_worldModifiers.RestoreAll();
             _restoreWorldId = _restorePending ? _worldId : null;
@@ -6465,12 +6465,14 @@ namespace ICanShowYouTheWorld.RunMode
         /// the run's FINAL boss (not the act index, which has already moved on by the time the boss
         /// falls), with the chronicle's deeds under each act. Null if anything is missing.
         /// </summary>
-        private string WriteSagaPage()
+        /// <param name="lastActIndex">The last act told; nothing past it is. Negative means the act being played.</param>
+        /// <param name="soFar">Read from the BOOK mid-run: no epilogue, no reckoning, one file written over.</param>
+        private string WriteSagaPage(int lastActIndex, bool soFar)
         {
             try
             {
-                string myth = SagaReward.LoadMyth();
-                if (string.IsNullOrEmpty(myth))
+                var tale = MythTale();
+                if (tale == null)
                 {
                     Debug.LogWarning("[ICanShowYouTheWorld] No saga page: the myth is not embedded in this build.");
                     return null;
@@ -6478,8 +6480,7 @@ namespace ICanShowYouTheWorld.RunMode
 
                 var titles = _acts.Select(a => a.Title).ToList();
                 var numerals = _acts.Select(a => a.Numeral).ToList();
-                int last = _acts.FindIndex(a => a.BossDefeatKey == _finalBossKey);
-                if (last < 0) last = _actIndex;
+                int last = lastActIndex < 0 ? _actIndex : lastActIndex;
 
                 var cls = ClassLadder.Find(_classId);
                 string character = CharacterName() ?? "the living one";
@@ -6488,7 +6489,7 @@ namespace ICanShowYouTheWorld.RunMode
                 {
                     Character = character,
                     Way = cls != null ? $"{cls.Title}, the {cls.Display}" : null,
-                    Tale = SagaTale.Split(myth, titles),
+                    Tale = tale,
                     ActTitles = titles,
                     ActNumerals = numerals,
                     LastActIndex = last,
@@ -6498,9 +6499,10 @@ namespace ICanShowYouTheWorld.RunMode
                     Time = FormatTime(_elapsed),
                     Heat = _heat.Heat,
                     Score = LastScore,
+                    SoFar = soFar,
                 };
 
-                return SagaReward.Write(character, SagaPage.Compose(input));
+                return SagaReward.Write(character, SagaPage.Compose(input), soFar);
             }
             catch (Exception ex)
             {
@@ -6530,6 +6532,52 @@ namespace ICanShowYouTheWorld.RunMode
         private string _sagaPageLatest;
 
         public void OpenSagaPage(string path) => SagaReward.Open(path);
+
+        /// <summary>
+        /// The myth cut into its tales, read once from the DLL. Null when it is not embedded.
+        /// </summary>
+        private SagaTale MythTale()
+        {
+            if (_mythTale != null || _mythMissing) return _mythTale;
+            string myth = SagaReward.LoadMyth();
+            if (string.IsNullOrEmpty(myth)) { _mythMissing = true; return null; }
+            _mythTale = SagaTale.Split(myth, _acts.Select(a => a.Title).ToList());
+            return _mythTale;
+        }
+
+        private SagaTale _mythTale;
+        private bool _mythMissing;
+
+        /// <summary>
+        /// The title of the last act whose god has fallen this run and whose tale the myth tells, or
+        /// null - what the BOOK's "read your saga so far" line names.
+        /// </summary>
+        /// <remarks>
+        /// The BOOK and the saga page stay two texts (owner, 2026-10-05: "Keep them separate?"): the
+        /// BOOK is the short record read mid-fight, the myth is long prose for a browser. They are
+        /// linked instead: each god felled writes a chapter of the myth, readable from the BOOK. The
+        /// act being played is never told - its tale names the speakers and how each one ends.
+        /// </remarks>
+        public string SagaWrittenThrough
+        {
+            get
+            {
+                if (!_active || _actIndex <= 0) return null;
+                var tale = MythTale();
+                if (tale == null) return null;
+                for (int i = Math.Min(_actIndex, _acts.Count) - 1; i >= 0; i--)
+                    if (i < tale.Tales.Count && !string.IsNullOrEmpty(tale.Tales[i])) return _acts[i].Title;
+                return null;
+            }
+        }
+
+        /// <summary>Writes the saga as far as the last god felled, and opens it.</summary>
+        public void ReadSagaSoFar()
+        {
+            if (!_active || _actIndex <= 0) return;
+            string path = WriteSagaPage(_actIndex - 1, soFar: true);
+            if (path != null) SagaReward.Open(path);
+        }
 
         /// <summary>Tears down the active-run state, leaving LastScore and the splits for the HUD.</summary>
         private void EndRun()
@@ -7051,6 +7099,13 @@ namespace ICanShowYouTheWorld.RunMode
             ActCardShownAt = Time.time;
 
             TrySpawnRaven("act" + _actIndex, act.RavenLine);
+
+            // The god's fall writes its chapter of the myth. In the chat log only: the card, the raven
+            // and the rungs already fill the screen at this moment.
+            var written = MythTale();
+            int finished = _actIndex - 1;
+            if (written != null && finished >= 0 && finished < written.Tales.Count && !string.IsNullOrEmpty(written.Tales[finished]))
+                Announce($"The skalds have written \u201c{_acts[finished].Title}\u201d. It waits in your BOOK.");
 
             // Act II opens on the saga's premise, said once and plainly. Delayed past the card's
             // ten seconds so the two do not talk over each other — the card names the act, and
