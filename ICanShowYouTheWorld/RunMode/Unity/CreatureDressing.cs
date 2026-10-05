@@ -465,5 +465,23 @@ namespace ICanShowYouTheWorld.RunMode
             LightColor = new Color(0.62f, 0.74f, 0.42f),
             LightIntensity = 0.8f,
         };
+
+        /// <summary>The barrow-keeper: grave-ash grey, lit from inside by the chamber walls' green fire.</summary>
+        /// <remarks>
+        /// The fourth ghost, and the axes left: the shade is cold blue and drained, Thjalfi gold and
+        /// bright, the thane dark with a moss-brown glow. The keeper is drained to ash (Saturation
+        /// -0.8) but not darkened, and his glow is the sharp green of the surtling fires in the
+        /// chamber walls - the lights he keeps, which is all he is. He stands under the forest canopy
+        /// at any hour, so the point light is a little stronger than the thane's.
+        /// </remarks>
+        public static Look Keeper() => new Look
+        {
+            Saturation = -0.8f,
+            Value = 0.05f,
+            Emission = new Color(0.12f, 0.45f, 0.20f),
+            LightRange = 6f,
+            LightColor = new Color(0.35f, 0.95f, 0.45f),
+            LightIntensity = 1.0f,
+        };
     }
 }
