@@ -183,6 +183,11 @@ so declining a way never stalls the chain. The choice itself is the offer card t
 draws, with three ways instead of three boons and the same Keypad1/2/3. A rung coming due is announced
 by Hugin once, and the bearing to the thane returns while something is due.
 
+**Changed 2026-10-05 (owner, after play):** rungs are no longer fetched from the thane. They are
+taught on the spot when the boss falls (`RunService.TeachClassRung`), and the ladder is `{0,1,2}` —
+rung 3 after the Elder. The walk back was a trip with nothing in it, and rung 3 at Bonemass meant
+most sessions only ever held two abilities. The thane chooses and lays down a way; that is all.
+
 Later, each way's trainer may stand somewhere else — a grave in the biome that way belongs to. The
 ladder does not care who teaches; that is one field.
 

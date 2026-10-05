@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-09-20 at `1.0.15-run.2026-09-20aa`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-10-05 at `1.0.16-run.2026-10-05b`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -19,6 +19,31 @@ Everything below is what that file tells it.
 
 ## Where things stand
 
+- **2026-10-05 (a Mac session; read this first).** Three changes, all pushed, none played yet:
+  1. **A way's rungs are taught where the god falls** (tag `1.0.16-run.2026-10-05`). Thresholds
+     `{0,1,3}` → `{0,1,2}`, so rung 3 is after the ELDER, not Bonemass. `RunService.TeachClassRung`
+     (on the 1 Hz boss poll, every poll so resumes catch up) grants whatever is due, with Hugin and a
+     centre line naming each ability and its key. The thane now only chooses and lays down a way;
+     his Teach phase and the "at the graves" bearing are still in the code but have nothing to do.
+     Owner's reason: most sessions held two of three abilities, and the walk back after a boss
+     (far from home, daylight only) was a trip with nothing in it.
+  2. **Dev mode exists only in GM builds** (tag `...05b`). `RunService.DevMode` now reads
+     `ModVersion.GmEnabled && runDevMode`; every dev path goes through it, so a saga-only release
+     has no shortcuts and no red line, whatever its config says. A saga-only zip drops
+     `DEV-MODE.md`. Reverses the 2026-09-20 ruling (see the note in the flavour section below).
+  3. **The Mac builds and deploys again** — first time since August. See "Building on the Mac"
+     under Landmines.
+
+  **Where each machine is:** the Mac has `...05b` **saga-only** deployed (badge `SAGA
+  v1.0.16-run.2026-10-05b`, no `· GM`), for checking the release flavour. Windows is still on
+  `...09-29` and needs `Scripts/build_windows.sh` (it reruns setversion, so GM unless
+  `--saga-only`) then `Install-Mod.ps1 -ModOnly` — the committed `dist/windows/patcher` DLL was
+  NOT restaged from the Mac. The task is the top entry in `HANDOFF_WINDOWS.md`.
+  **Note: the tip's `Assets/Version.cs` is stamped `saga`**; anything that builds without
+  running setversion first builds a saga-only DLL.
+
+  **Waiting on the owner:** the play list in that handoff task; whether three abilities by the
+  Elder is too early; and the long-standing verdicts in `2026-09-27-classes-progress.md`.
 - **2026-09-27: the game is 1.0.16** (no source change, Unity still 6000.0.75) and **the class
   plan is in progress, in milestones** — read `2026-09-27-classes-progress.md` for how far it has
   got and what is waiting on a play verdict, and `specs/2026-09-27-classes-design.md` for why it
@@ -752,6 +777,26 @@ None of these are blocked on code — they are blocked on someone playing.
     no effect prefab resolved?
 
 ## Landmines
+
+### Building on the Mac (learned 2026-10-05)
+
+The Mac had not built this branch since August; four things stood in the way, all fixed or
+documented now:
+
+- **The mod compiles against `Patcher/bin/Debug/patched/assembly_valheim.dll`**, which is not in
+  git. Make it from the repo's vanilla `libraries/assembly_valheim.dll` with the bundled patcher,
+  resolving dependencies from the Mac install (the repo's `libraries/` lacks
+  `SoftReferenceableAssets`):
+  `mono dist/windows/patcher/Patcher.exe libraries/assembly_valheim.dll Patcher/bin/Debug/patched/assembly_valheim.dll dist/windows/patcher/ICanShowYouTheWorld.dll "<Mac Managed folder>"`
+- **The Patcher project needs `packages/Mono.Cecil.0.11.4/lib/net40/`** (no nuget here): copy
+  `dist/windows/patcher/Mono.Cecil*.dll` into it. Also untracked.
+- **Tests:** `Tests/run_tests.sh` now prefers Mono's Roslyn `csc` over `mcs`, which cannot parse
+  foreach deconstruction (the tests are written on Windows against Roslyn).
+- **`deploy_local.sh` retakes its vanilla backup** whenever the installed assembly is unpatched.
+  It used to keep the first one forever, so after a Steam update the version guard compared
+  against the old game and refused. The 0.221.12 backup is kept beside it as `.vanilla.0.221.12`.
+- Scripts are not all executable on the Mac: run them as `bash Scripts/x.sh`.
+
 
 The full list with reasoning is in the [build notes](2026-08-16-run-mode-build-notes.md).
 The five that have each cost a build:

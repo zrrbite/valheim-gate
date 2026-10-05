@@ -17,6 +17,36 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-10-05 - TASK: rungs taught where the god falls, and dev mode only in GM (`1.0.16-run.2026-10-05b`)
+
+**Not installed here yet.** Built on the Mac; the staged `dist/windows/patcher` DLL is still
+`...09-29`. In Git Bash: `git pull`, then `Scripts/build_windows.sh` (GM, the owner's build) and
+`.\dist\windows\Install-Mod.ps1 -ModOnly`. The badge must read `SAGA v1.0.16-run.2026-10-05b · GM`
+(a build without the tag letter means setversion did not run). The branch tip's `Version.cs` is
+stamped `saga` from the Mac's saga-only test build; build_windows.sh rewrites it.
+
+**1. Rungs are taught where the god falls.** Rung 2 after Eikthyr as before; rung 3 now after the
+ELDER (was Bonemass). No walk back to the thane: within a second of the kill, Hugin and a centre
+line say "The way of the X deepens: <ability> [key], ...", and the key works at once.
+
+- Choose a way (rung 1 on `[7]`). Kill Eikthyr → raven + centre line, `[0]` works immediately.
+- Kill the Elder → `[Ins]`. THE WAY block: "after Eikthyr"/"after the Elder" → "held"; never
+  "at the graves". Skills window: the way skill 33 → 66 → 100.
+- Quit to menu right after a boss kill and resume: nothing taught or announced twice.
+- The thane after a boss: nothing to teach, no bearing back to him; Shift+E still lays a way down.
+- An older run with Eikthyr dead and rung 2 never fetched: taught within a second of loading.
+- `grep "The way of the" Player.log` shows what was taught and at how many gods down.
+- Owner's question: is all three abilities by the Elder too early?
+
+**2. Dev mode needs a GM build.** In this GM build nothing changes: `runDevMode: true` still gives
+the shortcuts and the red line. In a `--saga-only` build the setting is ignored — no `+`, `Delete`,
+`Home`, kit, dev god, red line — and the release zip has no `DEV-MODE.md`. Optional check:
+`Scripts/build_windows.sh --saga-only`, install, confirm, then rebuild without it.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-09-28 - TASK: the quieter Hunter (`1.0.16-run.2026-09-28i`)
 
 Installed here already (`-ModOnly`). The Hunter's passive now also lends **Sneak to 50** and puts a

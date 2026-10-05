@@ -108,6 +108,16 @@ in the design spec. Play list in `HANDOFF_WINDOWS.md` under `...28`.
 
 Verdict: _pending_
 
+## Follow-up — rungs taught where the god falls (`1.0.16-run.2026-10-05`, commit `6bdfb9a`)
+
+Owner, after play: adjust the flow. Thresholds `{0,1,3}` → `{0,1,2}` (rung 3 after the Elder);
+`TeachClassRung` grants due rungs on the boss poll with Hugin + a centre line naming each ability and
+key; the thane only chooses and lays down a way. The kit's due state reads "learning" (it lasts
+under a second); the way skill's description says it rises as the gods fall. Tests updated (all
+pass). Deployed to the Mac; Windows not yet. Play list in `HANDOFF_WINDOWS.md` under `...10-05b`.
+
+Verdict: _pending_. Open question: is all three abilities by the Elder too early?
+
 ## Follow-ups of 2026-09-28 evening (all installed as `...28i`)
 
 - `...28e` panels back at the old spot, 30 px right (two health-panel anchors tried and reverted).
