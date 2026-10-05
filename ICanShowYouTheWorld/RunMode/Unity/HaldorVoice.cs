@@ -1,14 +1,9 @@
-using System;
-using System.Collections.Generic;
 using System.Linq;
-using UnityEngine;
 
 namespace ICanShowYouTheWorld.RunMode
 {
     /// <summary>
-    /// Haldor, given a voice for Act II of a run and returned to himself afterwards. Not a speaker:
-    /// the game already places him, animates him and gives him a talk system. This only changes
-    /// what he says and adds one thing he will accept.
+    /// Haldor, given a voice for Act II of a run: a <see cref="TraderVoice"/> configuration.
     /// </summary>
     /// <remarks>
     /// WHAT HE KNOWS. His camp sits on the couriers' road. They pass every night, laden, and never
@@ -17,23 +12,13 @@ namespace ICanShowYouTheWorld.RunMode
     /// BREAKS light instead of carrying it. Bring him a troll's head and he tells you where the
     /// couriers go, which is what puts the Elder's altar on the map.
     ///
-    /// HOW, from the IL of Trader.UseItem (1.0.16). <c>m_useItems</c> is a list of
-    /// <c>TraderUseItem { m_prefab, m_setsGlobalKey, m_dialog, m_removesItem }</c> matched on the
-    /// item's shared name. On a match he says <c>m_dialog</c>, sets the key, and removes one item. If
-    /// the key is already set he says <c>m_randomUseItemAlreadyRecieved</c> instead. The key is the
-    /// signal the host polls - and since global keys are SAVED WITH THE WORLD, it names the run
-    /// (<see cref="SagaNames.HaldorKey"/>) and is cleared at run start and end.
-    ///
-    /// Only <c>m_randomTalk</c> is replaced. Greet, goodbye, buy and sell stay vanilla: the story
-    /// needs his idle talk, not a stranger at the counter.
+    /// The give entry sets a run-scoped key (<see cref="SagaNames.HaldorKey"/>) and is offered only
+    /// while his ask is the current step, so he cannot promise a pin the questline has not reached.
     /// </remarks>
-    internal sealed class HaldorVoice
+    internal static class HaldorVoice
     {
         /// <summary>The troll's trophy, by prefab. Its drop chance is logged at run start.</summary>
         public const string TrophyPrefab = "TrophyForestTroll";
-
-        /// <summary>How near Haldor must be before the voice attaches. He is created with his camp's zone.</summary>
-        private const float AttachRange = 80f;
 
         public static readonly string[] Talk =
         {
@@ -55,211 +40,57 @@ namespace ICanShowYouTheWorld.RunMode
             "deeper, to where the trees are oldest. There's a ring of stone in there, and something under it that's " +
             "never once come up to collect. I've marked it on your map.";
 
-        private Trader _trader;
-        private List<string> _savedTalk;
-        private Trader.TraderUseItem _added;
-        private bool _loggedName;
-        private bool _toldTalk;
-
-        /// <summary>Set once per run when the trophy item is missing, so a broken ask logs once, not every second.</summary>
-        private bool _trophyMissing;
-        private bool _loggedNoMatch;
-
-        public bool Attached => _trader != null;
-
-        /// <summary>Call about once a second.</summary>
-        /// <param name="wanted">Act II of a live run: his talk is the saga's.</param>
-        /// <param name="key">The run's key; see <see cref="SagaNames.HaldorKey"/>.</param>
-        /// <param name="askLive">
-        /// His ask is the current step. The give entry exists ONLY then: offered earlier, he would
-        /// take the head and say "I've marked it on your map" while the altar step - and so the
-        /// pin - was still behind the couriers.
-        /// </param>
-        public void Tick(Player player, bool wanted, string key, bool askLive)
-        {
-            // A destroyed Trader compares equal to null, which is exactly "he unloaded": nothing of
-            // his is left to restore, so the references simply go.
-            if (_trader == null && (_savedTalk != null || _added != null))
+        public static TraderVoice Create() =>
+            new TraderVoice("Haldor", "haldor", Talk, TalkAfterTold)
             {
-                _savedTalk = null;
-                _added = null;
-            }
-
-            if (!wanted || player == null)
-            {
-                Detach();
-                return;
-            }
-
-            if (_trader == null)
-            {
-                var trader = FindHaldor(player.transform.position, askLive);
-                if (trader == null) return;
-                Attach(trader);
-                if (_trader == null) return;
-            }
-
-            SyncTalk(Told(key));
-            SyncAsk(askLive, key);
-        }
-
-        private void SyncTalk(bool told)
-        {
-            if (_toldTalk == told && _trader.m_randomTalk != null && _trader.m_randomTalk.Count > 0 &&
-                _trader.m_randomTalk[0] == Talk[0]) return;
-
-            _trader.m_randomTalk = new List<string>(told ? TalkAfterTold : Talk);
-            _toldTalk = told;
-        }
-
-        private void SyncAsk(bool askLive, string key)
-        {
-            if (_trader.m_useItems == null) _trader.m_useItems = new List<Trader.TraderUseItem>();
-
-            if (!askLive)
-            {
-                if (_added != null) _trader.m_useItems.Remove(_added);
-                _added = null;
-                return;
-            }
-
-            if (_added != null || _trophyMissing) return;
-
-            var trophy = ObjectDB.instance != null ? ObjectDB.instance.GetItemPrefab(TrophyPrefab) : null;
-            var drop = trophy != null ? trophy.GetComponent<ItemDrop>() : null;
-            if (drop == null)
-            {
-                _trophyMissing = true;
-                Debug.LogError($"[ICanShowYouTheWorld] Haldor's voice: no '{TrophyPrefab}' item - his ask cannot work.");
-                return;
-            }
-
-            _added = new Trader.TraderUseItem
-            {
-                m_prefab = drop,
-                m_setsGlobalKey = key,
-                m_dialog = RevealLine,
-                m_removesItem = true,
+                GivePrefab = TrophyPrefab,
+                GiveDialog = RevealLine,
             };
-            _trader.m_useItems.Add(_added);
-            Debug.Log($"[ICanShowYouTheWorld] Haldor will take a troll's head now (key '{key}').");
-        }
+    }
 
-        /// <summary>
-        /// Haldor, by his name token OR his GameObject's name. Two because neither is verified against
-        /// the running game: the token is expected to be "$npc_haldor", the object "Haldor(Clone)". A
-        /// miss here stalls the hunt track before the altar, so both are tried and a miss is logged.
-        /// </summary>
-        private static bool IsHaldor(Trader t) =>
-            (t.m_name != null && t.m_name.IndexOf("haldor", StringComparison.OrdinalIgnoreCase) >= 0) ||
-            (t.gameObject != null && t.gameObject.name.IndexOf("haldor", StringComparison.OrdinalIgnoreCase) >= 0);
-
-        private Trader FindHaldor(Vector3 near, bool askLive)
+    /// <summary>
+    /// The Bog Witch, given a voice for Act III: a <see cref="TraderVoice"/> configuration with a
+    /// proximity step and the Stormward's reforge at her hands.
+    /// </summary>
+    /// <remarks>
+    /// The one living thing in the marsh, because nothing keeps hold of her. Her talk is the act's
+    /// preparation: Bonemass is decided before the fight. Her shop stays her own; the reforge is the
+    /// alt-use, through <see cref="TraderAltTalk"/>.
+    /// </remarks>
+    internal static class BogWitchVoice
+    {
+        public static readonly string[] Talk =
         {
-            Trader best = null;
-            float bestDistance = AttachRange;
-            int inRange = 0;
+            "Nothing rots here. Did you notice? Nothing lets go long enough to rot.",
+            "The marsh keeps everything. The iron, the water, the men. Even its smell.",
+            "I live here because nothing here can keep hold of me. I don't let it.",
+            "The big one is decided before you ever see him. Poison, child. Brew against it, or don't go.",
+            "That shield of yours has a storm in it. Bring it to me with iron and old bark, and I'll make it heavier.",
+        };
 
-            foreach (var t in UnityEngine.Object.FindObjectsOfType<Trader>())
-            {
-                if (t == null) continue;
+        /// <summary>Once the reforge is done, the shield line goes - it would outlive its answer.</summary>
+        public static readonly string[] TalkAfter = Talk.Take(4).ToArray();
 
-                float range = Vector3.Distance(near, t.transform.position);
-                if (range > AttachRange) continue;
-                inRange++;
+        public const string ReforgeLine =
+            "There. Iron where the hide was, bark where the frame was, and the storm still in it. " +
+            "It will hold longer than you will. Most things here do.";
 
-                if (!_loggedName)
-                    Debug.Log($"[ICanShowYouTheWorld] Trader in range: m_name '{t.m_name}', object '{t.gameObject.name}' at {t.transform.position:0}.");
+        public const string ReforgeShortLine =
+            "The shield, ten iron, ten of the old bark. All of it, or I can't help you.";
 
-                if (!IsHaldor(t)) continue;
-
-                float d = Vector3.Distance(near, t.transform.position);
-                if (d <= bestDistance)
-                {
-                    best = t;
-                    bestDistance = d;
-                }
-            }
-
-            if (inRange > 0) _loggedName = true;
-
-            if (best == null && inRange > 0 && askLive && !_loggedNoMatch)
-            {
-                _loggedNoMatch = true;
-                Debug.LogError("[ICanShowYouTheWorld] Haldor's ask is live and a trader is in range, but none matched " +
-                               "Haldor - his ask cannot complete. See the 'Trader in range' lines for the names to match.");
-            }
-
-            return best;
-        }
-
-        private void Attach(Trader trader)
+        /// <summary>What the reforge takes, by shared name. Validated at run start.</summary>
+        public static readonly (string token, int amount, string label)[] ReforgePrice =
         {
-            try
-            {
-                _savedTalk = trader.m_randomTalk != null ? new List<string>(trader.m_randomTalk) : new List<string>();
-                _trader = trader;
-                _toldTalk = false;
-                _added = null;
-                Debug.Log($"[ICanShowYouTheWorld] Haldor's voice attached ('{trader.m_name}', object '{trader.gameObject.name}').");
-            }
-            catch (Exception ex)
-            {
-                Debug.LogWarning("[ICanShowYouTheWorld] Haldor's voice could not attach: " + ex.Message);
-            }
-        }
+            (SagaItems.StormwardName, 1, "Stormward"),
+            ("$item_iron", 10, "iron"),
+            ("$item_elderbark", 10, "ancient bark"),
+        };
 
-        /// <summary>Gives Haldor his own talk back and takes the troll's head off his list.</summary>
-        public void Detach()
-        {
-            try
+        public static TraderVoice Create() =>
+            new TraderVoice("The Bog Witch", "bogwitch", Talk, TalkAfter)
             {
-                if (_trader != null)
-                {
-                    if (_savedTalk != null) _trader.m_randomTalk = _savedTalk;
-                    if (_added != null && _trader.m_useItems != null) _trader.m_useItems.Remove(_added);
-                    Debug.Log("[ICanShowYouTheWorld] Haldor's voice detached; his own talk restored.");
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.LogWarning("[ICanShowYouTheWorld] Haldor's voice could not detach cleanly: " + ex.Message);
-            }
-
-            _trader = null;
-            _savedTalk = null;
-            _added = null;
-        }
-
-        /// <summary>True once the run's key is set: he has taken the head and told.</summary>
-        public static bool Told(string key)
-        {
-            try
-            {
-                var zone = ZoneSystem.instance;
-                return zone != null && !string.IsNullOrEmpty(key) && zone.GetGlobalKey(key);
-            }
-            catch { return false; }
-        }
-
-        /// <summary>Removes every saga Haldor key from the world. Run start and run end.</summary>
-        public static void ClearKeys()
-        {
-            try
-            {
-                var zone = ZoneSystem.instance;
-                if (zone == null) return;
-
-                foreach (var k in zone.GetGlobalKeys().Where(SagaNames.IsHaldorKey).ToList())
-                {
-                    zone.RemoveGlobalKey(k);
-                    Debug.Log($"[ICanShowYouTheWorld] Cleared Haldor's key '{k}' from the world.");
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.LogWarning("[ICanShowYouTheWorld] Haldor's keys could not be cleared: " + ex.Message);
-            }
-        }
+                MetRange = 6f,
+                AltHover = "Reforge the Stormward",
+            };
     }
 }

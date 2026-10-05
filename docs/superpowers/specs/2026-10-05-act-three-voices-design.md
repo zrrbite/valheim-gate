@@ -119,7 +119,7 @@ Clear the mire → fell an Abomination → find Bonemass's altar → defeat Bone
 
 ### Cut
 
-`sw-chart` (cartography table). **12 steps → 15**: three more completions, so Act III's
+`sw-chart` (cartography table). **13 steps → 16**: three more completions, so Act III's
 questline heat rises by three steps' worth — intended, the act was the thinnest in heat as well.
 
 ## The code

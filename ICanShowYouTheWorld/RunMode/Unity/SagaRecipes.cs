@@ -150,9 +150,11 @@ namespace ICanShowYouTheWorld.RunMode
                 StationPrefab = "forge",
                 MinStationLevel = 2,
                 Resources = new[] { ("Iron", 12), ("Guck", 6), ("LeatherScraps", 10) },
-                RequiresStepDone = "sw-ironbar",
-                TaughtLine = "Iron out of standing water. Improve the forge and it will keep the fen " +
-                             "out of you, which is more than the men who left it managed.",
+                // Taught by the drowned one on speaking (2026-10-05); iron and an improved forge still
+                // gate the making of it.
+                RequiresStepDone = "sw-drowned",
+                TaughtLine = "What the drowned one wore. Iron, guck and leather at an improved forge, and " +
+                             "it will keep the fen out of you, which is more than it did for him.",
             },
 
             new SagaRecipeDefinition

@@ -179,7 +179,13 @@ namespace ICanShowYouTheWorld.RunMode
         private BarrowKeeper _keeper;
 
         /// <summary>Haldor's Act II voice: the couriers' road, for a troll's head. See PollHaldor.</summary>
-        private readonly HaldorVoice _haldor = new HaldorVoice();
+        private readonly TraderVoice _haldor = HaldorVoice.Create();
+
+        /// <summary>The Bog Witch's Act III voice: preparation, and the Stormward's reforge. See PollWitch.</summary>
+        private readonly TraderVoice _witch = BogWitchVoice.Create();
+
+        /// <summary>Act III's speaker at the sunken crypt: teaches the cuirass, then asks to be let go.</summary>
+        private DrownedOne _drowned;
         private SpiritChase _spirit;
         private StolenLights _lights;
         private TheGatherer _gatherer;
@@ -205,7 +211,7 @@ namespace ICanShowYouTheWorld.RunMode
         private static readonly HashSet<string> SyntheticCreatureNames =
             new HashSet<string>
             {
-                DeerHerd.HeraldKillName, TheGatherer.KillName, SagaNames.DeepNorthBoss,
+                DeerHerd.HeraldKillName, TheGatherer.KillName, SagaNames.DeepNorthBoss, SagaNames.DrownedKill,
                 // Reported by us when a deer falls in daylight. No prefab is called this, and the
                 // validator would otherwise report the act’s opening step as a dead quest.
                 DeerHerd.DayDeerKillName,
@@ -552,6 +558,14 @@ namespace ICanShowYouTheWorld.RunMode
                         string graves = _thane.Bearing(player, !IsNight, toLearn);
                         if (!string.IsNullOrEmpty(graves)) return graves;
                     }
+                }
+
+                // The drowned one while he is to be found or let go.
+                if (_drowned != null && _challenges != null && ActIsSwamp &&
+                    (StepPredicates.DrownedFind(_challenges.Tracks) || StepPredicates.DrownedLetGo(_challenges.Tracks)))
+                {
+                    string crypt = _drowned.Bearing(player, "Someone waits at the sunken crypt");
+                    if (!string.IsNullOrEmpty(crypt)) return crypt;
                 }
 
                 // The barrow-keeper while one of his steps is live: a walk to a door, like the thane.
@@ -1176,6 +1190,9 @@ namespace ICanShowYouTheWorld.RunMode
             _thjalfi = new Thjalfi(_rng);
             _thane = new Thane(_rng);
             _keeper = new BarrowKeeper(_rng);
+            _drowned = new DrownedOne(_rng);
+            _witch.AltAction = ReforgeAtWitch;
+            _witch.AltProgress = ReforgeProgress;
             _spirit = new SpiritChase(_cfg, _rng);
             _lights = new StolenLights(_cfg);
             _gatherer = new TheGatherer(_cfg, _rng);
@@ -2278,10 +2295,12 @@ namespace ICanShowYouTheWorld.RunMode
                 _thjalfi?.Reset();
                 _thane?.Reset();
                 _keeper?.Reset();
+                _drowned?.Reset();
                 _haldor.Detach();
+                _witch.Detach();
                 // A key from a run that crashed before it could end would otherwise answer "already
                 // told" the first time this run asks him.
-                HaldorVoice.ClearKeys();
+                TraderVoice.ClearKeys(SagaNames.IsHaldorKey);
                 // Their spots were just forgotten, so their pins mark nowhere now. Re-drawn on the
                 // first poll that wants them, at the new spots.
                 SagaPins.HideAll();
@@ -3732,6 +3751,9 @@ namespace ICanShowYouTheWorld.RunMode
             // Haldor only while Act II is current.
             if (shadePlayer != null) PollBarrowKeeper(shadePlayer);
             PollHaldor(shadePlayer);
+            // Act III's two.
+            if (shadePlayer != null) PollDrownedOne(shadePlayer);
+            PollWitch(shadePlayer);
             // After the thane, so a lesson or a respec he just gave shows in the same second.
             if (shadePlayer != null) PollWaySkill(shadePlayer);
             PollDiscoveries();
@@ -4474,9 +4496,9 @@ namespace ICanShowYouTheWorld.RunMode
                 bool actTwo = _active && _actIndex == 1;
                 string key = SagaNames.HaldorKey(_rngSeed);
                 bool askLive = actTwo && _challenges != null && StepPredicates.HaldorAsk(_challenges.Tracks);
-                _haldor.Tick(player, actTwo, key, askLive);
+                _haldor.Tick(player, actTwo, TraderVoice.KeySet(key), key, askLive);
 
-                if (askLive && HaldorVoice.Told(key))
+                if (askLive && TraderVoice.KeySet(key))
                 {
                     _challenges.ReportEvent(ChallengeKind.PlayerEvent, SagaNames.HaldorTold);
                     Debug.Log("[ICanShowYouTheWorld] Haldor took the troll's head and told where the couriers go.");
@@ -4488,7 +4510,109 @@ namespace ICanShowYouTheWorld.RunMode
             }
         }
 
+        /// <summary>
+        /// The drowned one: at the sunken crypt from the moment the scrap step is current until he
+        /// has been let go. Act III only.
+        /// </summary>
+        private void PollDrownedOne(Player player)
+        {
+            if (_drowned == null || _challenges == null) return;
+
+            try
+            {
+                var tracks = _challenges.Tracks;
+                bool reached = StepPredicates.StepLive(tracks, "sw-scrap") || StepPredicates.StepDone(tracks, "sw-scrap");
+                bool wanted = ActIsSwamp && reached && !StepPredicates.StepDone(tracks, "sw-letgo");
+
+                var phase = StepPredicates.DrownedFind(tracks) ? DrownedOne.Phase.Speak
+                          : StepPredicates.DrownedLetGo(tracks) ? DrownedOne.Phase.LetGo
+                          : DrownedOne.Phase.Wait;
+
+                var was = _drowned.Current;
+                bool spoken;
+                _drowned.Tick(player, phase, wanted, out spoken);
+                RefreshNpcPin(PinDrowned, wanted, _drowned.Spot(), DrownedOne.DrownedName);
+
+                if (spoken && phase == DrownedOne.Phase.Speak)
+                {
+                    _challenges.ReportEvent(ChallengeKind.PlayerEvent, SagaNames.DrownedFound);
+                    Message("He gave you what he wore. Make it at an improved forge.");
+                }
+
+                if (wanted && phase == DrownedOne.Phase.LetGo && was != DrownedOne.Phase.LetGo)
+                    Message("The drowned one is waiting at the crypt. He asked to be let go.");
+            }
+            catch (Exception ex)
+            {
+                LogOnce("drowned", ex);
+            }
+        }
+
+        /// <summary>The Bog Witch's Act III voice, and her proximity step.</summary>
+        private void PollWitch(Player player)
+        {
+            try
+            {
+                var tracks = _challenges?.Tracks;
+                bool reforged = tracks != null && StepPredicates.StepDone(tracks, "sw-reforge");
+                _witch.Tick(player, _active && ActIsSwamp, reforged, null, false);
+
+                if (_witch.Near && tracks != null && StepPredicates.WitchFind(tracks))
+                {
+                    _challenges.ReportEvent(ChallengeKind.PlayerEvent, SagaNames.WitchMet);
+                    Message("She has lived in the marsh longer than anything in it has been dead.");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogOnce("witch", ex);
+            }
+        }
+
+        /// <summary>The Bog Witch's alt action: the Stormward, ten iron, ten ancient bark - the Ironbound Stormward.</summary>
+        private bool ReforgeAtWitch(Humanoid user)
+        {
+            var player = user as Player;
+            var inv = player?.GetInventory();
+            if (inv == null) return false;
+
+            if (!BogWitchVoice.ReforgePrice.All(p => inv.CountItems(p.token) >= p.amount))
+            {
+                _witch.SayBubble(BogWitchVoice.ReforgeShortLine);
+                return true;
+            }
+
+            // The shield first, by the item itself: unequipped before it goes, or the hand keeps a
+            // reference to an item that is no longer in the pack.
+            var shield = inv.GetAllItems().FirstOrDefault(i => i?.m_shared != null && i.m_shared.m_name == SagaItems.StormwardName);
+            if (shield == null)
+            {
+                _witch.SayBubble(BogWitchVoice.ReforgeShortLine);
+                return true;
+            }
+            if (player.IsItemEquiped(shield)) player.UnequipItem(shield, false);
+            inv.RemoveItem(shield);
+
+            foreach (var p in BogWitchVoice.ReforgePrice.Where(p => p.token != SagaItems.StormwardName))
+                inv.RemoveItem(p.token, p.amount);
+
+            GrantItem(SagaItems.IronboundPrefab, 1);
+            _witch.SayBubble(BogWitchVoice.ReforgeLine);
+            Debug.Log("[ICanShowYouTheWorld] The Bog Witch reforged the Stormward into the Ironbound Stormward.");
+            return true;
+        }
+
+        /// <summary>" (1/1 Stormward, 4/10 iron, 0/10 ancient bark)" for the witch's alt hover.</summary>
+        private static string ReforgeProgress(Player player)
+        {
+            var inv = player?.GetInventory();
+            if (inv == null) return string.Empty;
+            return " (" + string.Join(", ", BogWitchVoice.ReforgePrice
+                .Select(p => $"{Mathf.Min(inv.CountItems(p.token), p.amount)}/{p.amount} {p.label}").ToArray()) + ")";
+        }
+
         // The saga's people on the map. See SagaPins for why they are never saved.
+        private const string PinDrowned = "drowned";
         private const string PinKeeper = "keeper";
         private const string PinThane = "thane";
         private const string PinThjalfi = "thjalfi";
@@ -4652,7 +4776,7 @@ namespace ICanShowYouTheWorld.RunMode
                     // attack, because Attack has no durability cost of its own - it can spend
                     // stamina, eitr and health, but not the weapon. Since this is already the one
                     // place that knows a discharge HAPPENED, it is also the place that can bill it.
-                    shield.m_durability = Mathf.Max(0f, shield.m_durability - SagaItems.StormwardDischargeWear);
+                    shield.m_durability = Mathf.Max(0f, shield.m_durability - SagaItems.DischargeWear(shield.m_shared.m_name));
 
                     SaveCountersSoon();
                 }
@@ -4688,7 +4812,7 @@ namespace ICanShowYouTheWorld.RunMode
             if (equipped == null) return null;
 
             foreach (var item in equipped)
-                if (item?.m_shared != null && item.m_shared.m_name == SagaItems.StormwardName) return item;
+                if (item?.m_shared != null && SagaItems.IsStormShield(item.m_shared.m_name)) return item;
 
             return null;
         }
@@ -5839,8 +5963,10 @@ namespace ICanShowYouTheWorld.RunMode
             // Act II's voices are run-only too. Haldor gets his own talk back and the world loses
             // the key his answer set - global keys are saved with the world.
             _keeper?.Reset();
+            _drowned?.Reset();
             _haldor.Detach();
-            HaldorVoice.ClearKeys();
+            _witch.Detach();
+            TraderVoice.ClearKeys(SagaNames.IsHaldorKey);
 
             // Not an offer: the world the run ended in has just been asked and answered. Clearing
             // the WORLD would re-offer the saga the moment the abandon finished, which reads as the
@@ -6383,6 +6509,7 @@ namespace ICanShowYouTheWorld.RunMode
             ValidateSpawnEvents();
             ValidateQuestPrices();
             LogTrollTrophyChance();
+            LogLocationRegistry();
             ValidateClassLadder();
             // Thor's bow's flashes: every element's, so a missing fire or frost burst is in the log
             // before the Hunter can switch to it.
@@ -7884,7 +8011,19 @@ namespace ICanShowYouTheWorld.RunMode
                 try { _boonEffects.OnKill(); }
                 catch (Exception ex) { LogOnce("boon-on-kill", ex); }
 
-                if (_fen != null && ActIsSwamp)
+                // The drowned one, BEFORE FenWatch: he is the one thing the marsh lets go, and a
+                // risen skeleton where he fell would undo the whole beat. Matched by ZDO id.
+                bool drownedLetGo = false;
+                if (_drowned != null && ActIsSwamp && _drowned.IsBody(c))
+                {
+                    drownedLetGo = true;
+                    _challenges?.ReportKill(SagaNames.DrownedKill);
+                    Message("He let go. Something he kept rises where he fell.");
+                    try { _lights?.Release(c.transform.position + Vector3.up * 0.5f, 120f); }
+                    catch (Exception ex) { LogOnce("drowned-light", ex); }
+                }
+
+                if (_fen != null && ActIsSwamp && !drownedLetGo)
                 {
                     try
                     {
@@ -9785,12 +9924,38 @@ namespace ICanShowYouTheWorld.RunMode
             catch (Exception ex) { LogOnce("troll-trophy", ex); }
         }
 
+        /// <summary>
+        /// The location names the saga's speakers and steps GUESS - sunken crypts, traders' camps,
+        /// caves - listed from the running game at run start, so the first run confirms or corrects
+        /// them. Grep the log for "Location registry".
+        /// </summary>
+        private void LogLocationRegistry()
+        {
+            try
+            {
+                var zone = ZoneSystem.instance;
+                if (zone?.m_locations == null) return;
+
+                var keys = new[] { "Sunken", "BogWitch", "Vendor", "Hildir", "Cave", "Crypt" };
+                var names = zone.m_locations
+                    .Where(l => l != null && !string.IsNullOrEmpty(l.m_prefabName) &&
+                                keys.Any(k => l.m_prefabName.IndexOf(k, StringComparison.OrdinalIgnoreCase) >= 0))
+                    .Select(l => l.m_prefabName + (l.m_enable ? "" : " (disabled)"))
+                    .Distinct()
+                    .OrderBy(n => n)
+                    .ToArray();
+                Debug.Log("[ICanShowYouTheWorld] Location registry: " + string.Join(", ", names));
+            }
+            catch (Exception ex) { LogOnce("location-registry", ex); }
+        }
+
         /// <summary>Every price every quest-giver asks, flattened for validation.</summary>
         private static IEnumerable<(string who, string token, int amount)> QuestPrices()
         {
             foreach (var p in HuntersShade.Price) yield return (HuntersShade.Name, p.token, p.amount);
             foreach (var p in Thjalfi.Price) yield return (Thjalfi.Name, p.token, p.amount);
             foreach (var p in BarrowKeeper.Price) yield return (BarrowKeeper.KeeperName, p.token, p.amount);
+            foreach (var p in BogWitchVoice.ReforgePrice) yield return ("The Bog Witch", p.token, p.amount);
         }
 
         /// <summary>
@@ -9816,6 +9981,8 @@ namespace ICanShowYouTheWorld.RunMode
             SagaNames.KeeperFound,
             SagaNames.KeeperPaid,
             SagaNames.HaldorTold,
+            SagaNames.WitchMet,
+            SagaNames.DrownedFound,
         };
 
         /// <summary>
@@ -10803,16 +10970,25 @@ namespace ICanShowYouTheWorld.RunMode
                 // The mead this makes IS the Bonemass fight. Building it here is the hint.
                 Id = "sw-fermenter", MainQuest = true, Track = MarshTrackId, Kind = ChallengeKind.BuildPiece, Param = "Fermenter",
                 Target = 1, Display = "Build a fermenter", RewardText = "Honey and herbs for the mead",
-                Hint = "Honey from a beehive, and thistle from the forest floor.",
+                Hint = "Fine wood, bronze and resin. Honey and thistle are what it ferments.",
             },
             new ChallengeDefinition
             {
-                // The swamp is the first act where the map matters more than the road: crypts and
-                // the altar are scattered, and the ground between them is the part that kills you.
-                Id = "sw-chart", MainQuest = true, Track = MarshTrackId, Kind = ChallengeKind.BuildPiece,
-                Param = "MapTable", Target = 1, Display = "Chart the marshes",
-                RewardText = "Bronze and bone for the work",
-                Hint = "A cartography table. Bronze, fine wood and bone fragments.",
+                // The Bog Witch (2026-10-05): found by coming near her - a trader has no speech of
+                // her own to hang a step on. Her talk is the act's preparation.
+                Id = "sw-witch", MainQuest = true, Track = MarshTrackId, Kind = ChallengeKind.PlayerEvent,
+                Param = SagaNames.WitchMet, Target = 1, Display = "Find the Bog Witch",
+                Hint = "Someone lives in the marsh on purpose. Her camp is somewhere in the swamp \u2014 walk up to her.",
+            },
+            new ChallengeDefinition
+            {
+                // The BASE, not the mead: finished poison mead is already handed out by sw-arrive's and
+                // sw-cull's rewards, and a CollectItem latches on what is carried, so asking for the
+                // mead would complete on arrival. Stirring the base is the act of preparing.
+                Id = "sw-mead", MainQuest = true, Track = MarshTrackId, Kind = ChallengeKind.CollectItem,
+                Param = "$item_meadbasepoisonresist", Target = 1, Display = "Stir a poison mead base",
+                Hint = "At a cauldron: honey, thistle, neck tails and coal. Then ferment it. Bonemass is decided before the fight.",
+                Opening = "She said it plainly: the big one is decided before you ever see him.",
             },
             // There was a "Build a boat" step here (sw-karve). It is gone because Act II's bf-raft
             // already claims the Ship category, and _builtSeen latches for the WHOLE run: the step
@@ -10830,6 +11006,15 @@ namespace ICanShowYouTheWorld.RunMode
                 Param = "DistanceSail", Target = 600, Display = "Sail the fens",
                 RewardText = "Iron nails, and a full hold of provisions",
                 Hint = "Follow the water inland. Most crypts sit on a shore.",
+            },
+            new ChallengeDefinition
+            {
+                // The Stormward's reforge at the Bog Witch's hands (alt-use on her). CollectItem on the
+                // result, so however it was made counts.
+                Id = "sw-reforge", MainQuest = true, Track = MarshTrackId, Kind = ChallengeKind.CollectItem,
+                Param = SagaItems.IronboundName, Target = 1, Display = "Reforge the Stormward",
+                Hint = "Bring the Bog Witch the Stormward, ten iron and ten ancient bark. Hold Shift and Use on her.",
+                Opening = "The storm's first piece, made heavier by the one person in the marsh who lets go of things.",
             },
             // "Kill 5 Blobs" and "Kill 3 Leeches" are clauses of "sw-cull" above now.
             //
@@ -10866,6 +11051,14 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
+                // The drowned one (2026-10-05), at the sunken crypt the scrap comes out of. Speaking
+                // to him is the step, and it teaches the cuirass.
+                Id = "sw-drowned", MainQuest = true, Track = CraftTrackId, Kind = ChallengeKind.PlayerEvent,
+                Param = SagaNames.DrownedFound, Target = 1, Display = "Speak with the drowned one",
+                Hint = "A draugr who does not attack, at the sunken crypt's door. He is marked on your map.",
+            },
+            new ChallengeDefinition
+            {
                 // The smelting, immediately after the hauling rather than at the far end of the
                 // marsh track behind a boat, which is where it used to sit.
                 Id = "sw-ironbar", MainQuest = true, Kind = ChallengeKind.CollectItem,
@@ -10881,6 +11074,14 @@ namespace ICanShowYouTheWorld.RunMode
                 RewardText = "Iron enough to finish it, and mead",
                 Hint = "An IMPROVED forge: 12 iron, 6 guck, 10 leather scraps. The fen stops getting into you.",
                 Opening = "Third piece. The men who left this iron in the water did not have one.",
+            },
+            new ChallengeDefinition
+            {
+                // His last ask: to be put down. Matched by HIS id (SagaNames.DrownedKill), never by
+                // species. Explicitly CRAFT: a KillPrefab would otherwise land on the hunt track.
+                Id = "sw-letgo", MainQuest = true, Track = CraftTrackId, Kind = ChallengeKind.KillPrefab,
+                Param = SagaNames.DrownedKill, Target = 1, Display = "Let him go",
+                Hint = "He asked to be put down. He will lift his blade out of habit. Do not let that stop you.",
             },
             new ChallengeDefinition
             {
@@ -11422,7 +11623,6 @@ namespace ICanShowYouTheWorld.RunMode
                 ["sw-cull"] = new[] { ("ArrowIron", 40), ("ShieldIronTower", 1), ("WitheredBone", 3), ("MeadPoisonResist", 5), ("MaceIron", 1) },
                 ["sw-scrap"] = new[] { ("Coal", 30), ("IronNails", 40) },
                 ["sw-fermenter"] = new[] { ("Honey", 20), ("Thistle", 20) },
-                ["sw-chart"] = new[] { ("Bronze", 10), ("BoneFragments", 20) },
                 ["sw-storm"] = new[] { ("Iron", 10), ("MeadHealthMedium", 4) },
                 ["sw-ironbar"] = new[] { ("Iron", 20), ("Coal", 30) },
                 ["sw-abom"] = new[] { ("MeadHealthMedium", 4), ("Sausages", 10) },

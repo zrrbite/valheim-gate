@@ -93,6 +93,32 @@ namespace ICanShowYouTheWorld.RunMode
         public const string StormwardName = "Stormward";
 
         /// <summary>
+        /// Act III's reforge of the Stormward, at the Bog Witch's hands: iron where the hide was,
+        /// ancient bark where the frame was, the storm still in it. Shares every piece of the
+        /// Stormward's machinery - the discharge, the flash, the wear, the answers counted.
+        /// </summary>
+        public const string IronboundPrefab = "Saga_StormwardIronbound";
+        public const string IronboundName = "Ironbound Stormward";
+
+        private const float IronboundBlock = 90f;
+        private const float IronboundBlockPerLevel = 10f;
+        private const float IronboundDurability = 500f;
+        private const float IronboundDurabilityPerLevel = 80f;
+        private const float IronboundLightning = 40f;
+        private const float IronboundLightningPerLevel = 6f;
+        private const float IronboundBlunt = 20f;
+        private const float IronboundBluntPerLevel = 3f;
+        public const float IronboundDischargeWear = 8f;
+
+        /// <summary>Either storm shield, by shared name - what the host's equip, wear and answer checks ask.</summary>
+        public static bool IsStormShield(string sharedName) =>
+            sharedName == StormwardName || sharedName == IronboundName;
+
+        /// <summary>What one discharge wears off this shield.</summary>
+        public static float DischargeWear(string sharedName) =>
+            sharedName == IronboundName ? IronboundDischargeWear : StormwardDischargeWear;
+
+        /// <summary>
         /// The shield's block, and the reason it is worth an act's last craft step. Blackmetal-tier
         /// on a wooden frame, because what makes it is not the frame: it is what the hide came off
         /// and what was bound into it.
@@ -615,6 +641,40 @@ namespace ICanShowYouTheWorld.RunMode
                             m_modifier = HitData.DamageModifier.Resistant,
                         },
                     };
+                },
+                TuneWithScene = (items, shared) => items.GiveStormwardItsStorm(shared),
+            },
+
+            new SagaItemDefinition
+            {
+                // The Stormward, reforged in Act III (2026-10-05). Everything the Stormward is - two
+                // hands, block charges, the discharge as its own attack - and then heavier: the
+                // Stormward's own Tune runs first, so the behaviour cannot drift between the two, and
+                // only the numbers and the mesh differ. A different tower mesh so the reforge READS
+                // as a different object; the chain is the Stormward's, reordered.
+                SourcePrefab = "ShieldBlackmetalTower",
+                SourceFallbacks = new[]
+                {
+                    "ShieldFlametalTower", "ShieldIronTower", "ShieldCarapace", "ShieldWoodTower",
+                    "ShieldSerpentscale", "ShieldBanded", "ShieldWood",
+                },
+                PrefabName = IronboundPrefab,
+                DisplayName = IronboundName,
+                Description = "The Stormward, re-bound in the marsh: iron where the hide was, ancient bark " +
+                              "where the frame was, and the storm still in it. It holds longer than you " +
+                              "will, and it still answers being hit twice.\n\nIt takes both hands.",
+                Tune = shared =>
+                {
+                    All.First(d => d.PrefabName == StormwardPrefab).Tune(shared);
+
+                    shared.m_blockPower = IronboundBlock;
+                    shared.m_blockPowerPerLevel = IronboundBlockPerLevel;
+                    shared.m_maxDurability = IronboundDurability;
+                    shared.m_durabilityPerLevel = IronboundDurabilityPerLevel;
+                    shared.m_damages.m_lightning = IronboundLightning;
+                    shared.m_damagesPerLevel.m_lightning = IronboundLightningPerLevel;
+                    shared.m_damages.m_blunt = IronboundBlunt;
+                    shared.m_damagesPerLevel.m_blunt = IronboundBluntPerLevel;
                 },
                 TuneWithScene = (items, shared) => items.GiveStormwardItsStorm(shared),
             },
@@ -1630,16 +1690,22 @@ namespace ICanShowYouTheWorld.RunMode
         {
             if (_stormFlashDone) return;
 
-            if (!_clones.TryGetValue(StormwardPrefab, out var clone) || clone == null) return;
-
-            var shared = clone.GetComponent<ItemDrop>()?.m_itemData?.m_shared;
-            if (shared?.m_attack == null) return;
-
             var fx = Lightning();
             if (fx == null) return;
 
-            shared.m_attack.m_hitEffect = EffectListOf(fx);
-            shared.m_attack.m_triggerEffect = EffectListOf(fx);
+            // Both storm shields. Done only when every one that exists has its flash.
+            bool all = true;
+            foreach (var prefab in new[] { StormwardPrefab, IronboundPrefab })
+            {
+                if (!_clones.TryGetValue(prefab, out var clone) || clone == null) { all = false; continue; }
+
+                var shared = clone.GetComponent<ItemDrop>()?.m_itemData?.m_shared;
+                if (shared?.m_attack == null) { all = false; continue; }
+
+                shared.m_attack.m_hitEffect = EffectListOf(fx);
+                shared.m_attack.m_triggerEffect = EffectListOf(fx);
+            }
+            if (!all) return;
             _stormFlashDone = true;
 
             Debug.Log($"[ICanShowYouTheWorld] Stormward discharge flash: '{fx.name}' " +

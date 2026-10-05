@@ -474,6 +474,23 @@ namespace ICanShowYouTheWorld.RunMode
         /// chamber walls - the lights he keeps, which is all he is. He stands under the forest canopy
         /// at any hour, so the point light is a little stronger than the thane's.
         /// </remarks>
+        /// <summary>The drowned one: a draugr bleached by water, with a cold green-grey glow.</summary>
+        /// <remarks>
+        /// On a DRAUGR body, so the palette's job is the opposite of the ghosts': make a creature the
+        /// player has been killing for an hour read as somebody else at a glance. Drained and
+        /// lightened (water-bleached rather than rotten), with a dim grey-green light - the marsh's
+        /// colour, not the chamber fires' sharp green, so he and the keeper do not rhyme.
+        /// </remarks>
+        public static Look Drowned() => new Look
+        {
+            Saturation = -0.7f,
+            Value = 0.25f,
+            Emission = new Color(0.10f, 0.22f, 0.20f),
+            LightRange = 5f,
+            LightColor = new Color(0.55f, 0.75f, 0.70f),
+            LightIntensity = 0.8f,
+        };
+
         public static Look Keeper() => new Look
         {
             Saturation = -0.8f,

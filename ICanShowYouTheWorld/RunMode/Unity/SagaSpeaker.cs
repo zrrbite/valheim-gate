@@ -58,8 +58,11 @@ namespace ICanShowYouTheWorld.RunMode
     /// </remarks>
     internal abstract class SagaSpeaker
     {
-        /// <summary>The Ghost prefab, as every speaker uses - they are all of the put-away.</summary>
-        private const string Prefab = "Ghost";
+        /// <summary>
+        /// The body. The Ghost by default - most speakers are of the put-away. The drowned one wears
+        /// a Draugr, because in the swamp the dead are not ghosts but bodies that would not lie down.
+        /// </summary>
+        protected virtual string BodyPrefab => "Ghost";
 
         /// <summary>Only CREATED once the player is near the spot, so never culled at birth.</summary>
         protected virtual float SpawnRange => 70f;
@@ -205,10 +208,10 @@ namespace ICanShowYouTheWorld.RunMode
             if (Vector3.Distance(player.transform.position, spot) > SpawnRange) return;
 
             var scene = ZNetScene.instance;
-            var prefab = scene == null ? null : scene.GetPrefab(Prefab);
+            var prefab = scene == null ? null : scene.GetPrefab(BodyPrefab);
             if (prefab == null)
             {
-                Debug.LogError($"[ICanShowYouTheWorld] Cannot spawn {Name}: no '{Prefab}' prefab.");
+                Debug.LogError($"[ICanShowYouTheWorld] Cannot spawn {Name}: no '{BodyPrefab}' prefab.");
                 return;
             }
 
@@ -271,7 +274,33 @@ namespace ICanShowYouTheWorld.RunMode
             _body = inst;
             _greeted = null;
 
+            try { OnSpawned(ch); }
+            catch (Exception ex) { Debug.LogWarning($"[ICanShowYouTheWorld] {Name}'s spawn hook failed: {ex.Message}"); }
+
             Debug.Log($"[ICanShowYouTheWorld] {Name} stands at {pos:0.0}.");
+        }
+
+        /// <summary>After a body is made, tamed and dressed. The drowned one untames himself here when it is time.</summary>
+        protected virtual void OnSpawned(Character body) { }
+
+        /// <summary>The standing body's Character, or null.</summary>
+        protected Character BodyCharacter => _body != null ? _body.GetComponent<Character>() : null;
+
+        /// <summary>
+        /// True when <paramref name="c"/> IS this speaker's current body - by ZDO id, never by species,
+        /// so another creature of the same prefab can never stand in for them.
+        /// </summary>
+        public bool IsBody(Character c)
+        {
+            if (c == null || _body == null) return false;
+            try
+            {
+                var mine = _body.GetComponent<ZNetView>();
+                var theirs = c.GetComponent<ZNetView>();
+                if (mine == null || theirs == null || !mine.IsValid() || !theirs.IsValid()) return ReferenceEquals(c.gameObject, _body);
+                return mine.GetZDO().m_uid == theirs.GetZDO().m_uid;
+            }
+            catch { return ReferenceEquals(c.gameObject, _body); }
         }
 
         /// <summary>Sends them away. The spot is kept until <see cref="Reset"/>.</summary>
