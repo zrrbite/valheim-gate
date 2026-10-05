@@ -17,6 +17,22 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-10-05 - TASK: the saga's reward page (`1.0.16-run.2026-10-05l`)
+
+**Staged.** `git pull`, `.\dist\windows\Install-Mod.ps1 -ModOnly`. Badge `...05l · DEV`.
+
+- At run start: `grep "Saga myth" Player.log` → "no tale yet for What the Cold Keeps." (expected).
+- WIN a run (dev mode makes it quick: `+` to skip to the boss, or set `runFinalBossKey` to an early
+  god). At the end: "The skalds have finished your saga." and the browser opens **The Saga of
+  <your character>** — the myth up to your last act, your deeds under each act, a reckoning.
+- The file is in `%USERPROFILE%\AppData\LocalLow\IronGate\Valheim\` (`grep "saga's page"`).
+- The lobby (`End`, outside a run) shows **Read your saga** afterwards; it reopens the page.
+- Check: nothing from an act past the one your run ended in appears on the page.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-10-05 - TASK: Act VII's charred one and Last Light (`1.0.16-run.2026-10-05k`)
 
 **Staged.** `git pull`, `.\dist\windows\Install-Mod.ps1 -ModOnly`. Badge `...05k · DEV`.
