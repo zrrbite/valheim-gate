@@ -356,6 +356,8 @@
     <Compile Include="RunMode\Unity\Harvester.cs" />
     <Compile Include="RunMode\Unity\LanternKeeper.cs" />
     <Compile Include="RunMode\Unity\CharredOne.cs" />
+    <Compile Include="RunMode\Unity\SagaReward.cs" />
+    <Compile Include="RunMode\SagaPage.cs" />
     <Compile Include="RunMode\PlainsMeal.cs" />
     <Compile Include="RunMode\Unity\TraderVoice.cs" />
     <Compile Include="RunMode\Unity\HaldorVoice.cs" />
@@ -381,4 +383,10 @@
     <Folder Include="RunMode\" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <ItemGroup>
+    <!-- The saga's myth, embedded so the reward page is always the current story (SagaReward). -->
+    <EmbeddedResource Include="..\docs\THE-SAGA.md">
+      <LogicalName>ICanShowYouTheWorld.TheSaga.md</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
 </Project>

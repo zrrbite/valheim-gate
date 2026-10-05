@@ -2501,6 +2501,13 @@ namespace ICanShowYouTheWorld.RunMode
                 GUILayout.Label($"Last run score: {run.CurrentScore:0.##}", RunTheme.Small);
             }
 
+            // The reward, again (2026-10-05): once this character has finished a saga, its page.
+            if (_concrete != null)
+            {
+                string page = _concrete.LatestSagaPage;
+                if (page != null && GUILayout.Button("Read your saga")) _concrete.OpenSagaPage(page);
+            }
+
             // Outside a run the strip isn't drawn, so this is the only place a notice can be
             // seen — and the ones raised here (a refused start, an unreadable run save) are
             // exactly the ones the player must read before pressing Start again.

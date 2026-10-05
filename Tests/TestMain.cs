@@ -35,6 +35,7 @@ static class TestMain
         RunStashTests.Run();
         LoanLedgerTests.Run();
         TooltipPlacementTests.Run();
+        SagaPageTests.Run();
         Console.WriteLine(Check.Failures == 0 ? "ALL PASS" : $"{Check.Failures} FAILURES");
         return Check.Failures == 0 ? 0 : 1;
     }

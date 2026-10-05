@@ -6428,6 +6428,10 @@ namespace ICanShowYouTheWorld.RunMode
             }
             catch (Exception ex) { LogOnce("record-hearth", ex); }
 
+            // The reward (2026-10-05): "The Saga of <character>". Composed BEFORE EndRun, which
+            // clears the chronicle this page is woven from.
+            string sagaPage = WriteSagaPage();
+
             _restorePending = !_worldModifiers.RestoreAll();
             _restoreWorldId = _restorePending ? _worldId : null;
             SafeUnapplyAllBoonEffects();
@@ -6440,7 +6444,86 @@ namespace ICanShowYouTheWorld.RunMode
             Debug.Log($"[ICanShowYouTheWorld] Run Mode run finished in {FormatTime(finalElapsed)} " +
                       $"— score {LastScore:0.###}.");
             Message($"Run complete! {FormatTime(finalElapsed)} — score {LastScore:0.###}");
+
+            if (sagaPage != null)
+            {
+                _sagaPageLatest = sagaPage;
+                _sagaPageCheckedAt = Time.unscaledTime;
+                Announce("The skalds have finished your saga.");
+                SagaReward.Open(sagaPage);
+            }
         }
+
+        /// <summary>
+        /// Writes "The Saga of &lt;character&gt;" for a won run: the myth cut at the act whose god was
+        /// the run's FINAL boss (not the act index, which has already moved on by the time the boss
+        /// falls), with the chronicle's deeds under each act. Null if anything is missing.
+        /// </summary>
+        private string WriteSagaPage()
+        {
+            try
+            {
+                string myth = SagaReward.LoadMyth();
+                if (string.IsNullOrEmpty(myth))
+                {
+                    Debug.LogWarning("[ICanShowYouTheWorld] No saga page: the myth is not embedded in this build.");
+                    return null;
+                }
+
+                var titles = _acts.Select(a => a.Title).ToList();
+                var numerals = _acts.Select(a => a.Numeral).ToList();
+                int last = _acts.FindIndex(a => a.BossDefeatKey == _finalBossKey);
+                if (last < 0) last = _actIndex;
+
+                var cls = ClassLadder.Find(_classId);
+                string character = CharacterName() ?? "the living one";
+
+                var input = new SagaPageInput
+                {
+                    Character = character,
+                    Way = cls != null ? $"{cls.Title}, the {cls.Display}" : null,
+                    Tale = SagaTale.Split(myth, titles),
+                    ActTitles = titles,
+                    ActNumerals = numerals,
+                    LastActIndex = last,
+                    Deeds = Chronicle.Select(c => new SagaDeed { ActNumeral = c.Act, Step = c.Step, Line = c.Line }).ToList(),
+                    Date = DateTime.Now.ToString("d MMMM yyyy", System.Globalization.CultureInfo.InvariantCulture),
+                    Gods = _boons != null ? _boons.DefeatedBosses : 0,
+                    Time = FormatTime(_elapsed),
+                    Heat = _heat.Heat,
+                    Score = LastScore,
+                };
+
+                return SagaReward.Write(character, SagaPage.Compose(input));
+            }
+            catch (Exception ex)
+            {
+                LogOnce("saga-page", ex);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// The newest saga page for this character, for the lobby's "Read your saga". Cached for a few
+        /// seconds: the lobby asks every GUI frame, and the answer is a folder scan.
+        /// </summary>
+        public string LatestSagaPage
+        {
+            get
+            {
+                if (Time.unscaledTime - _sagaPageCheckedAt > 5f)
+                {
+                    _sagaPageCheckedAt = Time.unscaledTime;
+                    _sagaPageLatest = SagaReward.Latest(CharacterName() ?? "the living one");
+                }
+                return _sagaPageLatest;
+            }
+        }
+
+        private float _sagaPageCheckedAt = float.NegativeInfinity;
+        private string _sagaPageLatest;
+
+        public void OpenSagaPage(string path) => SagaReward.Open(path);
 
         /// <summary>Tears down the active-run state, leaving LastScore and the splits for the HUD.</summary>
         private void EndRun()
@@ -7018,6 +7101,7 @@ namespace ICanShowYouTheWorld.RunMode
             ValidateQuestPrices();
             LogTrollTrophyChance();
             LogLocationRegistry();
+            CheckSagaMyth();
             ValidateClassLadder();
             // Thor's bow's flashes: every element's, so a missing fire or frost burst is in the log
             // before the Hunter can switch to it.
@@ -10483,6 +10567,29 @@ namespace ICanShowYouTheWorld.RunMode
                 Debug.Log("[ICanShowYouTheWorld] Location registry: " + string.Join(", ", names));
             }
             catch (Exception ex) { LogOnce("location-registry", ex); }
+        }
+
+        /// <summary>
+        /// The reward page needs a tale for every act the myth tells. Logged at run start: an act the
+        /// myth has not reached (the Deep North) is expected; any other missing title means a heading
+        /// in docs/THE-SAGA.md no longer matches its act.
+        /// </summary>
+        private void CheckSagaMyth()
+        {
+            try
+            {
+                string myth = SagaReward.LoadMyth();
+                if (string.IsNullOrEmpty(myth))
+                {
+                    Debug.LogWarning("[ICanShowYouTheWorld] Saga myth: NOT embedded - a won run will get no page.");
+                    return;
+                }
+                var tale = SagaTale.Split(myth, _acts.Select(a => a.Title).ToList());
+                Debug.Log("[ICanShowYouTheWorld] Saga myth: " + (tale.Missing.Count == 0
+                    ? "a tale for every act."
+                    : "no tale yet for " + string.Join(", ", tale.Missing.ToArray()) + "."));
+            }
+            catch (Exception ex) { LogOnce("saga-myth", ex); }
         }
 
         /// <summary>Every price every quest-giver asks, flattened for validation.</summary>
