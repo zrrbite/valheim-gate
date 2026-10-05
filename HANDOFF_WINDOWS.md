@@ -17,6 +17,28 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-10-05 - TASK: Act VI's lantern-keeper, and review fixes for III-IV (`1.0.16-run.2026-10-05i`)
+
+**Staged — no build needed here.** `git pull`, then `.\dist\windows\Install-Mod.ps1 -ModOnly`.
+Badge: `SAGA v1.0.16-run.2026-10-05i · DEV`. Carries the Act II–V tasks below.
+
+**If you only have time for a launch test:** the badge, a saga loads, the HUD opens with `End`, and
+`grep -c "ICanShowYouTheWorld.*Exception" Player.log` is 0.
+
+**Act VI** (only reached with `runFinalBossKey` moved past Yagluth): a dvergr with a lantern glow at a
+dvergr site in the Mistlands (`grep "lantern-keeper's site"`). Speak → step. At night, with a rescued
+light or a caught wisp → he takes it, a light rises above him and fades → "Set a light free". The
+Borrowed Light at a galdr table (5 wisps, 12 silver): clears the mist AND lights the area while held.
+
+**Fixed from review (Acts III–IV):** the drowned one's light now works in the swamp (and only rises at
+night, near you); speakers can no longer be killed by monsters; a hammer preview near the frozen one no
+longer hides your fire; he has a line for the silver gap; he can't be unfindable; the witch's reforge
+only shows while its step is live.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-10-05 - TASK: Act V gets voices — the harvester, Hildir's last chest, the feast (`1.0.16-run.2026-10-05h`)
 
 **Staged — no build needed here.** `git pull`, then `.\dist\windows\Install-Mod.ps1 -ModOnly`.

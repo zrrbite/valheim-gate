@@ -7,7 +7,7 @@ note on how finished it is.
 > step and target is read out of the source, so the page cannot drift from the code. The prose
 > (epigraphs, chapters, status) lives in the generator.
 
-`114` quest steps &middot; `8` acts &middot; `1` played through &middot; `7` tracks in use
+`117` quest steps &middot; `8` acts &middot; `1` played through &middot; `7` tracks in use
 
 ## How to read a lane
 
@@ -197,7 +197,7 @@ Somebody had done all of this before you. The plains were built out of their lea
 
 ### Act VI &mdash; A Light to Carry
 
-`Thin stand-in` &middot; `5 steps` &middot; `2 tracks`
+`Thin stand-in` &middot; `8 steps` &middot; `2 tracks`
 
 > *The dvergr borrow light and give it back. Learn how.*
 
@@ -207,7 +207,9 @@ In the mist there were lamps, and the lamps were not stolen. The dvergr had work
 |--:| --- | --- |
 | 1 | Thin the nests `8` | Claim Yagluth’s power |
 | 2 | Find the Queen’s lair | Reach the Mistlands |
-| 3 | **Defeat the Queen** |  |
+| 3 | **Defeat the Queen** | Speak with the lantern-keeper |
+| 4 |  | Set a light free |
+| 5 |  | Carry the Borrowed Light |
 
 ### Act VII &mdash; The Last Light
 

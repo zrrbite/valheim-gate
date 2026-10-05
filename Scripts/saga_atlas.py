@@ -287,7 +287,7 @@ PAGE = u"""<title>Saga Atlas</title>
   <h1>Saga Atlas</h1>
   <p class="lede">Every questline in the saga, lane by lane, with the story each act is telling
   and an honest note on how finished it is.</p>
-  <p class="meta">Generated from RunService.cs at 1.0.16-run.2026-10-05h &middot; 5 October 2026</p>
+  <p class="meta">Generated from RunService.cs at 1.0.16-run.2026-10-05i &middot; 5 October 2026</p>
 
   <div class="tally">
     <div><b>__TOTAL__</b><span>quest steps</span></div>
@@ -396,6 +396,8 @@ __ACTS__
     <h2>The log</h2>
     <p>Two days of building, newest first. Every line shipped as its own installed build.</p>
     <ul class="log">
+      <li class="today"><span class="d">5 Oct</span><span>Act VI gets a voice &mdash; the lantern-keeper, a living dvergr who names the saga&rsquo;s payoff; one light set free; the Borrowed Light</span></li>
+      <li class="today"><span class="d">5 Oct</span><span>Review fixes: freed lights work in every act, speakers can&rsquo;t be killed by monsters, the frozen one always findable</span></li>
       <li class="today"><span class="d">5 Oct</span><span>Act V gets voices &mdash; the harvester at the standing stones (eat from the field, the mantle), Hildir&rsquo;s last chest, and a STEADING track ending on a feast at your own table</span></li>
       <li class="today"><span class="d">5 Oct</span><span>Act IV gets voices &mdash; the frozen one at the treeline (a fire to wake him, a dragon egg carried down, the greaves) and Hildir&rsquo;s cold, on a new PEAK track: her own Howling Cavern chest</span></li>
       <li class="today"><span class="d">5 Oct</span><span>Act III gets voices &mdash; the drowned one at the sunken crypt (the cuirass, then let him go), the Bog Witch (preparation, and the Stormward reforged into the Ironbound Stormward)</span></li>

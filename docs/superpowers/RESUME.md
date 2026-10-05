@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-10-05 at `1.0.16-run.2026-10-05h`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-10-05 at `1.0.16-run.2026-10-05i`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -19,6 +19,12 @@ Everything below is what that file tells it.
 
 ## Where things stand
 
+- **2026-10-05, night: Act VI has a voice + review fixes** (tag `1.0.16-run.2026-10-05i`). `LanternKeeper.cs`
+  (the fifth `SagaSpeaker`, a live dvergr), the Borrowed Light. Fixes from the III–IV review: lights tick
+  in every act, speakers immune to non-player damage, FireNear skips build previews, fallbacks. **Known,
+  not fixed:** neither storm shield can be REPAIRED (no recipe exists for the workbench to repair from —
+  pre-existing, from the Stormward), and the two Stormward pool tasks require the original shield, so an
+  Ironbound holder is never offered them. **Next:** Acts VII–VIII (stand-ins), when the owner is back.
 - **2026-10-05, late: Act V has voices** (tag `1.0.16-run.2026-10-05h`, dev, staged + on the Mac).
   `Harvester.cs` (fourth `SagaSpeaker`), `PlainsMeal.cs` (pure, tested), Hildir's Act V talk and Sealed
   Tower chest, a STEADING track ending on a feast at home. Spec `specs/2026-10-05-act-five-voices-design.md`.

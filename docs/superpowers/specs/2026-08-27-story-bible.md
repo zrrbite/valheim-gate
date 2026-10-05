@@ -264,6 +264,11 @@ usual last — closes its optional STEADING track on **a feast at your own table
 five biomes later. After Yagluth the harvester says it plainly: *the field is still there. You can eat
 from it now. Nobody is counting.*
 
+**Act VI, as built (2026-10-05)** — `specs/2026-10-05-act-six-voices-design.md`. **The lantern-keeper**, a
+living dvergr, says the payoff out loud the first time he sees what the player carries: *you've been
+carrying them honestly since the meadows, and nobody taught you.* He asks for one light set free at
+night — borrowed, returned — and teaches the **Borrowed Light**, a wisplight that also lights the way.
+
 **The arc's payoff, planned:** the wisp you pocket from every race is the
 same species of thing the dvergr carry in lanterns. By Act VI the player
 discovers they have been collecting honestly since Act I — the dvergr's
@@ -409,6 +414,11 @@ answer, practised before it was taught. Act VII spends it.
 - **The harvester** (2026-10-05) — Act V's speaker: one of Yagluth's own people, a ghost in dull gold
   at the plains' standing stones. Wants to see someone eat from the field; gives the Stormsworn mantle.
   His last line, after Yagluth, is the saga's usual ending. `Harvester.cs`.
+- **The lantern-keeper** (2026-10-05) — Act VI's speaker, the first who is alive: a dvergr with a lantern
+  glow at a dvergr site. His people borrow light and give it back. Takes one light — a rescued light or
+  a caught wisp — and lets it rise into the mist; teaches the Borrowed Light. `LanternKeeper.cs`.
+- **The Borrowed Light** (2026-10-05) — the wisplight, made the dvergr way at a galdr table; clears the
+  mist and casts real light. "None of it is yours."
 - **A way** (2026-09-27) — a class. Mechanically a set of boons the wheel never deals and
   death never takes, because what the thane taught was not lent. Everything else about it
   is a boon: applied, repaid at run end, saved and restored on the one path.
