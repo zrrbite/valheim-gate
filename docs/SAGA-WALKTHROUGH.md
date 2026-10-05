@@ -1,4 +1,4 @@
-# The Saga, as it plays
+# The Saga, as it plays — a walkthrough
 
 *This is the saga told as one run would play it, start to finish. It was written on 2026-10-05
 from the code and the story bible, at build `1.0.16-run.2026-10-05e`. Every quoted line is one
