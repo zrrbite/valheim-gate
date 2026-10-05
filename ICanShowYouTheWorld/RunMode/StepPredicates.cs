@@ -89,6 +89,26 @@ namespace ICanShowYouTheWorld.RunMode
         public static bool Thane(IReadOnlyList<QuestTrack> tracks) =>
             Live(tracks).Any(d => d.Kind == ChallengeKind.PlayerEvent && d.Param == SagaNames.ThaneFound);
 
+        /// <summary>The barrow-keeper should be standing for one of his own steps.</summary>
+        public static bool Keeper(IReadOnlyList<QuestTrack> tracks) => KeeperFind(tracks) || KeeperPayment(tracks);
+
+        public static bool KeeperFind(IReadOnlyList<QuestTrack> tracks) =>
+            Live(tracks).Any(d => d.Kind == ChallengeKind.PlayerEvent && d.Param == SagaNames.KeeperFound);
+
+        public static bool KeeperPayment(IReadOnlyList<QuestTrack> tracks) =>
+            Live(tracks).Any(d => d.Kind == ChallengeKind.PlayerEvent && d.Param == SagaNames.KeeperPaid);
+
+        public static bool HaldorAsk(IReadOnlyList<QuestTrack> tracks) =>
+            Live(tracks).Any(d => d.Kind == ChallengeKind.PlayerEvent && d.Param == SagaNames.HaldorTold);
+
+        /// <summary>
+        /// The act's boss altar is the live discovery. The map pin waits for exactly this - not for
+        /// any DiscoverLocation step, since burial chambers and traders are found the same way.
+        /// </summary>
+        public static bool AltarDiscovery(IReadOnlyList<QuestTrack> tracks, string altarLocation) =>
+            !string.IsNullOrEmpty(altarLocation) &&
+            Live(tracks).Any(d => d.Kind == ChallengeKind.DiscoverLocation && d.Param == altarLocation);
+
         /// <summary>
         /// A step is DONE when some track has moved past it: its chain holds the id at a position
         /// below the track's index. Absent from every chain is not done — an act that dropped the

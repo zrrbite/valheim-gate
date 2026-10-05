@@ -167,6 +167,38 @@ static class StepPredicateTests
         Check.That(!StepPredicates.Thane(new List<QuestTrack> { Track("hearth", thaneStep, blocked: true) }),
                    "a blocked thane step is not in play");
 
+        // --- 2026-10-05: Act II's voices ---------------------------------------------------
+        var keeperFind = new List<QuestTrack> { Track("craft", Step("bf-keeper", ChallengeKind.PlayerEvent, SagaNames.KeeperFound)) };
+        var keeperPay = new List<QuestTrack> { Track("craft", Step("bf-keeper-light", ChallengeKind.PlayerEvent, SagaNames.KeeperPaid)) };
+        Check.That(StepPredicates.KeeperFind(keeperFind) && StepPredicates.Keeper(keeperFind), "the keeper is wanted while his first step is live");
+        Check.That(StepPredicates.KeeperPayment(keeperPay) && StepPredicates.Keeper(keeperPay), "and while his payment is");
+        Check.That(!StepPredicates.KeeperPayment(keeperFind) && !StepPredicates.KeeperFind(keeperPay), "the two phases are not confused");
+
+        var ask = new List<QuestTrack> { Track("hunt", Step("bf-haldor-ask", ChallengeKind.PlayerEvent, SagaNames.HaldorTold)) };
+        Check.That(StepPredicates.HaldorAsk(ask), "Haldor's ask is live on its step");
+        Check.That(!StepPredicates.HaldorAsk(keeperFind), "and not on the keeper's");
+
+        // The pin waits for the ALTAR's discovery, not any discovery: the tomb and the trader are
+        // DiscoverLocation steps too, and keying on the kind alone pinned the Elder while you were
+        // still looking for the burial chambers.
+        var tomb = new List<QuestTrack> { Track("craft", Step("bf-tomb", ChallengeKind.DiscoverLocation, "Crypt2")) };
+        var trader = new List<QuestTrack> { Track("hunt", Step("bf-haldor", ChallengeKind.DiscoverLocation, "Vendor_BlackForest")) };
+        var altar = new List<QuestTrack> { Track("hunt", Step("bf-find", ChallengeKind.DiscoverLocation, "GDKing")) };
+        Check.That(!StepPredicates.AltarDiscovery(tomb, "GDKing"), "no altar pin while the tomb is the discovery");
+        Check.That(!StepPredicates.AltarDiscovery(trader, "GDKing"), "nor while the trader is");
+        Check.That(StepPredicates.AltarDiscovery(altar, "GDKing"), "the pin comes with the altar's own step");
+        Check.That(!StepPredicates.AltarDiscovery(altar, null), "a null altar name pins nothing");
+        Check.That(!StepPredicates.AltarDiscovery(
+                       new List<QuestTrack> { Track("hunt", Step("bf-find", ChallengeKind.DiscoverLocation, "GDKing"), blocked: true) }, "GDKing"),
+                   "a blocked track's step is not live");
+
+        // Haldor's key: run-scoped, lower case, and recognisable for cleanup.
+        Check.That(SagaNames.HaldorKey(12345) == "saga_haldor_12345", "Haldor's key carries the run seed");
+        Check.That(SagaNames.HaldorKey(-7) != SagaNames.HaldorKey(7), "a negative seed is its own key");
+        Check.That(SagaNames.HaldorKey(-7) == SagaNames.HaldorKey(-7).ToLowerInvariant(), "and lower case, as the game stores keys");
+        Check.That(SagaNames.IsHaldorKey(SagaNames.HaldorKey(99)) && SagaNames.IsHaldorKey("SAGA_HALDOR_1"), "cleanup recognises any of them");
+        Check.That(!SagaNames.IsHaldorKey("defeated_gdking") && !SagaNames.IsHaldorKey(null), "and nothing else");
+
         // --- Degenerate input ---------------------------------------------------------------
         Check.That(!StepPredicates.DeerHunt(null), "a null track list is not a hunt");
         Check.That(!StepPredicates.DeerHunt(new List<QuestTrack>()), "nor is an empty one");

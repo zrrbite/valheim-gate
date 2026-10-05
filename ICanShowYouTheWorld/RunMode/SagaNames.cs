@@ -76,6 +76,28 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         public const string ThaneFound = "ThaneFound";
 
+        /// <summary>The barrow-keeper's two events: first spoken to, and paid a light.</summary>
+        public const string KeeperFound = "KeeperFound";
+        public const string KeeperPaid = "KeeperPaid";
+
+        /// <summary>Haldor took the troll's trophy and told where the couriers go.</summary>
+        public const string HaldorTold = "HaldorTold";
+
+        /// <summary>
+        /// Haldor's acceptance sets a GLOBAL key (Trader.UseItem), and global keys are saved with the
+        /// world. So the key names the run, and every key with this prefix is cleared at run start and
+        /// end - a replay on the same world must be able to ask him again.
+        /// </summary>
+        public const string HaldorKeyPrefix = "saga_haldor_";
+
+        public static string HaldorKey(int seed) =>
+            HaldorKeyPrefix + (seed < 0
+                ? "n" + (-(long)seed).ToString(System.Globalization.CultureInfo.InvariantCulture)
+                : seed.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+        public static bool IsHaldorKey(string key) =>
+            !string.IsNullOrEmpty(key) && key.StartsWith(HaldorKeyPrefix, System.StringComparison.OrdinalIgnoreCase);
+
         public const string BowKillsStat = "SagaThorsBowKills";
         public const string StormAnswersStat = "SagaStormwardAnswers";
 
