@@ -64,8 +64,10 @@ if [ ! -f "$PATCHED_ASSEMBLY" ]; then
 fi
 check_file_exists "$MOD_DLL" || exit 1
 
-# One-time vanilla backup, taken before the first modification
-if [ ! -f "$VANILLA" ]; then
+# Vanilla backup, taken before the first modification — and RETAKEN whenever the
+# installed assembly is unpatched, because a Steam update replaces it with a new
+# vanilla and a backup from the old version would fail the guard below forever.
+if [ ! -f "$VANILLA" ] || ! strings -a "$MANAGED/assembly_valheim.dll" | grep -q 'NotACheater'; then
     cp "$MANAGED/assembly_valheim.dll" "$VANILLA"
     print_info "Vanilla backup: $VANILLA"
 fi
