@@ -3,7 +3,7 @@ namespace ICanShowYouTheWorld
 {
     public static class ModVersion
     {
-        public const string VERSION = "1.0.16-run.2026-10-05b";
+        public const string VERSION = "1.0.16-run.2026-10-05c";
 
         /// <summary>
         /// Which flavour this DLL is: <c>"dev"</c> (the saga with its dev mode, plus the old GM cheat
@@ -27,7 +27,7 @@ namespace ICanShowYouTheWorld
         /// conditional surface would have scattered across Cheat.cs, UIManager.cs and
         /// InputManager.cs. One binary, one code path, one constant.
         /// </remarks>
-        public const string FLAVOUR = "saga";
+        public const string FLAVOUR = "dev";
 
         /// <summary>
         /// The flavour again, with a prefix nothing else in the assembly uses, so it can be found
