@@ -35,13 +35,12 @@ Everything below is what that file tells it.
   3. **The Mac builds and deploys again** — first time since August. See "Building on the Mac"
      under Landmines.
 
-  **Where each machine is:** the Mac has `...05b` **saga-only** deployed (badge `SAGA
-  v1.0.16-run.2026-10-05b`, no `· DEV`), for checking the release flavour; the owner is playing it through. Windows is still on
-  `...09-29` and needs `Scripts/build_windows.sh` (it reruns setversion, so GM unless
+  **Where each machine is:** the Mac has `...05c` **dev** deployed (badge `SAGA
+  v1.0.16-run.2026-10-05c · DEV`) with `runDevMode: true` in its config (backup beside it as
+  `.bak-2026-10-05`). Windows is still on
+  `...09-29` and needs `Scripts/build_windows.sh` (it reruns setversion, so dev unless
   `--saga-only`) then `Install-Mod.ps1 -ModOnly` — the committed `dist/windows/patcher` DLL was
   NOT restaged from the Mac. The task is the top entry in `HANDOFF_WINDOWS.md`.
-  **Note: the tip's `Assets/Version.cs` is stamped `saga`**; anything that builds without
-  running setversion first builds a saga-only DLL.
 
   **Waiting on the owner:** the play list in that handoff task; whether three abilities by the
   Elder is too early; and the long-standing verdicts in `2026-09-27-classes-progress.md`.

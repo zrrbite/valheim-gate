@@ -22,8 +22,7 @@ Standing context for the Windows side:
 **Not installed here yet.** Built on the Mac; the staged `dist/windows/patcher` DLL is still
 `...09-29`. In Git Bash: `git pull`, then `Scripts/build_windows.sh` (a dev build, the owner's) and
 `.\dist\windows\Install-Mod.ps1 -ModOnly`. The badge must read `SAGA v1.0.16-run.2026-10-05c · DEV`
-(a build without the tag letter means setversion did not run). The branch tip's `Version.cs` is
-stamped `saga` from the Mac's saga-only test build; build_windows.sh rewrites it.
+(a build without the tag letter means setversion did not run).
 
 **1. Rungs are taught where the god falls.** Rung 2 after Eikthyr as before; rung 3 now after the
 ELDER (was Bonemass). No walk back to the thane: within a second of the kill, Hugin and a centre
