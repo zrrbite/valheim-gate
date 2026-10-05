@@ -150,7 +150,7 @@ namespace ICanShowYouTheWorld.RunMode
 
         public const string NotYetLine =
             "Nothing more yet. What they knew came to them slowly, and it comes to you the same way. When a " +
-            "god has fallen, come back.";
+            "god falls, the rest will find you where you stand.";
 
         public const string AfterLine =
             "That is all of it. All I kept, anyway. The stones stay kept.";

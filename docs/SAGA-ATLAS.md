@@ -128,14 +128,14 @@ You went after the little ones instead of waiting for them. They had been carryi
 | 1 | Thin the forest `10` | Reach the Black Forest | Claim Eikthyr’s power |
 | 2 | Fell 3 Brutes `3` | Mine the Black Forest (40 hits) `40` | Hang a trophy |
 | 3 | Rob the couriers (4 lights) `4` | Find the burial chambers | Raise a raft |
-| 4 | Find the Elder's altar | Take cores from the dead (10) `10` | Raise a cart |
-| 5 | **Defeat The Elder** | Build a smelter | Name your holding |
-| 6 |  | Forge three things in bronze `3` | Find the trader |
-| 7 |  | Beat out the Stormsworn helm |  |
-| 8 |  | Build a portal |  |
-| 9 |  | Plant a crop (10 seeds) `10` |  |
-| 10 |  | Build a beehive |  |
-| 11 |  | Grow the herd (4 penned) `4` |  |
+| 4 | Find the trader | Take cores from the dead (10) `10` | Raise a cart |
+| 5 | Bring Haldor a troll’s trophy | Speak with the barrow-keeper |  |
+| 6 | Find the Elder's altar | Build a smelter |  |
+| 7 | **Defeat The Elder** | Forge three things in bronze `3` |  |
+| 8 |  | Carry a light down to him |  |
+| 9 |  | Beat out the Stormsworn helm |  |
+| 10 |  | Build a portal |  |
+| 11 |  | Plant a crop (10 seeds) `10` |  |
 
 **Chapter ends.** The Elder burned, and everything it had been fed went out with it. So that was where the light had gone: nowhere. The world was darker than the day you landed.
 

@@ -167,8 +167,8 @@ namespace ICanShowYouTheWorld.RunMode
         private Thjalfi _thjalfi;
 
         /// <summary>
-        /// The thane, who teaches the ways. Met in Act I but polled in EVERY act: rungs come due
-        /// after Eikthyr and Bonemass, and he is where they are learned. See PollThane.
+        /// The thane, who teaches the ways. Met in Act I but polled in EVERY act: a way is chosen or
+        /// laid down at his graves. Rungs are taught where the god falls since 2026-10-05. See PollThane.
         /// </summary>
         private Thane _thane;
 
@@ -3721,8 +3721,8 @@ namespace ICanShowYouTheWorld.RunMode
             // He is not polled past the Meadows, so nothing there would ever say "not wanted" to
             // his pin; he goes when the act does, and his mark on the map goes with him.
             else if (!ActIsMeadows) SagaPins.Hide(PinThjalfi);
-            // EVERY act, unlike Thjalfi: the rungs come due after Eikthyr and Bonemass, which is to
-            // say in Acts II and IV, and he is where they are learned.
+            // EVERY act, unlike Thjalfi: a way can be chosen or laid down at his graves in any act.
+            // Rungs are no longer learned here - they are taught where the god falls (TeachClassRung).
             if (shadePlayer != null) PollThane(shadePlayer);
             // Act II's two voices. The keeper in every act from his chamber on, like the thane;
             // Haldor only while Act II is current.

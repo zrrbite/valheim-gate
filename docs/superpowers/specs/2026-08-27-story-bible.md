@@ -227,9 +227,15 @@ burden and a title, and the brand IS the cargo. Cut one down and a Stolen
 Light rises where it falls: the same race, the pack that converges now its
 kin come to carry it onward. The act introduces them once, plainly, the
 moment the hunt opens: "The forest moves its harvest at night." Act I raced
-the forest for the deer's light; Act II robs the supply line. Haldor trades at the
-forest's edge; a trader in a starving world is its own quiet mystery,
-unexplored yet.
+the forest for the deer's light; Act II robs the supply line.
+
+**Since 2026-10-05 the act has two voices** (`specs/2026-10-05-act-two-voices-design.md`),
+and reveals its answer in four moves: the couriers show the light being *carried*; the
+barrow-keeper shows the light that was *kept back*; Haldor shows *where* it is carried;
+the Elder shows it was *spent*. The keeper stands at the burial chamber's door once you
+have taken cores from its walls, asks for one courier's light carried down to him, and
+teaches the Stormsworn helm. Haldor, whose camp sits on the couriers' road, trades what
+he has seen for a troll's head — and his answer is what puts the Elder's altar on the map.
 
 **The arc's payoff, planned:** the wisp you pocket from every race is the
 same species of thing the dvergr carry in lanterns. By Act VI the player
@@ -332,12 +338,28 @@ answer, practised before it was taught. Act VII spends it.
   teaches the WAYS: Eydís (Hunter), Sigrún (Völva), Ulfr (Berserker), and since 2026-09-28
   Halvard (Húskarl), Ormr (Skald), Ragna (Sæfari), Dvalinn (Smiðr) — a class, taken up
   at a grave, held for one run, a rung at a time as the gods fall (the choice, then
-  Eikthyr, then Bonemass). Meeting him is a HEARTH step (`mq-thane`) that completes on
+  Eikthyr, then the Elder — since 2026-10-05 each rung is taught where the god falls, not
+  fetched from him). Meeting him is a HEARTH step (`mq-thane`) that completes on
   speaking, so declining a way never stalls the chain. He keeps names, not light: he never
   mentions the shortage and cannot answer it. Not a god, so he may speak. He has no name of
   his own on purpose — what he keeps is other people's — which is the whole of his
   relationship to Thjalfi, who has one because somebody wrote it down. Design:
   `specs/2026-09-27-classes-design.md`.
+- **The barrow-keeper** (2026-10-05) — Act II's speaker, one of the dead of the burial
+  chambers. Every green fire in the chamber walls is a light the dead buried rather than let
+  the little ones carry it off, and the cores a player digs out for a smelter are those
+  lights. He does not forbid it — the living need fire — but asks for one back: a courier's
+  light, carried down. In return he gives what the storm left buried in the forest, the
+  Stormsworn helm. He wants a PLACE, not a sky (the shade wants dark, Thjalfi rain, the thane
+  day): the door of the nearest chamber, at any hour. Unnamed. Ash-grey with the chamber
+  fires' green inside him. After the Elder: "Ours are still burning." `BarrowKeeper.cs`, the
+  first speaker on the shared `SagaSpeaker` base.
+- **Haldor, in the saga** (2026-10-05) — the game's own trader, given a voice for Act II and
+  returned to himself afterwards. His camp sits on the couriers' road: they pass every
+  night, laden, and never stop, because splinters carry light and do not take goods — which
+  is why a trader in a starving forest is never robbed. He fears only trolls, the one thing
+  that breaks light. For a troll's head he tells where the couriers go, and marks the altar.
+  Only his idle talk changes; his counter stays his own. `HaldorVoice.cs`.
 - **A way** (2026-09-27) — a class. Mechanically a set of boons the wheel never deals and
   death never takes, because what the thane taught was not lent. Everything else about it
   is a boon: applied, repaid at run end, saved and restored on the one path.
