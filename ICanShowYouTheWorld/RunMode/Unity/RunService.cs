@@ -187,6 +187,9 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>Act III's speaker at the sunken crypt: teaches the cuirass, then asks to be let go.</summary>
         private DrownedOne _drowned;
 
+        /// <summary>Where the drowned one fell, while his light waits for the dark. Session state.</summary>
+        private Vector3? _drownedLightAt;
+
         /// <summary>Act IV's speaker at the treeline: woken by fire, paid an egg, teaches the greaves.</summary>
         private FrozenOne _frozenOne;
 
@@ -2332,6 +2335,7 @@ namespace ICanShowYouTheWorld.RunMode
                 _thane?.Reset();
                 _keeper?.Reset();
                 _drowned?.Reset();
+                _drownedLightAt = null;
                 _frozenOne?.Reset();
                 _haldor.Detach();
                 _witch.Detach();
@@ -3795,8 +3799,9 @@ namespace ICanShowYouTheWorld.RunMode
             // Haldor only while Act II is current.
             if (shadePlayer != null) PollBarrowKeeper(shadePlayer);
             PollHaldor(shadePlayer);
-            // Act III's two.
+            // Act III's two, and the drowned one's light if it is still waiting for the dark.
             if (shadePlayer != null) PollDrownedOne(shadePlayer);
+            PollDrownedLight();
             PollWitch(shadePlayer);
             // Act IV's two.
             if (shadePlayer != null) PollFrozenOne(shadePlayer);
@@ -4596,6 +4601,19 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 LogOnce("drowned", ex);
             }
+        }
+
+        /// <summary>Releases the drowned one's light once it is dark, where he fell.</summary>
+        private void PollDrownedLight()
+        {
+            if (_drownedLightAt == null || !IsNight) return;
+            try
+            {
+                _lights?.Release(_drownedLightAt.Value, 120f);
+                Message("The light he kept rises out of the water.");
+            }
+            catch (Exception ex) { LogOnce("drowned-light", ex); }
+            _drownedLightAt = null;
         }
 
         /// <summary>The Bog Witch's Act III voice, and her proximity step.</summary>
@@ -8286,9 +8304,15 @@ namespace ICanShowYouTheWorld.RunMode
                 {
                     drownedLetGo = true;
                     _challenges?.ReportKill(SagaNames.DrownedKill);
-                    Message("He let go. Something he kept rises where he fell.");
-                    try { _lights?.Release(c.transform.position + Vector3.up * 0.5f, 120f); }
-                    catch (Exception ex) { LogOnce("drowned-light", ex); }
+                    // Light rises only in the dark - the bible's first rule, at every layer. By day his
+                    // light waits where he fell and rises at nightfall (PollDrownedLight).
+                    _drownedLightAt = c.transform.position + Vector3.up * 0.5f;
+                    if (IsNight)
+                    {
+                        Message("He let go. Something he kept rises where he fell.");
+                        PollDrownedLight();
+                    }
+                    else Message("He let go. Something he kept waits in the water where he fell, for the dark.");
                 }
 
                 if (_fen != null && ActIsSwamp && !drownedLetGo)
