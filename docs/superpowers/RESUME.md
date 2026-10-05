@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-10-05 at `1.0.16-run.2026-10-05d`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-10-05 at `1.0.16-run.2026-10-05e`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -19,7 +19,7 @@ Everything below is what that file tells it.
 
 ## Where things stand
 
-- **2026-10-05, later: Act II has voices** (tag `1.0.16-run.2026-10-05d`, dev, staged for
+- **2026-10-05, later: Act II has voices** (tag `1.0.16-run.2026-10-05e` after review fixes, dev, staged for
   Windows and deployed on the Mac). The barrow-keeper (`BarrowKeeper.cs`, the first speaker on
   the new `SagaSpeaker` base) and Haldor's voice (`HaldorVoice.cs`); three chores cut; the altar
   pin now waits for the altar's own step (`StepPredicates.AltarDiscovery`). Spec

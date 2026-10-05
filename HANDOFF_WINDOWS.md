@@ -17,10 +17,10 @@ Standing context for the Windows side:
 
 ---
 
-## 2026-10-05 - TASK: Act II gets voices — the barrow-keeper and Haldor (`1.0.16-run.2026-10-05d`)
+## 2026-10-05 - TASK: Act II gets voices — the barrow-keeper and Haldor (`1.0.16-run.2026-10-05e`)
 
 **Staged — no build needed here.** `git pull`, then `.\dist\windows\Install-Mod.ps1 -ModOnly`.
-The badge must read `SAGA v1.0.16-run.2026-10-05d · DEV`. This build also carries everything in
+The badge must read `SAGA v1.0.16-run.2026-10-05e · DEV`. This build also carries everything in
 the `...05c` task below (rungs at the kill), so play that list too.
 
 Design: `docs/superpowers/specs/2026-10-05-act-two-voices-design.md`. Fastest with
