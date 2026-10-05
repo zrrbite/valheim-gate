@@ -549,7 +549,9 @@ namespace ICanShowYouTheWorld.RunMode
                 Description = "Troll hide over a meadow frame, with three rescued lights bound under " +
                               "the boss. The storm goes around it — and when it has gone around " +
                               "twice, it comes back out. The herd paid for the light; the forest paid " +
-                              "for the hide.\n\nIt takes both hands. Nothing else can be held with it.",
+                              "for the hide.\n\nIt takes both hands. Nothing else can be held with it. " +
+                              "The storm wears it down, and only the storm mends it: alone in the " +
+                              "Storm-Anvil's box, the lever pulled in the rain.",
                 Tune = shared =>
                 {
                     // BOTH HANDS. Not a house rule enforced by the mod - the game already has
@@ -670,7 +672,8 @@ namespace ICanShowYouTheWorld.RunMode
                 DisplayName = IronboundName,
                 Description = "The Stormward, re-bound in the marsh: iron where the hide was, ancient bark " +
                               "where the frame was, and the storm still in it. It holds longer than you " +
-                              "will, and it still answers being hit twice.\n\nIt takes both hands.",
+                              "will, and it still answers being hit twice.\n\nIt takes both hands. " +
+                              "Mend it where the first was made: alone in the Storm-Anvil, in the rain.",
                 Tune = shared =>
                 {
                     All.First(d => d.PrefabName == StormwardPrefab).Tune(shared);
@@ -1850,6 +1853,16 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 ("Wood", 10), ("Resin", 10), ("DeerHide", 6), ("Flint", 10),
             }, ThorsBowLightCost),
+
+            // REPAIR, at the anvil only (owner, 2026-10-05). Neither storm shield has a workbench
+            // recipe, so the game could never repair them - and the design says the storm wears the
+            // shield down and sends you back. So the storm mends it too: the shield alone in the box,
+            // the lever pulled in the rain, and it comes back whole (a conversion gives a NEW item,
+            // full durability). Free but for the trip and the weather. Neither bill overlaps any
+            // other, and a shield in the box now counts as intent (CombineIntendedButNotReady), so
+            // a repair that cannot fire is refused rather than burned to coal.
+            (StormwardPrefab, new[] { (StormwardPrefab, 1) }, 0),
+            (IronboundPrefab, new[] { (IronboundPrefab, 1) }, 0),
         };
 
         private readonly HashSet<int> _alteredAltars = new HashSet<int>();
@@ -2114,14 +2127,6 @@ namespace ICanShowYouTheWorld.RunMode
                 var result = clone.GetComponent<ItemDrop>();
                 if (result == null) continue;
 
-                // Already knows this shape. Checked by RESULT rather than by a flag, so a reload, a
-                // rebuild and a second pass over the same object all come to the same answer.
-                bool known = false;
-                foreach (var existing in inc.m_conversions)
-                    if (existing != null && ReferenceEquals(existing.m_result, result)) { known = true; break; }
-
-                if (known) { taught++; continue; }
-
                 var reqs = new List<Incinerator.Requirement>();
                 bool complete = true;
 
@@ -2150,6 +2155,16 @@ namespace ICanShowYouTheWorld.RunMode
 
                     reqs.Add(new Incinerator.Requirement { m_resItem = lightDrop, m_amount = lights });
                 }
+
+                // Already knows this shape. Checked by RESULT AND BILL rather than by a flag, so a
+                // reload, a rebuild and a second pass all come to the same answer - and by the bill
+                // too since 2026-10-05, because a shield's repair has the same RESULT as its making.
+                bool known = false;
+                foreach (var existing in inc.m_conversions)
+                    if (existing != null && ReferenceEquals(existing.m_result, result) && SameBill(existing.m_requirements, reqs))
+                    { known = true; break; }
+
+                if (known) { taught++; continue; }
 
                 inc.m_conversions.Add(new Incinerator.IncineratorConversion
                 {
@@ -2599,9 +2614,12 @@ namespace ICanShowYouTheWorld.RunMode
                 var box = inc.m_container != null ? inc.m_container.GetInventory() : null;
                 if (box == null || inc.m_conversions == null) return false;
 
-                // No light in the box, no intent to combine: this is a coal furnace and the player
-                // may burn whatever they like in it.
-                if (box.CountItems(RescuedLightName, -1, true) <= 0) return false;
+                // No light and no storm shield in the box, no intent to combine: this is a coal furnace
+                // and the player may burn whatever they like in it. A storm shield counts since the
+                // anvil repairs them (2026-10-05): nobody feeds one to a furnace by choice either.
+                if (box.CountItems(RescuedLightName, -1, true) <= 0 &&
+                    box.CountItems(StormwardName, -1, true) <= 0 &&
+                    box.CountItems(IronboundName, -1, true) <= 0) return false;
 
                 var shortfalls = new List<string>();
 
@@ -2663,6 +2681,21 @@ namespace ICanShowYouTheWorld.RunMode
         {
             try { return EnvMan.instance != null && EnvMan.IsWet(); }
             catch { return true; }   // Cannot tell: do not lock the player out of their own forge.
+        }
+
+        /// <summary>Two requirement lists ask for the same items in the same amounts (by item, any order).</summary>
+        private static bool SameBill(List<Incinerator.Requirement> a, List<Incinerator.Requirement> b)
+        {
+            if (a == null || b == null || a.Count != b.Count) return false;
+            foreach (var r in a)
+            {
+                if (r == null) return false;
+                bool found = false;
+                foreach (var o in b)
+                    if (o != null && ReferenceEquals(o.m_resItem, r.m_resItem) && o.m_amount == r.m_amount) { found = true; break; }
+                if (!found) return false;
+            }
+            return true;
         }
 
         private ItemDrop ItemPrefab(string name)

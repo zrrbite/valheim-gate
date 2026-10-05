@@ -4017,10 +4017,13 @@ namespace ICanShowYouTheWorld.RunMode
                 var items = Player.m_localPlayer?.GetInventory()?.GetAllItems();
                 if (items == null) return false;
 
+                // Alternatives, "A|B": either one carried opens the gate (both storm shields deal
+                // the Stormward tasks since 2026-10-05).
+                var wanted = new HashSet<string>(NameManifest.Alternatives(prefabName));
                 foreach (var item in items)
                 {
                     var prefab = item?.m_dropPrefab;
-                    if (prefab != null && prefab.name == prefabName) return true;
+                    if (prefab != null && wanted.Contains(prefab.name)) return true;
                 }
             }
             catch
@@ -9767,10 +9770,10 @@ namespace ICanShowYouTheWorld.RunMode
                                       Target = 15, HeatReward = 3, RequiresItem = SagaItems.ThorsBowPrefab,
                                       Display = "The storm hunts with you (15 kills)" },
             new ChallengeDefinition { Id = "c-stormward", Tier = 1, Kind = ChallengeKind.StatDelta, Param = SagaNames.StormAnswersStat,
-                                      Target = 4, HeatReward = 2, RequiresItem = SagaItems.StormwardPrefab,
+                                      Target = 4, HeatReward = 2, RequiresItem = SagaItems.StormwardPrefab + "|" + SagaItems.IronboundPrefab,
                                       Display = "Give it back (4 discharges)" },
             new ChallengeDefinition { Id = "c-stormward2", Tier = 2, Kind = ChallengeKind.StatDelta, Param = SagaNames.StormAnswersStat,
-                                      Target = 10, HeatReward = 3, RequiresItem = SagaItems.StormwardPrefab,
+                                      Target = 10, HeatReward = 3, RequiresItem = SagaItems.StormwardPrefab + "|" + SagaItems.IronboundPrefab,
                                       Display = "Stand in it (10 discharges)" },
 
             new ChallengeDefinition { Id = "c-fishhaul", Tier = 1, Kind = ChallengeKind.PlayerState, Param = "FishHeld",       Target = 8, HeatReward = 2, RequiresItem = "FishingRod", Display = "A day at the water (8 fish)" },

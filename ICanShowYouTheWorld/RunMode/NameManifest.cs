@@ -79,7 +79,8 @@ namespace ICanShowYouTheWorld.RunMode
                 // task undrawable forever and nothing appears to go wrong. The item validator
                 // accepts a prefab name or a "$item_" token, so either spelling passes and only a
                 // name that is neither is reported.
-                manifest.AddTo(manifest.ItemNames, def.RequiresItem);
+                // May name alternatives, "A|B" - each is its own name to validate.
+                foreach (var name in Alternatives(def.RequiresItem)) manifest.AddTo(manifest.ItemNames, name);
 
                 if (def.Subs == null) continue;
                 foreach (var sub in def.Subs.Where(s => s != null)) manifest.Add(sub.Kind, sub.Param);
@@ -99,6 +100,15 @@ namespace ICanShowYouTheWorld.RunMode
                 case ChallengeKind.DiscoverLocation: AddTo(Locations, param); break;
             }
         }
+
+        /// <summary>
+        /// The names in a gate that accepts alternatives: "A|B" is A or B, trimmed. A single name is
+        /// itself; null or blank is nothing. Shared by the validator and the host's gate check.
+        /// </summary>
+        public static IEnumerable<string> Alternatives(string names) =>
+            string.IsNullOrWhiteSpace(names)
+                ? Enumerable.Empty<string>()
+                : names.Split('|').Select(n => n.Trim()).Where(n => n.Length > 0);
 
         private void AddTo(List<string> target, string name)
         {

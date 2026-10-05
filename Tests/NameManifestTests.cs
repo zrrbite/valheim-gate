@@ -56,6 +56,19 @@ static class NameManifestTests
             "creature names come from KillPrefab challenges and subs, deduped, in pool order");
         Check.That(m.ItemNames.SequenceEqual(new[] { "$item_wood", "$item_stone", "FishingRod" }),
             "item names come from CollectItem challenges, subs, and RequiresItem gates");
+        // RequiresItem may name alternatives, "A|B" (2026-10-05: either storm shield deals the
+        // Stormward tasks). Each alternative is checked as its own name - never "A|B" as one.
+        var alt = NameManifest.Collect(new[]
+        {
+            new ChallengeDefinition { Id = "c-alt", Kind = ChallengeKind.StatDelta, Param = "x", Target = 1,
+                                      RequiresItem = "Saga_Stormward|Saga_StormwardIronbound" },
+        });
+        Check.That(alt.ItemNames.SequenceEqual(new[] { "Saga_Stormward", "Saga_StormwardIronbound" }),
+            "a RequiresItem with alternatives contributes each name, split on '|'");
+        Check.That(NameManifest.Alternatives("A|B").SequenceEqual(new[] { "A", "B" }) &&
+                   NameManifest.Alternatives(" A ").SequenceEqual(new[] { "A" }) &&
+                   !NameManifest.Alternatives(null).Any(),
+            "alternatives split on '|', trimmed, nothing from nothing");
         Check.That(!m.PieceCategories.Contains("FishingRod"),
             "a required ITEM is not a build category");
         Check.That(m.PieceCategories.SequenceEqual(new[] { "Fire", "Cooking", "Door" }),
