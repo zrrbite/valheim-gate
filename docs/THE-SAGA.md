@@ -1,8 +1,8 @@
 # The Saga of the Living One
 
-*The saga so far, Acts I to V, told as a myth from the game and its designs on 2026-10-05. Acts I to
-V are all built now (Act V the same night, `1.0.16-run.2026-10-05h`); the harvester's and Hildir's
-plains words here were drafted beside the game's, so the two tellings may differ a little. Every other quoted line is one the game
+*The saga so far, Acts I to VI, told as a myth from the game and its designs on 2026-10-05. Acts I to
+VI are all built as of `1.0.16-run.2026-10-05j`; the harvester's and Hildir's plains words here were
+drafted beside the game's, so the two tellings may differ a little. Every other quoted line is one the game
 actually says. The faithful, step-by-step telling is `docs/SAGA-WALKTHROUGH.md`; the source of truth
 is the story bible, `docs/superpowers/specs/2026-08-27-story-bible.md`, and where this and the bible
 disagree, the bible is right.*
@@ -384,8 +384,10 @@ world. It took both hands. It took the bow and the torch and the blade. In retur
 it twice inside a few heartbeats, it gave the storm back: a ring of Eikthyr's own weather breaking
 outward. *It keeps what it is hit with. Let something hit it twice, and stand still.*
 
-The storm ate the shield a little every time. That was its price. It kept sending the newcomer home to
-their own bench, which is to say, to their hearth, which is to say the shield was wiser than it looked.
+The storm ate the shield a little every time. That was its price. And no bench in the world would mend
+it, either: only the anvil would, down on the shore, with the shield alone in the box and the lever
+pulled while the sky was awake. What the storm wore down, only the storm put right. So it kept sending
+the newcomer back to the water and the weather, which is to say the shield was wiser than it looked.
 
 One night they stood out under a thunderstorm with no roof over them and the Stormward on their arms,
 because *the sky does this on its own, and has since before you landed. Go and be under it holding
@@ -1171,16 +1173,197 @@ answered yet.
 
 ---
 
+## A Light to Carry
+
+*The dvergr borrow light and give it back. Learn how.*
+
+### The Mist
+
+> "They keep it in lanterns. Borrowed, they say. Odin would like to know from whom."
+
+The newcomer claimed what Yagluth had left them, on the same stones. Fire, frost and lightning slid off
+them for a while afterwards, which is the kind of gift a burned-out god would think to give.
+
+Then they went north and west, past the gold country, to where the land stopped being land and became
+black rock standing up out of a grey that never lifted.
+
+It was not fog. Fog comes and goes. This was the mist, and it had been there since before the world was
+a store-room, and it did not go anywhere. You could not see your own hand in it. You could not see the
+thing that was hunting you in it, and something always was. *Grey mist over black rock. Nothing shows in
+it until a wisp is at your belt.*
+
+> *In the mist there were lamps, and the lamps were not stolen. The dvergr had worked out how to
+> borrow light and hand it back, and had no intention of explaining it to something as new as you.*
+
+That was the first strange thing about the mist: there were lamps in it. Little warm ones, hung on
+poles and on the corners of stone buildings that had been built square and patient and very well, by
+people who meant to be somewhere a long time. The lamps had been lit, and they were still lit, and
+nobody in that whole world had told the newcomer that anyone had ever kept a light without taking it.
+
+### The Lantern-Keeper
+
+He was standing by one of the dvergr places, short and broad and bearded to the belt, with a lantern
+glow about him the colour of a hearth seen through a door. He was the first person the newcomer had met
+in all that world who was not dead. Every other voice in the saga had belonged to somebody who was after:
+the shade, the debtor, the thane, the keeper of the barrow, the drowned man, the frozen one, the
+harvester in his ring of stones. This one was simply alive, and busy, and a little irritated to be
+interrupted.
+
+*"Living. Hm. Come here."*
+
+> "Living. Hm. We don't get many of those up here.
+>
+> We borrow light. That's the whole of it — we catch it, carry it, let it see for us a while, and give it
+> back. Everyone else in this world grabbed. The forest ate it, the marsh kept it, the cold froze it, the
+> ones on the plains stacked it in barns. We borrow.
+>
+> And you — what's that you're carrying? Let me see. Since the meadows? You've been carrying them
+> honestly since the meadows, and nobody taught you.
+>
+> Then you'll understand what I ask. Bring one here after dark and let it go. Yours from the meadows, or
+> one you catch up here at the roots. Give one back, and I'll show you how we carry the rest."
+
+The newcomer stood there in the mist with that for a while.
+
+It is a strange thing, to be told what you have been doing. They had taken the lights back from the
+forest in the meadows because the forest was stealing them, and from the couriers in the pines because
+the couriers were stealing them too, and they had carried them ever since because it had not occurred
+to them to do anything else. They had spent some. They had given one to a dead man under a hill and one
+to a debtor on a shore. They had never once thought of what they were doing as an answer. They had
+thought of it as not doing what the forest did.
+
+And here was a short man with a lantern telling them that this was the answer, the only one in the whole
+world that had ever worked, and that they had found it without being shown.
+
+*He wants one light set free, after dark.*
+
+### Letting Go
+
+The newcomer came back to him in the daylight first, because they were eager, and he looked at them the
+way a smith looks at a boy who has put his hand on the anvil to see if it is hot.
+
+> "Not in daylight. Light only rises in the dark — you know that better than anyone. After sundown."
+
+Which was true. They did know it better than anyone. It was the first rule of that world and they had
+learned it on the first night in the meadows, watching a pale light come up out of the grass. So they
+waited for the sun to go down, as they had waited so many times, in so many countries, and when it was
+dark they went back to him with a light in their hand.
+
+Some who walk this road arrive at the lantern-keeper with nothing left to give. The bow cost lights, and
+the great shield cost lights, and the meadows and the pines are a long way behind. For them he has a
+plainer answer:
+
+> "You'll need one to let go of. One of yours from the meadows, or a wisp from the roots — they come up
+> at night."
+
+And it is so. At night in the mist, wisps rise from the roots of the great dead trees, and a patient
+person can catch one. It does not matter which light it is. That is rather the point.
+
+The newcomer gave him one of theirs from the meadows. It had been carried a very long way.
+
+He did not take it the way the others had taken things. He held it up, just above his head, and opened
+his hand, and the light went up out of it into the dark, slowly, the way a breath goes up on a cold
+morning. It rose above the reach of either of them, into the mist, and the mist lit for a moment from
+inside, grey turning gold, and then it was gone.
+
+*The light rises into the mist and is gone.*
+
+> "There. Watch it go. That's how it's done — it was never ours.
+>
+> Here's how we carry the rest. Five wisps and some silver, at a galdr table, the way we build our
+> lanterns. It'll push the mist back, and it'll give you light to see by. Borrowed, mind."
+
+*Borrowed, and given back. The only answer anyone in this world ever got right.*
+
+The newcomer stood in the dark after it was gone and found that they did not feel poorer. That
+surprised them more than anything else had in that country.
+
+### The Borrowed Light
+
+They caught five wisps at the roots, at night, and dug silver, and at a galdr table they made the thing
+he had shown them: a wisp in dvergr glass.
+
+It was called the Borrowed Light, and the name was the whole of the lesson. *A wisp in dvergr glass, the
+way they carry theirs. It pushes the mist back, and it gives you light to see by. None of it is yours.
+The dvergr were the only ones who ever understood that, and now you are the second.*
+
+They carried it, and the mist drew back from it in a ring, and inside the ring there was light enough to
+see by. Not stolen. Not kept. Not frozen or stacked or stored. Carried, for a while, by somebody who
+knew it would have to be given back.
+
+### The Nests
+
+That was the craft of the mist. The hunt of it was harder.
+
+Things live in the mist that do not live anywhere else. Seekers, which are made of chitin and hunger and
+patience, and *hunt in pairs and hear you before you see them*. Ticks, which latch on. Gjall, which
+float like bad dreams and rain fire. The newcomer went out among them with the Borrowed Light pushing the
+grey back from their feet, and found that a person who can see is a different animal in that country
+from a person who cannot.
+
+They thinned the nests. It took a long while and it took most of their nerve, and more than once the
+light at their belt was the only reason they saw what was coming before it came.
+
+And at the heart of the nests, in the deep places, there was something that the seekers fed.
+
+### The Queen
+
+*A sealed dvergr door in the rock. It opens to a key the dvergr made.*
+
+The dvergr had built a door, once, over something they did not want to come out. They had made a key for
+it, too, because dvergr make keys for everything, even the things they would rather nobody opened. The
+newcomer made the key and opened the door and went down.
+
+The Queen lay in the dark under the mountain in a hall of her own making, enormous and many-legged and
+patient, mother to every seeker in the mist. She had been feeding for a long time. She had not been
+taking light, the way the gods before her had. She had been taking the dvergr's country, one tunnel at a
+time, and the dvergr had borrowed the light to fight her by, and given it back, and borrowed it again,
+for longer than the newcomer had been alive.
+
+The fight in the dark was long, and the newcomer's lantern was the only light in that hall.
+
+When she fell, the hall went very quiet, and the light at their belt went on burning, small and steady,
+exactly as bright as it had been before. It had not grown. It had not been fed. It had not been kept.
+It was still borrowed, and it had been enough.
+
+They went back up into the mist and found the lantern-keeper where they had left him.
+
+*"Lanterns are lit again."*
+
+> "She's down? Then the lanterns can go back under the mist without a fight.
+>
+> Borrowed light, all of it. Always was. You knew that before I did."
+
+After that, when the newcomer came by, he only ever said one thing, and it was the best advice anyone
+gave them in that whole world:
+
+> "Carry it well. Give it back when you're done."
+
+---
+
 ## What Is Not Yet Told
 
 That is as far as the saga goes, for now.
 
-They say that in the mist beyond the plains there are lamps, and that the lamps were not stolen. They
-say a short, stubborn people keep light in lanterns there, and that they borrow it, and give it back,
-and will not explain to anyone how. They say the raven has already flown there and come home again,
-and that Odin would like to know, very much, from whom the dvergr borrow it.
+The raven came down onto a dvergr lamp-post in the mist and sat there with its feathers full of grey,
+and looked at the newcomer for a long time with Odin's eye. It did not say anything. Ravens don't, when
+it matters.
 
-And some, who have looked carefully at what the newcomer carries, say that they have been doing it all
-along.
+But the newcomer knew, by then, what the old one in the high seat had sent them to find out. Where the
+light goes. Every answer in that world had been tried: stolen and spent, kept and never used, frozen,
+stacked in barns. Only the dvergr had found the honest one, borrowing and giving back, and the newcomer
+had been doing it since the meadows without anyone to tell them so.
+
+And still the shortage was not answered. The light was still going somewhere. Every thread the newcomer
+had pulled, from the meadows to the mist, ran the same way when you followed it far enough: south and
+down, to a country where the ground is ash and the sky is the colour of a forge, where everything has
+already burned once.
+
+*Where light goes to end. Follow it in.*
+
+They say there is a last light there, and that it does not want to be carried or kept or borrowed. They
+say the answer in that country is the oldest and the hardest of them all, and that it is only three
+words long, and that the words are *let it burn*. They say the raven has a message for whoever goes:
+*Everything here has already burned once. Mind what you carry.*
 
 But that is another tale, and it has not happened yet.
