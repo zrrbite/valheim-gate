@@ -1118,7 +1118,13 @@ namespace ICanShowYouTheWorld.RunMode
         {
             // Acts I and II both race for lights now — the deer's in the meadows, the couriers'
             // in the forest. Everything downstream (take, fade, music, convergers) is shared.
-            if (_lights == null || !(ActIsMeadows || ActIsBlackForest) || _challenges == null) return;
+            if (_lights == null || _challenges == null) return;
+
+            // Take and fade run in ANY act while a light burns: later acts free lights too (the
+            // drowned one's, the lantern-keeper's), and a light nobody ticks can never be taken
+            // or fade. The race - its music and its convergers - stays Acts I and II.
+            bool raceActs = ActIsMeadows || ActIsBlackForest;
+            if (!raceActs && _lights.Burning == 0) return;
 
             var player = Player.m_localPlayer;
             if (player == null) return;
@@ -1129,7 +1135,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // rather than one per deer — and it is handed BACK on the way down. The music is
                 // the race; when nothing is burning there is no race, and drums over a quiet
                 // forest are just a bug that sounds like a mood.
-                if (_lights.Burning > 0 && !_raceMusicPlayed)
+                if (raceActs && _lights.Burning > 0 && !_raceMusicPlayed)
                 {
                     _raceMusicPlayed = true;
                     PlayRaceMusic();
@@ -1142,7 +1148,7 @@ namespace ICanShowYouTheWorld.RunMode
 
                 // The forest walks in on whatever burns — but only while the hunt is live, the
                 // same gate as the pack, and for the same reason.
-                if (DeerHuntWanted || LightRaceWanted) _lights.TickConvergers();
+                if (raceActs && (DeerHuntWanted || LightRaceWanted)) _lights.TickConvergers();
 
                 int lost, freedGuttered;
                 int taken = _lights.Tick(player, out lost, out freedGuttered);
@@ -4576,7 +4582,9 @@ namespace ICanShowYouTheWorld.RunMode
             try
             {
                 var tracks = _challenges.Tracks;
-                bool reached = StepPredicates.StepLive(tracks, "sw-scrap") || StepPredicates.StepDone(tracks, "sw-scrap");
+                // From his own step on - not from the scrap step, where he would have had nothing true
+                // to say ("make the coat first" before any coat was mentioned).
+                bool reached = StepPredicates.DrownedFind(tracks) || StepPredicates.StepDone(tracks, "sw-drowned");
                 bool wanted = ActIsSwamp && reached && !StepPredicates.StepDone(tracks, "sw-letgo");
 
                 var phase = StepPredicates.DrownedFind(tracks) ? DrownedOne.Phase.Speak
@@ -4607,9 +4615,14 @@ namespace ICanShowYouTheWorld.RunMode
         private void PollDrownedLight()
         {
             if (_drownedLightAt == null || !IsNight) return;
+
+            // Only where the player can see it: a light made in an unloaded zone is gone at once.
+            var player = Player.m_localPlayer;
+            if (player == null || Vector3.Distance(player.transform.position, _drownedLightAt.Value) > 60f) return;
+
             try
             {
-                _lights?.Release(_drownedLightAt.Value, 120f);
+                _lights?.Release(_drownedLightAt.Value, 120f, "A Kept Light");
                 Message("The light he kept rises out of the water.");
             }
             catch (Exception ex) { LogOnce("drowned-light", ex); }
@@ -4627,6 +4640,9 @@ namespace ICanShowYouTheWorld.RunMode
                 // next act unfinished, and a step that needs her must not strand there.
                 bool wanted = _active && (ActIsSwamp || (tracks != null &&
                               (StepPredicates.WitchFind(tracks) || StepPredicates.StepLive(tracks, "sw-reforge"))));
+                // The reforge is offered only while its step is live: before, it is not yet asked of
+                // the player; after, the hover would outlive its answer.
+                _witch.AltHover = tracks != null && StepPredicates.StepLive(tracks, "sw-reforge") ? "Reforge the Stormward" : null;
                 _witch.Tick(player, wanted, reforged, null, false);
 
                 if (_witch.Near && tracks != null && StepPredicates.WitchFind(tracks))
@@ -4699,17 +4715,21 @@ namespace ICanShowYouTheWorld.RunMode
                               (pastMountain || StepPredicates.Frozen(tracks) || StepPredicates.StepDone(tracks, "mt-arrive"));
 
                 Vector3? at = _frozenOne.Position() ?? _frozenOne.Spot();
+                bool near = at != null && Vector3.Distance(player.transform.position, at.Value) < 40f;
                 var phase = StepPredicates.FrozenWake(tracks)
-                              ? (at != null && FrozenOne.FireNear(at.Value) ? FrozenOne.Phase.Waking : FrozenOne.Phase.Frozen)
+                              ? (near && FrozenOne.FireNear(at.Value) ? FrozenOne.Phase.Waking : FrozenOne.Phase.Frozen)
                           : StepPredicates.FrozenPayment(tracks) ? FrozenOne.Phase.Pay
                           : pastMountain ? FrozenOne.Phase.After
-                          : FrozenOne.Phase.Idle;
+                          : StepPredicates.StepDone(tracks, "mt-egg") ? FrozenOne.Phase.Idle
+                          : FrozenOne.Phase.Between;
 
                 bool woken, paid;
                 _frozenOne.Tick(player, phase, wanted, out woken, out paid);
                 RefreshNpcPin(PinFrozen, wanted, _frozenOne.Spot(), FrozenOne.FrozenName);
 
-                if (woken && phase == FrozenOne.Phase.Waking)
+                // Not gated on the phase AT POLL TIME: he only raises "woken" from the Waking phase, and
+                // a fire that went out between the Use and this poll must not eat his first speech.
+                if (woken && StepPredicates.FrozenWake(tracks))
                 {
                     _challenges.ReportEvent(ChallengeKind.PlayerEvent, SagaNames.FrozenWoken);
                     Message("He wants to hold a dragon egg before he believes the light is gone.");

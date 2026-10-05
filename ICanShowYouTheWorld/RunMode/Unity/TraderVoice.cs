@@ -21,7 +21,7 @@ namespace ICanShowYouTheWorld.RunMode
 
         public bool Interact(Humanoid user, bool hold, bool alt)
         {
-            if (alt && !hold && Owner != null && Owner.AltAction != null)
+            if (alt && !hold && Owner != null && Owner.AltAction != null && !string.IsNullOrEmpty(Owner.AltHover))
             {
                 try { return Owner.AltAction(user); }
                 catch (Exception ex)

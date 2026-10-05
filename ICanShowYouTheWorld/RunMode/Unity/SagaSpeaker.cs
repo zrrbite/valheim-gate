@@ -248,8 +248,20 @@ namespace ICanShowYouTheWorld.RunMode
 
             zdo.Persistent = false;
 
-            // Tamed so nothing fights; parked so they stay put.
+            // Tamed so they never fight the player; parked so they stay put.
             try { ch.SetTamed(true); } catch { }
+
+            // But the game counts a tamed creature as an ENEMY of every monster (review, 2026-10-05):
+            // at a sunken crypt the drowned one was hunted by draugr, died, dropped loot and was made
+            // again every second. Immune to non-player damage, so the world cannot kill a speaker -
+            // only the player can, which is exactly what the drowned one's last beat needs.
+            try
+            {
+                var mods = ch.m_damageModifiers;
+                mods.m_nonPlayer = HitData.DamageModifier.Immune;
+                ch.m_damageModifiers = mods;
+            }
+            catch { }
             ch.m_name = Name;
             try
             {

@@ -22,7 +22,7 @@ namespace ICanShowYouTheWorld.RunMode
     /// </remarks>
     internal sealed class FrozenOne : SagaSpeaker
     {
-        public enum Phase { Frozen, Waking, Pay, Idle, After }
+        public enum Phase { Frozen, Waking, Between, Pay, Idle, After }
 
         public const string FrozenName = "The frozen one";
 
@@ -57,6 +57,11 @@ namespace ICanShowYouTheWorld.RunMode
 
         public const string IdleLine = "I'll keep the egg warm. Somebody should.";
 
+        /// <summary>Woken, and the silver still to come before his ask is current.</summary>
+        public const string BetweenLine =
+            "Go and dig your silver, if you must. Then bring me one of hers — an egg, from the peaks. I'll wait. " +
+            "I'm good at it.";
+
         /// <summary>After Moder. Backed by the act's own chapter close: what the mountain kept was still warm.</summary>
         public const string AfterLine =
             "Did you feel it go past? Up off the peaks, when she fell. It was warm. I was right.\n\n" +
@@ -65,6 +70,7 @@ namespace ICanShowYouTheWorld.RunMode
         private const string GreetWaking = "...is it back?";
         private const string GreetPay = "One of hers. Please.";
         private const string GreetIdle = "Still warm.";
+        private const string GreetBetween = "An egg. When you can.";
         private const string GreetAfter = "I was right.";
 
         private const float Waterline = 31f;
@@ -114,16 +120,25 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>A burning fire within <see cref="FireRange"/> of <paramref name="at"/>.</summary>
         public static bool FireNear(Vector3 at)
         {
-            try
+            Fireplace[] fires;
+            try { fires = UnityEngine.Object.FindObjectsOfType<Fireplace>(); }
+            catch { return false; }
+
+            foreach (var fire in fires)
             {
-                foreach (var fire in UnityEngine.Object.FindObjectsOfType<Fireplace>())
+                // Per fire, and skipping any without a live network view: the hammer's build
+                // PREVIEW is a full copy of the piece, Fireplace included, with no ZDO - and
+                // IsBurning throws on it. One preview near him must not hide a real fire.
+                try
                 {
                     if (fire == null) continue;
                     if (Vector3.Distance(fire.transform.position, at) > FireRange) continue;
+                    var view = fire.GetComponent<ZNetView>();
+                    if (view == null || !view.IsValid()) continue;
                     if (fire.IsBurning()) return true;
                 }
+                catch { }
             }
-            catch { }
             return false;
         }
 
@@ -131,6 +146,7 @@ namespace ICanShowYouTheWorld.RunMode
         protected override string Greeting =>
             Current == Phase.Waking ? GreetWaking
             : Current == Phase.Pay ? GreetPay
+            : Current == Phase.Between ? GreetBetween
             : Current == Phase.Idle ? GreetIdle
             : Current == Phase.After ? GreetAfter
             : null;
@@ -166,6 +182,9 @@ namespace ICanShowYouTheWorld.RunMode
                     }
                     else Say(NotYetLine);
                     return true;
+                case Phase.Between:
+                    Say(BetweenLine);
+                    return true;
                 case Phase.After:
                     Say(_afterSaid ? IdleLine : AfterLine);
                     _afterSaid = true;
@@ -182,12 +201,19 @@ namespace ICanShowYouTheWorld.RunMode
             if (player == null) return null;
 
             Vector3 from = Home() ?? player.transform.position;
-            Vector3? edge = BiomeCompass.Nearest(from, Heightmap.Biome.Mountain);
             var gen = WorldGenerator.instance;
-            if (edge == null || gen == null)
+            if (gen == null) return null;
+
+            // Searched ONCE (a few thousand noise samples). If no mountain lies within range of home,
+            // search from the player - who has reached the mountains by now - and failing that stand
+            // him on land near the player. He must never be unfindable: the whole craft track waits on him.
+            Vector3? edge = BiomeCompass.Nearest(from, Heightmap.Biome.Mountain)
+                         ?? BiomeCompass.Nearest(player.transform.position, Heightmap.Biome.Mountain)
+                         ?? BiomeCompass.LandNear(player.transform.position, 20f, 40f, _rng);
+            if (edge == null)
             {
-                Debug.LogWarning("[ICanShowYouTheWorld] The frozen one found no mountain within range of home.");
-                return null;
+                Debug.LogWarning("[ICanShowYouTheWorld] The frozen one found no mountain and no land - standing at the player.");
+                edge = player.transform.position;
             }
 
             Vector3 chosen = new Vector3(edge.Value.x, SafeHeight(gen, edge.Value), edge.Value.z);

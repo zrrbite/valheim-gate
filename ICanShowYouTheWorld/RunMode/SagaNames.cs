@@ -131,6 +131,12 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>Act V: a full table with something from the field, at home.</summary>
         public const string SteadingFeast = "SteadingFeast";
 
+        /// <summary>Act VI: the lantern-keeper, first spoken to.</summary>
+        public const string LanternFound = "LanternFound";
+
+        /// <summary>Act VI: a light set free at the lantern-keeper's side, at night.</summary>
+        public const string LightFreed = "LightFreed";
+
         public static bool IsHaldorKey(string key) =>
             !string.IsNullOrEmpty(key) && key.StartsWith(HaldorKeyPrefix, System.StringComparison.OrdinalIgnoreCase);
 
