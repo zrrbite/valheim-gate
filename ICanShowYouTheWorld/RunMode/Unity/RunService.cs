@@ -1896,7 +1896,7 @@ namespace ICanShowYouTheWorld.RunMode
         /// alone cannot be the lock. This reverses the 2026-09-20 ruling that kept dev mode as a
         /// tester's switch in both flavours. Every dev path reads THIS, so the HUD's red line goes too.
         /// </remarks>
-        public bool DevMode => ModVersion.GmEnabled && _cfg != null && _cfg.RunDevMode;
+        public bool DevMode => ModVersion.IsDevBuild && _cfg != null && _cfg.RunDevMode;
 
         public HearthRecords Records => _records;
 

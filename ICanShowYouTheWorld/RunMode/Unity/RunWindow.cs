@@ -348,7 +348,7 @@ namespace ICanShowYouTheWorld.RunMode
         /// back and forth."
         ///
         /// Two things are deliberately narrower than that sentence. The GM page exists only in a GM
-        /// BUILD (ModVersion.GmEnabled), not with dev mode, because the two ended up being different
+        /// BUILD (ModVersion.IsDevBuild), not with dev mode, because the two ended up being different
         /// switches living in different places - dev mode is the tester's step-skips and kits, and
         /// the flavour is baked into the DLL where nobody can edit it.
         ///
@@ -632,7 +632,7 @@ namespace ICanShowYouTheWorld.RunMode
                         UpdateOfferFadeState(0);
                         // The GM page carries a thirty-four row key table and wants the room; the
                         // saga page is four buttons and a paragraph and does not.
-                        bool gmPage = ModVersion.GmEnabled && _lobbyPage == LobbyPage.Gm;
+                        bool gmPage = ModVersion.IsDevBuild && _lobbyPage == LobbyPage.Gm;
                         float lobbyWidth  = gmPage ? GmPageWidth  : LobbyWidth;
                         float lobbyHeight = gmPage ? GmPageHeight : LobbyHeight;
 
@@ -2455,7 +2455,7 @@ namespace ICanShowYouTheWorld.RunMode
 
             // Only a GM build has anywhere else to go, so a saga build never draws a tab row it
             // would be the only occupant of.
-            if (ModVersion.GmEnabled)
+            if (ModVersion.IsDevBuild)
             {
                 GUILayout.BeginHorizontal();
                 DrawLobbyTab("SAGA", LobbyPage.Saga);

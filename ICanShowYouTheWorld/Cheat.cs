@@ -415,7 +415,7 @@ namespace ICanShowYouTheWorld
                 // pipeline through WithLegacyGodModeBracket, so the layer has to live in both
                 // flavours; this removes its doors, never its floor.
                 bool isModeKey = cmd.Key == KeyCode.End || cmd.Key == KeyCode.F1;
-                if (!ModVersion.GmEnabled && !isModeKey) continue;
+                if (!ModVersion.IsDevBuild && !isModeKey) continue;
 
                 // register in the global registry...
                 CommandRegistry.All.Add(cmd);

@@ -61,7 +61,7 @@ namespace ICanShowYouTheWorld
         /// </summary>
         public static void Tick()
         {
-            if (!ModVersion.GmEnabled) return;
+            if (!ModVersion.IsDevBuild) return;
 
             try
             {

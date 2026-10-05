@@ -13,7 +13,7 @@
 # Scripts/make_release.sh reads it back out of the DLL before it will ship.
 set -e
 
-FLAVOUR="gm"
+FLAVOUR="dev"
 [[ "${1:-}" == "--saga-only" ]] && FLAVOUR="saga"
 
 # 1) Compute project root (where your .git folder lives)

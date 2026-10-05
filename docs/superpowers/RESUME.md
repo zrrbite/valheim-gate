@@ -27,15 +27,16 @@ Everything below is what that file tells it.
      his Teach phase and the "at the graves" bearing are still in the code but have nothing to do.
      Owner's reason: most sessions held two of three abilities, and the walk back after a boss
      (far from home, daylight only) was a trip with nothing in it.
-  2. **Dev mode exists only in GM builds** (tag `...05b`). `RunService.DevMode` now reads
-     `ModVersion.GmEnabled && runDevMode`; every dev path goes through it, so a saga-only release
+  2. **Dev mode exists only in dev builds** (tag `...05b`; the flavour was renamed "gm" → "dev"
+     the same day, badge `· DEV`, `make_release.sh --dev`). `RunService.DevMode` now reads
+     `ModVersion.IsDevBuild && runDevMode`; every dev path goes through it, so a saga-only release
      has no shortcuts and no red line, whatever its config says. A saga-only zip drops
      `DEV-MODE.md`. Reverses the 2026-09-20 ruling (see the note in the flavour section below).
   3. **The Mac builds and deploys again** — first time since August. See "Building on the Mac"
      under Landmines.
 
   **Where each machine is:** the Mac has `...05b` **saga-only** deployed (badge `SAGA
-  v1.0.16-run.2026-10-05b`, no `· GM`), for checking the release flavour. Windows is still on
+  v1.0.16-run.2026-10-05b`, no `· DEV`), for checking the release flavour; the owner is playing it through. Windows is still on
   `...09-29` and needs `Scripts/build_windows.sh` (it reruns setversion, so GM unless
   `--saga-only`) then `Install-Mod.ps1 -ModOnly` — the committed `dist/windows/patcher` DLL was
   NOT restaged from the Mac. The task is the top entry in `HANDOFF_WINDOWS.md`.

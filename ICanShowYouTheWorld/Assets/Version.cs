@@ -6,8 +6,8 @@ namespace ICanShowYouTheWorld
         public const string VERSION = "1.0.16-run.2026-10-05b";
 
         /// <summary>
-        /// Which flavour this DLL is: <c>"gm"</c> (the saga plus the old cheat mod) or
-        /// <c>"saga"</c> (the saga alone).
+        /// Which flavour this DLL is: <c>"dev"</c> (the saga with its dev mode, plus the old GM cheat
+        /// mod) or <c>"saga"</c> (the saga alone - the release). Was <c>"gm"</c> until 2026-10-05.
         /// </summary>
         /// <remarks>
         /// BAKED IN at build time, by Scripts/setversion.sh, and deliberately not a config
@@ -39,7 +39,7 @@ namespace ICanShowYouTheWorld
         /// searching - the same trick that reads VERSION, because .NET user strings live in the #US
         /// heap as UTF-16.
         ///
-        /// A bare "gm" or "saga" cannot be found that way. The FIELD name is in the #Strings heap
+        /// A bare "dev" or "saga" cannot be found that way. The FIELD name is in the #Strings heap
         /// as UTF-8, so there is nothing to anchor a search to, and the two words are far too
         /// common to match on their own - which is exactly how the first attempt at this failed.
         /// This constant exists to be greppable and for no other reason. Concatenating two consts
@@ -61,6 +61,6 @@ namespace ICanShowYouTheWorld
         /// away (-console, then F5, then devcommands). This protects the saga's score from someone
         /// who never asked for GM. It is not a lock.
         /// </remarks>
-        public static bool GmEnabled => FLAVOUR == "gm";
+        public static bool IsDevBuild => FLAVOUR == "dev";
     }
 }

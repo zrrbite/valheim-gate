@@ -4,7 +4,7 @@
 #
 #   Scripts/build_windows.sh             # rebuild the current version and restage it
 #   Scripts/build_windows.sh --release   # new date tag first, then build and stage
-#   Scripts/build_windows.sh --saga-only # ...and bake OUT the GM cheat mod (see ModVersion.FLAVOUR)
+#   Scripts/build_windows.sh --saga-only # ...and bake OUT the GM cheat mod and dev mode (see ModVersion.FLAVOUR)
 #   Scripts/build_windows.sh --release --saga-only
 #
 # then, in PowerShell:

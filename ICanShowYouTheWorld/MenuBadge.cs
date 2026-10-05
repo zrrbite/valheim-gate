@@ -100,7 +100,7 @@ namespace ICanShowYouTheWorld
         }
 
         /// <summary>
-        /// The badge, and the FLAVOUR after it in a GM build.
+        /// The badge, and the FLAVOUR after it in a dev build.
         /// </summary>
         /// <remarks>
         /// The flavour suffix is not decoration: it is the guard on the one accident the build-time
@@ -112,7 +112,7 @@ namespace ICanShowYouTheWorld
         /// </remarks>
         private static string BadgeLine()
         {
-            string flavour = ModVersion.GmEnabled ? " \u00b7 GM" : string.Empty;
+            string flavour = ModVersion.IsDevBuild ? " \u00b7 DEV" : string.Empty;
             return $"\n<size=70%><color=#{Gold}>{Title} v{ModVersion.VERSION}{flavour}</color></size>";
         }
 

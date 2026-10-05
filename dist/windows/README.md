@@ -40,10 +40,10 @@ Version 1.0.15 (n-40)
 SAGA v1.0.15-run.2026-09-20c
 ```
 
-A build that also carries the old GM cheat mod says so, and a saga-only one does not:
+A dev build (dev mode plus the old GM cheat mod) says so, and a saga-only release does not:
 
 ```
-SAGA v1.0.15-run.2026-09-20c · GM
+SAGA v1.0.16-run.2026-10-05c · DEV
 ```
 
 That is the standing answer. A popup appears only if the mod FAILED to load.

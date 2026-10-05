@@ -143,22 +143,23 @@ FejdStartup.Start()          [and OnCredits(), which is then a no-op]
 - **InputManager.cs** - Keyboard input polling and command dispatch
 - **CommandRegistry** - Global list of keyboard bindings using CommandBinding pattern
 
-### Build flavours: GM or saga-only
+### Build flavours: dev or saga-only
 
 The DLL is built one of two ways, and **which one is baked into it**, not configured:
 
 ```bash
-Scripts/build_windows.sh --release               # "gm"   — the saga plus the old cheat mod
-Scripts/build_windows.sh --release --saga-only   # "saga" — the saga alone
+Scripts/build_windows.sh --release               # "dev"  — the saga with dev mode, plus the old GM cheat mod
+Scripts/build_windows.sh --release --saga-only   # "saga" — the saga alone: the release
 ```
 
 `Scripts/setversion.sh` fills `__FLAVOUR__` in `VersionTemplate.cs` alongside `__VERSION__`, so
-`ModVersion.FLAVOUR` and `ModVersion.GmEnabled` are compile-time facts. **Deliberately not a
+`ModVersion.FLAVOUR` and `ModVersion.IsDevBuild` are compile-time facts. (The dev flavour was
+called "gm" until 2026-10-05; `make_release.sh` still reads an old "gm" DLL as dev.) **Deliberately not a
 config setting**: the requirement was that nobody but the owner can reach GM, and the config
 file belongs to whoever has it.
 
 `ModVersion.FlavourMarker` exists so the flavour can be read back OUT of the built DLL, the same
-decode-and-grep that reads the version. A bare `"gm"` cannot be: .NET user strings are UTF-16 in
+decode-and-grep that reads the version. A bare `"dev"` cannot be: .NET user strings are UTF-16 in
 the #US heap while field NAMES are UTF-8 in #Strings, so there is nothing to anchor a search to —
 which is how the first attempt at this silently found nothing.
 
@@ -167,15 +168,15 @@ What a saga-only build changes, and what it must not:
 - `Cheat.cs` does not **register** the GM bindings (only `F1` and `End` survive, and neither is a
   cheat), so `CommandRegistry.All` is empty and there is nothing to press or to list.
 - `UIManager.OnGUI` does not draw the GM windows.
-- **Dev mode is off whatever the config says** (`RunService.DevMode` reads `ModVersion.GmEnabled`
+- **Dev mode is off whatever the config says** (`RunService.DevMode` reads `ModVersion.IsDevBuild`
   first): no step-skips, slay, kit or teleport, and no red dev line in the Run window. A recipient
   owns their config file, so `runDevMode` alone could not be the lock (owner, 2026-10-05).
 - **`CheatCommands` itself stays alive in both flavours.** Run Mode's boons ride that pipeline
   through `WithLegacyGodModeBracket`. This removes GM's doors, never its floor.
 
 Guards, because the remaining accident is shipping the wrong DLL: the main menu badge reads
-`SAGA v<build> · GM` in a GM build, and `Scripts/make_release.sh` reads the flavour out of the
-DLL and **refuses to package a GM build** unless passed `--gm`. The zip is named for the flavour.
+`SAGA v<build> · DEV` in a dev build, and `Scripts/make_release.sh` reads the flavour out of the
+DLL and **refuses to package a dev build** unless passed `--dev`. The zip is named for the flavour.
 
 And the honest limit: Valheim ships its own cheats one launch option away (`-console`, then F5,
 then `devcommands`). This protects the saga's score from somebody who never asked for GM. It is

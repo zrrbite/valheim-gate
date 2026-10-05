@@ -17,11 +17,11 @@ Standing context for the Windows side:
 
 ---
 
-## 2026-10-05 - TASK: rungs taught where the god falls, and dev mode only in GM (`1.0.16-run.2026-10-05b`)
+## 2026-10-05 - TASK: rungs taught where the god falls, and dev mode only in dev builds (`1.0.16-run.2026-10-05c`)
 
 **Not installed here yet.** Built on the Mac; the staged `dist/windows/patcher` DLL is still
-`...09-29`. In Git Bash: `git pull`, then `Scripts/build_windows.sh` (GM, the owner's build) and
-`.\dist\windows\Install-Mod.ps1 -ModOnly`. The badge must read `SAGA v1.0.16-run.2026-10-05b · GM`
+`...09-29`. In Git Bash: `git pull`, then `Scripts/build_windows.sh` (a dev build, the owner's) and
+`.\dist\windows\Install-Mod.ps1 -ModOnly`. The badge must read `SAGA v1.0.16-run.2026-10-05c · DEV`
 (a build without the tag letter means setversion did not run). The branch tip's `Version.cs` is
 stamped `saga` from the Mac's saga-only test build; build_windows.sh rewrites it.
 
@@ -38,7 +38,8 @@ line say "The way of the X deepens: <ability> [key], ...", and the key works at 
 - `grep "The way of the" Player.log` shows what was taught and at how many gods down.
 - Owner's question: is all three abilities by the Elder too early?
 
-**2. Dev mode needs a GM build.** In this GM build nothing changes: `runDevMode: true` still gives
+**2. Dev mode needs a dev build** (the flavour formerly called "gm"; renamed in `...05c`, badge
+`· DEV`, `make_release.sh --dev`). In a dev build nothing changes: `runDevMode: true` still gives
 the shortcuts and the red line. In a `--saga-only` build the setting is ignored — no `+`, `Delete`,
 `Home`, kit, dev god, red line — and the release zip has no `DEV-MODE.md`. Optional check:
 `Scripts/build_windows.sh --saga-only`, install, confirm, then rebuild without it.

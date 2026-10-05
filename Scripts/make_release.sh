@@ -15,10 +15,10 @@
 # refuses to build a release unless all three match.
 #
 #   Scripts/make_release.sh              # release the current tag (must be a SAGA-ONLY build)
-#   Scripts/make_release.sh --gm           # ...allow a GM build to be released
+#   Scripts/make_release.sh --dev          # ...allow a DEV build (GM + dev mode) to be released
 #   Scripts/make_release.sh --allow-dirty  # ...with uncommitted changes
 #
-# A release is a thing handed to somebody else, so it REFUSES a GM build unless asked twice.
+# A release is a thing handed to somebody else, so it REFUSES a dev build unless asked twice.
 # The flavour is baked into the DLL (ModVersion.FLAVOUR) and read back out of it here rather
 # than taken on trust from whoever ran the build: the one accident the build-time switch can
 # still cause is shipping the wrong DLL, and this is the place to catch it.
@@ -31,11 +31,11 @@ ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 
 ALLOW_DIRTY=0
-ALLOW_GM=0
+ALLOW_DEV=0
 for arg in "$@"; do
     case "$arg" in
         --allow-dirty) ALLOW_DIRTY=1 ;;
-        --gm)          ALLOW_GM=1 ;;
+        --dev)         ALLOW_DEV=1 ;;
         *) echo "Unknown argument: $arg" >&2; exit 1 ;;
     esac
 done
@@ -84,8 +84,9 @@ read_flavour() {
     python3 - "$1" <<'PYEOF'
 import re, sys
 data = open(sys.argv[1], 'rb').read().decode('utf-16-le', 'ignore')
-m = re.search(r'ICSYTW_FLAVOUR_(gm|saga)', data)
-print(m.group(1) if m else '')
+m = re.search(r'ICSYTW_FLAVOUR_(dev|gm|saga)', data)
+# "gm" is what dev builds were called before 2026-10-05.
+print(('dev' if m.group(1) == 'gm' else m.group(1)) if m else '')
 PYEOF
 }
 
@@ -96,10 +97,10 @@ green "DLL version matches the tag"
 
 FLAVOUR="$(read_flavour "$BUILT")"
 [[ -n "$FLAVOUR" ]] || fail "Could not read the flavour out of the DLL. Rebuild with Scripts/build_windows.sh."
-if [[ "$FLAVOUR" == "gm" && $ALLOW_GM -eq 0 ]]; then
-    fail "This is a GM build. A release goes to somebody else, so it wants a saga-only one:
+if [[ "$FLAVOUR" == "dev" && $ALLOW_DEV -eq 0 ]]; then
+    fail "This is a dev build (GM + dev mode). A release goes to somebody else, so it wants a saga-only one:
        Scripts/build_windows.sh --release --saga-only
-     Or pass --gm if you really mean to hand over the cheat mod."
+     Or pass --dev if you really mean to hand over the cheat mod and dev mode."
 fi
 green "Flavour: $FLAVOUR"
 

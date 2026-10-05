@@ -151,7 +151,7 @@ namespace ICanShowYouTheWorld
             // in Cheat.cs, deliberately: the bindings being absent is what makes GM unreachable,
             // and this is what makes it invisible. Either alone would leave the other half of the
             // door standing.
-            if (visible && !runActive && ModVersion.GmEnabled)
+            if (visible && !runActive && ModVersion.IsDevBuild)
             {
                 trackWindow = GUILayout.Window(
                     0,
