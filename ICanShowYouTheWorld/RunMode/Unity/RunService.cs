@@ -186,6 +186,16 @@ namespace ICanShowYouTheWorld.RunMode
 
         /// <summary>Act III's speaker at the sunken crypt: teaches the cuirass, then asks to be let go.</summary>
         private DrownedOne _drowned;
+
+        /// <summary>Act IV's speaker at the treeline: woken by fire, paid an egg, teaches the greaves.</summary>
+        private FrozenOne _frozenOne;
+
+        /// <summary>Hildir's Act IV voice: the cold keeps. Her errand is her own vanilla chest quest.</summary>
+        private readonly TraderVoice _hildir = HildirVoice.Create();
+
+        /// <summary>The Howling Cavern chest's world key, read off Hildir's own give entries once she is near.</summary>
+        private string _hildirChestKey;
+        private bool _hildirChestMissingLogged;
         private SpiritChase _spirit;
         private StolenLights _lights;
         private TheGatherer _gatherer;
@@ -558,6 +568,13 @@ namespace ICanShowYouTheWorld.RunMode
                         string graves = _thane.Bearing(player, !IsNight, toLearn);
                         if (!string.IsNullOrEmpty(graves)) return graves;
                     }
+                }
+
+                // The frozen one while he is to be woken or paid.
+                if (_frozenOne != null && _challenges != null && StepPredicates.Frozen(_challenges.Tracks))
+                {
+                    string ice = _frozenOne.Bearing(player, "Someone stands in the ice at the treeline");
+                    if (!string.IsNullOrEmpty(ice)) return ice;
                 }
 
                 // The drowned one while he is to be found or let go.
@@ -1191,6 +1208,7 @@ namespace ICanShowYouTheWorld.RunMode
             _thane = new Thane(_rng);
             _keeper = new BarrowKeeper(_rng);
             _drowned = new DrownedOne(_rng);
+            _frozenOne = new FrozenOne(_rng);
             _witch.AltAction = ReforgeAtWitch;
             _witch.AltProgress = ReforgeProgress;
             _spirit = new SpiritChase(_cfg, _rng);
@@ -2296,8 +2314,12 @@ namespace ICanShowYouTheWorld.RunMode
                 _thane?.Reset();
                 _keeper?.Reset();
                 _drowned?.Reset();
+                _frozenOne?.Reset();
                 _haldor.Detach();
                 _witch.Detach();
+                _hildir.Detach();
+                _hildirChestKey = null;
+                _hildirChestMissingLogged = false;
                 // A key from a run that crashed before it could end would otherwise answer "already
                 // told" the first time this run asks him.
                 TraderVoice.ClearKeys(SagaNames.IsHaldorKey);
@@ -3754,6 +3776,9 @@ namespace ICanShowYouTheWorld.RunMode
             // Act III's two.
             if (shadePlayer != null) PollDrownedOne(shadePlayer);
             PollWitch(shadePlayer);
+            // Act IV's two.
+            if (shadePlayer != null) PollFrozenOne(shadePlayer);
+            PollHildir(shadePlayer);
             // After the thane, so a lesson or a respec he just gave shows in the same second.
             if (shadePlayer != null) PollWaySkill(shadePlayer);
             PollDiscoveries();
@@ -4555,7 +4580,11 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 var tracks = _challenges?.Tracks;
                 bool reforged = tracks != null && StepPredicates.StepDone(tracks, "sw-reforge");
-                _witch.Tick(player, _active && ActIsSwamp, reforged, null, false);
+                // Her act, OR one of her steps still live: MARSH is a third track and carries into the
+                // next act unfinished, and a step that needs her must not strand there.
+                bool wanted = _active && (ActIsSwamp || (tracks != null &&
+                              (StepPredicates.WitchFind(tracks) || StepPredicates.StepLive(tracks, "sw-reforge"))));
+                _witch.Tick(player, wanted, reforged, null, false);
 
                 if (_witch.Near && tracks != null && StepPredicates.WitchFind(tracks))
                 {
@@ -4611,7 +4640,103 @@ namespace ICanShowYouTheWorld.RunMode
                 .Select(p => $"{Mathf.Min(inv.CountItems(p.token), p.amount)}/{p.amount} {p.label}").ToArray()) + ")";
         }
 
+        /// <summary>
+        /// The frozen one: at the treeline from the moment the mountains are reached, in every act
+        /// after. Ice until a fire burns within reach of him; then he talks.
+        /// </summary>
+        private void PollFrozenOne(Player player)
+        {
+            if (_frozenOne == null || _challenges == null) return;
+
+            try
+            {
+                var tracks = _challenges.Tracks;
+                bool pastMountain = _actIndex >= 4;
+                bool wanted = _actIndex >= 3 &&
+                              (pastMountain || StepPredicates.Frozen(tracks) || StepPredicates.StepDone(tracks, "mt-arrive"));
+
+                Vector3? at = _frozenOne.Position() ?? _frozenOne.Spot();
+                var phase = StepPredicates.FrozenWake(tracks)
+                              ? (at != null && FrozenOne.FireNear(at.Value) ? FrozenOne.Phase.Waking : FrozenOne.Phase.Frozen)
+                          : StepPredicates.FrozenPayment(tracks) ? FrozenOne.Phase.Pay
+                          : pastMountain ? FrozenOne.Phase.After
+                          : FrozenOne.Phase.Idle;
+
+                bool woken, paid;
+                _frozenOne.Tick(player, phase, wanted, out woken, out paid);
+                RefreshNpcPin(PinFrozen, wanted, _frozenOne.Spot(), FrozenOne.FrozenName);
+
+                if (woken && phase == FrozenOne.Phase.Waking)
+                {
+                    _challenges.ReportEvent(ChallengeKind.PlayerEvent, SagaNames.FrozenWoken);
+                    Message("He wants to hold a dragon egg before he believes the light is gone.");
+                }
+                if (paid)
+                {
+                    _challenges.ReportEvent(ChallengeKind.PlayerEvent, SagaNames.FrozenPaid);
+                    Debug.Log("[ICanShowYouTheWorld] The frozen one took the egg; the Stormsworn greaves are taught.");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogOnce("frozen", ex);
+            }
+        }
+
+        /// <summary>
+        /// Hildir's Act IV voice, her proximity step, and her own chest quest: the Howling Cavern
+        /// chest's key is read off her give entries the first time she is near, and the step completes
+        /// when the world has that key.
+        /// </summary>
+        private void PollHildir(Player player)
+        {
+            try
+            {
+                var tracks = _challenges?.Tracks;
+                bool returned = tracks != null && StepPredicates.StepDone(tracks, "pk-chest");
+                // Her act, OR one of her steps still live: PEAK carries into Act V unfinished.
+                bool wanted = _active && (_actIndex == 3 || (tracks != null &&
+                              (StepPredicates.HildirFind(tracks) || StepPredicates.HildirChest(tracks))));
+                _hildir.Tick(player, wanted, returned, null, false);
+
+                if (tracks == null || !wanted) return;
+
+                if (_hildir.Near && StepPredicates.HildirFind(tracks))
+                {
+                    _challenges.ReportEvent(ChallengeKind.PlayerEvent, SagaNames.HildirMet);
+                    Message("She keeps her camp where it is warm. Something of hers is up in the cold.");
+                }
+
+                if (_hildirChestKey == null && _hildir.Attached)
+                {
+                    var chest = HildirVoice.CavernChest(_hildir.VanillaGives);
+                    if (chest != null)
+                    {
+                        _hildirChestKey = chest.m_setsGlobalKey;
+                        Debug.Log($"[ICanShowYouTheWorld] Hildir's Howling Cavern chest: '{chest.m_prefab.name}', key '{_hildirChestKey}'.");
+                    }
+                    else if (!_hildirChestMissingLogged)
+                    {
+                        _hildirChestMissingLogged = true;
+                        Debug.LogError("[ICanShowYouTheWorld] Hildir's give entries name no Howling Cavern chest - " +
+                                       "pk-chest cannot complete. See the 'Hildir accepts' lines.");
+                    }
+                }
+
+                if (_hildirChestKey != null && StepPredicates.HildirChest(tracks) && TraderVoice.KeySet(_hildirChestKey))
+                {
+                    _challenges.ReportEvent(ChallengeKind.PlayerEvent, SagaNames.HildirChest);
+                    Message("Hildir has her chest back. The cold gave it up.");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogOnce("hildir", ex);
+            }
+        }
+
         // The saga's people on the map. See SagaPins for why they are never saved.
+        private const string PinFrozen = "frozen";
         private const string PinDrowned = "drowned";
         private const string PinKeeper = "keeper";
         private const string PinThane = "thane";
@@ -5964,8 +6089,10 @@ namespace ICanShowYouTheWorld.RunMode
             // the key his answer set - global keys are saved with the world.
             _keeper?.Reset();
             _drowned?.Reset();
+            _frozenOne?.Reset();
             _haldor.Detach();
             _witch.Detach();
+            _hildir.Detach();
             TraderVoice.ClearKeys(SagaNames.IsHaldorKey);
 
             // Not an offer: the world the run ended in has just been asked and answered. Clearing
@@ -9751,6 +9878,9 @@ namespace ICanShowYouTheWorld.RunMode
         public const string ForgeTrackId = "forge";
         public const string MarshTrackId = "marsh";
 
+        /// <summary>Act IV's third track (2026-10-05): Hildir's errand - optional heat, never a gate on Moder.</summary>
+        public const string PeakTrackId = "peak";
+
         /// <summary>
         /// Every track a saga can have, in DISPLAY order, with the label each shows.
         ///
@@ -9768,6 +9898,7 @@ namespace ICanShowYouTheWorld.RunMode
             (HearthTrackId, "HEARTH"),
             (ForgeTrackId,  "FORGE"),
             (MarshTrackId,  "MARSH"),
+            (PeakTrackId,   "PEAK"),
         };
 
         /// <summary>
@@ -9956,6 +10087,7 @@ namespace ICanShowYouTheWorld.RunMode
             foreach (var p in Thjalfi.Price) yield return (Thjalfi.Name, p.token, p.amount);
             foreach (var p in BarrowKeeper.Price) yield return (BarrowKeeper.KeeperName, p.token, p.amount);
             foreach (var p in BogWitchVoice.ReforgePrice) yield return ("The Bog Witch", p.token, p.amount);
+            foreach (var p in FrozenOne.Price) yield return (FrozenOne.FrozenName, p.token, p.amount);
         }
 
         /// <summary>
@@ -9983,6 +10115,10 @@ namespace ICanShowYouTheWorld.RunMode
             SagaNames.HaldorTold,
             SagaNames.WitchMet,
             SagaNames.DrownedFound,
+            SagaNames.FrozenWoken,
+            SagaNames.FrozenPaid,
+            SagaNames.HildirMet,
+            SagaNames.HildirChest,
         };
 
         /// <summary>
@@ -11143,6 +11279,14 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
+                // The frozen one (2026-10-05), at the treeline nearest home. Ice until a fire burns within
+                // five metres of him; speaking to him then is the step.
+                Id = "mt-frozen", MainQuest = true, Track = CraftTrackId, Kind = ChallengeKind.PlayerEvent,
+                Param = SagaNames.FrozenWoken, Target = 1, Display = "Wake the frozen one",
+                Hint = "Someone stands frozen at the treeline nearest your home. Build a fire beside him, then speak to him while it burns.",
+            },
+            new ChallengeDefinition
+            {
                 // Everything that lives above the treeline, on ONE list — see "mq-cull". The
                 // Mountains have no craft steps to speak of, so their hunt track WAS the act, four
                 // kill steps deep; combining them is what makes the peaks a place to range over
@@ -11189,12 +11333,36 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
+                // His ask: a dragon egg, light that has not woken. Heavy, and it will not go through a
+                // portal - carrying one DOWN is the haul, and it is one of the three Moder wants.
+                Id = "mt-egg", MainQuest = true, Track = CraftTrackId, Kind = ChallengeKind.PlayerEvent,
+                Param = SagaNames.FrozenPaid, Target = 1, Display = "Carry an egg down to him",
+                Hint = "Dragon eggs lie on the high peaks. Heavy, and no portal will take one \u2014 carry it down to the treeline yourself.",
+            },
+            new ChallengeDefinition
+            {
                 Id = "mt-storm", MainQuest = true, Kind = ChallengeKind.CollectItem,
                 Param = SagaItems.StormLegsName, Target = 1,
                 Display = "Work the Stormsworn greaves",
                 RewardText = "Silver and a warm meal",
                 Hint = "A forge at level 3: 14 silver, 6 wolf pelt, 4 wolf fang. The cold stops mattering.",
                 Opening = "Fourth piece, and the cold is the easiest thing it will ever have to keep out.",
+            },
+            new ChallengeDefinition
+            {
+                // PEAK, Act IV's third track: Hildir and her own chest quest. Optional heat - it never
+                // holds up Moder. She is found by coming near her.
+                Id = "pk-hildir", MainQuest = true, Track = PeakTrackId, Kind = ChallengeKind.PlayerEvent,
+                Param = SagaNames.HildirMet, Target = 1, Display = "Find Hildir",
+                Hint = "A trader who keeps her camp where it is warm, far below the snow. Homeward is the quick way back down.",
+            },
+            new ChallengeDefinition
+            {
+                // Her own vanilla quest: the chest the cold took, in the Howling Cavern. Completed by the
+                // world key her own give entry sets - read off her at runtime, never guessed.
+                Id = "pk-chest", MainQuest = true, Track = PeakTrackId, Kind = ChallengeKind.PlayerEvent,
+                Param = SagaNames.HildirChest, Target = 1, Display = "Bring back her chest from the Howling Cavern",
+                Hint = "A frost cave in the mountains, full of fenrings and worse. Bring her chest out and hand it to her.",
             },
             // The golems and fenrings are clauses of "mt-cull" above now.
             new ChallengeDefinition

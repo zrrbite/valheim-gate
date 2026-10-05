@@ -110,6 +110,21 @@ namespace ICanShowYouTheWorld.RunMode
         public static bool DrownedLetGo(IReadOnlyList<QuestTrack> tracks) =>
             Live(tracks).Any(d => d.Kind == ChallengeKind.KillPrefab && d.Param == SagaNames.DrownedKill);
 
+        /// <summary>The frozen one should be standing for one of his steps.</summary>
+        public static bool Frozen(IReadOnlyList<QuestTrack> tracks) => FrozenWake(tracks) || FrozenPayment(tracks);
+
+        public static bool FrozenWake(IReadOnlyList<QuestTrack> tracks) =>
+            Live(tracks).Any(d => d.Kind == ChallengeKind.PlayerEvent && d.Param == SagaNames.FrozenWoken);
+
+        public static bool FrozenPayment(IReadOnlyList<QuestTrack> tracks) =>
+            Live(tracks).Any(d => d.Kind == ChallengeKind.PlayerEvent && d.Param == SagaNames.FrozenPaid);
+
+        public static bool HildirFind(IReadOnlyList<QuestTrack> tracks) =>
+            Live(tracks).Any(d => d.Kind == ChallengeKind.PlayerEvent && d.Param == SagaNames.HildirMet);
+
+        public static bool HildirChest(IReadOnlyList<QuestTrack> tracks) =>
+            Live(tracks).Any(d => d.Kind == ChallengeKind.PlayerEvent && d.Param == SagaNames.HildirChest);
+
         /// <summary>This exact step is current on some unblocked track.</summary>
         public static bool StepLive(IReadOnlyList<QuestTrack> tracks, string stepId) =>
             !string.IsNullOrEmpty(stepId) && Live(tracks).Any(d => d.Id == stepId);

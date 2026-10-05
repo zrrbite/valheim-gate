@@ -491,6 +491,22 @@ namespace ICanShowYouTheWorld.RunMode
             LightIntensity = 0.8f,
         };
 
+        /// <summary>The frozen one: frost-white body, a WARM amber core - the light still warm inside.</summary>
+        /// <remarks>
+        /// The shade took the cold-blue axis, so his cold is told by the BODY (Saturation gone, Value
+        /// up to frost-white) and his warmth by the LIGHT, which runs the other way from every other
+        /// ghost: amber. Seen at the treeline at dusk, he should read as ice with a coal inside it.
+        /// </remarks>
+        public static Look Frozen() => new Look
+        {
+            Saturation = -1f,
+            Value = 0.45f,
+            Emission = new Color(0.45f, 0.26f, 0.06f),
+            LightRange = 4.5f,
+            LightColor = new Color(1.0f, 0.68f, 0.30f),
+            LightIntensity = 0.9f,
+        };
+
         public static Look Keeper() => new Look
         {
             Saturation = -0.8f,

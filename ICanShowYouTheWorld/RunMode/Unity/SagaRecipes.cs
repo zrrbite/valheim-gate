@@ -166,9 +166,10 @@ namespace ICanShowYouTheWorld.RunMode
                 // been built up further than the swamp's chest asks of it.
                 MinStationLevel = 4,
                 Resources = new[] { ("Silver", 14), ("WolfPelt", 6), ("WolfFang", 4) },
-                RequiresStepDone = "mt-silver",
-                TaughtLine = "Silver, and the wolves that were standing on it. The mountain will go on " +
-                             "trying; you will stop noticing.",
+                // Taught by the frozen one for an egg (2026-10-05). Silver is still the cost.
+                RequiresStepDone = "mt-egg",
+                TaughtLine = "What the storm made for the cold, given up by a man who never needed it, " +
+                             "standing still. Silver, wolf pelt and fang, at a forge built high.",
             },
 
             new SagaRecipeDefinition

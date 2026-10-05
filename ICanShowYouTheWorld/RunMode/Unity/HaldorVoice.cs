@@ -93,4 +93,45 @@ namespace ICanShowYouTheWorld.RunMode
                 AltHover = "Reforge the Stormward",
             };
     }
+
+    /// <summary>
+    /// Hildir, given a voice for Act IV: a <see cref="TraderVoice"/> configuration with a proximity
+    /// step. Her errand is her OWN vanilla quest - the chest lost in the Howling Cavern - read off her
+    /// give entries at runtime (see RunService.PollHildir), so nothing about it is guessed.
+    /// </summary>
+    internal static class HildirVoice
+    {
+        public static readonly string[] Talk =
+        {
+            "The cold doesn't steal, you know. It keeps. Nothing up there rots, and nothing up there is used.",
+            "I keep my camp where it's warm. I send other people up into it. That's the trick of it.",
+            "Something of mine is up in the Howling Cavern. The cold has it now. It doesn't want it — it just won't give it back.",
+            "Wolves on the slopes, and worse things in the caves. Dress for it.",
+        };
+
+        /// <summary>Once the chest is home, the line about it goes.</summary>
+        public static readonly string[] TalkAfter = { Talk[0], Talk[1], Talk[3] };
+
+        public static TraderVoice Create() =>
+            new TraderVoice("Hildir", "hildir", Talk, TalkAfter) { MetRange = 6f };
+
+        /// <summary>
+        /// Picks the Howling Cavern's chest among Hildir's own give entries: a prefab name naming the
+        /// cave, else one numbered 2 (the game numbers her chests 1-3: Minimap.PinType.Hildir2, and the
+        /// cavern is the mountain's, the second). Null when nothing fits - logged by the host.
+        /// </summary>
+        public static Trader.TraderUseItem CavernChest(System.Collections.Generic.IReadOnlyList<Trader.TraderUseItem> gives)
+        {
+            if (gives == null) return null;
+            Trader.TraderUseItem numbered = null;
+            foreach (var u in gives)
+            {
+                string n = u?.m_prefab != null ? u.m_prefab.name : null;
+                if (string.IsNullOrEmpty(n) || string.IsNullOrEmpty(u.m_setsGlobalKey)) continue;
+                if (n.IndexOf("cave", System.StringComparison.OrdinalIgnoreCase) >= 0) return u;
+                if (numbered == null && n.EndsWith("2")) numbered = u;
+            }
+            return numbered;
+        }
+    }
 }

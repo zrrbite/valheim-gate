@@ -212,6 +212,18 @@ static class StepPredicateTests
                    "and not a blocked one");
         Check.That(!StepPredicates.StepLive(null, "sw-scrap") && !StepPredicates.StepLive(drownedFind, null), "nor from nothing");
 
+        // --- 2026-10-05: Act IV's voices ---------------------------------------------------
+        var frozenWake = new List<QuestTrack> { Track("craft", Step("mt-frozen", ChallengeKind.PlayerEvent, SagaNames.FrozenWoken)) };
+        var frozenEgg = new List<QuestTrack> { Track("craft", Step("mt-egg", ChallengeKind.PlayerEvent, SagaNames.FrozenPaid)) };
+        var hildirFind = new List<QuestTrack> { Track("peak", Step("pk-hildir", ChallengeKind.PlayerEvent, SagaNames.HildirMet)) };
+        var hildirChest = new List<QuestTrack> { Track("peak", Step("pk-chest", ChallengeKind.PlayerEvent, SagaNames.HildirChest)) };
+        Check.That(StepPredicates.FrozenWake(frozenWake) && !StepPredicates.FrozenPayment(frozenWake), "the frozen one is woken first");
+        Check.That(StepPredicates.FrozenPayment(frozenEgg) && !StepPredicates.FrozenWake(frozenEgg), "then paid an egg - never confused");
+        Check.That(StepPredicates.Frozen(frozenWake) && StepPredicates.Frozen(frozenEgg) && !StepPredicates.Frozen(hildirFind),
+                   "he is wanted for either of his steps, and not for Hildir's");
+        Check.That(StepPredicates.HildirFind(hildirFind) && !StepPredicates.HildirChest(hildirFind), "Hildir is found first");
+        Check.That(StepPredicates.HildirChest(hildirChest) && !StepPredicates.HildirFind(hildirChest), "then her chest is brought back");
+
         // --- Degenerate input ---------------------------------------------------------------
         Check.That(!StepPredicates.DeerHunt(null), "a null track list is not a hunt");
         Check.That(!StepPredicates.DeerHunt(new List<QuestTrack>()), "nor is an empty one");

@@ -107,6 +107,18 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         public const string DrownedKill = "__the_drowned";
 
+        /// <summary>Act IV: the frozen one, woken by a fire and spoken to.</summary>
+        public const string FrozenWoken = "FrozenWoken";
+
+        /// <summary>Act IV: the frozen one, given a dragon egg.</summary>
+        public const string FrozenPaid = "FrozenPaid";
+
+        /// <summary>Act IV: Hildir, first come near.</summary>
+        public const string HildirMet = "HildirMet";
+
+        /// <summary>Act IV: Hildir's chest from the Howling Cavern, returned - her own vanilla quest's key.</summary>
+        public const string HildirChest = "HildirChest";
+
         public static bool IsHaldorKey(string key) =>
             !string.IsNullOrEmpty(key) && key.StartsWith(HaldorKeyPrefix, System.StringComparison.OrdinalIgnoreCase);
 
