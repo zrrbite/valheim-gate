@@ -269,6 +269,12 @@ living dvergr, says the payoff out loud the first time he sees what the player c
 carrying them honestly since the meadows, and nobody taught you.* He asks for one light set free at
 night — borrowed, returned — and teaches the **Borrowed Light**, a wisplight that also lights the way.
 
+**Act VII, as built (2026-10-05)** — `specs/2026-10-05-act-seven-voices-design.md`. **The charred one**
+waits where the player comes ashore: this is where light goes to end, and burning is the only end
+that lets go. His pyre takes the bow the saga began with, flametal and three lights, and gives back
+**Last Light**. The act's chapter close is the saga's ending when Fader is last: the light had been
+going here all along, and the last of yours you let go of yourself.
+
 **The arc's payoff, planned:** the wisp you pocket from every race is the
 same species of thing the dvergr carry in lanterns. By Act VI the player
 discovers they have been collecting honestly since Act I — the dvergr's
@@ -422,6 +428,10 @@ answer, practised before it was taught. Act VII spends it.
   a caught wisp — and lets it rise into the mist; teaches the Borrowed Light. `LanternKeeper.cs`.
 - **The Borrowed Light** (2026-10-05) — the wisplight, made the dvergr way at a galdr table; clears the
   mist and casts real light. "None of it is yours."
+- **The charred one** (2026-10-05) — Act VII's speaker: burned, not gone, at the Ashlands landing.
+  "Let it burn." His pyre makes Last Light. `CharredOne.cs`.
+- **Last Light** (2026-10-05) — Thor's bow, burned with flametal and three lights and reforged: the
+  light that strung it is in it now, spent. Everything Thor's bow does, plus a standing fire.
 - **A way** (2026-09-27) — a class. Mechanically a set of boons the wheel never deals and
   death never takes, because what the thane taught was not lent. Everything else about it
   is a boon: applied, repaid at run end, saved and restored on the one path.

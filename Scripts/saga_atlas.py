@@ -287,7 +287,7 @@ PAGE = u"""<title>Saga Atlas</title>
   <h1>Saga Atlas</h1>
   <p class="lede">Every questline in the saga, lane by lane, with the story each act is telling
   and an honest note on how finished it is.</p>
-  <p class="meta">Generated from RunService.cs at 1.0.16-run.2026-10-05i &middot; 5 October 2026</p>
+  <p class="meta">Generated from RunService.cs at 1.0.16-run.2026-10-05k &middot; 5 October 2026</p>
 
   <div class="tally">
     <div><b>__TOTAL__</b><span>quest steps</span></div>
@@ -396,6 +396,8 @@ __ACTS__
     <h2>The log</h2>
     <p>Two days of building, newest first. Every line shipped as its own installed build.</p>
     <ul class="log">
+      <li class="today"><span class="d">5 Oct</span><span>Act VII gets a voice &mdash; the charred one at the landing; his pyre burns Thor&rsquo;s bow with flametal and three lights into Last Light. Acts VI and VII get closing chapters</span></li>
+      <li class="today"><span class="d">5 Oct</span><span>Storm shields mend at the Storm-Anvil only, in the rain</span></li>
       <li class="today"><span class="d">5 Oct</span><span>Act VI gets a voice &mdash; the lantern-keeper, a living dvergr who names the saga&rsquo;s payoff; one light set free; the Borrowed Light</span></li>
       <li class="today"><span class="d">5 Oct</span><span>Review fixes: freed lights work in every act, speakers can&rsquo;t be killed by monsters, the frozen one always findable</span></li>
       <li class="today"><span class="d">5 Oct</span><span>Act V gets voices &mdash; the harvester at the standing stones (eat from the field, the mantle), Hildir&rsquo;s last chest, and a STEADING track ending on a feast at your own table</span></li>

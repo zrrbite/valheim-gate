@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-10-05 at `1.0.16-run.2026-10-05i`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-10-05 at `1.0.16-run.2026-10-05k`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -26,6 +26,10 @@ Everything below is what that file tells it.
   `saga/act6-voices`. The `saga/` prefix keeps them out of the version scripts, which only read tags
   starting with a digit. To go back on Windows: `git checkout saga/act4-voices`, then
   `.\dist\windows\Install-Mod.ps1 -ModOnly`; on the Mac, check out, build, `Scripts/deploy_local.sh`.
+- **2026-10-05, late night: Act VII has a voice** (tag `1.0.16-run.2026-10-05k`, `saga/act7-voices`).
+  `CharredOne.cs` (sixth `SagaSpeaker`, a charred body with fallbacks), Last Light (Thor's bow
+  reforged; `IsThorsBow`), closing chapters for Acts VI and VII. Acts II–VII are all voiced; only
+  Act VIII (the Deep North) is a stand-in, deliberately, until someone has played it.
 - **2026-10-05, night: Act VI has a voice + review fixes** (tag `1.0.16-run.2026-10-05i`). `LanternKeeper.cs`
   (the fifth `SagaSpeaker`, a live dvergr), the Borrowed Light. Fixes from the III–IV review: lights tick
   in every act, speakers immune to non-player damage, FireNear skips build previews, fallbacks. Both

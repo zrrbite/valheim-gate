@@ -7,7 +7,7 @@ note on how finished it is.
 > step and target is read out of the source, so the page cannot drift from the code. The prose
 > (epigraphs, chapters, status) lives in the generator.
 
-`117` quest steps &middot; `8` acts &middot; `1` played through &middot; `7` tracks in use
+`119` quest steps &middot; `8` acts &middot; `1` played through &middot; `7` tracks in use
 
 ## How to read a lane
 
@@ -213,7 +213,7 @@ In the mist there were lamps, and the lamps were not stolen. The dvergr had work
 
 ### Act VII &mdash; The Last Light
 
-`Thin stand-in` &middot; `5 steps` &middot; `2 tracks`
+`Thin stand-in` &middot; `7 steps` &middot; `2 tracks`
 
 > *Where light goes to end. Follow it in.*
 
@@ -223,7 +223,8 @@ Every thread you had pulled ran the same direction, and it ran here, where every
 |--:| --- | --- |
 | 1 | Cut through the charred `8` | Claim the Queen’s power |
 | 2 | Find Fader’s seat | Reach the Ashlands |
-| 3 | **Defeat Fader** |  |
+| 3 | **Defeat Fader** | Speak with the charred one |
+| 4 |  | Carry Last Light |
 
 ### Act VIII &mdash; What the Cold Keeps
 

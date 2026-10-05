@@ -17,6 +17,23 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-10-05 - TASK: Act VII's charred one and Last Light (`1.0.16-run.2026-10-05k`)
+
+**Staged.** `git pull`, `.\dist\windows\Install-Mod.ps1 -ModOnly`. Badge `...05k · DEV`.
+Only reached with `runFinalBossKey` set to Fader.
+
+- Near where you land in the Ashlands: a burned man with an ember glow who does not attack (map
+  pin). `grep "charred one waits"`; `grep "Cannot spawn\|wearing"` tells which body he got.
+- Speak → step. Build a fire beside him; with Thor's bow (or any bow), 10 flametal and 3 lights
+  (rescued or wisps), Use → "Let it burn" → **Last Light** in the pack, the step completes.
+  `grep "Flametal for the charred"` — which flametal item the game has.
+- Last Light strikes like Thor's bow, cycles elements for a Hunter, and always adds some fire.
+- The BOOK now has closing passages for Acts VI and VII.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-10-05 - TASK: storm shields mend at the anvil (`1.0.16-run.2026-10-05j`)
 
 **Staged.** `git pull`, `.\dist\windows\Install-Mod.ps1 -ModOnly`. Badge `...05j · DEV`.
