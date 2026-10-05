@@ -1,7 +1,7 @@
 # The Saga of the Living One
 
-*The saga so far, Acts I to VI, told as a myth from the game and its designs on 2026-10-05. Acts I to
-VI are all built as of `1.0.16-run.2026-10-05j`; the harvester's and Hildir's plains words here were
+*The saga so far, Acts I to VII, told as a myth from the game and its designs on 2026-10-05. Acts I to
+VII are all built as of `1.0.16-run.2026-10-05k`; the harvester's and Hildir's plains words here were
 drafted beside the game's, so the two tellings may differ a little. Every other quoted line is one the game
 actually says. The faithful, step-by-step telling is `docs/SAGA-WALKTHROUGH.md`; the source of truth
 is the story bible, `docs/superpowers/specs/2026-08-27-story-bible.md`, and where this and the bible
@@ -1339,31 +1339,252 @@ gave them in that whole world:
 
 > "Carry it well. Give it back when you're done."
 
+That is how the book closes the tale of the mist, and it closes it in the book's own voice, which is
+the only voice in the saga that speaks of things after they are over:
+
+> *The Queen came apart in the dark under the mist, and the dvergr took their lanterns back down without
+> a fight. Nobody in the tenth world had ever owned a light. The dvergr had simply been the only ones
+> honest enough to say so - and you had been carrying yours that way since the meadows. But borrowed
+> light still has to go somewhere in the end. Everything in the world had been running south to find
+> out where.*
+
 ---
 
-## What Is Not Yet Told
-
-That is as far as the saga goes, for now.
-
-The raven came down onto a dvergr lamp-post in the mist and sat there with its feathers full of grey,
-and looked at the newcomer for a long time with Odin's eye. It did not say anything. Ravens don't, when
-it matters.
-
-But the newcomer knew, by then, what the old one in the high seat had sent them to find out. Where the
-light goes. Every answer in that world had been tried: stolen and spent, kept and never used, frozen,
-stacked in barns. Only the dvergr had found the honest one, borrowing and giving back, and the newcomer
-had been doing it since the meadows without anyone to tell them so.
-
-And still the shortage was not answered. The light was still going somewhere. Every thread the newcomer
-had pulled, from the meadows to the mist, ran the same way when you followed it far enough: south and
-down, to a country where the ground is ash and the sky is the colour of a forge, where everything has
-already burned once.
+## The Last Light
 
 *Where light goes to end. Follow it in.*
 
-They say there is a last light there, and that it does not want to be carried or kept or borrowed. They
-say the answer in that country is the oldest and the hardest of them all, and that it is only three
-words long, and that the words are *let it burn*. They say the raven has a message for whoever goes:
-*Everything here has already burned once. Mind what you carry.*
+### The Crossing
 
-But that is another tale, and it has not happened yet.
+The newcomer claimed what the Queen had left them, on the same stones as all the others. Eitr came back
+to them faster for a while afterwards, which is the sort of gift a mother of a thousand children would
+think to give: something that refills.
+
+Then they went south.
+
+Every road in that world, if you followed it far enough, went south. The newcomer had noticed it in the
+meadows without knowing they had noticed it, the way you notice a draught before you know there is a
+door open. The couriers in the pines had carried their burdens down and under; the marsh had leaned
+its dead towards the low ground; even the cold on the mountain had seemed to be holding its breath in
+one direction. They had thought it was the shape of the land. It was not the shape of the land.
+
+*Far south, across a sea that boils. The shore itself burns.*
+
+That is what the old hint said, and it was not wrong. The newcomer sailed until the water under the hull
+began to steam, and then until it began to hiss, and the sky ahead of them turned the colour of the
+inside of a forge, and the raven that had followed them across the whole of the tenth world came down
+out of the smoke onto the prow and sat there with its feathers singed.
+
+> *Every thread you had pulled ran the same direction, and it ran here, where everything has already
+> burned once. You followed it in.*
+
+> "Everything here has already burned once. Mind what you carry."
+
+It did not say anything else, because it never did. It only watched them bring the boat in to a shore
+of black glass and grey ash, where nothing grew because everything that could grow had already been
+used up, a long time ago, in one long night that never quite ended.
+
+### The Landing
+
+There was a man waiting where they came ashore.
+
+He was burned. That was the first thing and the last thing about him. Not burning; burned, the way a log
+at the bottom of a hearth is burned when the fire has gone on to other wood, black all the way through
+and still holding its shape out of habit. There was an ember glow inside him, low and patient, like a
+coal at the back of a grate in the morning that someone could still blow into a flame if they wanted
+to. He stood on the ash and did not move to strike, though the others of his kind, out in the grey,
+struck at everything.
+
+*"Over the water. They all come, at the end."*
+
+The newcomer had met a great many of the dead by then. A hunter who never loosed. A debtor on a shore. A
+thane who kept other people's names. A keeper of buried lights, a drowned man who could not open his
+hand, a frozen one at the treeline who would not believe. They had learned that the dead in that world
+were never only dead. Each of them was an answer somebody had tried, and stopped in the middle of.
+
+This one was the last answer, and he knew it.
+
+> "You came over the water. They all do, at the end.
+>
+> This is where light goes to end. Everything here has burned once already — the trees, the stone,
+> me. The ones in the marsh could not let go. The ones on the mountain are still waiting. Burning is
+> the only end that lets go. Nothing is kept. Nothing is owed.
+>
+> You carry a bow with the storm in it, and lights you never spent. Build me a fire, here. Put the
+> bow in it, with flametal from the ground and three of your lights. Let it burn. What comes out
+> will be the last light you ever need."
+
+The newcomer stood on the black shore with the bow on their back.
+
+It had come a long way, that bow. A hunter's shade had given them the shape of it in the meadows, for
+ten flint and five scraps of leather. A debtor in the rain had raised the anvil it was struck on. It had
+been strung from the herd's own hide and sealed with the forest's resin, and it had answered every
+arrow with the storm, and it had brought down the antlered god himself. It was the oldest thing they
+owned. It was the first thing in that world that anyone had ever given them on purpose.
+
+He wanted them to burn it.
+
+*A fire beside him: the bow, flametal and three lights. Let it burn.*
+
+### The Pyre
+
+They did not do it at once. It is not the kind of thing anybody does at once.
+
+They went out into the ash country first, to dig, because the ground there has flametal in it the way
+the mountain had silver: bright veins in the black, hot to the touch even after they are cut. It is
+heavy work in a country where everything hates you, and the newcomer came back to the landing more
+than once with less than they went out for.
+
+The first time they came back with all of it, they forgot the fire.
+
+> "No fire. It has to burn here, where I can see it."
+
+So they built one, there on the ash, beside him: a ring of stones and wood carried a very long way,
+because nothing in that country is fit to burn any more. It caught. It is a strange thing, to light a
+fire in a land made of fire, and feel it as warmth. The charred one turned his head towards it, very
+slowly, the way the frozen one at the treeline had turned towards the first heat in an age.
+
+Another time they came with the bow and the flametal and only two lights, because the mist had taken
+the rest one way and another, and he told them plainly what he wanted, as he would have told anyone:
+
+> "The bow, ten flametal, three lights. A wisp will do for a light, and any bow will burn if the
+> storm's has gone. All of it, into the fire, at once."
+
+That was a kindness, and the newcomer understood it as one. He was not asking for a particular bow. He
+was asking for a particular act. Anyone who came to that shore with any bow at all, and lights from
+anywhere, could do it. The storm's bow was only the one the newcomer happened to have carried furthest.
+
+*Where light goes to end. Let it.*
+
+They waited for dark, in the end. Nothing in the old rules said they had to. They did it because every
+light they had ever carried had risen in the dark, and it seemed right to give these ones back to the
+dark too.
+
+Then they put the bow into the fire, and ten bars of flametal after it, and three lights: two they had
+carried from the pines, and one they had caught at the roots in the mist, because by then it no longer
+seemed to matter which was which.
+
+The fire went white.
+
+It did not roar. It took the bow the way a river takes a stick, quickly and without fuss, and the lights
+went into it and did not rise out of it again the way lights always had before. They went down. The
+newcomer had spent a whole saga watching light go up out of things. This was the first time they had
+ever watched it go *in*.
+
+> "There. Watch it go.
+>
+> It is not gone. Nothing that burns properly is gone — it is let go of, which is different. Take
+> it. The light is in it now, all of it, spent. That is what it was for."
+
+### Last Light
+
+When the fire had gone down, there was a bow in the ashes.
+
+It was not the same bow. The meadows' hide was gone from it, and the forest's resin, and the stave had
+gone dark and close-grained like something that has been through a forge and come out the far side
+knowing more than it did. But it was the same shape in the hand. It still knew the newcomer's grip.
+
+*Thor's bow, burned. The meadows' hide is ash now, and the light that strung it went into the fire on
+purpose — so the fire stayed in it. It still answers with the storm, and everything it touches burns a
+little.*
+
+They called it Last Light, because that is what it was. Not a light kept, or borrowed, or stolen, or
+stacked away against a winter that would never end. A light spent, on purpose, by the one who carried
+it, into something that would be used.
+
+*Last Light. The light that strung it is in it now, spent.*
+
+The newcomer loosed one arrow from it, out over the ash, to see. The storm still came down where it
+struck, as it always had; and where it struck, the ground burned a little, which it had not before. The
+charred one watched it go and said nothing. There was nothing left to say. He had said it.
+
+> "Let it burn. Go on."
+
+### The Charred
+
+The rest of that country was not kind, and the tale would be a lie if it said otherwise.
+
+*The charred come in bands. Voltures circle before they dive.*
+
+The charred were what the ash country made of people. They came in bands across the black, with bows
+and blades and a slow heavy patience, and they did not stop when they were struck, and they did not
+speak, and there was nothing behind their eyes but the ember. Overhead the voltures went round and round
+on the hot air, waiting for the moment a body would stop moving. The newcomer cut through them the way
+you cut through brambles to reach a door: not because the brambles are the point, but because the door
+is on the other side.
+
+They killed eight of the charred in the end, and three of the voltures out of the sky, and lost count of
+everything else. The bow in their hands did what it had been reforged to do. Everything it touched
+burned a little.
+
+### Fader
+
+*A fortress of black stone at the heart of the fire.*
+
+At the centre of that country, where every road in the world had been running all along, there was a
+fortress built out of the same black glass as the shore, and at the heart of the fortress there was a
+seat, and the thing that sat in it was called Fader.
+
+He was not the first god the newcomer had killed. He was the last one any thread led to. The meadows'
+light had been stolen and the forest's spent and the marsh's kept and the mountain's frozen and the
+plains' stacked in barns, and every bit of it, by every road, had come south in the end, to this, the
+way water comes down a hill. Fader was not a hunger like the Elder or a hoard like Bonemass. He was the
+end of the hill. He was where it all went to stop.
+
+The newcomer called him down, and he came out of his own fire like a forge-door opening.
+
+It was the longest fight of the saga, and the tale will not pretend to remember every stroke of it.
+What the tale remembers is this: that the newcomer stood in the heart of the last fire in the world with
+a bow that had been burned on purpose, and loosed at the thing that had been burning everything else by
+accident, and that the bow answered every time.
+
+And Fader went down in his own fire.
+
+> *Fader went down in his own fire, and everything that had come south went with him. That was where
+> the light had been going all along: here, to the end of it, the way light should. The meadows', the
+> forest's, the marsh's, the mountain's - all of it had been on its way to burn out. Odin had sent you
+> to find out where. You found out, and the last of yours you let go of yourself.*
+
+When the newcomer came back to the landing, the charred one was still standing by the cold ring of
+stones where their fire had been. He turned his head towards them the way he had turned it towards the
+flame.
+
+*"Go home."*
+
+> "So that is where it all went. Here, to the end of it, the way light should.
+>
+> You can go home now. Whatever you carry back, carry it the way the dvergr do."
+
+---
+
+## The Fire Goes Down
+
+That is the end of the saga, or near enough.
+
+The raven was on the prow of the boat when the newcomer went down to it in the morning, as it had been on
+the way in. It looked at them for a long time with Odin's eye. Then it went up into the smoke, and
+turned north, and was gone, and the newcomer knew where it was going, because there is only one place
+that kind of bird ever goes in the end.
+
+It went home to a high seat in a hall far above the tenth world, and it sat down on a shoulder there, and
+it told the old one-eyed god what it had seen. It did not help. It had never helped. It only told him
+what he had sent somebody to find out: where the light goes. It goes south, every road of it, and it goes
+to end. The forest had stolen it on the way and the marsh had kept it and the cold had frozen it and the
+harvesters had stacked it in barns, and none of that had changed where it was going. Only one thing had.
+One living person, out of all of them, had carried it honestly, and borrowed it, and at the last had let
+it go with their own hand instead of having it taken.
+
+What Odin said to that, the tales do not tell. He is not a god who explains himself.
+
+The newcomer sailed north. They had a bow that burned a little, and a lantern made of dvergr glass with
+a wisp in it that pushed the mist back and gave them light to see by. They kept the lantern. It was not
+theirs. They knew that. They carried it the way the dvergr do, and the way the charred one had told them
+to, and the way, if they were honest, they had been carrying everything since the first night in the
+meadows: for a while, and well, and ready to give it back when they were done.
+
+And there the fire goes down, and the tale with it.
+
+Only — they say that in the far north, past the mountains, past where any of the roads in this story ran,
+there is a country of ice that has never once thawed, and that it is keeping something, and that nobody
+has gone there yet to ask what. But that is not this saga. That door is still shut, and the tale does not
+know what is behind it.
