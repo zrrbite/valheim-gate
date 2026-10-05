@@ -19,15 +19,35 @@ So: one minute here saves an evening.
 1. Start Valheim. The mod loads itself at startup — no Credits visit needed. The main
    menu's version line should carry a gold **SAGA <build>** line under it. With the success
    popup gone that is the only proof the mod is in, and it names the build.
-2. Check the version popup says the tag you just installed.
+2. Check that gold line names the tag you just installed.
 3. **Start a run** — the check runs at run start, not at game start.
 4. Alt-tab out and run the command below in PowerShell.
+
+```powershell
+Select-String -Path "$env:USERPROFILE\AppData\LocalLow\IronGate\Valheim\Player.log" -Pattern "Saga self-check"
+```
+
+That is the **self-check** (since `1.0.16-run.2026-10-05n`): every name the saga guesses — the
+speakers' bodies and places, the three traders, Hildir's chests, each saga item's look, flametal,
+the plains foods, every quest creature, item, place, price, reward and recipe — one line each.
+The first line counts them:
+
+```
+Saga self-check: 61 OK, 2 FALLBACK, 0 MISSING (build 1.0.16-run.2026-10-05n)
+```
+
+- **0 MISSING is the good result.** A MISSING line is a step that cannot be finished; send it over.
+- A **FALLBACK** line says what the saga did instead (a speaker standing near you rather than at his
+  ring, a shield wearing a smaller mesh). Nothing stalls, but it is a guess to correct — send those too.
+- MISSING and FALLBACK lines are printed first, so the top of the block is the part to read.
+
+The older per-name complaints still print as well:
 
 ```powershell
 Select-String -Path "$env:USERPROFILE\AppData\LocalLow\IronGate\Valheim\Player.log" -Pattern "ICanShowYouTheWorld.*Unknown"
 ```
 
-**No output is the good result.** It means every name in all five acts resolved.
+**No output is the good result.** It means every name in every act resolved.
 
 ---
 
@@ -184,6 +204,7 @@ There is a `Player.log` symlink in the config folder pointing at the real one, s
 either path works for reading.
 
 ```bash
+grep "Saga self-check" ~/Library/Logs/IronGate/Valheim/Player.log
 grep ICanShowYouTheWorld ~/Library/Logs/IronGate/Valheim/Player.log
 open ~/Library/Application\ Support/IronGate/Valheim/ICSYTW_probe.txt
 ```

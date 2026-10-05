@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-10-05 at `1.0.16-run.2026-10-05m`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-10-05 at `1.0.16-run.2026-10-05n`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -26,6 +26,18 @@ Everything below is what that file tells it.
   `saga/act6-voices`. The `saga/` prefix keeps them out of the version scripts, which only read tags
   starting with a digit. To go back on Windows: `git checkout saga/act4-voices`, then
   `.\dist\windows\Install-Mod.ps1 -ModOnly`; on the Mac, check out, build, `Scripts/deploy_local.sh`.
+- **First thing on any new build: `grep "Saga self-check" Player.log`** (since `...05n`). One block
+  at run start, a line per name the saga guesses (speaker bodies and places, traders, Hildir's chests,
+  item looks, flametal, plains foods, every quest name), OK / FALLBACK / MISSING, worst first. MISSING
+  is a step that cannot finish; FALLBACK is a guess to correct. `RunService.LogSelfCheck`, pure
+  `SagaSelfCheck`. A new guessed name belongs in it.
+- **2026-10-05, the FORGE spoiler and the rest of the review** (`...05n`, `saga/forge-secrets`). The
+  FORGE page listed the Storm-Anvil's conversions unfiltered, and the anvil's repair of the Ironbound
+  Stormward put Act III's shield on it from the first night (owner: "major spoiler"). Anvil shapes now
+  show only once their teaching step opens (`SagaItems.AnvilTaughtBy` + pure `ForgeReveal`); repairs
+  never. Also: the self-check above, Act I's three speakers immune like the rest
+  (`SagaSpeaker.MakeImmune`), and Thor's bow kills credited by the bow (`StormBowCredit`: lightning,
+  or any Bows kill within 8 s of a storm arrow) so a fire/frost Hunter is counted.
 - **2026-10-05, review fixes for V–VII** (`...05m`, `saga/review-fixes-v-vii`): real speaker immunity
   (all damage types; `m_nonPlayer` is a damage TYPE, a trap worth knowing), the charred one placed only on
   dry ash ground, the freed light a pure visual, the anvil refusing to burn leftover lights, biome fallbacks.
@@ -843,6 +855,29 @@ documented now:
   It used to keep the first one forever, so after a Steam update the version guard compared
   against the old game and refused. The 0.221.12 backup is kept beside it as `.vanilla.0.221.12`.
 - Scripts are not all executable on the Mac: run them as `bash Scripts/x.sh`.
+
+### Game facts the Acts II–VII reviews paid for (2026-10-05)
+
+Each of these was a stall or a spoiler that read fine and failed in play. Check the IL (Cecil) before
+trusting a name or a field's meaning; the self-check above catches the names, not these:
+
+- **Tamed is an enemy of every monster.** A tamed speaker is hunted by whatever passes. Every speaker
+  is immune (`SagaSpeaker.MakeImmune`); the drowned one lifts it for his last beat (`Unshield`).
+- **`DamageModifiers.m_nonPlayer` is a damage TYPE**, not "damage from non-players". Setting it
+  immune changes nothing.
+- **`WorldGenerator.GetBiome` calls the boiling sea AshLands.** "In the Ashlands" needs dry ground
+  too: not swimming, not in water, not on a ship.
+- **Hammer build previews carry a `Fireplace` with no valid `ZNetView`.** Skip invalid views per
+  object in any fire scan, or one preview throws the whole scan away.
+- **A `StolenLights` release is a pickable item.** Freeing a light with it refunded the payment; the
+  freed light is `RisingLight`, a visual only.
+- **`StepPredicates.StepDone` reads only the CURRENT act's chains.** Anything that must outlive its
+  act (Stormsworn recipes, the FORGE page's anvil shapes) asks `RecipeStepDone`.
+- **The FORGE page lists only what the saga has told.** Bench recipes once Hugin announces them,
+  anvil shapes once `AnvilTaughtBy` says their step opened, never a repair. A new anvil shape with no
+  teacher stays hidden; give it one.
+- **Light rises only in the dark** is a story-bible rule the code has to keep: the drowned one's
+  light and the lantern-keeper's freeing wait for night.
 
 
 The full list with reasoning is in the [build notes](2026-08-16-run-mode-build-notes.md).

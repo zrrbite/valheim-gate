@@ -17,6 +17,21 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-10-05 - TASK: the FORGE spoiler, and a self-check (`1.0.16-run.2026-10-05n`)
+
+**Staged.** `git pull`, `.\dist\windows\Install-Mod.ps1 -ModOnly`. Badge `...05n · DEV`.
+
+- Start a run, then `Select-String -Path "$env:USERPROFILE\AppData\LocalLow\IronGate\Valheim\Player.log" -Pattern "Saga self-check"`.
+  Paste the whole block into RESULTS - MISSING and FALLBACK lines come first. This is the main ask.
+- Fresh run, `End` → FORGE: nothing about the Stormward, the Ironbound Stormward or Last Light. Thor's
+  bow appears once "craft Thor's bow" is the step; the Stormward once its step is.
+- Act I's shade, Thjalfi and the thane can't be hurt by monsters now.
+- A Hunter with the bow turned to fire or frost: kills count toward "Thunder at range".
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-10-05 - TASK: review fixes for Acts V–VII (`1.0.16-run.2026-10-05m`)
 
 **Staged.** `git pull`, `.\dist\windows\Install-Mod.ps1 -ModOnly`. Badge `...05m · DEV`.

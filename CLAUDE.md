@@ -270,6 +270,8 @@ A roguelite challenge mode layered on the mod (branch `feature/run-mode`).
 state, the build/tag/deploy loop, what is waiting on a play-test, and the
 landmines. Design lives in `docs/superpowers/specs/`, the reasoning behind the
 landmines in `docs/superpowers/2026-08-16-run-mode-build-notes.md`.
+**The first launch of any build is read with `grep "Saga self-check" Player.log`**: one block at run
+start, a line per asset name the saga guesses, OK / FALLBACK / MISSING (`RunService.LogSelfCheck`).
 `End` opens the Run window: lobby outside a run, Heat HUD during one. While a
 run is live, GM-mode commands are gated off (`InputManager.Gate`) and F1 shows
 the Heat HUD instead of the cheat windows.
