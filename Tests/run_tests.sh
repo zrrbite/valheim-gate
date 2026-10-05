@@ -15,7 +15,12 @@ fi
 # else about the tests changes.
 CSC_WIN="/c/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/Roslyn/csc.exe"
 
-if command -v mcs > /dev/null 2>&1; then
+# On the Mac, prefer Mono's bundled Roslyn (csc) over mcs: the tests were written on the
+# Windows box against Roslyn, and mcs rejects newer syntax such as foreach deconstruction.
+if command -v mono > /dev/null 2>&1 && command -v csc > /dev/null 2>&1; then
+    csc -nologo -out:"$OUT" "${SRC[@]}"
+    mono "$OUT"
+elif command -v mcs > /dev/null 2>&1; then
     mcs -out:"$OUT" "${SRC[@]}"
     mono "$OUT"
 elif [[ -x "$CSC_WIN" ]]; then

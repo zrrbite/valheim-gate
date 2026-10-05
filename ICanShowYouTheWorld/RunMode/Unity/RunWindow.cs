@@ -2164,7 +2164,7 @@ namespace ICanShowYouTheWorld.RunMode
             // be the name and a notice, on the grounds that the way's boons are boons and already in
             // the list below - and the owner played three milestones as a Berserker without being
             // sure what the way gave him (2026-09-27). A kit you cannot see is a kit you do not
-            // have; so every piece is named here, and a rung that has come due says "at the graves"
+            // have; so every piece is named here, and a rung that has come due says "learning"
             // in the ready colour, which is the notice ClassNotice used to draw on a line of its own.
             GUILayout.Label("THE WAY", RunTheme.Header);
             var way = run.ClassId == null ? null : run.Classes?.FirstOrDefault(c => c.Id == run.ClassId);
@@ -2223,7 +2223,7 @@ namespace ICanShowYouTheWorld.RunMode
 
         /// <summary>
         /// One line per piece of the way's kit: the passives, then each rung with its state -
-        /// "held", "at the graves" (due and not yet learned), or which god still stands before it.
+        /// "held", "learning" (due; taught within the second), or which god still stands before it.
         /// </summary>
         private static void DrawWayKit(IRunService run, ClassDefinition way)
         {
@@ -2236,7 +2236,7 @@ namespace ICanShowYouTheWorld.RunMode
             foreach (var id in way.PassiveBoonIds ?? new string[0])
             {
                 bool held = heldIds.Contains(id);
-                DrawWayKitLine(KitName(boons, id), held ? "held" : "at the graves", !held, KitDescription(boons, id));
+                DrawWayKitLine(KitName(boons, id), held ? "held" : "learning", !held, KitDescription(boons, id));
             }
 
             var rungs = way.Rungs ?? new string[0][];
@@ -2247,7 +2247,7 @@ namespace ICanShowYouTheWorld.RunMode
                 {
                     string desc = KitDescription(boons, id);
                     if (heldIds.Contains(id)) DrawWayKitLine(KitName(boons, id), "held", false, desc);
-                    else if (threshold <= bosses) DrawWayKitLine(KitName(boons, id), "at the graves", true, desc);
+                    else if (threshold <= bosses) DrawWayKitLine(KitName(boons, id), "learning", true, desc);
                     else DrawWayKitLine(KitName(boons, id), ClassLadder.AfterLine(threshold), false, desc);
                 }
             }

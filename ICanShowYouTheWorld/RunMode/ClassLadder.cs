@@ -19,10 +19,14 @@ namespace ICanShowYouTheWorld.RunMode
     public static class ClassLadder
     {
         /// <summary>
-        /// Defeated bosses needed for rung 0, 1 and 2: at the choice, after Eikthyr, after
-        /// Bonemass. Data, so moving a rung is one number.
+        /// Defeated bosses needed for rung 0, 1 and 2: at the choice, after Eikthyr, after the
+        /// Elder. Data, so moving a rung is one number.
         /// </summary>
-        public static readonly int[] Thresholds = { 0, 1, 3 };
+        /// <remarks>
+        /// Was { 0, 1, 3 } until 2026-10-05. Rung 3 after Bonemass meant most sessions only ever
+        /// held two of a way's three abilities (owner, after play).
+        /// </remarks>
+        public static readonly int[] Thresholds = { 0, 1, 2 };
 
         /// <summary>
         /// Which god falls at each boss count, in the saga's order, for saying what a rung waits

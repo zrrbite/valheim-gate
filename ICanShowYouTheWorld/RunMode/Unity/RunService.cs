@@ -1959,8 +1959,6 @@ namespace ICanShowYouTheWorld.RunMode
 
             _classId = cls.Id;
             _classChoicePending = false;
-            // Whatever is already due counts as announced: the choice itself is the announcement.
-            _classAnnouncedAt = _boons.DefeatedBosses;
             LearnDueClassBoons();
             Message($"You take up the way of the {cls.Display}, as {cls.Title} walked it.");
             SaveState();
@@ -2276,7 +2274,6 @@ namespace ICanShowYouTheWorld.RunMode
                 _classId = null;
                 _classChoicePending = false;
                 _boonOfferOwed = false;
-                _classAnnouncedAt = -1;
                 // Nobody holds Elemental Arrows at a run's first second, so the bow is its own.
                 _items.SetThorsBowElement(ICanShowYouTheWorld.RunMode.BowElement.Lightning);
                 _discovered.Clear();
@@ -2778,7 +2775,6 @@ namespace ICanShowYouTheWorld.RunMode
 
             _classId = null;
             _classChoicePending = false;
-            _classAnnouncedAt = -1;
             return revoked;
         }
 
@@ -3622,11 +3618,11 @@ namespace ICanShowYouTheWorld.RunMode
             // exists: frost resistance in the Meadows is a wasted pick out of only three options.
             if (progressed) RefreshBoonGate();
 
-            // ...and the held way may have a rung come due. Said once per boss count, not once per
-            // poll: ClassNotice keeps saying it on the HUD for as long as it stays true, which is
-            // the reminder; this line is the news. After RefreshBoonGate, which is what moves the
-            // count Due reads.
-            if (progressed) AnnounceClassRung();
+            // ...and the held way may have a rung come due, which is taught on the spot. Every
+            // poll rather than only when progressed, so a resume (or a save from when rungs were
+            // learned at the thane) catches up without a walk. After RefreshBoonGate, which is
+            // what moves the count Due reads.
+            TeachClassRung();
 
             if (finished) FinishRun();
         }
@@ -4822,13 +4818,6 @@ namespace ICanShowYouTheWorld.RunMode
         private bool _boonOfferOwed;
 
         /// <summary>
-        /// The boss count whose rung was last announced, so "more to teach" is said once per
-        /// threshold rather than on every poll that still finds something due. Session state: a
-        /// reload that says it again is harmless.
-        /// </summary>
-        private int _classAnnouncedAt = -1;
-
-        /// <summary>
         /// When the free Homeward comes back. Session state rather than run state on purpose:
         /// being sent home by a reload is harmless, and persisting it would mean a save-scum
         /// check for no gain.
@@ -5791,7 +5780,6 @@ namespace ICanShowYouTheWorld.RunMode
             // run reads the id back from the save.
             _classId = null;
             _classChoicePending = false;
-            _classAnnouncedAt = -1;
 
             // Run state, so it goes with the run. The paths that END a run call RestoreLoanedSkills
             // first; SuspendRun deliberately does not — that run is still live, the character keeps
@@ -6086,26 +6074,37 @@ namespace ICanShowYouTheWorld.RunMode
         /// resume and a run started on an already-progressed world both gate correctly without any
         /// new save state.
         /// </summary>
-        private void AnnounceClassRung()
+        private void TeachClassRung()
         {
             try
             {
                 if (_classId == null || _boons == null) return;
-                int bosses = _boons.DefeatedBosses;
-                if (bosses <= _classAnnouncedAt || !ClassDue().Any()) return;
+                var due = ClassDue().ToList();
+                if (due.Count == 0) return;
 
-                _classAnnouncedAt = bosses;
+                // Taught where the god fell, not at the graves (owner, 2026-10-05). Walking back
+                // to the thane after every boss was a trip with nothing in it - the boss is usually
+                // far from home and he only stands by day - and a rung that waited there was missed
+                // once already. The thane chooses and lays down a way; the ladder teaches itself.
+                var names = new List<string>();
+                foreach (var id in due)
+                {
+                    if (!_boons.Grant(id)) continue;
+                    var def = _boons.Held.FirstOrDefault(h => h.Def.Id == id)?.Def;
+                    string key = BoonKeys.Label(id);
+                    names.Add((def?.Display ?? id) + (string.IsNullOrEmpty(key) ? "" : " " + key));
+                }
+                if (names.Count == 0) return;
+                SaveState();
 
                 // Hugin AND a centre-screen line. The raven alone was missed: it lands while the
-                // boss's drop and the trophy are what the player is looking at, and the owner killed
-                // Eikthyr as a Berserker without ever learning rung 2 was due (2026-09-27). The raven
-                // is still who carries news from outside the fight; the centre line is what makes
-                // it impossible to walk past. Both once per boss count — _classAnnouncedAt above —
-                // and the raven keyed by it, so the next run hears it again.
-                const string line = "The one at the graves has more to teach you.";
-                // Urgent, so it can never be demoted to a toast however the length cap is set.
-                TrySpawnRaven($"class-rung-{bosses}", line);
+                // boss's drop and the trophy are what the player is looking at (2026-09-27). Keyed by
+                // the boss count, so the next run hears it again.
+                string cls = ClassLadder.Find(_classId)?.Display ?? _classId;
+                string line = $"The way of the {cls} deepens: {string.Join(", ", names)}.";
+                TrySpawnRaven($"class-rung-{_boons.DefeatedBosses}", line);
                 Message(line, true);
+                Debug.Log($"[ICanShowYouTheWorld] The way of the {cls}: taught {names.Count} at {_boons.DefeatedBosses} gods down.");
             }
             catch (Exception ex) { LogOnce("class-rung", ex); }
         }
@@ -7398,7 +7397,7 @@ namespace ICanShowYouTheWorld.RunMode
         private const Skills.SkillType WaySkill = (Skills.SkillType)701;
 
         private const string WaySkillDescription =
-            "How far you walk the way you took up at the graves. It rises as the thane teaches you, " +
+            "How far you walk the way you took up at the graves. It rises as the gods fall, " +
             "and returns to nothing when the saga ends.";
 
         /// <summary>The token SkillsDialog asks for, built the way it builds it.</summary>
@@ -8322,7 +8321,6 @@ namespace ICanShowYouTheWorld.RunMode
             _classId = null;              // read back from the save below, before the held boons
             _classChoicePending = false;
             _boonOfferOwed = false;
-            _classAnnouncedAt = -1;
 
             _worldId = string.IsNullOrEmpty(s.worldId) ? world : s.worldId;
             _runCharacter = CharacterName();

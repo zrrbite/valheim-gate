@@ -62,9 +62,9 @@ static class ClassLadderTests
             "at the choice: the passives and rung 1, passives first");
         Check.That(ClassLadder.Due(hunter, 1, none).SequenceEqual(new[] { "hunter", "shepherd", "brother", "menagerie", "elemental" }),
             "one god down adds rung 2: Menagerie and Elemental Arrows, in that order");
-        Check.That(ClassLadder.Due(hunter, 2, none).Count() == 5, "two is still only rung 2");
-        Check.That(ClassLadder.Due(hunter, 3, none).Last() == "unseen" && ClassLadder.Due(hunter, 3, none).Count() == 6,
-            "three down adds rung 3");
+        Check.That(ClassLadder.Due(hunter, 2, none).Last() == "unseen" && ClassLadder.Due(hunter, 2, none).Count() == 6,
+            "two down adds rung 3");
+        Check.That(ClassLadder.Due(hunter, 3, none).Count() == 6, "three down adds nothing more");
 
         var learned = new[] { "hunter", "shepherd", "brother" };
         Check.That(!ClassLadder.Due(hunter, 0, learned).Any(), "nothing is due twice");
@@ -74,8 +74,8 @@ static class ClassLadderTests
             "a rung half learned owes only its other half");
 
         Check.That(ClassLadder.NextThreshold(hunter, 0, learned) == 1, "next threshold after the choice is one boss");
-        Check.That(ClassLadder.NextThreshold(hunter, 1, learned) == 3, "then three");
-        Check.That(ClassLadder.NextThreshold(hunter, 3, learned) == null, "and then the ladder is spent");
+        Check.That(ClassLadder.NextThreshold(hunter, 1, learned) == 2, "then two");
+        Check.That(ClassLadder.NextThreshold(hunter, 2, learned) == null, "and then the ladder is spent");
 
         Check.That(ClassLadder.Find("jarl") == null, "an unknown way is not found");
         Check.That(!ClassLadder.Due(null, 5, none).Any(), "and owes nothing");
@@ -163,7 +163,7 @@ static class ClassLadderTests
 
         // What the HUD says a rung waits on - read from the thresholds, so moving one keeps it true.
         Check.That(ClassLadder.AfterLine(ClassLadder.Thresholds[1]) == "after Eikthyr", "rung 2 waits on Eikthyr");
-        Check.That(ClassLadder.AfterLine(ClassLadder.Thresholds[2]) == "after Bonemass", "rung 3 waits on Bonemass");
+        Check.That(ClassLadder.AfterLine(ClassLadder.Thresholds[2]) == "after the Elder", "rung 3 waits on the Elder");
         Check.That(ClassLadder.AfterLine(2) == "after the Elder" && ClassLadder.AfterLine(5) == "after Yagluth",
             "the table covers the gods between");
         Check.That(ClassLadder.AfterLine(9) == "after 9 gods", "a count past the table falls back to a number");
