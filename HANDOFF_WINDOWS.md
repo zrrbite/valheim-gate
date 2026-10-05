@@ -17,6 +17,20 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-10-05 - TASK: storm shields mend at the anvil (`1.0.16-run.2026-10-05j`)
+
+**Staged.** `git pull`, `.\dist\windows\Install-Mod.ps1 -ModOnly`. Badge `...05j · DEV`.
+
+- A worn Stormward (or the Ironbound) ALONE in the Storm-Anvil's box, lever pulled in rain or
+  thunder → it comes back at full durability. In dry weather the lever still refuses, as before.
+- A shield in the box with a wrong bill must be REFUSED ("The anvil will not take this..."), never
+  turned to coal. Workbenches still cannot repair either shield — by design now.
+- The random tasks "Give it back" / "Stand in it" are dealt while carrying either shield.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-10-05 - TASK: Act VI's lantern-keeper, and review fixes for III-IV (`1.0.16-run.2026-10-05i`)
 
 **Staged — no build needed here.** `git pull`, then `.\dist\windows\Install-Mod.ps1 -ModOnly`.

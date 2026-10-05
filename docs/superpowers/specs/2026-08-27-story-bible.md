@@ -292,7 +292,10 @@ answer, practised before it was taught. Act VII spends it.
   metre ring. It is the biggest object a player can hold, on purpose. **The storm
   eats the shield**: each discharge costs durability, so the act's most powerful
   thing is also the one that keeps sending you back to your own bench — which is
-  the hearth rule doing its work rather than a balance patch. Also the
+  the hearth rule doing its work rather than a balance patch. **Mended only by the storm** (owner, 2026-10-05):
+  alone in the Storm-Anvil's box, the lever pulled in the rain, it comes back whole — the same
+  machine and the same weather that made it. No bench can repair it, and neither can repair the
+  Ironbound Stormward. Also the
   FIRST piece of the Stormsworn.
   **Where it eventually lives** (owner, 2026-09-20): a shield this size wants
   wood and IRON, and iron is Act III — "abomination wood + Iron + some other

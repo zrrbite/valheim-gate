@@ -28,10 +28,9 @@ Everything below is what that file tells it.
   `.\dist\windows\Install-Mod.ps1 -ModOnly`; on the Mac, check out, build, `Scripts/deploy_local.sh`.
 - **2026-10-05, night: Act VI has a voice + review fixes** (tag `1.0.16-run.2026-10-05i`). `LanternKeeper.cs`
   (the fifth `SagaSpeaker`, a live dvergr), the Borrowed Light. Fixes from the III–IV review: lights tick
-  in every act, speakers immune to non-player damage, FireNear skips build previews, fallbacks. **Known,
-  not fixed:** neither storm shield can be REPAIRED (no recipe exists for the workbench to repair from —
-  pre-existing, from the Stormward), and the two Stormward pool tasks require the original shield, so an
-  Ironbound holder is never offered them. **Next:** Acts VII–VIII (stand-ins), when the owner is back.
+  in every act, speakers immune to non-player damage, FireNear skips build previews, fallbacks. Both
+  fixed in `...05j`: storm shields **mend at the Storm-Anvil only** (alone in the box, lever in the rain;
+  owner's call), and the Stormward pool tasks accept either shield (`RequiresItem` takes "A|B"). **Next:** Acts VII–VIII (stand-ins), when the owner is back.
 - **2026-10-05, late: Act V has voices** (tag `1.0.16-run.2026-10-05h`, dev, staged + on the Mac).
   `Harvester.cs` (fourth `SagaSpeaker`), `PlainsMeal.cs` (pure, tested), Hildir's Act V talk and Sealed
   Tower chest, a STEADING track ending on a feast at home. Spec `specs/2026-10-05-act-five-voices-design.md`.
