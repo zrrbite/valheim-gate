@@ -287,7 +287,7 @@ PAGE = u"""<title>Saga Atlas</title>
   <h1>Saga Atlas</h1>
   <p class="lede">Every questline in the saga, lane by lane, with the story each act is telling
   and an honest note on how finished it is.</p>
-  <p class="meta">Generated from RunService.cs at 1.0.16-run.2026-10-05d &middot; 5 October 2026</p>
+  <p class="meta">Generated from RunService.cs at 1.0.16-run.2026-10-05f &middot; 5 October 2026</p>
 
   <div class="tally">
     <div><b>__TOTAL__</b><span>quest steps</span></div>
@@ -396,6 +396,7 @@ __ACTS__
     <h2>The log</h2>
     <p>Two days of building, newest first. Every line shipped as its own installed build.</p>
     <ul class="log">
+      <li class="today"><span class="d">5 Oct</span><span>Act III gets voices &mdash; the drowned one at the sunken crypt (the cuirass, then let him go), the Bog Witch (preparation, and the Stormward reforged into the Ironbound Stormward)</span></li>
       <li class="today"><span class="d">5 Oct</span><span>Act II gets voices &mdash; the barrow-keeper at the burial chamber&rsquo;s door (a light for the Stormsworn helm) and Haldor, who trades the couriers&rsquo; road for a troll&rsquo;s head and marks the altar</span></li>
       <li class="today"><span class="d">5 Oct</span><span>Three Act II chores cut (sign, beehive, herd); the altar pin waits for the altar&rsquo;s own step</span></li>
       <li class="today"><span class="d">5 Oct</span><span>A way&rsquo;s rungs are taught where the god falls, and rung 3 moves to the Elder</span></li>

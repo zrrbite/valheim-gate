@@ -17,6 +17,40 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-10-05 - TASK: Act III gets voices — the drowned one, the Bog Witch, the Ironbound Stormward (`1.0.16-run.2026-10-05f`)
+
+**Staged — no build needed here.** `git pull`, then `.\dist\windows\Install-Mod.ps1 -ModOnly`.
+Badge: `SAGA v1.0.16-run.2026-10-05f · DEV`. Carries everything in the Act II task below too.
+Design: `docs/superpowers/specs/2026-10-05-act-three-voices-design.md`. Fastest with `runDevMode`.
+
+**Read the log first** (`Player.log`): `grep "Location registry"` — is `SunkenCrypt4` in it, and
+what is the Bog Witch's location called? `grep "Trader in range"` near her — her `m_name`/object.
+
+**The drowned one** (CRAFT, after "Haul out 20 Scrap Iron"):
+- At the nearest sunken crypt: a pale, water-bleached draugr who does NOT attack, with a map pin.
+  Use → his speech; "Speak with the drowned one" completes; the **Stormsworn cuirass** is now at
+  the improved forge (12 iron, 6 guck, 10 leather scraps).
+- After the cuirass: "Let him go". Go back: he turns hostile at about a third of his health and
+  lifts his blade. Kill him → the step completes, **a light rises where he fell**, and he does
+  **not** come back as a skeleton. Killing any OTHER draugr must not complete the step.
+- Report where he stood (`grep "drowned one's door"`): dry ground, shallows, or under water.
+
+**The Bog Witch** (MARSH, after "Build a fermenter"):
+- Walk up to her → "Find the Bog Witch" completes. Her idle talk is about the marsh keeping things
+  and Bonemass being decided before the fight.
+- Plain Use still opens her shop. Hover shows a second line: "Shift + Use — Reforge the Stormward
+  (x/1 Stormward, x/10 iron, x/10 ancient bark)". With all of it: Shift+Use → her line, the three
+  are taken, the **Ironbound Stormward** is in the pack, "Reforge the Stormward" completes.
+- The Ironbound blocks harder, discharges after two blocks like the Stormward (flash and all), and
+  wears slower. If the hover line does NOT appear, say so — that is the one risky mechanism.
+
+**Also:** "Stir a poison mead base" (the base at a cauldron, not the mead); "Chart the marshes" is
+gone; Stormsworn recipes from earlier acts stay craftable in later acts now.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-10-05 - TASK: Act II gets voices — the barrow-keeper and Haldor (`1.0.16-run.2026-10-05e`)
 
 **Staged — no build needed here.** `git pull`, then `.\dist\windows\Install-Mod.ps1 -ModOnly`.

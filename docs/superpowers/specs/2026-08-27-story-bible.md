@@ -237,6 +237,16 @@ have taken cores from its walls, asks for one courier's light carried down to hi
 teaches the Stormsworn helm. Haldor, whose camp sits on the couriers' road, trades what
 he has seen for a troll's head — and his answer is what puts the Elder's altar on the map.
 
+**Act III, as built (2026-10-05)** — `specs/2026-10-05-act-three-voices-design.md`. The act's
+answer is *never let go*, and it now has two voices for it. **The drowned one**, a draugr who kept
+his wits, holds the sunken crypt's door because holding is all the marsh lets anyone do; he gives
+the Stormsworn cuirass, then asks to be put down — and the light he never let go of rises where he
+falls. The marsh does not raise him again: he is the one thing it lets go. **The Bog Witch** is the
+one living thing in the marsh, because nothing keeps hold of her; her talk is the act's
+preparation (*the big one is decided before you ever see him*), and at her hands the Stormward is
+reforged into the **Ironbound Stormward** — iron where the hide was, ancient bark where the frame
+was, the storm still in it.
+
 **The arc's payoff, planned:** the wisp you pocket from every race is the
 same species of thing the dvergr carry in lanterns. By Act VI the player
 discovers they have been collecting honestly since Act I — the dvergr's
@@ -360,6 +370,18 @@ answer, practised before it was taught. Act VII spends it.
   is why a trader in a starving forest is never robbed. He fears only trolls, the one thing
   that breaks light. For a troll's head he tells where the couriers go, and marks the altar.
   Only his idle talk changes; his counter stays his own. `HaldorVoice.cs`.
+- **The drowned one** (2026-10-05) — Act III's speaker: a draugr who kept his wits, the first
+  speaker not in the Ghost's body, because in the swamp the dead are bodies that would not lie
+  down. At the sunken crypt's door, tame while he talks, pale and water-bleached. Teaches the
+  Stormsworn cuirass ("what I wore"), then asks to be let go; untamed, he lifts his blade once out
+  of habit. His death is matched to him alone and releases a light; FenWatch never raises him.
+  `DrownedOne.cs`.
+- **The Bog Witch, in the saga** (2026-10-05) — the game's own swamp trader, voiced for Act III:
+  nothing in the marsh rots because nothing lets go long enough; she lives there because nothing
+  can keep hold of her. Preparation is her subject; the Stormward's reforge is her work (alt-use
+  on her). Her shop stays her own. A `TraderVoice` configuration, like Haldor.
+- **The Ironbound Stormward** (2026-10-05) — the Stormward reforged in Act III: heavier block,
+  more durability, a stronger discharge, less wear per discharge. Same storm.
 - **A way** (2026-09-27) — a class. Mechanically a set of boons the wheel never deals and
   death never takes, because what the thane taught was not lent. Everything else about it
   is a boon: applied, repaid at run end, saved and restored on the one path.

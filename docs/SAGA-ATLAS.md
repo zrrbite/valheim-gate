@@ -7,7 +7,7 @@ note on how finished it is.
 > step and target is read out of the source, so the page cannot drift from the code. The prose
 > (epigraphs, chapters, status) lives in the generator.
 
-`102` quest steps &middot; `8` acts &middot; `1` played through &middot; `5` tracks in use
+`106` quest steps &middot; `8` acts &middot; `1` played through &middot; `5` tracks in use
 
 ## How to read a lane
 
@@ -141,7 +141,7 @@ You went after the little ones instead of waiting for them. They had been carryi
 
 ### Act III &mdash; Nothing Stays Buried
 
-`Written, not yet played` &middot; `12 steps` &middot; `3 tracks`
+`Written, not yet played` &middot; `16 steps` &middot; `3 tracks`
 
 > *What the marsh takes, it keeps.*
 
@@ -151,8 +151,10 @@ The marsh had taken for longer than the forest and had never spent a thing. You 
 |--:| --- | --- | --- |
 | 1 | Clear the mire `8` | Reach the Swamp | Claim the Elder’s power |
 | 2 | Fell an Abomination | Haul out 20 Scrap Iron `20` | Build a fermenter |
-| 3 | Find Bonemass's altar | Iron enough to stand in (10) `10` | Chart the marshes |
-| 4 | **Defeat Bonemass** | Rivet the Stormsworn cuirass | Sail the fens `600` |
+| 3 | Find Bonemass's altar | Speak with the drowned one | Find the Bog Witch |
+| 4 | **Defeat Bonemass** | Iron enough to stand in (10) `10` | Stir a poison mead base |
+| 5 |  | Rivet the Stormsworn cuirass | Sail the fens `600` |
+| 6 |  | Let him go | Reforge the Stormward |
 
 **Chapter ends.** Nothing in the marsh had been carrying light anywhere. It had simply been kept — the first hoard you had found that nobody was using.
 
