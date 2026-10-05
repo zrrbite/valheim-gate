@@ -199,6 +199,19 @@ static class StepPredicateTests
         Check.That(SagaNames.IsHaldorKey(SagaNames.HaldorKey(99)) && SagaNames.IsHaldorKey("SAGA_HALDOR_1"), "cleanup recognises any of them");
         Check.That(!SagaNames.IsHaldorKey("defeated_gdking") && !SagaNames.IsHaldorKey(null), "and nothing else");
 
+        // --- 2026-10-05: Act III's voices --------------------------------------------------
+        var drownedFind = new List<QuestTrack> { Track("craft", Step("sw-drowned", ChallengeKind.PlayerEvent, SagaNames.DrownedFound)) };
+        var letGo = new List<QuestTrack> { Track("craft", Step("sw-letgo", ChallengeKind.KillPrefab, SagaNames.DrownedKill)) };
+        var witch = new List<QuestTrack> { Track("marsh", Step("sw-witch", ChallengeKind.PlayerEvent, SagaNames.WitchMet)) };
+        Check.That(StepPredicates.DrownedFind(drownedFind) && !StepPredicates.DrownedLetGo(drownedFind), "the drowned one is first spoken to");
+        Check.That(StepPredicates.DrownedLetGo(letGo) && !StepPredicates.DrownedFind(letGo), "and later let go - never confused");
+        Check.That(StepPredicates.WitchFind(witch) && !StepPredicates.WitchFind(drownedFind), "the witch's step is her own");
+        Check.That(StepPredicates.StepLive(drownedFind, "sw-drowned") && !StepPredicates.StepLive(drownedFind, "sw-scrap"),
+                   "StepLive names exactly the current step");
+        Check.That(!StepPredicates.StepLive(new List<QuestTrack> { Track("craft", Step("sw-scrap", ChallengeKind.CollectItem, "x"), blocked: true) }, "sw-scrap"),
+                   "and not a blocked one");
+        Check.That(!StepPredicates.StepLive(null, "sw-scrap") && !StepPredicates.StepLive(drownedFind, null), "nor from nothing");
+
         // --- Degenerate input ---------------------------------------------------------------
         Check.That(!StepPredicates.DeerHunt(null), "a null track list is not a hunt");
         Check.That(!StepPredicates.DeerHunt(new List<QuestTrack>()), "nor is an empty one");

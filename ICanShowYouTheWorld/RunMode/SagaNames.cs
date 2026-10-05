@@ -95,6 +95,18 @@ namespace ICanShowYouTheWorld.RunMode
                 ? "n" + (-(long)seed).ToString(System.Globalization.CultureInfo.InvariantCulture)
                 : seed.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
+        /// <summary>Act III: the Bog Witch, first come near.</summary>
+        public const string WitchMet = "WitchMet";
+
+        /// <summary>Act III: the drowned one, first spoken to.</summary>
+        public const string DrownedFound = "DrownedFound";
+
+        /// <summary>
+        /// The drowned one's death, matched by his own ZDO id and reported under this synthetic name,
+        /// like the Herald's - so killing any other draugr cannot let him go.
+        /// </summary>
+        public const string DrownedKill = "__the_drowned";
+
         public static bool IsHaldorKey(string key) =>
             !string.IsNullOrEmpty(key) && key.StartsWith(HaldorKeyPrefix, System.StringComparison.OrdinalIgnoreCase);
 

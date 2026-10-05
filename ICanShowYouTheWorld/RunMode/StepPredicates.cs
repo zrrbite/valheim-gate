@@ -101,6 +101,19 @@ namespace ICanShowYouTheWorld.RunMode
         public static bool HaldorAsk(IReadOnlyList<QuestTrack> tracks) =>
             Live(tracks).Any(d => d.Kind == ChallengeKind.PlayerEvent && d.Param == SagaNames.HaldorTold);
 
+        public static bool WitchFind(IReadOnlyList<QuestTrack> tracks) =>
+            Live(tracks).Any(d => d.Kind == ChallengeKind.PlayerEvent && d.Param == SagaNames.WitchMet);
+
+        public static bool DrownedFind(IReadOnlyList<QuestTrack> tracks) =>
+            Live(tracks).Any(d => d.Kind == ChallengeKind.PlayerEvent && d.Param == SagaNames.DrownedFound);
+
+        public static bool DrownedLetGo(IReadOnlyList<QuestTrack> tracks) =>
+            Live(tracks).Any(d => d.Kind == ChallengeKind.KillPrefab && d.Param == SagaNames.DrownedKill);
+
+        /// <summary>This exact step is current on some unblocked track.</summary>
+        public static bool StepLive(IReadOnlyList<QuestTrack> tracks, string stepId) =>
+            !string.IsNullOrEmpty(stepId) && Live(tracks).Any(d => d.Id == stepId);
+
         /// <summary>
         /// The act's boss altar is the live discovery. The map pin waits for exactly this - not for
         /// any DiscoverLocation step, since burial chambers and traders are found the same way.
