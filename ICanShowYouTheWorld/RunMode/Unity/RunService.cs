@@ -554,6 +554,13 @@ namespace ICanShowYouTheWorld.RunMode
                     }
                 }
 
+                // The barrow-keeper while one of his steps is live: a walk to a door, like the thane.
+                if (_keeper != null && _challenges != null && StepPredicates.Keeper(_challenges.Tracks))
+                {
+                    string door = _keeper.Bearing(player, "Someone waits at the burial chambers");
+                    if (!string.IsNullOrEmpty(door)) return door;
+                }
+
                 if (_shade != null && ActIsMeadows && _challenges != null && StepPredicates.ShadeFind(_challenges.Tracks))
                 {
                     string shade = _shade.Bearing(player, IsNight);
@@ -2579,10 +2586,7 @@ namespace ICanShowYouTheWorld.RunMode
                 if (_active) _boonEffects.ApplyPugilist();
                 // Re-checked every poll because a world load rebuilds ObjectDB and drops them.
                 // The gate is derived from the tracks, so a resume re-teaches what was taught.
-                if (_active) _recipes.Ensure(
-                    id => _challenges != null && StepPredicates.StepDone(_challenges.Tracks, id),
-                    AnnounceRecipe,
-                    _classId);
+                if (_active) _recipes.Ensure(RecipeStepDone, AnnounceRecipe, _classId);
                 if (_active) _dreams.Ensure();
             }
 
@@ -4469,9 +4473,10 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 bool actTwo = _active && _actIndex == 1;
                 string key = SagaNames.HaldorKey(_rngSeed);
-                _haldor.Tick(player, actTwo, key);
+                bool askLive = actTwo && _challenges != null && StepPredicates.HaldorAsk(_challenges.Tracks);
+                _haldor.Tick(player, actTwo, key, askLive);
 
-                if (actTwo && _challenges != null && StepPredicates.HaldorAsk(_challenges.Tracks) && HaldorVoice.Told(key))
+                if (askLive && HaldorVoice.Told(key))
                 {
                     _challenges.ReportEvent(ChallengeKind.PlayerEvent, SagaNames.HaldorTold);
                     Debug.Log("[ICanShowYouTheWorld] Haldor took the troll's head and told where the couriers go.");
@@ -6220,6 +6225,25 @@ namespace ICanShowYouTheWorld.RunMode
             if (zone == null) return;
 
             _boons.DefeatedBosses = Bosses.Count(b => SafeGetGlobalKey(zone, b.defeatKey));
+        }
+
+        /// <summary>
+        /// A recipe's step gate: done in the current act's tracks, OR the step belongs to an act
+        /// already behind the player.
+        /// </summary>
+        /// <remarks>
+        /// StepDone reads only the current act's chains, so every Stormsworn piece's recipe went
+        /// away the moment its act ended - a helm taught in Act II could not be re-made or upgraded
+        /// in Act III. Found in review on 2026-10-05; it predates Act II's voices.
+        /// </remarks>
+        private bool RecipeStepDone(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return false;
+            if (_challenges != null && StepPredicates.StepDone(_challenges.Tracks, id)) return true;
+
+            for (int i = 0; i < _actIndex && i < _acts.Count; i++)
+                if (_acts[i].AllSteps.Any(d => d != null && d.Id == id)) return true;
+            return false;
         }
 
         /// <summary>
@@ -10574,7 +10598,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // been taken from it, and speaking to him is the step - so declining nothing stalls.
                 Id = "bf-keeper", MainQuest = true, Kind = ChallengeKind.PlayerEvent, Param = SagaNames.KeeperFound,
                 Target = 1, Display = "Speak with the barrow-keeper",
-                Hint = "At the door of the burial chambers you took the cores from. He has been waiting since you came out.",
+                Hint = "At the door of a burial chamber \u2014 the nearest one. He is marked on your map.",
             },
             new ChallengeDefinition
             {
@@ -10690,9 +10714,10 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
-                // LAST on the track deliberately. Haldor's camp is the one name here this assembly
-                // cannot verify, and a track is a linear chain — anything behind an unfindable
-                // step is unreachable, as Act I learned. Behind it there is nothing.
+                // Moved to HUNT before the altar on 2026-10-05, and no longer last: his ask and the
+                // altar now sit behind it. That is a bet on "Vendor_BlackForest" and on HaldorVoice
+                // matching him - both logged in play ("Trader in range"), and a live ask with no
+                // match logs an error. Waystone still skips to the altar if this ever stalls.
                 Id = "bf-haldor", MainQuest = true, Track = HuntTrackId, Kind = ChallengeKind.DiscoverLocation,
                 Param = "Vendor_BlackForest", Target = 1, Display = "Find the trader",
                 RewardText = "Coin enough to spend",
