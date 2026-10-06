@@ -528,8 +528,11 @@ namespace ICanShowYouTheWorld.RunMode
                     UpdateCompletionFlashes(run.Challenges);
                     UpdateQuestFlash(run.Challenges);
                     // THE WAY card shares the offer's window and its fade: three choices either way.
+                    // So does the helm's fitting card - never up beside either (RunService.OpenFittingCard).
+                    bool fitCard = _concrete != null && _concrete.FittingCardOpen && _concrete.FittingCard.Count > 0;
                     UpdateOfferFadeState(run.ClassChoicePending
                         ? (run.Classes?.Count ?? 0)
+                        : fitCard ? _concrete.FittingCard.Count
                         : (run.Boons?.CurrentOffer?.Count ?? 0));
 
                     // The strip is the one piece that survives with the rest of the UI hidden.
@@ -581,7 +584,7 @@ namespace ICanShowYouTheWorld.RunMode
 
                     var boons = run.Boons;
                     bool wayCard = run.ClassChoicePending && (run.Classes?.Count ?? 0) > 0;
-                    if (wayCard || (boons != null && boons.CurrentOffer.Count > 0))
+                    if (wayCard || fitCard || (boons != null && boons.CurrentOffer.Count > 0))
                     {
                         // Fade-in: alpha is a pure function of (now - _offerShownAt), a value only
                         // ever written at a Layout event above — so Layout and Repaint of the same
@@ -599,6 +602,10 @@ namespace ICanShowYouTheWorld.RunMode
                                 _wayRect = GUILayout.Window(OfferWindowId, _wayRect, DrawWayCard,
                                     GUIContent.none, RunTheme.Panel,
                                     GUILayout.Width(_wayRect.width), GUILayout.MinHeight(WayCardHeight));
+                            else if (fitCard)
+                                _offerRect = GUILayout.Window(OfferWindowId, _offerRect, DrawFittingCard,
+                                    GUIContent.none, RunTheme.Panel,
+                                    GUILayout.Width(OfferWidth), GUILayout.Height(OfferHeight));
                             else
                                 _offerRect = GUILayout.Window(OfferWindowId, _offerRect, DrawOffer,
                                     GUIContent.none, RunTheme.Panel,
@@ -1616,6 +1623,7 @@ namespace ICanShowYouTheWorld.RunMode
             if (cards == null || cards.Count == 0)
             {
                 GUILayout.Label("  Nothing is known yet.", RunTheme.Small);
+                DrawShipSection();
                 return;
             }
 
@@ -1669,6 +1677,27 @@ namespace ICanShowYouTheWorld.RunMode
                     GUI.contentColor = Color.white;
                 }
             }
+
+            DrawShipSection();
+        }
+
+        /// <summary>
+        /// What the run's ships carry, under the FORGE: the one other thing a player gathers for.
+        /// Only once the raft step has told it, like every other line on this page.
+        /// </summary>
+        private void DrawShipSection()
+        {
+            if (_concrete == null || !_concrete.FittingsRevealed) return;
+
+            GUILayout.Space(10f);
+            GUILayout.Label("SHIP", RunTheme.Header);
+            string fitted = _concrete.FittedSummary;
+            GUI.contentColor = RunTheme.TextParchment;
+            GUILayout.Label(string.IsNullOrEmpty(fitted) ? "  Nothing fitted yet." : "  " + fitted, RunTheme.Body);
+            GUI.contentColor = RunTheme.TextMuted;
+            GUILayout.Label("  Any helm takes gold: [Shift + E] at the helm. What you fit goes to every ship you sail.",
+                RunTheme.Small);
+            GUI.contentColor = Color.white;
         }
 
         private void DrawHeard(IRunService run)
@@ -2936,6 +2965,57 @@ namespace ICanShowYouTheWorld.RunMode
 
             GUILayout.FlexibleSpace();
             GUILayout.Label("press Keypad 1/2/3", RunTheme.Small);
+        }
+
+        // --- The helm's fitting card (display only; buying is RunService.HandleBoonOfferInput) ---
+
+        private void DrawFittingCard(int id)
+        {
+            try { DrawFittingCardBody(); }
+            catch (Exception ex) { LogOnce("fitting-card", ex); }
+
+            GUI.DragWindow();
+        }
+
+        /// <summary>
+        /// The boon offer's card, for gold: numbered, one key each, so it reads the way the player
+        /// already reads that card.
+        /// </summary>
+        private void DrawFittingCardBody()
+        {
+            var card = _concrete?.FittingCard;
+            if (card == null || card.Count == 0) return;
+            int coins = _concrete.CoinsCarried;
+
+            GUILayout.Label("FIT OUT THE SHIP", RunTheme.Header);
+            GUI.contentColor = RunTheme.TextMuted;
+            string fitted = _concrete.FittedSummary;
+            GUILayout.Label($"You carry {coins} coins." + (string.IsNullOrEmpty(fitted) ? "" : $"   Fitted: {fitted}"),
+                RunTheme.Small);
+            GUI.contentColor = Color.white;
+
+            GUILayout.BeginHorizontal();
+            for (int i = 0; i < card.Count; i++)
+            {
+                GUILayout.BeginVertical(GUILayout.Width(OfferWidth / 3f - 12f));
+
+                GUILayout.BeginHorizontal();
+                GUI.contentColor = RunTheme.AccentGold;
+                GUILayout.Label($"{i + 1}", RunTheme.Header, GUILayout.Width(20f));
+                GUI.contentColor = Color.white;
+                GUILayout.Label(card[i].Name, RunTheme.Body);
+                GUILayout.EndHorizontal();
+
+                GUI.contentColor = coins >= card[i].Price ? RunTheme.CompleteGreen : RunTheme.TextMuted;
+                GUILayout.Label($"{card[i].Price} coins", RunTheme.Small);
+                GUI.contentColor = Color.white;
+                GUILayout.Label(card[i].Effect, RunTheme.Body);
+                GUILayout.EndVertical();
+            }
+            GUILayout.EndHorizontal();
+
+            GUILayout.FlexibleSpace();
+            GUILayout.Label(card.Count == 1 ? "press Keypad 1" : $"press Keypad 1-{card.Count}", RunTheme.Small);
         }
 
         // --- THE WAY (display only; picks are handled in RunService.HandleBoonOfferInput) ---

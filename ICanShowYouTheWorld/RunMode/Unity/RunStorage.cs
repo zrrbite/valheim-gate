@@ -46,6 +46,15 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>True once Thjalfi has raised the Storm-Anvil; keeps him standing beside it.</summary>
         public bool anvilRaised;
 
+        /// <summary>The run's ship fittings, bought with gold at a helm (see ShipFittings): tiers.</summary>
+        public int shipSail;
+        public int shipHull;
+        public int shipFireTar;
+
+        /// <summary>Whether the raven has said the helm takes gold, and whether Fire-tar has been told.</summary>
+        public bool shipFittingsTold;
+        public bool shipFireTarTold;
+
         /// <summary>Everything said this run, one packed string per line. See SagaTranscript.</summary>
         public List<string> transcript;
 

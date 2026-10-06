@@ -1,0 +1,152 @@
+using System;
+using System.Collections.Generic;
+
+namespace ICanShowYouTheWorld.RunMode
+{
+    public enum FittingKind { Sail, Hull, FireTar }
+
+    /// <summary>What a run has fitted. Belongs to the RUN, not to a ship - see <see cref="ShipFittings"/>.</summary>
+    public sealed class ShipFittingState
+    {
+        public int Sail;
+        public int Hull;
+        public int FireTar;
+    }
+
+    /// <summary>One line on the helm's card: the next tier of one fitting, and its price.</summary>
+    public sealed class ShipFittingOffer
+    {
+        public FittingKind Kind;
+        public int Tier;
+        public int Price;
+        public string Name;
+        public string Effect;
+    }
+
+    /// <summary>
+    /// Ship fittings, bought with gold at any ship's helm (owner, 2026-10-05: "It would be cool if we
+    /// could upgrade the boat with gold. Speed, armor, etc").
+    /// </summary>
+    /// <remarks>
+    /// They FOLLOW THE CAPTAIN (owner's pick): the run owns them and every ship it sails wears them -
+    /// raft, karve, longship - so moving up to a bigger ship loses nothing. Applied to the ship's live
+    /// numbers from its own originals and given back at run end; nothing is written into the world.
+    ///
+    /// Sail scales the sail's push and the oars (the game paddles on m_backwardForce, both ways).
+    /// Hull makes the hull resist every damage type - beaching and capsizing are blunt hits through
+    /// the same resistances, so one number covers rocks, shallows and teeth. Fire-tar is the game's
+    /// own m_ashlandsReady: the boiling sea stops burning the ship. It is offered only from the act the
+    /// Ashlands belong to, because a card naming the boiling sea in Act II would spoil the road there.
+    ///
+    /// Prices are first numbers, to be tuned in play.
+    /// </remarks>
+    public static class ShipFittings
+    {
+        private static readonly int[] SailPrices = { 50, 150, 300 };
+        private static readonly int[] HullPrices = { 50, 150, 300 };
+        public const int FireTarPrice = 400;
+
+        private static readonly float[] SailBoosts = { 1f, 1.15f, 1.30f, 1.50f };
+        private static readonly float[] HullFactors = { 1f, 0.75f, 0.5f, 0.25f };
+
+        public static int MaxTier(FittingKind kind) => kind == FittingKind.FireTar ? 1 : 3;
+
+        public static int Tier(ShipFittingState state, FittingKind kind)
+        {
+            if (state == null) return 0;
+            switch (kind)
+            {
+                case FittingKind.Sail: return state.Sail;
+                case FittingKind.Hull: return state.Hull;
+                default: return state.FireTar;
+            }
+        }
+
+        /// <summary>Sail push and oars, as a multiplier on the ship's own.</summary>
+        public static float SailMultiplier(int tier) => SailBoosts[Clamp(tier, SailBoosts.Length - 1)];
+        public static float SailMultiplier(ShipFittingState state) => SailMultiplier(state?.Sail ?? 0);
+
+        /// <summary>The share of damage the hull still takes: 1, 0.75, 0.5, 0.25.</summary>
+        public static float HullDamageFactor(int tier) => HullFactors[Clamp(tier, HullFactors.Length - 1)];
+        public static float HullDamageFactor(ShipFittingState state) => HullDamageFactor(state?.Hull ?? 0);
+
+        public static bool AshlandsReady(ShipFittingState state) => state != null && state.FireTar >= 1;
+
+        /// <summary>
+        /// The next tier of each fitting not yet at its top. Fire-tar only once
+        /// <paramref name="fireTarTold"/> - the Ashlands act has begun.
+        /// </summary>
+        public static List<ShipFittingOffer> Offers(ShipFittingState state, bool fireTarTold)
+        {
+            var offers = new List<ShipFittingOffer>();
+            state = state ?? new ShipFittingState();
+
+            if (state.Sail < MaxTier(FittingKind.Sail))
+            {
+                int t = state.Sail + 1;
+                offers.Add(new ShipFittingOffer
+                {
+                    Kind = FittingKind.Sail, Tier = t, Price = SailPrices[t - 1],
+                    Name = "Sail " + Roman(t),
+                    Effect = $"+{Percent(SailMultiplier(t) - 1f)}% to the sail and the oars",
+                });
+            }
+
+            if (state.Hull < MaxTier(FittingKind.Hull))
+            {
+                int t = state.Hull + 1;
+                offers.Add(new ShipFittingOffer
+                {
+                    Kind = FittingKind.Hull, Tier = t, Price = HullPrices[t - 1],
+                    Name = "Hull " + Roman(t),
+                    Effect = t == 1 ? "the ship takes a quarter less damage"
+                           : t == 2 ? "the ship takes half the damage"
+                           : "the ship takes a quarter of the damage",
+                });
+            }
+
+            if (fireTarTold && state.FireTar < MaxTier(FittingKind.FireTar))
+            {
+                offers.Add(new ShipFittingOffer
+                {
+                    Kind = FittingKind.FireTar, Tier = 1, Price = FireTarPrice,
+                    Name = "Fire-tar",
+                    Effect = "the boiling sea no longer burns the ship",
+                });
+            }
+
+            return offers;
+        }
+
+        /// <summary>The state with one more tier of <paramref name="kind"/>, capped at its top.</summary>
+        public static ShipFittingState Bought(ShipFittingState state, FittingKind kind)
+        {
+            var s = state ?? new ShipFittingState();
+            var next = new ShipFittingState { Sail = s.Sail, Hull = s.Hull, FireTar = s.FireTar };
+            switch (kind)
+            {
+                case FittingKind.Sail: next.Sail = Math.Min(next.Sail + 1, MaxTier(kind)); break;
+                case FittingKind.Hull: next.Hull = Math.Min(next.Hull + 1, MaxTier(kind)); break;
+                default: next.FireTar = Math.Min(next.FireTar + 1, MaxTier(kind)); break;
+            }
+            return next;
+        }
+
+        /// <summary>"Sail II · Hull I · Fire-tar", or empty for a bare ship.</summary>
+        public static string Summary(ShipFittingState state)
+        {
+            if (state == null) return string.Empty;
+            var parts = new List<string>();
+            if (state.Sail > 0) parts.Add("Sail " + Roman(state.Sail));
+            if (state.Hull > 0) parts.Add("Hull " + Roman(state.Hull));
+            if (state.FireTar > 0) parts.Add("Fire-tar");
+            return string.Join(" · ", parts.ToArray());
+        }
+
+        private static int Clamp(int tier, int max) => tier < 0 ? 0 : tier > max ? max : tier;
+
+        private static int Percent(float f) => (int)Math.Round(f * 100f);
+
+        private static string Roman(int n) => n == 1 ? "I" : n == 2 ? "II" : n == 3 ? "III" : n.ToString();
+    }
+}

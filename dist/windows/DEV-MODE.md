@@ -128,7 +128,8 @@ is a grep.
   via the network time, a fixed step per press, and tells you whether it is
   night yet after each press.
 - **`*` (materials)** puts a fixed kit (wood, stone, ores, nails, hides,
-  arrows, food, seeds, a fishing rod and bait, surtling cores…) **into the
+  arrows, food, seeds, a fishing rod and bait, surtling cores, 500 coins for the
+  helm's ship fittings…) **into the
   run's stash**, not your pockets — the raw materials alone are several
   hundred weight, and granted to the inventory they left you over-encumbered
   on the spot. Withdraw what the moment needs from the stash panel.

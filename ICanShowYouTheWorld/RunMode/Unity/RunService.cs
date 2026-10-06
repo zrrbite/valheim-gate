@@ -2343,6 +2343,10 @@ namespace ICanShowYouTheWorld.RunMode
             _stormwardSeen = false;
             _thorsBowKills = 0;
             _anvilRaised = false;
+            _fittings = new ShipFittingState();
+            _fittingsTold = false;
+            _fireTarTold = false;
+            _fittingCardOpen = false;
             SagaTranscript.Clear();
             _splitLabels.Clear();
                 _splitTimes.Clear();
@@ -2673,6 +2677,8 @@ namespace ICanShowYouTheWorld.RunMode
             CreatureDressing.Tick();
 
             TickClassCard(dt);
+            TickFittingCard(dt);
+            HandleHelmInput();
             HandleBoonOfferInput();
             HandleBoonActivationInput();
             HandleDevInput();
@@ -2692,6 +2698,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // The gate is derived from the tracks, so a resume re-teaches what was taught.
                 if (_active) _recipes.Ensure(RecipeStepDone, AnnounceRecipe, _classId);
                 if (_active) _dreams.Ensure();
+                if (_active) PollShipwright();
             }
 
             if (!_active) return;
@@ -2730,6 +2737,19 @@ namespace ICanShowYouTheWorld.RunMode
 
         private void HandleBoonOfferInput()
         {
+            // The helm's card is only ever opened with nothing else up, and closes the moment
+            // anything else opens (TickFittingCard), so here its keys mean only a fitting.
+            if (_fittingCardOpen)
+            {
+                for (int i = 0; i < FittingCardKeys.Length; i++)
+                {
+                    if (!Input.GetKeyDown(FittingCardKeys[i])) continue;
+                    if (i < _fittingCard.Count) BuyFitting(_fittingCard[i]);
+                    break;
+                }
+                return;
+            }
+
             // THE WAY first: it outranks a boon offer, and no boon offer is dealt while it is up
             // (see OnChallengeCompleted), so the keys cannot mean two things at once.
             if (_classChoicePending)
@@ -2773,6 +2793,8 @@ namespace ICanShowYouTheWorld.RunMode
             ("BronzeNails", 100), ("IronNails", 100),
             ("CookedMeat", 30), ("ArrowFlint", 200), ("FishingRod", 1), ("FishingBait", 200),
             ("CarrotSeeds", 30), ("Carrot", 30), ("Honey", 50), ("Raspberry", 50), ("Mushroom", 50),
+            // Gold for the helm's fittings, so the card can be tried without farming trolls.
+            ("Coins", 500),
         };
 
         /// <summary>
@@ -6533,6 +6555,190 @@ namespace ICanShowYouTheWorld.RunMode
 
         public void OpenSagaPage(string path) => SagaReward.Open(path);
 
+        // --- Ship fittings: gold at the helm, following the captain (owner, 2026-10-05) ---
+
+        /// <summary>Gold, by shared name - what CountItems and RemoveItem compare.</summary>
+        private const string CoinsToken = "$item_coins";
+
+        /// <summary>The step that reveals the fittings: Act II's "Raise a raft".</summary>
+        private const string RaftStepId = "bf-raft";
+
+        /// <summary>The act whose sea boils. Fire-tar is offered from its start, never before.</summary>
+        private const string AshlandsActId = "act7";
+
+        private const float FittingCardSeconds = 30f;
+
+        private static readonly KeyCode[] FittingCardKeys = { KeyCode.Keypad1, KeyCode.Keypad2, KeyCode.Keypad3 };
+
+        private const string FittingsLine =
+            "A keel is a promise, and gold keeps it. Any helm will take coin now for a stronger sail and a " +
+            "harder hull - and what you fit goes with you, to every ship you ever captain.";
+
+        private const string FireTarLine =
+            "The sea ahead boils. Tar takes fire the way hide takes rain: any helm will sell you some.";
+
+        private readonly Shipwright _shipwright = new Shipwright();
+        private ShipFittingState _fittings = new ShipFittingState();
+        private bool _fittingsTold;
+        private bool _fireTarTold;
+        private bool _fittingCardOpen;
+        private float _fittingCardAge;
+        private List<ShipFittingOffer> _fittingCard = new List<ShipFittingOffer>();
+
+        /// <summary>The helm's card is up. The window draws it in the offer's place.</summary>
+        public bool FittingCardOpen => _active && _fittingCardOpen;
+
+        /// <summary>What the card offers, fixed between purchases so every GUI pass of a frame agrees.</summary>
+        public IReadOnlyList<ShipFittingOffer> FittingCard => _fittingCard;
+
+        /// <summary>"Sail II · Hull I", or empty.</summary>
+        public string FittedSummary => ShipFittings.Summary(_fittings);
+
+        /// <summary>
+        /// Whether the helm offers fittings yet: the run has built a ship, or the raft step is done
+        /// (in this act or an earlier one). The ship is enough on its own because the point is to
+        /// reach a god across the water (owner, 2026-10-05: "make it easy for players to travel by
+        /// boat if a boss is in a different biome") - and that crossing can come before the step.
+        /// </summary>
+        public bool FittingsRevealed => _active && (_builtSeen.Contains(ShipCategory) || RecipeStepDone(RaftStepId));
+
+        /// <summary>The build category a ship counts as (PieceCategories).</summary>
+        private const string ShipCategory = "Ship";
+
+        /// <summary>Coins in the pack, for the card.</summary>
+        public int CoinsCarried
+        {
+            get
+            {
+                try { return Player.m_localPlayer?.GetInventory()?.CountItems(CoinsToken) ?? 0; }
+                catch { return 0; }
+            }
+        }
+
+        private bool FireTarTold
+        {
+            get
+            {
+                int at = _acts.FindIndex(a => a.Id == AshlandsActId);
+                return at >= 0 && _actIndex >= at;
+            }
+        }
+
+        /// <summary>Once a second: the reveal lines, then the fittings onto every loaded ship.</summary>
+        private void PollShipwright()
+        {
+            try
+            {
+                bool revealed = FittingsRevealed;
+
+                if (revealed && !_fittingsTold)
+                {
+                    _fittingsTold = true;
+                    if (!TrySpawnRaven("fittings", FittingsLine)) Message(FittingsLine);
+                    SaveState();
+                }
+
+                if (revealed && FireTarTold && !_fireTarTold)
+                {
+                    _fireTarTold = true;
+                    Announce(FireTarLine);
+                    SaveState();
+                }
+
+                _shipwright.Tick(_fittings, revealed);
+            }
+            catch (Exception ex) { LogOnce("shipwright", ex); }
+        }
+
+        /// <summary>When the helm was last looked at, by Time.time - see HandleHelmInput.</summary>
+        private float _helmHoveredAt = float.NegativeInfinity;
+
+        /// <summary>
+        /// Shift+E at the helm opens the fitting card. Read here rather than through a collider on the
+        /// ship (see Shipwright's remarks for why that would throw you overboard).
+        /// </summary>
+        /// <remarks>
+        /// The game handles the same press too - ShipControlls.Interact ignores alt, so Shift+E also
+        /// takes the helm - and nobody knows whose Update runs first that frame. So the helm counts as
+        /// looked at for a moment after the look ends, and being at the helm counts as looking at it.
+        /// </remarks>
+        private void HandleHelmInput()
+        {
+            try
+            {
+                var player = Player.m_localPlayer;
+                if (player == null || !_shipwright.Offering) return;
+
+                var hover = player.GetHoverObject();
+                if (hover != null && hover.GetComponentInParent<ShipControlls>() != null) _helmHoveredAt = Time.time;
+
+                bool use = ZInput.GetButtonDown("Use") || ZInput.GetButtonDown("JoyUse");
+                if (!use) return;
+                bool alt = ZInput.GetButton("AltPlace") || ZInput.GetButton("JoyAltPlace");
+                if (!alt) return;
+
+                if (Time.time - _helmHoveredAt <= 0.3f || player.IsAttachedToShip()) OpenFittingCard(player);
+            }
+            catch (Exception ex) { LogOnce("helm-input", ex); }
+        }
+
+        /// <summary>The helm's second key. Never over another card: the keys would mean two things.</summary>
+        private bool OpenFittingCard(Humanoid user)
+        {
+            if (!_active) return false;
+            if (_classChoicePending || (_boons != null && _boons.CurrentOffer.Count > 0))
+            {
+                Message("Not now - answer the card that is up first.");
+                return true;
+            }
+
+            _fittingCard = ShipFittings.Offers(_fittings, FireTarTold);
+            if (_fittingCard.Count == 0)
+            {
+                Message("The ship carries everything gold can fit.");
+                return true;
+            }
+
+            _fittingCardOpen = true;
+            _fittingCardAge = 0f;
+            return true;
+        }
+
+        /// <summary>Times the card out, and closes it the moment another card wants the keys.</summary>
+        private void TickFittingCard(float dt)
+        {
+            if (!_fittingCardOpen) return;
+            _fittingCardAge += dt;
+            if (_fittingCardAge >= FittingCardSeconds || _classChoicePending ||
+                (_boons != null && _boons.CurrentOffer.Count > 0))
+                _fittingCardOpen = false;
+        }
+
+        private void BuyFitting(ShipFittingOffer offer)
+        {
+            var inv = Player.m_localPlayer?.GetInventory();
+            if (inv == null || offer == null) return;
+
+            int coins = inv.CountItems(CoinsToken);
+            if (coins < offer.Price)
+            {
+                Message($"{offer.Name} costs {offer.Price} coins. You carry {coins}.");
+                return;
+            }
+
+            inv.RemoveItem(CoinsToken, offer.Price);
+            _fittings = ShipFittings.Bought(_fittings, offer.Kind);
+            _shipwright.Tick(_fittings, true);   // on the water now, not next second
+            Message($"{offer.Name}: {offer.Effect}.");
+            Debug.Log($"[ICanShowYouTheWorld] Ship fitted: {offer.Name} for {offer.Price} coins - now {ShipFittings.Summary(_fittings)}.");
+            SaveState();
+
+            // Stay open for the next tier, with a fresh clock; close when there is nothing left.
+            _fittingCard = ShipFittings.Offers(_fittings, FireTarTold);
+            _fittingCardAge = 0f;
+            if (_fittingCard.Count == 0) _fittingCardOpen = false;
+        }
+
         /// <summary>
         /// The myth cut into its tales, read once from the DLL. Null when it is not embedded.
         /// </summary>
@@ -6586,6 +6792,8 @@ namespace ICanShowYouTheWorld.RunMode
 
             // The saga's recipes, dreams and raids are run-only: outside a run the game is vanilla.
             _recipes.Remove();
+            _shipwright.Restore();
+            _fittingCardOpen = false;
             CreatureDressing.Forget();
             _corpseAt = null;
 
@@ -9324,6 +9532,10 @@ namespace ICanShowYouTheWorld.RunMode
             _stormwardSeen = false;
             _thorsBowKills = 0;
             _anvilRaised = false;
+            _fittings = new ShipFittingState();
+            _fittingsTold = false;
+            _fireTarTold = false;
+            _fittingCardOpen = false;
             _splitLabels.Clear();
             _splitTimes.Clear();
             _lights?.Restore(s.lightsTaken, s.lightsLost);
@@ -9335,6 +9547,9 @@ namespace ICanShowYouTheWorld.RunMode
             _stormwardAnswers = s.stormwardAnswers;
             _thorsBowKills = s.thorsBowKills;
             _anvilRaised = s.anvilRaised;
+            _fittings = new ShipFittingState { Sail = s.shipSail, Hull = s.shipHull, FireTar = s.shipFireTar };
+            _fittingsTold = s.shipFittingsTold;
+            _fireTarTold = s.shipFireTarTold;
             SagaTranscript.Restore(s.transcript);
             if (s.splitTimes != null) _splitTimes.AddRange(s.splitTimes);
 
@@ -9559,6 +9774,11 @@ namespace ICanShowYouTheWorld.RunMode
                 stormwardAnswers = _stormwardAnswers,
                 thorsBowKills = _thorsBowKills,
                 anvilRaised = _anvilRaised,
+                shipSail = _fittings.Sail,
+                shipHull = _fittings.Hull,
+                shipFireTar = _fittings.FireTar,
+                shipFittingsTold = _fittingsTold,
+                shipFireTarTold = _fireTarTold,
                 transcript = SagaTranscript.Save(),
                 splitLabels = _splitLabels.ToList(),
                 splitTimes = _splitTimes.ToList(),
@@ -10834,6 +11054,8 @@ namespace ICanShowYouTheWorld.RunMode
             // Either light pays the lantern-keeper; both must be real items.
             yield return (LanternKeeper.KeeperName, SagaItems.RescuedLightName, 1);
             yield return (LanternKeeper.KeeperName, LanternKeeper.WispToken, 1);
+            // The helm sells fittings for gold.
+            yield return ("The helm", CoinsToken, 1);
         }
 
         /// <summary>

@@ -361,6 +361,8 @@
     <Compile Include="RunMode\ForgeReveal.cs" />
     <Compile Include="RunMode\StormBowCredit.cs" />
     <Compile Include="RunMode\SagaSelfCheck.cs" />
+    <Compile Include="RunMode\ShipFittings.cs" />
+    <Compile Include="RunMode\Unity\Shipwright.cs" />
     <Compile Include="RunMode\PlainsMeal.cs" />
     <Compile Include="RunMode\Unity\TraderVoice.cs" />
     <Compile Include="RunMode\Unity\HaldorVoice.cs" />

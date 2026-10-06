@@ -432,6 +432,11 @@ answer, practised before it was taught. Act VII spends it.
   "Let it burn." His pyre makes Last Light. `CharredOne.cs`.
 - **Last Light** (2026-10-05) — Thor's bow, burned with flametal and three lights and reforged: the
   light that strung it is in it now, spent. Everything Thor's bow does, plus a standing fire.
+- **Ship fittings** (2026-10-05) — gold bought at any helm: Sail (sail and oars), Hull (resists every
+  hit), and Fire-tar from the Ashlands act on. They belong to the CAPTAIN, not the ship: every ship the
+  run sails wears them, and at run end the ships are only ships again. Hugin tells them when the run's first
+  ship is built ("A keel is a promise, and gold keeps it"). Mechanics, not a character - no speaker
+  sells them, which is why they never need a line the world does not back. `ShipFittings.cs`, `Shipwright.cs`.
 - **A way** (2026-09-27) — a class. Mechanically a set of boons the wheel never deals and
   death never takes, because what the thane taught was not lent. Everything else about it
   is a boon: applied, repaid at run end, saved and restored on the one path.
