@@ -13,11 +13,18 @@ namespace ICanShowYouTheWorld.RunMode
     /// </summary>
     /// <remarks>
     /// Three stages, because a ship can only be built where the world is loaded. A far sea is reached
-    /// first: you are sent to the shore short of the berth (<see cref="Arriving"/>), and the ship is
-    /// built once you are there. Then you are put on its deck at the helm and the helm is taken for you
-    /// (<see cref="Boarding"/>): ShipControlls.Interact asks only that you stand on that ship, within
-    /// reach, and not over-weight (1.0.17 IL). The ship is claimed as yours, so the built-piece scan
-    /// counts it (the helm then offers fittings) and a hammer can take it down again.
+    /// first: you are sent to the shore short of the berth (<see cref="Stage.Arriving"/>), and the ship is
+    /// built once you are there. Then you are put on its deck and the helm is taken for you
+    /// (<see cref="Stage.Boarding"/>): ShipControlls.Interact asks only that you stand on that ship,
+    /// within its 10 m of the rudder's attach point, and not over-weight (1.0.17 IL). The ship is claimed
+    /// as yours, so the built-piece scan counts it (the helm then offers fittings) and a hammer can take
+    /// it down again.
+    ///
+    /// MID-DECK, NOT THE RUDDER'S SPOT. The first build landed the player ON the attach point, which is
+    /// at the very stern of a hull still bobbing from its spawn, and the first play-test's log showed
+    /// "Player onboard" and "Player over board" alternating every two seconds: half off the stern, never
+    /// standing on the deck long enough for Interact. Halfway to the rudder is well inside the hull and
+    /// still within reach, and a player who slips off anyway is put aboard again.
     /// </remarks>
     internal sealed class DevShip
     {
@@ -31,7 +38,10 @@ namespace ICanShowYouTheWorld.RunMode
         private const float Approach = 14f;
 
         private const float ArriveSeconds = 40f;
-        private const float BoardSeconds = 12f;
+        private const float BoardSeconds = 20f;
+
+        /// <summary>Not standing on the deck this long after landing: put aboard again (the ship moves).</summary>
+        private const float ReboardSeconds = 4f;
 
         private enum Stage { None, Arriving, Boarding }
 
@@ -41,6 +51,7 @@ namespace ICanShowYouTheWorld.RunMode
         private Ship _ship;
         private float _until;
         private float _nextTry;
+        private float _boardedAt;
 
         public DevShip(Action<string> say)
         {
@@ -174,11 +185,21 @@ namespace ICanShowYouTheWorld.RunMode
                 return;
             }
 
-            teleport.TeleportTo(helm.m_attachPoint.position + Vector3.up * 0.5f, made.transform.rotation);
             _stage = Stage.Boarding;
             _until = Time.time + BoardSeconds;
             _nextTry = 0f;
+            Board(teleport, helm);
             _say("DEV: a Karve, yours. Taking the helm...");
+        }
+
+        /// <summary>Onto the deck, halfway from the hull's middle to the rudder, where it is now.</summary>
+        private void Board(ITeleportService teleport, ShipControlls helm)
+        {
+            Vector3 rudder = helm.m_attachPoint.position;
+            Vector3 deck = Vector3.Lerp(_ship.transform.position, rudder, 0.5f);
+            deck.y = rudder.y + 1f;
+            teleport.TeleportTo(deck, _ship.transform.rotation);
+            _boardedAt = Time.time;
         }
 
         private void TickBoarding(Player player)
@@ -197,18 +218,35 @@ namespace ICanShowYouTheWorld.RunMode
                 return;
             }
 
-            if (Time.time > _until)
+            var helm = _ship.GetComponentInChildren<ShipControlls>();
+            if (helm == null || helm.m_attachPoint == null)
             {
                 _stage = Stage.None;
-                _say("DEV: the Karve is here - take the helm with E (not while over-weight).");
+                _say("DEV: the Karve has no rudder to take.");
+                return;
+            }
+
+            bool standing = player.GetStandingOnShip() == _ship;
+            if (Time.time > _until)
+            {
+                // Why, in the log: each of these is one of Interact's own conditions.
+                _stage = Stage.None;
+                float reach = Vector3.Distance(player.transform.position, helm.m_attachPoint.position);
+                Debug.Log($"[ICanShowYouTheWorld] DEV ship: standing on it {standing}, aboard {_ship.IsPlayerInBoat(player)}, " +
+                          $"over-weight {player.IsEncumbered()}, {reach:0.0} m from the rudder (reach {helm.m_maxUseRange:0.#} m).");
+                _say("DEV: the Karve is here - walk to the rudder at the stern and press E (not while over-weight).");
                 return;
             }
 
             if (player.IsTeleporting() || Time.time < _nextTry) return;
-            _nextTry = Time.time + 0.5f;
+            _nextTry = Time.time + 0.25f;
 
-            var helm = _ship.GetComponentInChildren<ShipControlls>();
-            if (helm != null && player.GetStandingOnShip() == _ship) helm.Interact(player, false, false);
+            if (standing) helm.Interact(player, false, false);
+            else if (Time.time - _boardedAt > ReboardSeconds)
+            {
+                var teleport = ModBootstrap.GetService<ITeleportService>();
+                if (teleport != null) Board(teleport, helm);
+            }
         }
     }
 }
