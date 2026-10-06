@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-10-06 at `1.0.17-run.2026-10-06b`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-10-06 at `1.0.17-run.2026-10-06c`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -19,6 +19,10 @@ Everything below is what that file tells it.
 
 ## Where things stand
 
+- **2026-10-06: the first self-check ever read** (the Mac, `...06`): 47 OK, 1 FALLBACK (the Deep North has no
+  tale, expected), 1 MISSING, a real Act II stall fixed in `...06c`. Haldor asked for `TrophyForestTroll`, but
+  trolls drop only `TrophyFrostTroll`; both items exist and both read "Troll Trophy". **Lesson:** an item that
+  exists is not an item anyone can get. The drop-table check caught what the name check passed.
 - **2026-10-06: a laptop layout, clickable cards, and the lobby after the intro** (`...06b`,
   `saga/laptop-keys`). The owner's MacBook could not choose boons: no numpad, and no Mac has `Insert`.
   `runKeyLayout: "laptop"` moves every saga key onto letters Valheim leaves free (pure `KeyLayout`, tested

@@ -17,6 +17,18 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-10-06 - TASK: Haldor takes the troll trophy trolls drop (`1.0.17-run.2026-10-06c`)
+
+**Staged.** As below (full install if the 1.0.17 one is not done yet, else `-ModOnly`). Badge `...06c · DEV`.
+Includes `...06b`'s checks.
+
+- Self-check: `Haldor's troll head: TrophyFrostTroll, chance 0.5 per kill` is now **OK** (it was MISSING).
+- In Act II, a troll's "Troll Trophy" given to Haldor puts the Elder's altar on the map.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-10-06 - TASK: clickable cards, the lobby after the intro, a laptop layout (`1.0.17-run.2026-10-06b`)
 
 **Staged.** If the FULL install below is done, `git pull` and `.\dist\windows\Install-Mod.ps1 -ModOnly`;
