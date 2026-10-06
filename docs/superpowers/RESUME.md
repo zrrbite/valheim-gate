@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, restructured and last updated 2026-10-06 at `1.0.17-run.2026-10-06f`. This is the
+Written 2026-08-23, restructured and last updated 2026-10-06 at `1.0.17-run.2026-10-06g`. This is the
 "pick it back up without re-deriving anything" page: where the work stands, the loop it moves in, the
 landmines, and the decisions not to re-open. Its history (the dated status bullets, the alpha era, the
 "Done" write-ups) moved verbatim to [`RESUME-history.md`](RESUME-history.md) on 2026-10-06.
@@ -23,7 +23,7 @@ block first, then the numbered items that did not match.
 
 ## Where things stand
 
-**2026-10-06, `1.0.17-run.2026-10-06f` (dev)**, on `feature/run-mode`: not merged, deliberately, since
+**2026-10-06, `1.0.17-run.2026-10-06g` (dev)**, on `feature/run-mode`: not merged, deliberately, since
 the mode is still being tuned in play. Valheim 1.0.17, Unity 6000.0.75.
 
 - **Seven acts, all built and voiced, and the saga ends at Fader** (the `runFinalBossKey` default since
@@ -34,12 +34,16 @@ the mode is still being tuned in play. Valheim 1.0.17, Unity 6000.0.75.
   [story bible](specs/2026-08-27-story-bible.md), which wins.
 - **The charred one stays for his last line after a won saga** (`...06f`; the owner: "Someone might find
   him"). His spot is saved on the character until the line is heard (`Afterword`, `TickAfterword`).
+- **Temporary test keys for the MacBook** (`...06g`; the owner has no mouse there, so "cant fight or do
+  anything complex"). Step 1 is `↓`, a dev "go to" that hops between the saga's places (`DevTour`,
+  `DEV-MODE.md`). More follow one at a time: a ship at your feet, then the act's god beside you. All are
+  tagged `MACBOOK-TEMP`, and come out with one grep once testing is back at a full keyboard.
 - **Nothing built on 2026-10-05 or 2026-10-06 has been played.** The owner tests from the
   [home test plan](2026-10-06-home-test-plan.md); the per-build checks are the TASKs atop `HANDOFF_WINDOWS.md`.
 - **First read of any build: `grep "Saga self-check" Player.log`** (OK / FALLBACK / MISSING, worst
   first). Its first reading found Haldor asking for a trophy no troll drops (fixed in `...06c`), so since
   `...06d` a line, **Quest items can be got**, checks that everything the saga asks for can be had.
-- **Machines:** the Mac is current (`...06f`, laptop keys). Windows needs a **full** install for 1.0.17.
+- **Machines:** the Mac is current (`...06g`, laptop keys). Windows needs a **full** install for 1.0.17.
   The Steam Deck has an old patched assembly.
 - **Written up where it lives:** laptop keys and clickable cards (CLAUDE.md); the hall
   ([spec](specs/2026-10-06-the-hall-design.md), [slices 0–1 plan](plans/2026-10-06-the-hall-slices-0-1.md));

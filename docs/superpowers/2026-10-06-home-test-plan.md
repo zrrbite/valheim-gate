@@ -31,7 +31,7 @@ last build you played, and undoes all of it. To install one: `git checkout <tag>
    - Nothing is needed to reach Acts VI and VII: since `...06d` the saga ends at **Fader** by default. If
      your config still has `"runFinalBossKey": "defeated_goblinking"` from before, delete that line.
    - Leave `runKeyLayout` out: Windows keeps the numpad.
-3. **Launch.** The main menu's version line has a gold **`SAGA v1.0.17-run.2026-10-06f · DEV`** under it.
+3. **Launch.** The main menu's version line has a gold **`SAGA v1.0.17-run.2026-10-06g · DEV`** under it.
    Anything else means the wrong build is installed.
 
 ## 1. The first minute of a run (10 minutes)
@@ -188,7 +188,7 @@ Make a **new character** for this part: three of these checks only happen on a f
 
 ## 6. On the MacBook (whenever you have it)
 
-41. The Mac already has `1.0.17-run.2026-10-06c` and `"runKeyLayout": "laptop"` (the old config is
+41. The Mac already has `1.0.17-run.2026-10-06g` and `"runKeyLayout": "laptop"` (the old config is
     beside it as `.bak-2026-10-06`).
     - **Choosing:** `J K L` choose on every card (`H U I O` for the fourth to seventh lines), or press
       TAB and click.
@@ -196,6 +196,9 @@ Make a **new character** for this part: three of these checks only happen on a f
     - **The HUD names every key**, so you don't need to learn them first.
     - **Dev keys** are listed in `DEV-MODE.md`'s laptop table: `Z`, `0`, `B`, `Backspace`.
     - `End` is fn + →; F1 is fn + F1.
+    - **Go to (temporary, `...06g`):** `↓` hops to the next of the saga's places, Shift + `↓` back one.
+      The message says where (`DEV: → Haldor's camp (2 of 5)`). With `0` (god mode) and fn + Backspace
+      (slay within 10 m), most of the plan can be walked without a mouse.
 
 ## What to bring back
 
