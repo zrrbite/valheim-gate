@@ -19,6 +19,11 @@ Everything below is what that file tells it.
 
 ## Where things stand
 
+- **Nothing built on 2026-10-05 has been played** (`...05f` to `...05q`: Acts III–VII voiced, the saga's
+  reward, the self-check, ship fittings, the winds). The owner tests at home from one ordered plan in
+  their todo repo (`~/Development/todo/TODO.md`, section "Valheim: The Saga"); the per-build checks are
+  the TASKs in `HANDOFF_WINDOWS.md`. **Start from what that test brings back** (self-check block,
+  errors, feel of fitting prices, the 40° cone, the horn's 2 and 10 minutes) before Act VIII.
 - **Going back (owner, 2026-10-05): every major build gets a named, annotated milestone tag** on its
   `build:` commit (the one carrying the staged Windows DLL), so any of them can be checked out and
   installed as-is. `git tag -l 'saga/*' -n1` lists them. Today's: `saga/before-2026-10-05` (the last
@@ -39,7 +44,7 @@ Everything below is what that file tells it.
   off the map pins every few seconds rather than remembered at pin time — the saga pins once, so a
   resumed run never re-pins.
 - **2026-10-05, ship fittings** (`...05p`, `saga/ship-fittings`). Owner's aim: travelling by boat to a
-  god in another biome should be easy. Gold at any helm (Shift+E, card, Keypad 1–3) buys **Sail**
+  god in another biome should be easy. Gold at any helm (Shift+E, card, Keypad 1–4 once the horn joined in `...05q`) buys **Sail**
   I–III (+15/30/50% sail and oars), **Hull** I–III (slightly/plainly/very resistant) and, from Act
   VII only, **Fire-tar** (`m_ashlandsReady`). They follow the captain: the run owns them, every loaded
   ship wears them, restored at run end. Unlocked by building any ship (or the raft step). Pure
