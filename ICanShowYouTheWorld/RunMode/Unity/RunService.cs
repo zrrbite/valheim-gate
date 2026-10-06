@@ -7605,6 +7605,7 @@ namespace ICanShowYouTheWorld.RunMode
             CheckSpeakersAndTraders();
             CheckGods();
             CheckSagaItems();
+            CheckItemsObtainable();
             CheckKeys();
             ValidateClassLadder();
             // Thor's bow's flashes: every element's, so a missing fire or frost burst is in the log
@@ -11250,6 +11251,65 @@ namespace ICanShowYouTheWorld.RunMode
                                      "never found or pinned: no Waystone, no god's wind, and an altar step stalls");
             }
             catch (Exception ex) { LogOnce("self-check-gods", ex); }
+        }
+
+        /// <summary>
+        /// Every item the saga asks for must be something the game, or the saga itself, provides (2026-10-06).
+        /// The first self-check ever read found Haldor asking for TrophyForestTroll: an item that exists, so the
+        /// name check passed, and that no troll drops. See <see cref="ItemSources"/> for the decision and
+        /// <see cref="ItemSourceScan"/> for what counts as a source.
+        /// </summary>
+        private void CheckItemsObtainable()
+        {
+            if (_selfCheck == null) return;
+            try
+            {
+                var scene = ZNetScene.instance;
+                var odb = ObjectDB.instance;
+                if (scene == null || odb == null)
+                {
+                    _selfCheck.Fallback("Quest items can be got", "the game was not ready - not checked this run");
+                    return;
+                }
+
+                // What the saga itself hands out counts too: its own items and every quest reward.
+                var produced = ItemSourceScan.Produced(scene, odb);
+                foreach (var def in SagaItems.All) produced.Add(def.PrefabName);
+                foreach (var rewards in QuestRewards.Values)
+                    foreach (var (prefab, _) in rewards) produced.Add(prefab);
+
+                var asked = new List<AskedItem>();
+                foreach (var def in AllChallengeDefinitions())
+                {
+                    foreach (var (param, _, label) in CollectClauses(def))
+                        asked.Add(new AskedItem { Name = param, Who = $"\"{label}\"" });
+                    if (!string.IsNullOrEmpty(def.RequiresItem))
+                        asked.Add(new AskedItem { Name = def.RequiresItem, Who = $"\"{def.Display}\"" });
+                }
+                foreach (var (who, token, _) in QuestPrices()) asked.Add(new AskedItem { Name = token, Who = who });
+                asked.Add(new AskedItem { Name = HaldorVoice.TrophyPrefab, Who = "Haldor" });
+                asked.Add(new AskedItem { Name = "FlametalNew|Flametal", Who = "the charred one's pyre" });
+                foreach (var recipe in SagaRecipes.All)
+                    foreach (var (prefab, _) in recipe.Resources ?? new (string, int)[0])
+                        asked.Add(new AskedItem { Name = prefab, Who = $"the {recipe.ResultPrefab} recipe" });
+                foreach (var (result, bill, _) in SagaItems.AnvilCombines)
+                    foreach (var (item, _) in bill)
+                        asked.Add(new AskedItem { Name = item, Who = $"the Storm-Anvil's {result}" });
+
+                var tokens = ItemSourceScan.TokenTable(odb);
+                IEnumerable<string> Resolve(string name) =>
+                    name.StartsWith("$") ? (tokens.TryGetValue(name, out var names) ? names : new List<string>())
+                                         : new List<string> { name };
+
+                var lost = ItemSources.Unobtainable(asked, produced, Resolve);
+                int distinct = asked.Select(a => a.Name).Where(n => !string.IsNullOrEmpty(n)).Distinct().Count();
+                Debug.Log($"[ICanShowYouTheWorld] Item sources: {produced.Count} items the game or the saga provides; " +
+                          $"{distinct} asked for, {lost.Count} that nothing provides.");
+                _selfCheck.AllOf("Quest items can be got", distinct,
+                                 lost.Select(l => $"{l.Name} (asked by {l.Who})").ToList(),
+                                 "nothing in the game drops, crafts, sells or yields them, so those steps can never finish");
+            }
+            catch (Exception ex) { LogOnce("self-check-sources", ex); }
         }
 
         /// <summary>

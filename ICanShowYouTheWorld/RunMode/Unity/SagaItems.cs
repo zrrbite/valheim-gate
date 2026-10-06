@@ -1906,7 +1906,7 @@ namespace ICanShowYouTheWorld.RunMode
         /// 2. The shield is listed first anyway, belt and braces: it is the larger bill, so it gets
         ///    first refusal and cannot be starved by the smaller one.
         /// </remarks>
-        private static readonly (string result, (string item, int amount)[] bill, int lights)[] AnvilCombines =
+        internal static readonly (string result, (string item, int amount)[] bill, int lights)[] AnvilCombines =
         {
             (StormwardPrefab, new[]
             {

@@ -39,6 +39,7 @@ static class TestMain
         ReviewFollowUpTests.Run();
         ShipFittingsTests.Run();
         KeyLayoutTests.Run();
+        ItemSourcesTests.Run();
         Console.WriteLine(Check.Failures == 0 ? "ALL PASS" : $"{Check.Failures} FAILURES");
         return Check.Failures == 0 ? 0 : 1;
     }
