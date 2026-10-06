@@ -31,7 +31,8 @@ namespace ICanShowYouTheWorld.RunMode
             ("Dragonqueen", "Moder",     "defeated_dragon"),
             ("GoblinKing",  "Yagluth",   "defeated_goblinking"),
             // Valheim's own order continues: the Queen, Fader, and since 1.0 the Deep North's boss.
-            // Acts past Yagluth are only reachable when runFinalBossKey (config) is moved past him.
+            // The run ends at runFinalBossKey (config), Fader by default since 2026-10-06. The Deep North is
+            // the epilogue (decision #3, reaffirmed 2026-10-06), reachable only with the key moved past Fader.
             //
             // The Deep North's names were read out of 1.0.16's asset bundles on 2026-10-06, along
             // with the Queen's and Fader's keys (which match). The Frozen King is fought in three
@@ -45,7 +46,9 @@ namespace ICanShowYouTheWorld.RunMode
         };
 
         /// <summary>Used when <see cref="IConfiguration.RunFinalBossKey"/> names something that isn't a boss.</summary>
-        private const string DefaultFinalBossKey = "defeated_goblinking";
+        // Fader since 2026-10-06 (owner): Act VII is the written ending, and Acts VI-VII were voiced the
+        // day before. It was Yagluth while five acts were the whole saga.
+        private const string DefaultFinalBossKey = "defeated_fader";
 
         /// <summary>
         /// Boon offered in slot 1 of a fresh run's FIRST offer. Stamina is what an early Valheim
@@ -10143,7 +10146,7 @@ namespace ICanShowYouTheWorld.RunMode
         // --- Misc helpers ---
 
         /// <summary>
-        /// The configured final-boss key if it names one of the five bosses, otherwise Yagluth.
+        /// The configured final-boss key if it names a boss in the table, otherwise Fader.
         /// A typo in the config must not brick the mode: with an unknown key nothing would ever
         /// match in <see cref="PollBosses"/> and the run could never finish, so warn and fall back.
         /// </summary>
@@ -10153,7 +10156,7 @@ namespace ICanShowYouTheWorld.RunMode
             if (Bosses.Any(b => b.defeatKey == key)) return key;
 
             Announce($"runFinalBossKey '{key}' is not a known boss key — " +
-                     $"using {DefaultFinalBossKey} (Yagluth) for this run.");
+                     $"using {DefaultFinalBossKey} (Fader) for this run.");
             return DefaultFinalBossKey;
         }
 
@@ -10823,10 +10826,9 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ActDefinition
             {
-                // VI–VIII are THIN, as III–V were before anyone had played them (owner's rule: thin
-                // is honest, absent is a bug). VI and VII use names the game is known to have and
-                // the validator checks them at every run start. Reachable only when runFinalBossKey
-                // (config) is moved past Yagluth.
+                // VI and VII were voiced on 2026-10-05 and are reached by default since Fader became the
+                // final boss (2026-10-06). VIII, the Deep North, is the epilogue's stand-in, reached only
+                // with runFinalBossKey moved past Fader.
                 Id = "act6", Numeral = "VI", Title = "A Light to Carry",
                 Epigraph = "The dvergr borrow light and give it back. Learn how.",
                 RavenLine = "They keep it in lanterns. Borrowed, they say. " +
@@ -12302,7 +12304,7 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 Id = "bf-find", MainQuest = true, Track = HuntTrackId, Kind = ChallengeKind.DiscoverLocation, Param = "GDKing",
                 Target = 1, Display = "Find the Elder's altar",
-                RewardText = "Bronze arrows and mead — the seeds are the troll's to give",
+                RewardText = "Bronze arrows and mead",
                 Hint = "Follow where the stolen light was carried \u2014 the oldest trees feed first. A ring of stone, guarded.",
             },
             new ChallengeDefinition

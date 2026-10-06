@@ -339,7 +339,8 @@ namespace ICanShowYouTheWorld.Core
         [SerializeField] private float runBoonOfferTimeoutSeconds = 45f;
         [SerializeField] private float runBossHpPerBoon = 0.12f;
         [SerializeField] private float runBossHpPerHeat = 0.03f;
-        [SerializeField] private string runFinalBossKey = "defeated_goblinking";
+        // The run ends when this boss falls. Fader since 2026-10-06: Act VII is the saga's written ending.
+        [SerializeField] private string runFinalBossKey = "defeated_fader";
         // "numpad" (the default) or "laptop": the saga's keys for a keyboard with no numpad. See RunMode/KeyLayout.cs.
         [SerializeField] private string runKeyLayout = "numpad";
 
