@@ -17,6 +17,19 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-10-06 - TASK: a temporary dev ship (`1.0.17-run.2026-10-06h`)
+
+**Staged.** Badge `...06h · DEV`. Mod-only is enough once the full 1.0.17 install (`...06`) is done.
+
+- Dev mode on, in a run: Shift + `Keypad .` (Shift + `B` in the laptop layout) builds a Karve on the
+  nearest deep water and puts you at its helm (`DEV: at the helm.`). From inland, it first teleports you
+  to the shore (`DEV: the nearest sea is N m away`). Bare `Keypad .` is still the deer's light.
+  Temporary, tagged `MACBOOK-TEMP`.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-10-06 - TASK: a temporary dev "go to" key (`1.0.17-run.2026-10-06g`)
 
 **Staged.** Badge `...06g · DEV`. Mod-only is enough once the full 1.0.17 install (`...06`) is done.
