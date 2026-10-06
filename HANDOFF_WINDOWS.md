@@ -17,6 +17,19 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-10-06 - TASK: the charred one stays for his last line (`1.0.17-run.2026-10-06f`)
+
+**Staged.** As below. Badge `...06f · DEV`.
+
+- Win a run at Fader, then sail back to the Ashlands landing. The charred one waits there, with no map pin;
+  he greets "Go home." and, spoken to, says his last line. Reload: he's gone after that, but still waits if
+  you had not been back yet. `Player.log`: "The charred one stays at the landing", then "has said his last line".
+- Start a new saga: he does not appear.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-10-06 - TASK: four reward and hint lines made true (`1.0.17-run.2026-10-06e`)
 
 **Staged.** As below. Badge `...06e · DEV`. Includes everything from `...06b`.

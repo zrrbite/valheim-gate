@@ -1,7 +1,7 @@
 # Home test plan: everything from 2026-10-05 and 2026-10-06
 
 For the owner, at home on the Windows machine. It covers every build from `1.0.16-run.2026-10-05`
-to `1.0.17-run.2026-10-06e`: about 85 commits, **none of which has been played**. It is in the order
+to `1.0.17-run.2026-10-06f`: about 85 commits, **none of which has been played**. It is in the order
 that tests the most with the least: setup, then a new character through Act I, then act by act.
 
 Each item says **do**, then what you should **see**. When something does not match, note the item
@@ -31,7 +31,7 @@ last build you played, and undoes all of it. To install one: `git checkout <tag>
    - Nothing is needed to reach Acts VI and VII: since `...06d` the saga ends at **Fader** by default. If
      your config still has `"runFinalBossKey": "defeated_goblinking"` from before, delete that line.
    - Leave `runKeyLayout` out: Windows keeps the numpad.
-3. **Launch.** The main menu's version line has a gold **`SAGA v1.0.17-run.2026-10-06e · DEV`** under it.
+3. **Launch.** The main menu's version line has a gold **`SAGA v1.0.17-run.2026-10-06f · DEV`** under it.
    Anything else means the wrong build is installed.
 
 ## 1. The first minute of a run (10 minutes)
@@ -179,6 +179,12 @@ Make a **new character** for this part: three of these checks only happen on a f
     character>**: the myth up to your last act, your deeds under each, and a reckoning. Nothing from an
     act past the one you ended in. The lobby then shows **Read your saga**.
     Remove that `runFinalBossKey` line afterwards, so the saga ends at Fader again.
+
+40b. **The charred one waits for his last line** (`...06f`). After winning at Fader, go back to the landing
+    in the Ashlands where you first came ashore. There's no map pin: you have to find him.
+    **See:** he is standing there, greets you with "Go home.", and when spoken to says "So that is where
+    it all went…". Quit and reload: he's gone. If you haven't been back before reloading, he is still
+    waiting there. `Select-String Player.log -Pattern "charred one stays|last line"`.
 
 ## 6. On the MacBook (whenever you have it)
 
