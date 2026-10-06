@@ -1697,6 +1697,14 @@ namespace ICanShowYouTheWorld.RunMode
             GUI.contentColor = RunTheme.TextMuted;
             GUILayout.Label("  Any helm takes gold: [Shift + E] at the helm. What you fit goes to every ship you sail.",
                 RunTheme.Small);
+            if (_concrete.WindHornOwned)
+            {
+                float left = _concrete.WindHornCooldown;
+                GUILayout.Label(left <= 0f
+                    ? "  Wind-horn: ready. [\u2191] at sea."
+                    : $"  Wind-horn: {Mathf.CeilToInt(left / 60f)} min until it has breath again.", RunTheme.Small);
+            }
+            GUILayout.Label("  With a god on the map, a prow pointed at it brings the wind round.", RunTheme.Small);
             GUI.contentColor = Color.white;
         }
 
@@ -2359,11 +2367,15 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 if (!h.Def.IsPassive) actives.Add(h);
             }
-            if (actives.Count == 0) return 0f;
+
+            // The Wind-horn is no boon - it is bought at the helm - but it is pressed like one, so it
+            // sits at the end of the same bar.
+            bool horn = _concrete != null && _concrete.WindHornOwned;
+            if (actives.Count == 0 && !horn) return 0f;
 
             const float slotW = 116f;
             const float slotH = 20f;
-            float totalW = actives.Count * slotW;
+            float totalW = (actives.Count + (horn ? 1 : 0)) * slotW;
             float x = strip.x + (strip.width - totalW) * 0.5f;
             float y = strip.yMax + 2f;
 
@@ -2407,7 +2419,24 @@ namespace ICanShowYouTheWorld.RunMode
                 GUI.Label(slot, $"{key} {h.Def.Display} {state}".TrimEnd(), style);
             }
 
+            if (horn) DrawHornSlot(new Rect(x + actives.Count * slotW, y, slotW - 4f, slotH));
+
             return slotH + 4f;
+        }
+
+        /// <summary>The Wind-horn's slot on the ability bar: the same look as a boon's, read from the service.</summary>
+        private void DrawHornSlot(Rect slot)
+        {
+            float left = _concrete.WindHornCooldown;
+            bool ready = left <= 0f;
+
+            Color bg = ready
+                ? new Color(RunTheme.CompleteGreen.r, RunTheme.CompleteGreen.g, RunTheme.CompleteGreen.b, 0.35f)
+                : new Color(RunTheme.PanelFill.r, RunTheme.PanelFill.g, RunTheme.PanelFill.b, 0.9f);
+            GUI.DrawTexture(slot, RunTheme.Solid(bg));
+            if (!ready) RunTheme.Radialish(slot, Mathf.Clamp01(left / SagaWind.HornCooldownSeconds));
+            RunTheme.Frame(slot, ready ? RunTheme.AccentGold : RunTheme.PanelBorder);
+            GUI.Label(slot, ready ? "[\u2191] Wind-horn" : $"[\u2191] Wind-horn {left:0}s", ready ? RunTheme.Ready : RunTheme.Small);
         }
 
         /// <summary>
@@ -2995,9 +3024,11 @@ namespace ICanShowYouTheWorld.RunMode
             GUI.contentColor = Color.white;
 
             GUILayout.BeginHorizontal();
+            // Up to four (Sail, Hull, Wind-horn, Fire-tar), so the columns share the width by count.
+            float column = OfferWidth / Mathf.Max(3, card.Count) - 12f;
             for (int i = 0; i < card.Count; i++)
             {
-                GUILayout.BeginVertical(GUILayout.Width(OfferWidth / 3f - 12f));
+                GUILayout.BeginVertical(GUILayout.Width(column));
 
                 GUILayout.BeginHorizontal();
                 GUI.contentColor = RunTheme.AccentGold;

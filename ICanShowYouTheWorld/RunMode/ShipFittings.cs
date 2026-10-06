@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace ICanShowYouTheWorld.RunMode
 {
-    public enum FittingKind { Sail, Hull, FireTar }
+    public enum FittingKind { Sail, Hull, FireTar, WindHorn }
 
     /// <summary>What a run has fitted. Belongs to the RUN, not to a ship - see <see cref="ShipFittings"/>.</summary>
     public sealed class ShipFittingState
@@ -11,6 +11,7 @@ namespace ICanShowYouTheWorld.RunMode
         public int Sail;
         public int Hull;
         public int FireTar;
+        public int WindHorn;
     }
 
     /// <summary>One line on the helm's card: the next tier of one fitting, and its price.</summary>
@@ -45,11 +46,13 @@ namespace ICanShowYouTheWorld.RunMode
         private static readonly int[] SailPrices = { 50, 150, 300 };
         private static readonly int[] HullPrices = { 50, 150, 300 };
         public const int FireTarPrice = 400;
+        public const int WindHornPrice = 200;
 
         private static readonly float[] SailBoosts = { 1f, 1.15f, 1.30f, 1.50f };
         private static readonly float[] HullFactors = { 1f, 0.75f, 0.5f, 0.25f };
 
-        public static int MaxTier(FittingKind kind) => kind == FittingKind.FireTar ? 1 : 3;
+        public static int MaxTier(FittingKind kind) =>
+            kind == FittingKind.FireTar || kind == FittingKind.WindHorn ? 1 : 3;
 
         public static int Tier(ShipFittingState state, FittingKind kind)
         {
@@ -58,6 +61,7 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 case FittingKind.Sail: return state.Sail;
                 case FittingKind.Hull: return state.Hull;
+                case FittingKind.WindHorn: return state.WindHorn;
                 default: return state.FireTar;
             }
         }
@@ -71,6 +75,9 @@ namespace ICanShowYouTheWorld.RunMode
         public static float HullDamageFactor(ShipFittingState state) => HullDamageFactor(state?.Hull ?? 0);
 
         public static bool AshlandsReady(ShipFittingState state) => state != null && state.FireTar >= 1;
+
+        /// <summary>The horn is a thing you carry and blow (SagaWind), not a number on the ship.</summary>
+        public static bool HasWindHorn(ShipFittingState state) => state != null && state.WindHorn >= 1;
 
         /// <summary>
         /// The next tier of each fitting not yet at its top. Fire-tar only once
@@ -105,6 +112,18 @@ namespace ICanShowYouTheWorld.RunMode
                 });
             }
 
+            // Moder's wind, before Moder: the game's own tailwind for two minutes, blown with the up
+            // arrow at sea. Not named for her - a card naming the fourth god in Act II would spoil her.
+            if (state.WindHorn < MaxTier(FittingKind.WindHorn))
+            {
+                offers.Add(new ShipFittingOffer
+                {
+                    Kind = FittingKind.WindHorn, Tier = 1, Price = WindHornPrice,
+                    Name = "Wind-horn",
+                    Effect = "[\u2191] at sea: the wind at your back for two minutes",
+                });
+            }
+
             if (fireTarTold && state.FireTar < MaxTier(FittingKind.FireTar))
             {
                 offers.Add(new ShipFittingOffer
@@ -122,11 +141,12 @@ namespace ICanShowYouTheWorld.RunMode
         public static ShipFittingState Bought(ShipFittingState state, FittingKind kind)
         {
             var s = state ?? new ShipFittingState();
-            var next = new ShipFittingState { Sail = s.Sail, Hull = s.Hull, FireTar = s.FireTar };
+            var next = new ShipFittingState { Sail = s.Sail, Hull = s.Hull, FireTar = s.FireTar, WindHorn = s.WindHorn };
             switch (kind)
             {
                 case FittingKind.Sail: next.Sail = Math.Min(next.Sail + 1, MaxTier(kind)); break;
                 case FittingKind.Hull: next.Hull = Math.Min(next.Hull + 1, MaxTier(kind)); break;
+                case FittingKind.WindHorn: next.WindHorn = Math.Min(next.WindHorn + 1, MaxTier(kind)); break;
                 default: next.FireTar = Math.Min(next.FireTar + 1, MaxTier(kind)); break;
             }
             return next;
@@ -139,6 +159,7 @@ namespace ICanShowYouTheWorld.RunMode
             var parts = new List<string>();
             if (state.Sail > 0) parts.Add("Sail " + Roman(state.Sail));
             if (state.Hull > 0) parts.Add("Hull " + Roman(state.Hull));
+            if (state.WindHorn > 0) parts.Add("Wind-horn");
             if (state.FireTar > 0) parts.Add("Fire-tar");
             return string.Join(" · ", parts.ToArray());
         }

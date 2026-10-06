@@ -50,10 +50,14 @@ namespace ICanShowYouTheWorld.RunMode
         public int shipSail;
         public int shipHull;
         public int shipFireTar;
+        public int shipWindHorn;
 
         /// <summary>Whether the raven has said the helm takes gold, and whether Fire-tar has been told.</summary>
         public bool shipFittingsTold;
         public bool shipFireTarTold;
+
+        /// <summary>Whether the raven has said the god's wind blows (said the first time it does).</summary>
+        public bool godWindTold;
 
         /// <summary>Everything said this run, one packed string per line. See SagaTranscript.</summary>
         public List<string> transcript;

@@ -2347,6 +2347,10 @@ namespace ICanShowYouTheWorld.RunMode
             _fittingsTold = false;
             _fireTarTold = false;
             _fittingCardOpen = false;
+            _godWindTold = false;
+            _hornBlownAt = float.NegativeInfinity;
+            _actAltarAt = null;
+            _altarForAct = -1;
             SagaTranscript.Clear();
             _splitLabels.Clear();
                 _splitTimes.Clear();
@@ -2681,6 +2685,7 @@ namespace ICanShowYouTheWorld.RunMode
             HandleHelmInput();
             HandleBoonOfferInput();
             HandleBoonActivationInput();
+            HandleHornInput();
             HandleDevInput();
             TickDevClock();
 
@@ -2699,6 +2704,7 @@ namespace ICanShowYouTheWorld.RunMode
                 if (_active) _recipes.Ensure(RecipeStepDone, AnnounceRecipe, _classId);
                 if (_active) _dreams.Ensure();
                 if (_active) PollShipwright();
+                if (_active) PollWinds();
             }
 
             if (!_active) return;
@@ -3617,6 +3623,9 @@ namespace ICanShowYouTheWorld.RunMode
             // before one is chosen, but a card that is being read should not have its keys fire
             // anything else in the same press.
             if (_classChoicePending) return;
+
+            // Nor while the helm's card is up: its fourth line (Fire-tar) is Keypad4, Second Wind's key.
+            if (_fittingCardOpen) return;
 
             // A modifier held, in a dev session, means the tester is addressing the dev layer.
             // Keypad + and - are the player's (Mending Hands and Farsight since 2026-09-27; Shaman's
@@ -6568,7 +6577,7 @@ namespace ICanShowYouTheWorld.RunMode
 
         private const float FittingCardSeconds = 30f;
 
-        private static readonly KeyCode[] FittingCardKeys = { KeyCode.Keypad1, KeyCode.Keypad2, KeyCode.Keypad3 };
+        private static readonly KeyCode[] FittingCardKeys = { KeyCode.Keypad1, KeyCode.Keypad2, KeyCode.Keypad3, KeyCode.Keypad4 };
 
         private const string FittingsLine =
             "A keel is a promise, and gold keeps it. Any helm will take coin now for a stronger sail and a " +
@@ -6739,6 +6748,142 @@ namespace ICanShowYouTheWorld.RunMode
             if (_fittingCard.Count == 0) _fittingCardOpen = false;
         }
 
+        // --- Wind for the voyage: the god's wind and the Wind-horn (owner, 2026-10-05) ---
+
+        private const string GodWindLine =
+            "The sky wants that god reached. Point your prow at it, and the wind will come round.";
+
+        private readonly SagaWinds _winds = new SagaWinds();
+
+        /// <summary>Where this act's god's altar stands, once the MAP shows it; see ActAltarOnMap.</summary>
+        private Vector3? _actAltarAt;
+        private int _altarForAct = -1;
+        private float _altarLookedAt = float.NegativeInfinity;
+
+        private bool _godWindTold;
+        private float _hornBlownAt = float.NegativeInfinity;
+
+        /// <summary>
+        /// The act's god's altar, if a boss pin on the map marks it - null otherwise.
+        /// </summary>
+        /// <remarks>
+        /// Read off the MAP, not remembered from the moment the saga pinned it: the saga pins once, at
+        /// the discovery step, and a run resumed later in the act (or after a restart) never pins
+        /// again, so a remembered position would be gone while the pin is plainly still there. Any
+        /// boss pin within a few metres of an instance of this act's altar counts - the saga's own, or
+        /// the Vegvisir's if the player read one. Either way it is on the map, so the wind can never
+        /// point anywhere the player has not already been shown. Looked for every few seconds until
+        /// found, then kept for the act.
+        /// </remarks>
+        private Vector3? ActAltarOnMap()
+        {
+            if (_altarForAct != _actIndex)
+            {
+                _altarForAct = _actIndex;
+                _actAltarAt = null;
+                _altarLookedAt = float.NegativeInfinity;
+            }
+            if (_actAltarAt.HasValue || Time.time - _altarLookedAt < 5f) return _actAltarAt;
+            _altarLookedAt = Time.time;
+
+            try
+            {
+                if (_actIndex < 0 || _actIndex >= _acts.Count) return null;
+                string key = _acts[_actIndex].BossDefeatKey;
+                var boss = Bosses.FirstOrDefault(b => b.defeatKey == key);
+                var zone = ZoneSystem.instance;
+                if (boss.locName == null || zone == null || Minimap.m_pins == null) return null;
+
+                foreach (var pin in Minimap.m_pins)
+                {
+                    if (pin == null || pin.m_type != Minimap.PinType.Boss) continue;
+                    if (!zone.FindClosestLocation(boss.locName, pin.m_pos, out var altar)) continue;
+                    var gap = altar.m_position - pin.m_pos;
+                    gap.y = 0f;
+                    if (gap.magnitude > 60f) continue;
+                    _actAltarAt = altar.m_position;
+                    Debug.Log($"[ICanShowYouTheWorld] The god's wind knows the way: {boss.locName} at {altar.m_position:0}.");
+                    break;
+                }
+            }
+            catch (Exception ex) { LogOnce("altar-on-map", ex); }
+
+            return _actAltarAt;
+        }
+
+        /// <summary>The horn is owned. For the HUD's ability bar.</summary>
+        public bool WindHornOwned => _active && ShipFittings.HasWindHorn(_fittings);
+
+        /// <summary>Seconds until the horn can be blown again; 0 when ready.</summary>
+        public float WindHornCooldown => SagaWind.HornCooldownLeft(Time.time, _hornBlownAt);
+
+        /// <summary>
+        /// Once a second: the god's wind on while the ship the player is aboard points at the act's
+        /// pinned altar, off otherwise. The raven says so the first time it blows.
+        /// </summary>
+        private void PollWinds()
+        {
+            try
+            {
+                var player = Player.m_localPlayer;
+                if (player == null) return;
+
+                var ship = Ship.GetLocalShip();
+                bool blows = false;
+                Vector3? altar = ship != null ? ActAltarOnMap() : null;
+                if (ship != null && altar.HasValue)
+                {
+                    Vector3 prow = ship.transform.forward;
+                    Vector3 toAltar = altar.Value - ship.transform.position;
+                    blows = SagaWind.GodWindBlows(true, true,
+                        SagaWind.Heading(prow.x, prow.z), SagaWind.Heading(toAltar.x, toAltar.z));
+                }
+
+                _winds.SetGodWind(player, blows);
+
+                if (blows && !_godWindTold)
+                {
+                    _godWindTold = true;
+                    if (!TrySpawnRaven("godswind", GodWindLine)) Message(GodWindLine);
+                    Debug.Log("[ICanShowYouTheWorld] The god's wind blows for the first time this run.");
+                    SaveState();
+                }
+            }
+            catch (Exception ex) { LogOnce("winds", ex); }
+        }
+
+        /// <summary>
+        /// The up arrow blows the Wind-horn: at sea only, then ten minutes to recover. Not while chat
+        /// has the keyboard - the up arrow is chat's history key.
+        /// </summary>
+        private void HandleHornInput()
+        {
+            if (!Input.GetKeyDown(KeyCode.UpArrow)) return;
+            if (!ShipFittings.HasWindHorn(_fittings)) return;
+            try { if (Chat.instance != null && Chat.instance.HasFocus()) return; } catch { }
+
+            var player = Player.m_localPlayer;
+            if (player == null) return;
+
+            if (Ship.GetLocalShip() == null)
+            {
+                Message("The horn calls a wind for a sail. Blow it at sea.");
+                return;
+            }
+
+            float left = WindHornCooldown;
+            if (left > 0f)
+            {
+                Message($"The horn has no breath in it yet. {Mathf.CeilToInt(left / 60f)} more minutes.");
+                return;
+            }
+
+            _hornBlownAt = Time.time;
+            _winds.BlowHorn(player);
+            Message("The horn sounds, and the wind comes round behind you.");
+            Debug.Log("[ICanShowYouTheWorld] The Wind-horn blown: two minutes of wind.");
+        }
+
         /// <summary>
         /// The myth cut into its tales, read once from the DLL. Null when it is not embedded.
         /// </summary>
@@ -6794,6 +6939,7 @@ namespace ICanShowYouTheWorld.RunMode
             _recipes.Remove();
             _shipwright.Restore();
             _fittingCardOpen = false;
+            _winds.Clear(Player.m_localPlayer);
             CreatureDressing.Forget();
             _corpseAt = null;
 
@@ -9536,6 +9682,10 @@ namespace ICanShowYouTheWorld.RunMode
             _fittingsTold = false;
             _fireTarTold = false;
             _fittingCardOpen = false;
+            _godWindTold = false;
+            _hornBlownAt = float.NegativeInfinity;
+            _actAltarAt = null;
+            _altarForAct = -1;
             _splitLabels.Clear();
             _splitTimes.Clear();
             _lights?.Restore(s.lightsTaken, s.lightsLost);
@@ -9547,7 +9697,8 @@ namespace ICanShowYouTheWorld.RunMode
             _stormwardAnswers = s.stormwardAnswers;
             _thorsBowKills = s.thorsBowKills;
             _anvilRaised = s.anvilRaised;
-            _fittings = new ShipFittingState { Sail = s.shipSail, Hull = s.shipHull, FireTar = s.shipFireTar };
+            _fittings = new ShipFittingState { Sail = s.shipSail, Hull = s.shipHull, FireTar = s.shipFireTar, WindHorn = s.shipWindHorn };
+            _godWindTold = s.godWindTold;
             _fittingsTold = s.shipFittingsTold;
             _fireTarTold = s.shipFireTarTold;
             SagaTranscript.Restore(s.transcript);
@@ -9777,6 +9928,8 @@ namespace ICanShowYouTheWorld.RunMode
                 shipSail = _fittings.Sail,
                 shipHull = _fittings.Hull,
                 shipFireTar = _fittings.FireTar,
+                shipWindHorn = _fittings.WindHorn,
+                godWindTold = _godWindTold,
                 shipFittingsTold = _fittingsTold,
                 shipFireTarTold = _fireTarTold,
                 transcript = SagaTranscript.Save(),
@@ -11011,6 +11164,9 @@ namespace ICanShowYouTheWorld.RunMode
                                 "the pyre cannot be paid, and Last Light is never forged", stalls: true);
                 _selfCheck.AnyOf("Plains foods for the harvester", PlainsMeal.PlainsFoods, isItem,
                                  "no table counts as from the field, and his ask stalls", stalls: true);
+                _selfCheck.Pick("The winds' icon (Moder's power)", new[] { SagaWinds.ModerPower },
+                                n => ObjectDB.instance.GetStatusEffect(n.GetStableHashCode()) != null,
+                                "the god's wind and the horn still blow, with no icon on the HUD", stalls: false);
             }
             catch (Exception ex) { LogOnce("self-check-items", ex); }
         }
