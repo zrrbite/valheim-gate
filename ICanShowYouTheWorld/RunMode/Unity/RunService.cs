@@ -2709,6 +2709,7 @@ namespace ICanShowYouTheWorld.RunMode
             HandleBoonActivationInput();
             HandleHornInput();
             HandleDevInput();
+            if (DevMode) _devShip?.Tick(Player.m_localPlayer);   // MACBOOK-TEMP
             TickDevClock();
 
             _pollTimer += dt;
@@ -2970,7 +2971,7 @@ namespace ICanShowYouTheWorld.RunMode
                     $"DEV MODE   {K(SagaKey.DevStar)}items   {K(SagaKey.DevDot)}light   {K(SagaKey.DevSlash)}god+speed   " +
                     $"{K(SagaKey.DevEnter)}home   {K(SagaKey.DevDelete)}slay",
                     $"{K(SagaKey.DevHome)}map-tp   {K(SagaKey.DevPageUp)}probe   " +
-                    $"{K(SagaKey.DevGoTo)}go to the saga's places (Shift: back) - MacBook, temporary",
+                    $"{K(SagaKey.DevGoTo)}go to the saga's places (Shift: back)   Shift + {K(SagaKey.DevShip)} a ship at sea - MacBook, temporary",
                     $"Shift/Ctrl/Alt + {K(SagaKey.DevPlus)} complete step   \u00b7   + {K(SagaKey.DevMinus)} +2h AND cycle weather: fair/rain/storm",
                     $"Shift/Ctrl/Alt + {K(SagaKey.DevBackspace)} Storm-Anvil + bow + shield + the combine's makings",
                     $"Shift/Ctrl/Alt + {K(SagaKey.DevStar)} cycle the way (all seven)   \u00b7   + {K(SagaKey.DevSlash)} learn all its rungs   " +
@@ -3103,8 +3104,11 @@ namespace ICanShowYouTheWorld.RunMode
             Debug.Log("[ICanShowYouTheWorld] " + text);
         }
 
-        // MACBOOK-TEMP (2026-10-06) from here to HandleDevInput: the dev "go to" key. See DevTour.
+        // MACBOOK-TEMP (2026-10-06) from here to HandleDevInput: the dev "go to" key (see DevTour) and
+        // the dev ship (see DevShip).
         private string _devTourLast;
+        private DevShip _devShip;
+        private DevShip DevShipYard => _devShip ?? (_devShip = new DevShip(DevMessage));
 
         /// <summary>
         /// MACBOOK-TEMP: every place the go-to key can reach now, and where it is. A speaker counts once
@@ -3367,6 +3371,13 @@ namespace ICanShowYouTheWorld.RunMode
                 try { DevGoTo(back: mod); }
                 catch (Exception ex) { LogOnce("dev-goto", ex); }
             }
+            else if (mod && BoonKeys.Pressed(SagaKey.DevShip))
+            {
+                // MACBOOK-TEMP: a Karve on the nearest deep water, with you at its helm. The light's key
+                // with a modifier; the light's own branch below is guarded with !mod as well.
+                try { DevShipYard.Launch(Player.m_localPlayer); }
+                catch (Exception ex) { LogOnce("dev-ship", ex); }
+            }
             else if (BoonKeys.Pressed(SagaKey.DevHome))
             {
                 // The GM mod's map-cursor teleport, reachable during a run (owner: "It would be
@@ -3439,7 +3450,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // key collides, AND where an accident persists. Nothing else in the dev layer builds.
                 DevPlantStormAnvil();
             }
-            else if (BoonKeys.Pressed(SagaKey.DevDot))
+            else if (!mod && BoonKeys.Pressed(SagaKey.DevDot))
             {
                 var player = Player.m_localPlayer;
                 if (_lights != null && player != null)

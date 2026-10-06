@@ -56,6 +56,7 @@ with a modifier — the ways — while the bare press does what it always did.
 | `mod` + `Delete` | **Thor's bow, the Stormward and five rescued lights** straight into the pack, no anvil, no lever (bare `Delete` slays) |
 | `mod` + `Keypad /` | **Learn every rung** of the held way now, without the bosses the ladder asks for |
 | `↓` (and `mod` + `↓`) | **Go to** the next of the saga's places (with a modifier, the one before). **Temporary**, see below |
+| `mod` + `Keypad .` | **A ship at sea**: a Karve on the nearest deep water, you at its helm. **Temporary**, see below |
 
 Keys only work during an active run.
 
@@ -76,6 +77,19 @@ Each press goes to the next place on the list; `mod` + `↓` goes back one. The 
 You land a few metres to one side, facing the place. A far hop shows the loading spin, as the map
 teleport does. Walk the last bit: the Bog Witch's hut stands on stilts.
 
+### `mod` + `Keypad .` / `mod` + `B`: a ship at sea (temporary, for testing on a MacBook)
+
+Added 2026-10-06 with the go-to key, and removed with it. A **Karve** on the nearest deep water,
+claimed as yours (so it counts as built, the helm offers fittings, and a hammer takes it down), and
+you put at its helm. B for boat on the laptop; bare `B` is still the deer's light.
+
+- **Sea within 40 m:** it is built there and then, and you are put on deck at the helm.
+- **Farther (up to 4 km):** you are teleported to the shore short of it first, with the loading spin,
+  and the ship is built once you are there. The message says how far: `DEV: the nearest sea is 840 m away`.
+- **The helm is taken for you** once you stand on the deck: `DEV: at the helm.` If that hasn't happened
+  within twelve seconds (over-weight, say), it tells you to press `E` at the helm yourself.
+- The prow points out to sea, away from where you stood. `W` sails; `Shift` + `E` opens the fittings.
+
 **On a laptop** (no numpad; `runKeyLayout: "laptop"` in the config, since 2026-10-06) the
 numpad keys move to letters Valheim leaves free, and the rest stay:
 
@@ -88,6 +102,7 @@ numpad keys move to letters Valheim leaves free, and the rest stay:
 | `mod` + `Keypad +` / `mod` + `Keypad -` | `mod` + `P` / `mod` + `N` (bare `P` and `N` are the player's) |
 | `Delete`, `Home`, `PageUp` | the same; on a MacBook `fn` + `Backspace`, `fn` + `←`, `fn` + `↑` |
 | `↓` (go to, temporary) | the same |
+| `mod` + `Keypad .` (ship, temporary) | `mod` + `B` (B for boat) |
 
 Dev keys stand down while you are typing (chat, console, a text field), so a `Z` in a chat
 line plants nothing.

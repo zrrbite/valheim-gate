@@ -65,6 +65,12 @@ static class KeyLayoutTests
                    KeyLayout.BareDevKeys.Contains(SagaKey.DevGoTo) && KeyLayout.ModifiedDevKeys.Contains(SagaKey.DevGoTo),
                    "go-to is the down arrow in both layouts, bare and with a modifier");
 
+        // MACBOOK-TEMP: the dev ship is the light's key with a modifier (B for boat on the laptop). A ship
+        // persists, so like the anvil it is never a bare press.
+        Check.That(numpad[SagaKey.DevShip] == numpad[SagaKey.DevDot] && laptop[SagaKey.DevShip] == "B" &&
+                   KeyLayout.ModifiedDevKeys.Contains(SagaKey.DevShip) && !KeyLayout.BareDevKeys.Contains(SagaKey.DevShip),
+                   "the dev ship is a modifier plus the light's key, never bare");
+
         // The point of the laptop layout: nothing a MacBook does not have.
         Check.That(!laptop.Values.Any(v => v.StartsWith("Keypad") || v == "Insert"),
                    "the laptop layout uses no numpad key and no Insert");

@@ -24,6 +24,10 @@ namespace ICanShowYouTheWorld.RunMode
         // MACBOOK-TEMP (2026-10-06): hop between the saga's places, bare forward, with a modifier back.
         // For testing on a MacBook with no mouse; remove with the rest of MACBOOK-TEMP.
         DevGoTo,
+
+        // MACBOOK-TEMP (2026-10-06): a ship on the nearest deep water, with you at its helm. Always with a
+        // modifier: a ship persists, like the anvil.
+        DevShip,
     }
 
     /// <summary>
@@ -70,7 +74,7 @@ namespace ICanShowYouTheWorld.RunMode
         {
             SagaKey.DevStar, SagaKey.DevSlash, SagaKey.DevDelete,
             SagaKey.DevPlus, SagaKey.DevMinus, SagaKey.DevBackspace,
-            SagaKey.DevGoTo,   // MACBOOK-TEMP
+            SagaKey.DevGoTo, SagaKey.DevShip,   // MACBOOK-TEMP
         };
 
         /// <summary>
@@ -106,6 +110,7 @@ namespace ICanShowYouTheWorld.RunMode
             [SagaKey.DevDelete] = "Delete", [SagaKey.DevHome] = "Home", [SagaKey.DevPageUp] = "PageUp",
             [SagaKey.DevBackspace] = "Backspace",
             [SagaKey.DevGoTo] = "DownArrow",   // MACBOOK-TEMP: free in play, Valheim scrolls chat with it
+            [SagaKey.DevShip] = "KeypadPeriod",   // MACBOOK-TEMP: with a modifier; bare it is the light
         };
 
         private static readonly Dictionary<SagaKey, string> LaptopKeys = new Dictionary<SagaKey, string>
@@ -128,6 +133,7 @@ namespace ICanShowYouTheWorld.RunMode
             [SagaKey.DevDelete] = "Delete", [SagaKey.DevHome] = "Home", [SagaKey.DevPageUp] = "PageUp",
             [SagaKey.DevBackspace] = "Backspace",
             [SagaKey.DevGoTo] = "DownArrow",   // MACBOOK-TEMP
+            [SagaKey.DevShip] = "B",   // MACBOOK-TEMP: B for boat, with a modifier; bare it is the light
         };
 
         public static bool IsKnown(string layout) =>
