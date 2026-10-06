@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-10-06 at `1.0.16-run.2026-10-06`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-10-06 at `1.0.17-run.2026-10-06`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -19,6 +19,10 @@ Everything below is what that file tells it.
 
 ## Where things stand
 
+- **2026-10-06: the game is 1.0.17** (Unity still 6000.0.75), with no source change: `bash Scripts/check_refs.sh`
+  found every reference resolving. Rebuilt as `1.0.17-run.2026-10-06`, which is the `...06` build under the new
+  prefix, deployed on the Mac. **Windows needs a FULL install** (top TASK in `HANDOFF_WINDOWS.md`). The Deck is
+  further behind than ever.
 - **The one-page overview of 2026-10-05/06** (what got built, the story, the boats, the new ideas and
   where each stands): [`2026-10-06-overview.md`](2026-10-06-overview.md).
 - **2026-10-06: the Deep North has its real names** (`...06`, `saga/deep-north-names`, staged and

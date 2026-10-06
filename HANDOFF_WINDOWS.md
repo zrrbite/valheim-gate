@@ -17,6 +17,22 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-10-06 - TASK: Valheim 1.0.17 (`1.0.17-run.2026-10-06`) - a FULL install
+
+**Staged.** Steam moved the game to **1.0.17** on 2026-10-06, which replaces the patched game assembly, so
+the mod is not loading until this is installed. `git pull`, then **`.\dist\windows\Install-Mod.ps1` without
+`-ModOnly`**: the full install re-patches this machine's own 1.0.17 assembly. Badge
+`SAGA v1.0.17-run.2026-10-06 · DEV`.
+
+- No source change: every reference from the mod into the game resolves against 1.0.17 (`Scripts/check_refs.sh`).
+  It is the `...06` build below under a new prefix, so its checks are the ones to do.
+- If the installer refuses with a version mismatch, Steam has not finished updating this machine: let it
+  finish, then run it again.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-10-06 - TASK: the Deep North's real names (`1.0.16-run.2026-10-06`)
 
 **Staged.** `git pull`, `.\dist\windows\Install-Mod.ps1 -ModOnly`. Badge `...06 · DEV`. Includes everything

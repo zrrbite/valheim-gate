@@ -317,7 +317,7 @@ Extract both to the same folder and copy to:
 1. `libraries/` folder (for development/linking)
 2. Steam Deck `/home/deck/.local/share/Steam/steamapps/common/Valheim/valheim_Data/Managed/` (for runtime)
 
-Current Unity version: 6000.0.75 (Unity 6; 6000.0.58 from Valheim 0.221.6, 6000.0.61 since 0.221.12, 6000.0.75 since 1.0.12 — unchanged by 1.0.15)
+Current Unity version: 6000.0.75 (Unity 6; 6000.0.58 from Valheim 0.221.6, 6000.0.61 since 0.221.12, 6000.0.75 since 1.0.12 — unchanged by 1.0.15, 1.0.16 and 1.0.17)
 
 ## Deployment
 
@@ -407,6 +407,14 @@ Checking that first is cheap and worth doing — read every `MemberReference` ou
 mod DLL with Cecil and look each one up in the new assemblies. It turns "what did they
 break this time" into a list before a single compile. (The one rename spotted in 1.0.15,
 `FejdStartup.PlayIntroCinematic` → `TryPlayIntroCinematic`, is not something the mod calls.)
+
+**1.0.16 (2026-09-27) and 1.0.17 (2026-10-06) needed no source change either.** The check is now a script:
+`bash Scripts/check_refs.sh` (default: this Mac's install; or pass any Managed folder) lists every type and
+member the built mod uses that the new assemblies no longer have. For 1.0.17 that was 0 of 843 members.
+The update itself is commit `65c2159`'s recipe: copy the four game assemblies (`assembly_valheim`,
+`assembly_utils`, `assembly_guiutils`, `Splatform`) into `libraries/`, re-patch the reference assembly, move
+the version prefix in `Version.cs`, then tag, build, stage, and deploy everywhere. Windows needs a FULL
+install, since its game assembly was replaced.
 
 ### Complex scenario: Unity version change
 Check https://valheim.fandom.com/wiki/Version_History for Unity version updates
