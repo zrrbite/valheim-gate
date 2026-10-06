@@ -29,6 +29,38 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         public static readonly string[] WorldFinds = { "DragonEgg" };
 
+        /// <summary>The items in an ask: "A|B" is either, trimmed; nothing is none.</summary>
+        public static IEnumerable<string> Alternatives(string name) =>
+            (name ?? string.Empty).Split('|').Select(a => a.Trim()).Where(a => a.Length > 0);
+
+        /// <summary>
+        /// How many of each wanted item are held, keyed by the ask as written. An ask of "A|B" counts
+        /// both, so a step can take either of two items (2026-10-06: Act I's "Cook 5 meat" asked for
+        /// "$item_cookedmeat", no item's name, and could never finish; now it takes cooked boar or deer).
+        /// </summary>
+        /// <param name="held">Each stack as (its item name - the localisation token - and its size).</param>
+        public static Dictionary<string, int> CountWanted(IEnumerable<(string name, int stack)> held, IEnumerable<string> wanted)
+        {
+            var counts = new Dictionary<string, int>();
+            var asks = new Dictionary<string, List<string>>();
+            foreach (var ask in wanted ?? Enumerable.Empty<string>())
+            {
+                if (ask == null || counts.ContainsKey(ask)) continue;
+                counts[ask] = 0;
+                foreach (var name in Alternatives(ask))
+                {
+                    if (!asks.TryGetValue(name, out var into)) asks[name] = into = new List<string>();
+                    into.Add(ask);
+                }
+            }
+
+            foreach (var (name, stack) in held ?? Enumerable.Empty<(string, int)>())
+                if (name != null && asks.TryGetValue(name, out var into))
+                    foreach (var ask in into) counts[ask] += stack;
+
+            return counts;
+        }
+
         /// <summary>
         /// The asks nothing provides: one per item, naming everyone who asks for it. <paramref name="resolve"/>
         /// maps a name (a prefab, or a token naming several) to prefab names; an ask is fine when any of its
@@ -41,11 +73,7 @@ namespace ICanShowYouTheWorld.RunMode
 
             foreach (var ask in asked ?? Enumerable.Empty<AskedItem>())
             {
-                var alternatives = (ask?.Name ?? string.Empty)
-                    .Split('|')
-                    .Select(a => a.Trim())
-                    .Where(a => a.Length > 0)
-                    .ToList();
+                var alternatives = Alternatives(ask?.Name).ToList();
                 if (alternatives.Count == 0) continue;
 
                 bool got = alternatives.Any(a => (resolve(a) ?? Enumerable.Empty<string>())

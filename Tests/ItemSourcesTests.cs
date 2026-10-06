@@ -50,5 +50,34 @@ static class ItemSourcesTests
         Check.That(ItemSources.Unobtainable(new AskedItem[0], produced, Resolve).Count == 0 &&
                    ItemSources.Unobtainable(new[] { new AskedItem { Name = "", Who = "x" } }, produced, Resolve).Count == 0,
                    "nothing asked, or an empty ask, loses nothing");
+
+        CountWantedTests();
+    }
+
+    /// <summary>
+    /// The second self-check reading (the Mac, 2026-10-06) found Act I's "Cook 5 meat" asking for
+    /// "$item_cookedmeat", which is no item's name: cooked boar is $item_boar_meat_cooked. A step can now
+    /// ask for either of two items, the "A|B" the self-check already reads, and both count toward it.
+    /// </summary>
+    static void CountWantedTests()
+    {
+        var held = new List<(string, int)>
+        {
+            ("$item_boar_meat_cooked", 3), ("$item_deer_meat_cooked", 2), ("$item_wood", 20), ("$item_stone", 4),
+        };
+        var counts = ItemSources.CountWanted(held, new[] { "$item_boar_meat_cooked|$item_deer_meat_cooked", "$item_wood", "$item_coins" });
+
+        Check.That(counts["$item_boar_meat_cooked|$item_deer_meat_cooked"] == 5,
+                   "either of two items: both count toward the step");
+        Check.That(counts["$item_wood"] == 20 && counts["$item_coins"] == 0 && !counts.ContainsKey("$item_stone"),
+                   "a single name counts as before; one not held is 0; nothing unasked is counted");
+
+        var both = ItemSources.CountWanted(held, new[] { "$item_wood", "$item_wood|$item_stone" });
+        Check.That(both["$item_wood"] == 20 && both["$item_wood|$item_stone"] == 24,
+                   "an item counts toward every step that asks for it");
+
+        Check.That(ItemSources.Alternatives(" A | B ||").SequenceEqual(new[] { "A", "B" }) &&
+                   !ItemSources.Alternatives(null).Any(),
+                   "alternatives are trimmed, and nothing is none");
     }
 }

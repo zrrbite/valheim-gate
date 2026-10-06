@@ -6681,23 +6681,13 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         private static Dictionary<string, int> CountHeld(Inventory inventory, List<string> names)
         {
-            var counts = new Dictionary<string, int>();
-            foreach (var name in names) counts[name] = 0;
-
+            // Same comparison the game makes: the localisation token on shared data. An ask may name
+            // either of two items, "A|B" (ItemSources.CountWanted).
             var items = inventory?.GetAllItems();
-            if (items == null) return counts;
-
-            foreach (var item in items)
-            {
-                if (item?.m_shared == null) continue;
-
-                // Same comparison the game makes: the localisation token on shared data.
-                int running;
-                if (counts.TryGetValue(item.m_shared.m_name, out running))
-                    counts[item.m_shared.m_name] = running + item.m_stack;
-            }
-
-            return counts;
+            var held = items == null
+                ? Enumerable.Empty<(string, int)>()
+                : items.Where(i => i?.m_shared != null).Select(i => (i.m_shared.m_name, i.m_stack));
+            return ItemSources.CountWanted(held, names);
         }
 
         private static float CountFood(Inventory inventory)
@@ -10876,7 +10866,10 @@ namespace ICanShowYouTheWorld.RunMode
                 RequiresBuilt = "Cooking",
                 Subs = new List<SubObjective>
                 {
-                    new SubObjective { Kind = ChallengeKind.CollectItem, Param = "$item_cookedmeat", Target = 5, Label = "Cook 5 meat" },
+                    // Cooked boar or deer, Act I's two meats. It asked for "$item_cookedmeat" until 2026-10-06, which
+                    // is no item's name, so the step could never finish; the self-check's "Quest items can be got"
+                    // line found it on its second reading.
+                    new SubObjective { Kind = ChallengeKind.CollectItem, Param = "$item_boar_meat_cooked|$item_deer_meat_cooked", Target = 5, Label = "Cook 5 meat" },
                     new SubObjective { Kind = ChallengeKind.CollectItem, Param = "$item_wood",       Target = 20, Label = "Hold 20 wood" },
                 }
             },
@@ -11489,10 +11482,18 @@ namespace ICanShowYouTheWorld.RunMode
                     foreach (var (item, _) in bill)
                         asked.Add(new AskedItem { Name = item, Who = $"the Storm-Anvil's {result}" });
 
+                // An ask names an item by its token ("$item_wood"), by its literal name (the saga's own
+                // items carry one: "Thor’s bow"), or by its prefab. The first two are the same table, keyed
+                // on m_shared.m_name; reading only "$" names there is how the second reading of this check
+                // listed every saga item as lost (the Mac, 2026-10-06).
                 var tokens = ItemSourceScan.TokenTable(odb);
+                foreach (var def in SagaItems.All)
+                    if (!string.IsNullOrEmpty(def.DisplayName) && !tokens.ContainsKey(def.DisplayName))
+                        tokens[def.DisplayName] = new List<string> { def.PrefabName };
                 IEnumerable<string> Resolve(string name) =>
-                    name.StartsWith("$") ? (tokens.TryGetValue(name, out var names) ? names : new List<string>())
-                                         : new List<string> { name };
+                    tokens.TryGetValue(name, out var names) ? names
+                    : name.StartsWith("$") ? new List<string>()
+                    : new List<string> { name };
 
                 var lost = ItemSources.Unobtainable(asked, produced, Resolve);
                 int distinct = asked.Select(a => a.Name).Where(n => !string.IsNullOrEmpty(n)).Distinct().Count();
