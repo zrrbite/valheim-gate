@@ -17,6 +17,24 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-10-06 - TASK: the Deep North's real names (`1.0.16-run.2026-10-06`)
+
+**Staged.** `git pull`, `.\dist\windows\Install-Mod.ps1 -ModOnly`. Badge `...06 · DEV`. Includes everything
+from `...05n` to `...05q` below, so their checks still apply.
+
+- Start a run, then the self-check (`Select-String ... -Pattern "Saga self-check"`). New: **"Act I's god"
+  … "Act VIII's god"**, each `'<creature>' sets '<key>'`. All eight should be OK. **The one that matters is
+  Act VIII:** `'FrozenKing_p3' sets 'defeated_frozenking_p3'`. If it says `no creature 'FrozenKing_p3'`, the
+  Frozen King's third form is not a spawnable prefab. Paste it: the act still ends on the key, but its kill
+  step never completes.
+- **"The gods' altars"**: all 8 resolve (`DN_Bossroom` is the new one).
+- The line "Act VIII ... is a PLACEHOLDER" is gone. The Boss registry line now ends `boss sets='defeated_frozenking'`:
+  the altar spawns the chained FIRST form, and that key is expected. The act waits for the third.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-10-05 - TASK: the god's wind and the Wind-horn (`1.0.16-run.2026-10-05q`)
 
 **Staged.** `git pull`, `.\dist\windows\Install-Mod.ps1 -ModOnly`. Badge `...05q · DEV`. Includes `...05n`-`...05p`.

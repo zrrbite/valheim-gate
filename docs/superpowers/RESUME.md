@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-10-06 (code past `1.0.16-run.2026-10-05q`, not yet built — see the first bullet). This is the "pick it back up
+Written 2026-08-23, last updated 2026-10-06 at `1.0.16-run.2026-10-06`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -19,10 +19,9 @@ Everything below is what that file tells it.
 
 ## Where things stand
 
-- **2026-10-06: the Deep North has its real names. Committed, NOT built or tagged** (the session broke
-  off). **Do this first next time:** tag `...06` (`Scripts/nextversion.sh`), `setversion.sh`, build, stage
-  for Windows, `deploy_local.sh` on the Mac, add a HANDOFF task, and change the todo test plan's badge to
-  `...06`. Everything below about `...05q` still holds, since `...06` contains it.
+- **2026-10-06: the Deep North has its real names** (`...06`, `saga/deep-north-names`, staged and
+  deployed on the Mac). This is now the build to test: everything below about `...05q` still holds, since
+  `...06` contains it. Its checks are the top TASK in `HANDOFF_WINDOWS.md`.
   - **How the names were found.** The Mac's own `Player.log` "Boss registry" lines gave the altar
     (`offeraltar_FrozenKing_bossroom`, boss `FrozenKing`, empty bowl key) and the location `DN_Bossroom`.
     The key is asset data, so 1.0.16's bundles were unpacked with the new `Scripts/unpack_bundle.py`
