@@ -21,7 +21,7 @@ Standing context for the Windows side:
 
 **Staged.** `git pull`, `.\dist\windows\Install-Mod.ps1 -ModOnly`. Badge `...05p · DEV`. Includes `...05n`/`...05o` below.
 
-- Dev kit (`mod` + `*`) now has 500 coins in the stash. Build a raft: Hugin says the helm takes gold.
+- The dev materials kit (bare `Keypad *`) now puts 500 coins in the stash - withdraw them. Build a raft: Hugin says the helm takes gold.
 - Look at the helm: a second line "[Shift + E] Fit out the ship". Shift+E opens a card (Sail I, Hull I,
   50 coins each); Keypad 1/2 buys. `End` → FORGE → SHIP shows what is fitted.
 - Sail I-III should be visibly faster under sail AND paddling. Walk around the deck after buying -
