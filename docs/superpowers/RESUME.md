@@ -1,8 +1,9 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-10-06 at `1.0.17-run.2026-10-06c`. This is the "pick it back up
-without re-deriving anything" page: where the work stands, the loop it moves
-in, and the questions that are waiting on a human.
+Written 2026-08-23, restructured and last updated 2026-10-06 at `1.0.17-run.2026-10-06d`. This is the
+"pick it back up without re-deriving anything" page: where the work stands, the loop it moves in, the
+landmines, and the decisions not to re-open. Its history (the dated status bullets, the alpha era, the
+"Done" write-ups) moved verbatim to [`RESUME-history.md`](RESUME-history.md) on 2026-10-06.
 
 The design lives in [specs/](specs/2026-08-16-run-mode-design.md), the hard-won
 lessons in [build notes](2026-08-16-run-mode-build-notes.md), the Windows
@@ -17,194 +18,103 @@ Open Claude Code in the repo and say something like:
 
 Everything below is what that file tells it.
 
+If the owner has been through the home test plan, start from what it brought back: the self-check
+block first, then the numbered items that did not match.
+
 ## Where things stand
 
-- **Plans ready to build after the home test** (2026-10-06): the hall, slices 0–1
-  ([`plans/2026-10-06-the-hall-slices-0-1.md`](plans/2026-10-06-the-hall-slices-0-1.md): an Aspect on the player's
-  side, then Act I's long fire), and Valheim Smith's milestones 0–1 (private on GitHub: `zrrbite/valheim-smith`,
-  `docs/plans/`; Tasks 5–6 already built on branch `milestone-1-skeleton`). The Mac already allows BepInEx's loader (entitlements `allow-dyld-environment-variables` and
-  `disable-library-validation`) and is a universal binary, so Rosetta is a real fallback.
-- **The owner's home test plan** for everything from 2026-10-05/06 (setup, a new character, act by act, boats, the
-  reward, the MacBook): [`2026-10-06-home-test-plan.md`](2026-10-06-home-test-plan.md). Start the next session from what it brings back.
-- **2026-10-06: the first self-check ever read** (the Mac, `...06`): 47 OK, 1 FALLBACK (the Deep North has no
-  tale, expected), 1 MISSING, a real Act II stall fixed in `...06c`. Haldor asked for `TrophyForestTroll`, but
-  trolls drop only `TrophyFrostTroll`; both items exist and both read "Troll Trophy". **Lesson:** an item that
-  exists is not an item anyone can get. The drop-table check caught what the name check passed.
-- **2026-10-06: a laptop layout, clickable cards, and the lobby after the intro** (`...06b`,
-  `saga/laptop-keys`). The owner's MacBook could not choose boons: no numpad, and no Mac has `Insert`.
-  `runKeyLayout: "laptop"` moves every saga key onto letters Valheim leaves free (pure `KeyLayout`, tested
-  against 1.0.17's own bindings; see CLAUDE.md's key section). Every card also takes TAB and a click, through
-  the same `RunService.ChooseFromCard` the keys use. Player keys now respect `Player.TakeInput`, so typing in
-  chat fires nothing. And the lobby no longer opens over a new character's Valkyrie intro (`LobbyOffer`,
-  gated on `Player.InCutscene`). The Mac's config is set to `laptop` (backup `.bak-2026-10-06`).
-- **2026-10-06: the game is 1.0.17** (Unity still 6000.0.75), with no source change: `bash Scripts/check_refs.sh`
-  found every reference resolving. Rebuilt as `1.0.17-run.2026-10-06`, which is the `...06` build under the new
-  prefix, deployed on the Mac. **Windows needs a FULL install** (top TASK in `HANDOFF_WINDOWS.md`). The Deck is
-  further behind than ever.
-- **The one-page overview of 2026-10-05/06** (what got built, the story, the boats, the new ideas and
-  where each stands): [`2026-10-06-overview.md`](2026-10-06-overview.md).
-- **2026-10-06: the Deep North has its real names** (`...06`, `saga/deep-north-names`, staged and
-  deployed on the Mac). This is now the build to test: everything below about `...05q` still holds, since
-  `...06` contains it. Its checks are the top TASK in `HANDOFF_WINDOWS.md`.
-  - **How the names were found.** The Mac's own `Player.log` "Boss registry" lines gave the altar
-    (`offeraltar_FrozenKing_bossroom`, boss `FrozenKing`, empty bowl key) and the location `DN_Bossroom`.
-    The key is asset data, so 1.0.16's bundles were unpacked with the new `Scripts/unpack_bundle.py`
-    (pure Python; the bundles are LZ4, so a raw grep finds only fragments).
-  - **The Frozen King is fought in three forms.** `FrozenKing` (chained, spawned by the altar) sets
-    `defeated_frozenking`. `FrozenKing_p2` summons the seven earlier gods (`FrozenKing_P2_Summon_Eikthyr`
-    … `_Fader`). `FrozenKing_p3` sets **`defeated_frozenking_p3`**, the key the Deep North's raids stop on
-    and the form the all-bosses achievement names. **Act VIII ends on the third form**: the first form's
-    key would end the act mid-fight. A Vegvisir (`$hud_pin_dnboss`) pins `DN_Bossroom`. The same data
-    confirms the Queen's and Fader's keys.
-  - **In the code.** The boss table, Act VIII and `DeepNorthChain` use the real names, the
-    `SagaNames` stand-ins are gone, and `Placeholder` is off, so the validator checks the act (the flag
-    is kept for the next biome). Two new self-check lines: **"Act N's god"** checks that the creature the
-    boss step kills sets the act's own key (`SagaSelfCheck.GodsKey`, tested), and **"The gods' altars"**
-    checks that every altar is a known location. The Boss registry line now prints `boss sets=`.
-  - **Still open.** Whether `FrozenKing_p3` is a spawnable prefab whose kill is reported under that
-    name: the first launch's self-check says so, and the act ends on the key either way. The STORY is
-    still a stand-in (chapter, two steps), and decision #3 below (the Deep North as an epilogue after
-    Fader, not Act VIII) is still unresolved: the code and the docs disagree. That decision is the
-    owner's.
-- **Nothing built on 2026-10-05 has been played** (`...05f` to `...05q`: Acts III–VII voiced, the saga's
-  reward, the self-check, ship fittings, the winds). The owner tests at home from one ordered plan in
-  their todo repo (`~/Development/todo/TODO.md`, section "Valheim: The Saga"); the per-build checks are
-  the TASKs in `HANDOFF_WINDOWS.md`. **Start from what that test brings back** (self-check block,
-  errors, feel of fitting prices, the 40° cone, the horn's 2 and 10 minutes) before Act VIII.
-- **Going back (owner, 2026-10-05): every major build gets a named, annotated milestone tag** on its
-  `build:` commit (the one carrying the staged Windows DLL), so any of them can be checked out and
-  installed as-is. `git tag -l 'saga/*' -n1` lists them. Today's: `saga/before-2026-10-05` (the last
-  build the owner played — undo the whole day here), `saga/rungs-at-the-kill`, `saga/act2-voices` …
-  `saga/act6-voices`. The `saga/` prefix keeps them out of the version scripts, which only read tags
-  starting with a digit. To go back on Windows: `git checkout saga/act4-voices`, then
-  `.\dist\windows\Install-Mod.ps1 -ModOnly`; on the Mac, check out, build, `Scripts/deploy_local.sh`.
-- **First thing on any new build: `grep "Saga self-check" Player.log`** (since `...05n`). One block
-  at run start, a line per name the saga guesses (speaker bodies and places, traders, Hildir's chests,
-  item looks, flametal, plains foods, every quest name), OK / FALLBACK / MISSING, worst first. MISSING
-  is a step that cannot finish; FALLBACK is a guess to correct. `RunService.LogSelfCheck`, pure
-  `SagaSelfCheck`. A new guessed name belongs in it.
+**2026-10-06, `1.0.17-run.2026-10-06d` (dev)**, on `feature/run-mode`: not merged, deliberately, since
+the mode is still being tuned in play. Valheim 1.0.17, Unity 6000.0.75.
 
-- Branch **`feature/run-mode`**, not merged, deliberately — the mode is still
-  being tuned in play.
-- **The Saga Atlas** — one page with every questline in the saga, lane by lane across
-  all eight acts, plus the arc, the light economy and a build log:
-  <https://claude.ai/artifact/8EvSbu7GH5SQ1Fq9Md83ca>
-  Regenerate it with `python Scripts/saga_atlas.py` and REPUBLISH TO THAT SAME URL, so
-  the owner's link keeps working. The lanes are read out of `RunService.cs`, so the page
-  cannot drift from the code — but the per-act STATUS and the version in its meta line
-  are hand-written claims and go stale on their own.
-- **The Storm-Anvil test path** — the focused page for the shade/light/anvil chain:
-  <https://claude.ai/artifact/XdbeDYL6m7f2t5MioVmqJ9>
-
-## Do not free the cursor for the mod's windows (tried, reverted 2026-09-20)
-
-`ModCursor` held `GameCamera.m_mouseCapture` false while a mod window was open, which is the state
-vanilla F1 puts the game in, so the pointer appeared and the windows were clickable without TAB.
-Reverted within the hour: with the pointer free, **drawing the bow drags the windows around**. The
-mouse buttons are how you shoot AND how you move an IMGUI window, and a free cursor puts both on the
-same click.
-
-TAB works because Valheim ALSO stops taking player input while the inventory is up
-(`Player.TakeInput()` consults `InventoryGui.IsVisible()` and friends). The mod can claim the cursor
-half of that and not the input half, and the cursor half on its own is worse than nothing. Faking the
-input half means making the game believe one of its own panels is open, which is not ours to do.
-
-If it is ever wanted again, the only honest route is a mode the player opts into explicitly - not a
-thing that happens because a window is up.
-
-## Read the IL before building the workaround
-
-Twice on 2026-09-20 the feature already existed in the game and the plan was to build over the top
-of it.
-
-**Alphabetical crafting** was going to be a filter and a text field laid over `InventoryGui`.
-`UpdateRecipeList` turned out to read a player key, `sortcraft`, parse it as
-`InventoryGui.SortMethod` (`Original|Name|Type|Weight|Count`) and sort its own list. One key write
-replaced the whole plan. See `CraftingSort`.
-
-**Freeing the mouse** was going to mean driving `ZCursor` every frame and fighting
-`GameCamera.UpdateMouseCapture` for it. That method turned out to key off one bool,
-`m_mouseCapture` - the same bool **vanilla F1 toggles**. Setting it is entering a state the game
-ships rather than inventing one. See `ModCursor`.
-
-The habit that paid: before writing anything that reaches into the game's UI, dump the method with
-Cecil and look for the setting.
-
-## Parked: search at the crafting bench
-
-Asked 2026-09-20 and PARKED the same day, because alphabetical sorting turned out to be most of what
-it was for (see above). Worth building only if the owner asks again.
-
-It is UI surgery on Valheim's own crafting panel, and breaking the crafting window is far worse than
-not having search in it. The research is done and every member exists: `InventoryGui.m_availableRecipes`
-(private list), `m_recipeListRoot`, `m_recipeListSpace`, `m_recipeListBaseSize`, `m_recipeElementPrefab`.
-Filtering therefore means hiding the elements that do not match and RE-STACKING the rest by index,
-every time the game rebuilds the list - the game positions them by index times `m_recipeListSpace`, so
-hidden ones leave gaps otherwise.
-
-The part not to guess at is the INPUT. An IMGUI text field competing with Valheim's own keyboard
-handling, over a panel the player is actively using. Valheim's `TakeInput` is false while the inventory
-is open, which is the reason to think letters will not reach the game - but "is the reason to think"
-is not "was play-tested", and this one has to be.
-
-So: its own build, its own play-test, and behind `runDevMode` for the first outing.
-
-## Two shapes worth remembering from 2026-09-20
-
-**Do not read state in the frame you wrote it.** Three times in two days, and the third time it cost
-a working feature: the dev clock's "+2h" was replaced wholesale when only its READOUT was broken, and
-the replacement ("wind forward until the game says night") failed to the mirror image of the same lag -
-60 net-seconds a frame is an hour of game time a frame, so it blew through its own three-day cap in two
-seconds of real time while EnvMan's smoothed fraction was still catching up with the first step.
-Reverted at the owner's request. **When a readout is wrong, fix the readout, not the feature.** `CreatureDressing` lost its scale
-and colour because it wrote materials before `LevelEffects.Start` ran; the dev clock key reported
-"still light" twenty-six times because it read `EnvMan.s_isNight` in the same frame as its
-`SetNetTime`, and EnvMan only recomputes that in `FixedUpdate` from a fraction it lerps toward. Both
-fixes were the same: span frames, and ask the game whether it has arrived.
-
-**A help line that is WRONG is worse than none.** The dev banner, and then the dev clock's message.
-In both cases the tester trusted it and concluded a working feature was broken. Where a key or a
-number is shown to a person, generate it from the thing that reads it - `BoonKeys`,
-`RunService.DevKeyHelp`, the GM page's table from `CommandRegistry.All`.
+- **Seven acts, all built and voiced, and the saga ends at Fader** (the `runFinalBossKey` default since
+  `...06d`; a config that already names a boss keeps it, so delete a `defeated_goblinking` line). **The
+  Deep North is the epilogue after Fader** (decision #3, reaffirmed 2026-10-06): Act VIII in the code,
+  with the game's real names and a stand-in story, reached only with the key moved past Fader. Told
+  [as played](../SAGA-WALKTHROUGH.md), [as myth](../THE-SAGA.md), and in the
+  [story bible](specs/2026-08-27-story-bible.md), which wins.
+- **Nothing built on 2026-10-05 or 2026-10-06 has been played.** The owner tests from the
+  [home test plan](2026-10-06-home-test-plan.md); the per-build checks are the TASKs atop `HANDOFF_WINDOWS.md`.
+- **First read of any build: `grep "Saga self-check" Player.log`** (OK / FALLBACK / MISSING, worst
+  first). Its first reading found Haldor asking for a trophy no troll drops (fixed in `...06c`), so since
+  `...06d` a line, **Quest items can be got**, checks that everything the saga asks for can be had.
+- **Machines:** the Mac is current (`...06d`, laptop keys). Windows needs a **full** install for 1.0.17.
+  The Steam Deck has an old patched assembly.
+- **Written up where it lives:** laptop keys and clickable cards (CLAUDE.md); the hall
+  ([spec](specs/2026-10-06-the-hall-design.md), [slices 0–1 plan](plans/2026-10-06-the-hall-slices-0-1.md));
+  Valheim Smith (private repo `zrrbite/valheim-smith`); the [overview of 2026-10-05/06](2026-10-06-overview.md);
+  the game [catalogue](../catalog/).
+- **Open:**
+  1. **Heavy UI cleanup.** The run window is too big. Owner's idea: TAB shows it beside the inventory,
+     hidden otherwise.
+  2. **The heat curve is untuned** (since alpha17; see "Waiting on a human").
+  3. **The Steam Deck** needs download, patch and upload before it is used again.
+  4. **The thane's Teach phase is dead code** since rungs are taught where the god falls
+     (`TeachClassRung`). Remove it after the home test.
+  5. **The hall** waits for the home test; slice 0's verdict shapes slice 4.
+  6. **Valheim Smith's BepInEx test on the Mac** waits for the owner. The Mac already allows BepInEx's
+     loader, and BepInEx can run side by side with the saga.
+- **Pages:** [the Saga Atlas](https://claude.ai/artifact/8EvSbu7GH5SQ1Fq9Md83ca) (regenerate with
+  `python3 Scripts/saga_atlas.py`, then REPUBLISH THE HTML TO THAT SAME URL; each act's status and the
+  version are hand-written and go stale) and [the Storm-Anvil test path](https://claude.ai/artifact/XdbeDYL6m7f2t5MioVmqJ9).
 
 ## The loop
 
-Every alpha follows the same seven steps. It takes about a minute.
+Every build goes the same way, and every build is tagged: the gold `SAGA v<build>` line under the main
+menu's version is the only proof of what is being played. Versions are date-based,
+`<game version>-run.<YYYY-MM-DD>[letter]` (CLAUDE.md, "Version management").
 
 ```bash
-# 1. change code, then:
+# 1. Commit the change. Then commit its docs: RESUME, CLAUDE.md where keys or rules moved, and a
+#    TASK at the top of HANDOFF_WINDOWS.md saying what to look for in this build.
+# 2. Tag the version on that docs commit, then write it into Version.cs (the dev flavour).
+git tag "$(bash Scripts/nextversion.sh)"
+bash Scripts/setversion.sh
+# 3. Build and test.
 msbuild Valheim.sln -p:Configuration=Debug -v:minimal   # must be clean
-Tests/run_tests.sh                                      # must say ALL PASS
-
-# 2. bump ICanShowYouTheWorld/Assets/Version.cs
-#    alpha<N>   for a mechanic/content change worth a play-test brief
-#    alpha<N>.<B> for a fix, a tuning number, a nudged panel
-#    ALWAYS bump one of them: the menu badge is the only proof of what is being played
-# 3. refresh the Windows kit + docs
-cp ICanShowYouTheWorld/bin/Debug/ICanShowYouTheWorld.dll dist/windows/patcher/
-sed -i '' 's/alphaN/alphaN+1/g' dist/windows/README.md HANDOFF_WINDOWS.md
-
-# 4. append a TASK section to HANDOFF_WINDOWS.md saying what to look for
-# 5. commit, tag, push
-git tag 0.221.12-run.alphaN+1
-git push origin feature/run-mode && git push origin 0.221.12-run.alphaN+1
-
-# 6. deploy to the Mac
-Scripts/deploy_local.sh
+bash Tests/run_tests.sh                                  # must say ALL PASS
+# 4. Stage the Windows kit. It refuses if the built DLL's version is not the newest tag.
+bash Scripts/stage_windows.sh
+git checkout -- dist/windows/patcher/Patcher.exe        # the Mac's recompiled Patcher is not staged
+# 5. Commit the build: Version.cs and the staged DLL.
+git add ICanShowYouTheWorld/Assets/Version.cs dist/windows/patcher/ICanShowYouTheWorld.dll
+git commit -m "build: <version> (dev) — <what changed>; staged, deployed on the Mac"
+# 6. A major build gets an annotated milestone tag on that build: commit.
+git tag -a saga/<name> -m "<version>: <what changed>"
+# 7. Push the branch and both tags.
+git push origin feature/run-mode && git push origin <version> saga/<name>
+# 8. Deploy on the Mac. It re-signs the bundle (CLAUDE.md, "macOS").
+bash Scripts/deploy_local.sh
 ```
 
-On Windows: `git pull` → `.\Install-Mod.ps1` → the gold `SAGA v<build>` line under the
-main menu's version must read the tag you just pushed. **That badge is the whole point of
-tagging every build** — it is the only way to be certain which one is being played. There
-is no popup on success since 2026-09-19; one appears only if the mod failed to load.
+Then launch: the badge must read `SAGA v<version> · DEV`, and the first run's self-check must have no
+new MISSING line.
 
-`-ModOnly` is the fast path for a mod-only change, and it now refuses an assembly
-patched by an older Patcher (it looks for the `ICSYTW_EntryPoint_FejdStartup_Start`
-stamp). **Whenever the Patcher itself changed, run the full install.**
+**Order matters:** tag before `setversion.sh`, and stage after building, or `stage_windows.sh` refuses.
+`setversion.sh --saga-only` bakes the saga-only flavour for a release, and `Scripts/make_release.sh`
+refuses to package a dev build (CLAUDE.md, "Build flavours").
+
+**Going back.** `git tag -l 'saga/*' -n1` lists the milestones; `saga/before-2026-10-05` is the last
+build the owner played. The `saga/` prefix keeps them out of the version scripts, which read only tags
+starting with a digit. On Windows: `git checkout saga/<name>`, then `.\dist\windows\Install-Mod.ps1
+-ModOnly`. On the Mac: check out, build, `bash Scripts/deploy_local.sh`.
+
+**On Windows:** `git pull`, then `.\dist\windows\Install-Mod.ps1`. `-ModOnly` is the fast path when only
+the mod changed, and it refuses an assembly patched by an older Patcher (it looks for the
+`ICSYTW_EntryPoint_FejdStartup_Start` stamp). **Run the full install whenever the Patcher changed or
+Steam replaced the game assembly**, which every Valheim update does. There is no popup on success; one
+appears only if the mod failed to load.
+
+**After a Valheim update:** `bash Scripts/check_refs.sh` first, then the recipe in CLAUDE.md ("Update
+Scenarios").
 
 ## Waiting on a human
 
 None of these are blocked on code — they are blocked on someone playing.
+
+*(2026-10-06: these are the alpha era's open play verdicts, still unanswered as far as this page
+knows; their numbers predate Acts III–VII's voices. The closed ones, the alpha-era "Still unverified
+in play" list and "the note above" that item 7 points at are in [`RESUME-history.md`](RESUME-history.md).
+Windfall carries three charges since `...-19c`.)*
 
 1. **Repair the other worlds.** Builds before alpha17 wrote world-modifier
    rates as bare multipliers into keys Valheim reads as percentages, and
@@ -220,6 +130,8 @@ None of these are blocked on code — they are blocked on someone playing.
 3. **`runHudMenuOffset`** (default 470) — how far the HUD slides left when the
    crafting window opens. Resolution- and UI-scale-dependent.
 
+*(4 is closed: [`RESUME-history.md`](RESUME-history.md).)*
+
 5. **Lifecycle scenarios**, never proven in play: death mid-run must NOT log
    suspend/resume; logging out must suspend; switching world or character must
    not carry a run across.
@@ -232,6 +144,8 @@ None of these are blocked on code — they are blocked on someone playing.
 8. **Tracker colours**, reworked in alpha27: a species can now change colour when
    another walks into range and claims the slot it preferred. Better than boar
    and deer both reading white, but worth a verdict.
+
+*(9 is closed: [`RESUME-history.md`](RESUME-history.md).)*
 
 10. **The boat gate.** A boat quest must NEVER appear on a world where water is
     not in play — and equally, if a run sails a lot and still never sees one, the
@@ -292,6 +206,7 @@ trusting a name or a field's meaning; the self-check above catches the names, no
 - **Light rises only in the dark** is a story-bible rule the code has to keep: the drowned one's
   light and the lantern-keeper's freeing wait for night.
 
+### The ones that each cost a build
 
 The full list with reasoning is in the [build notes](2026-08-16-run-mode-build-notes.md).
 The five that have each cost a build:
@@ -329,6 +244,64 @@ The five that have each cost a build:
   unchanged and still right — a `PlayerStatType` or a compiled component beats a
   name — but a name is no longer a gamble you only settle in play.
 
+### Three more, from the 2026-10-05 builds
+
+- **Never put a collider under a ship.** Its trigger events reach `Ship.OnTriggerExit`, which throws
+  the player overboard. The helm's second key has no collider of its own for that reason (`Shipwright`).
+- **The god's wind reads the altar off the map's pins**, every few seconds until it finds one, rather
+  than remembering it from the moment the saga pinned it: the saga pins once, at the discovery step,
+  and a resumed run never pins again (`RunService.ActAltarOnMap`).
+- **The myth's `##` headings must stay the act titles.** `SagaTale.Split` cuts `docs/THE-SAGA.md` on
+  them, and a title with no tale is reported at run start, never guessed. The Deep North's missing tale
+  is the self-check's one expected FALLBACK.
+
+### Standing rules from the alpha era
+
+Their reasoning moved to [`RESUME-history.md`](RESUME-history.md) ("What the mode is, as of alpha43").
+The rules still hold:
+
+- **A guided campaign, not a speedrun** (owner, 2026-08-23). Heat multiplies the score while time only
+  divides it. Do not re-add speedrun pressure without a decision to reverse this; the levers are
+  `runParTimeMinutes` and `runHeatScoreWeight`, both config.
+- **The chain asks for destinations; the pool asks for transport.** No boat step in a questline chain.
+- **A build category may appear in ONE act only** (`ValidateActs`), because `_builtSeen` latches for
+  the whole run.
+- **Boss spoils are food** (owner, alpha25): reward the effect, leave the activity optional.
+
+### Do not free the cursor for the mod's windows (tried, reverted 2026-09-20)
+
+`ModCursor` held `GameCamera.m_mouseCapture` false while a mod window was open, which is the state
+vanilla F1 puts the game in, so the pointer appeared and the windows were clickable without TAB.
+Reverted within the hour: with the pointer free, **drawing the bow drags the windows around**. The
+mouse buttons are how you shoot AND how you move an IMGUI window, and a free cursor puts both on the
+same click.
+
+TAB works because Valheim ALSO stops taking player input while the inventory is up
+(`Player.TakeInput()` consults `InventoryGui.IsVisible()` and friends). The mod can claim the cursor
+half of that and not the input half, and the cursor half on its own is worse than nothing. Faking the
+input half means making the game believe one of its own panels is open, which is not ours to do.
+
+If it is ever wanted again, the only honest route is a mode the player opts into explicitly - not a
+thing that happens because a window is up.
+
+### Two shapes worth remembering from 2026-09-20
+
+**Do not read state in the frame you wrote it.** Three times in two days, and the third time it cost
+a working feature: the dev clock's "+2h" was replaced wholesale when only its READOUT was broken, and
+the replacement ("wind forward until the game says night") failed to the mirror image of the same lag -
+60 net-seconds a frame is an hour of game time a frame, so it blew through its own three-day cap in two
+seconds of real time while EnvMan's smoothed fraction was still catching up with the first step.
+Reverted at the owner's request. **When a readout is wrong, fix the readout, not the feature.** `CreatureDressing` lost its scale
+and colour because it wrote materials before `LevelEffects.Start` ran; the dev clock key reported
+"still light" twenty-six times because it read `EnvMan.s_isNight` in the same frame as its
+`SetNetTime`, and EnvMan only recomputes that in `FixedUpdate` from a fraction it lerps toward. Both
+fixes were the same: span frames, and ask the game whether it has arrived.
+
+**A help line that is WRONG is worse than none.** The dev banner, and then the dev clock's message.
+In both cases the tester trusted it and concluded a working feature was broken. Where a key or a
+number is shown to a person, generate it from the thing that reads it - `BoonKeys`,
+`RunService.DevKeyHelp`, the GM page's table from `CommandRegistry.All`.
+
 ## Verify claims against the IL, not memory
 
 Most real bugs in this project were found by reading Valheim's own code. Dump it
@@ -343,6 +316,24 @@ That is how the percentage bug, `Player.UseStamina`'s stamina multiplier,
 `ZDOMan.DestroyZDO`'s ownership check, and the `Sleep`/`TimeInBase` stat
 increments were all confirmed. If a change depends on what the game does, read
 it there first.
+
+### Read the IL before building the workaround
+
+Twice on 2026-09-20 the feature already existed in the game and the plan was to build over the top
+of it.
+
+**Alphabetical crafting** was going to be a filter and a text field laid over `InventoryGui`.
+`UpdateRecipeList` turned out to read a player key, `sortcraft`, parse it as
+`InventoryGui.SortMethod` (`Original|Name|Type|Weight|Count`) and sort its own list. One key write
+replaced the whole plan. See `CraftingSort`.
+
+**Freeing the mouse** was going to mean driving `ZCursor` every frame and fighting
+`GameCamera.UpdateMouseCapture` for it. That method turned out to key off one bool,
+`m_mouseCapture` - the same bool **vanilla F1 toggles**. Setting it is entering a state the game
+ships rather than inventing one. See `ModCursor`.
+
+The habit that paid: before writing anything that reaches into the game's UI, dump the method with
+Cecil and look for the setting.
 
 ## Four decisions taken 2026-09-20 (owner, asked directly)
 
@@ -369,6 +360,13 @@ afterthought. Its premise also duplicates Act III's marsh. One beat, reachable o
 The docs should stop counting to eight: seven acts and an epilogue. The `FrozenKing` names still
 want validating, because the startup placeholder warning is a claim about the world.
 
+> **Reaffirmed 2026-10-06 (owner).** The Deep North is the epilogue after Fader, and since `...06d`
+> Fader is the default final boss, so the seven acts are reached without editing the config. The code
+> still carries the epilogue as Act VIII (the act table, `DeepNorthChain`) with a stand-in story,
+> reached only with `runFinalBossKey` moved past Fader. Its names are no longer guesses: they were read
+> out of the game's own data on 2026-10-06, and the self-check's "Act VIII's god" line checks them on
+> every launch. The atlas and the bible's act table still show eight rows.
+
 **4. The feast: empty high seats by default, and a god who comes if you earned it** (#17). One
 named seat per felled god, empty unless something specific was done in that god's own act. The
 empty-seat path must be complete and winnable on its own, because it is the version most players
@@ -387,3 +385,22 @@ experiment - a boss fighting for you needs its faction flipped and can look ridi
   **Settled 2026-09-20: there will be no AssetBundle pipeline** (see the decisions
   above), so the tracker is the book permanently. What is still open is whether the
   BOOK page's *presentation* can carry more of the feeling - that costs nothing.
+
+### Parked: search at the crafting bench
+
+Asked 2026-09-20 and PARKED the same day, because alphabetical sorting turned out to be most of what
+it was for (see above). Worth building only if the owner asks again.
+
+It is UI surgery on Valheim's own crafting panel, and breaking the crafting window is far worse than
+not having search in it. The research is done and every member exists: `InventoryGui.m_availableRecipes`
+(private list), `m_recipeListRoot`, `m_recipeListSpace`, `m_recipeListBaseSize`, `m_recipeElementPrefab`.
+Filtering therefore means hiding the elements that do not match and RE-STACKING the rest by index,
+every time the game rebuilds the list - the game positions them by index times `m_recipeListSpace`, so
+hidden ones leave gaps otherwise.
+
+The part not to guess at is the INPUT. An IMGUI text field competing with Valheim's own keyboard
+handling, over a panel the player is actively using. Valheim's `TakeInput` is false while the inventory
+is open, which is the reason to think letters will not reach the game - but "is the reason to think"
+is not "was play-tested", and this one has to be.
+
+So: its own build, its own play-test, and behind `runDevMode` for the first outing.

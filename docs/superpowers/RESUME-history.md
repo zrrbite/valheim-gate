@@ -9,6 +9,132 @@ the reasoning behind a decision, or to find when something changed. Each section
 heading, newest first, and keeps the order it had in RESUME. Relative links still work: this file
 sits beside RESUME.
 
+## 2026-10-06: RESUME's header, "Where things stand" and the loop, as they read before the cleanup
+
+Moved on 2026-10-06, when RESUME's top was rewritten as a short summary of the same facts and the
+loop was rewritten for date-based builds. The header paragraph came first:
+
+Written 2026-08-23, last updated 2026-10-06 at `1.0.17-run.2026-10-06c`. This is the "pick it back up
+without re-deriving anything" page: where the work stands, the loop it moves
+in, and the questions that are waiting on a human.
+
+### "Where things stand", 2026-10-06, before the rewrite
+
+- **Plans ready to build after the home test** (2026-10-06): the hall, slices 0–1
+  ([`plans/2026-10-06-the-hall-slices-0-1.md`](plans/2026-10-06-the-hall-slices-0-1.md): an Aspect on the player's
+  side, then Act I's long fire), and Valheim Smith's milestones 0–1 (private on GitHub: `zrrbite/valheim-smith`,
+  `docs/plans/`; Tasks 5–6 already built on branch `milestone-1-skeleton`). The Mac already allows BepInEx's loader (entitlements `allow-dyld-environment-variables` and
+  `disable-library-validation`) and is a universal binary, so Rosetta is a real fallback.
+- **The owner's home test plan** for everything from 2026-10-05/06 (setup, a new character, act by act, boats, the
+  reward, the MacBook): [`2026-10-06-home-test-plan.md`](2026-10-06-home-test-plan.md). Start the next session from what it brings back.
+- **2026-10-06: the first self-check ever read** (the Mac, `...06`): 47 OK, 1 FALLBACK (the Deep North has no
+  tale, expected), 1 MISSING, a real Act II stall fixed in `...06c`. Haldor asked for `TrophyForestTroll`, but
+  trolls drop only `TrophyFrostTroll`; both items exist and both read "Troll Trophy". **Lesson:** an item that
+  exists is not an item anyone can get. The drop-table check caught what the name check passed.
+- **2026-10-06: a laptop layout, clickable cards, and the lobby after the intro** (`...06b`,
+  `saga/laptop-keys`). The owner's MacBook could not choose boons: no numpad, and no Mac has `Insert`.
+  `runKeyLayout: "laptop"` moves every saga key onto letters Valheim leaves free (pure `KeyLayout`, tested
+  against 1.0.17's own bindings; see CLAUDE.md's key section). Every card also takes TAB and a click, through
+  the same `RunService.ChooseFromCard` the keys use. Player keys now respect `Player.TakeInput`, so typing in
+  chat fires nothing. And the lobby no longer opens over a new character's Valkyrie intro (`LobbyOffer`,
+  gated on `Player.InCutscene`). The Mac's config is set to `laptop` (backup `.bak-2026-10-06`).
+- **2026-10-06: the game is 1.0.17** (Unity still 6000.0.75), with no source change: `bash Scripts/check_refs.sh`
+  found every reference resolving. Rebuilt as `1.0.17-run.2026-10-06`, which is the `...06` build under the new
+  prefix, deployed on the Mac. **Windows needs a FULL install** (top TASK in `HANDOFF_WINDOWS.md`). The Deck is
+  further behind than ever.
+- **The one-page overview of 2026-10-05/06** (what got built, the story, the boats, the new ideas and
+  where each stands): [`2026-10-06-overview.md`](2026-10-06-overview.md).
+- **2026-10-06: the Deep North has its real names** (`...06`, `saga/deep-north-names`, staged and
+  deployed on the Mac). This is now the build to test: everything below about `...05q` still holds, since
+  `...06` contains it. Its checks are the top TASK in `HANDOFF_WINDOWS.md`.
+  - **How the names were found.** The Mac's own `Player.log` "Boss registry" lines gave the altar
+    (`offeraltar_FrozenKing_bossroom`, boss `FrozenKing`, empty bowl key) and the location `DN_Bossroom`.
+    The key is asset data, so 1.0.16's bundles were unpacked with the new `Scripts/unpack_bundle.py`
+    (pure Python; the bundles are LZ4, so a raw grep finds only fragments).
+  - **The Frozen King is fought in three forms.** `FrozenKing` (chained, spawned by the altar) sets
+    `defeated_frozenking`. `FrozenKing_p2` summons the seven earlier gods (`FrozenKing_P2_Summon_Eikthyr`
+    … `_Fader`). `FrozenKing_p3` sets **`defeated_frozenking_p3`**, the key the Deep North's raids stop on
+    and the form the all-bosses achievement names. **Act VIII ends on the third form**: the first form's
+    key would end the act mid-fight. A Vegvisir (`$hud_pin_dnboss`) pins `DN_Bossroom`. The same data
+    confirms the Queen's and Fader's keys.
+  - **In the code.** The boss table, Act VIII and `DeepNorthChain` use the real names, the
+    `SagaNames` stand-ins are gone, and `Placeholder` is off, so the validator checks the act (the flag
+    is kept for the next biome). Two new self-check lines: **"Act N's god"** checks that the creature the
+    boss step kills sets the act's own key (`SagaSelfCheck.GodsKey`, tested), and **"The gods' altars"**
+    checks that every altar is a known location. The Boss registry line now prints `boss sets=`.
+  - **Still open.** Whether `FrozenKing_p3` is a spawnable prefab whose kill is reported under that
+    name: the first launch's self-check says so, and the act ends on the key either way. The STORY is
+    still a stand-in (chapter, two steps), and decision #3 below (the Deep North as an epilogue after
+    Fader, not Act VIII) is still unresolved: the code and the docs disagree. That decision is the
+    owner's.
+- **Nothing built on 2026-10-05 has been played** (`...05f` to `...05q`: Acts III–VII voiced, the saga's
+  reward, the self-check, ship fittings, the winds). The owner tests at home from one ordered plan in
+  their todo repo (`~/Development/todo/TODO.md`, section "Valheim: The Saga"); the per-build checks are
+  the TASKs in `HANDOFF_WINDOWS.md`. **Start from what that test brings back** (self-check block,
+  errors, feel of fitting prices, the 40° cone, the horn's 2 and 10 minutes) before Act VIII.
+- **Going back (owner, 2026-10-05): every major build gets a named, annotated milestone tag** on its
+  `build:` commit (the one carrying the staged Windows DLL), so any of them can be checked out and
+  installed as-is. `git tag -l 'saga/*' -n1` lists them. Today's: `saga/before-2026-10-05` (the last
+  build the owner played — undo the whole day here), `saga/rungs-at-the-kill`, `saga/act2-voices` …
+  `saga/act6-voices`. The `saga/` prefix keeps them out of the version scripts, which only read tags
+  starting with a digit. To go back on Windows: `git checkout saga/act4-voices`, then
+  `.\dist\windows\Install-Mod.ps1 -ModOnly`; on the Mac, check out, build, `Scripts/deploy_local.sh`.
+- **First thing on any new build: `grep "Saga self-check" Player.log`** (since `...05n`). One block
+  at run start, a line per name the saga guesses (speaker bodies and places, traders, Hildir's chests,
+  item looks, flametal, plains foods, every quest name), OK / FALLBACK / MISSING, worst first. MISSING
+  is a step that cannot finish; FALLBACK is a guess to correct. `RunService.LogSelfCheck`, pure
+  `SagaSelfCheck`. A new guessed name belongs in it.
+
+- Branch **`feature/run-mode`**, not merged, deliberately — the mode is still
+  being tuned in play.
+- **The Saga Atlas** — one page with every questline in the saga, lane by lane across
+  all eight acts, plus the arc, the light economy and a build log:
+  <https://claude.ai/artifact/8EvSbu7GH5SQ1Fq9Md83ca>
+  Regenerate it with `python Scripts/saga_atlas.py` and REPUBLISH TO THAT SAME URL, so
+  the owner's link keeps working. The lanes are read out of `RunService.cs`, so the page
+  cannot drift from the code — but the per-act STATUS and the version in its meta line
+  are hand-written claims and go stale on their own.
+- **The Storm-Anvil test path** — the focused page for the shade/light/anvil chain:
+  <https://claude.ai/artifact/XdbeDYL6m7f2t5MioVmqJ9>
+
+### The loop
+
+*(As RESUME described it until 2026-10-06. It was still the alpha-era loop, with `alphaNN` bumps and
+`0.221.12` tags, retired when builds became date-based on 2026-08-31.)*
+
+Every alpha follows the same seven steps. It takes about a minute.
+
+```bash
+# 1. change code, then:
+msbuild Valheim.sln -p:Configuration=Debug -v:minimal   # must be clean
+Tests/run_tests.sh                                      # must say ALL PASS
+
+# 2. bump ICanShowYouTheWorld/Assets/Version.cs
+#    alpha<N>   for a mechanic/content change worth a play-test brief
+#    alpha<N>.<B> for a fix, a tuning number, a nudged panel
+#    ALWAYS bump one of them: the menu badge is the only proof of what is being played
+# 3. refresh the Windows kit + docs
+cp ICanShowYouTheWorld/bin/Debug/ICanShowYouTheWorld.dll dist/windows/patcher/
+sed -i '' 's/alphaN/alphaN+1/g' dist/windows/README.md HANDOFF_WINDOWS.md
+
+# 4. append a TASK section to HANDOFF_WINDOWS.md saying what to look for
+# 5. commit, tag, push
+git tag 0.221.12-run.alphaN+1
+git push origin feature/run-mode && git push origin 0.221.12-run.alphaN+1
+
+# 6. deploy to the Mac
+Scripts/deploy_local.sh
+```
+
+On Windows: `git pull` → `.\Install-Mod.ps1` → the gold `SAGA v<build>` line under the
+main menu's version must read the tag you just pushed. **That badge is the whole point of
+tagging every build** — it is the only way to be certain which one is being played. There
+is no popup on success since 2026-09-19; one appears only if the mod failed to load.
+
+`-ModOnly` is the fast path for a mod-only change, and it now refuses an assembly
+patched by an older Patcher (it looks for the `ICSYTW_EntryPoint_FejdStartup_Start`
+stamp). **Whenever the Patcher itself changed, run the full install.**
+
 ## 2026-10-05: the day's "Where things stand" bullets
 
 Moved from RESUME's "Where things stand" on 2026-10-06, newest first as they were written.
@@ -946,6 +1072,8 @@ closed by "Confirmed in play" above (the Act I → II transition choreography).
    Keep running the grep after any build that adds names — it stays the cheapest
    minute in the loop — but the backlog it was built to clear is gone. See
    [`../../dist/windows/CHECKING-THE-LOG.md`](../../dist/windows/CHECKING-THE-LOG.md).
+
+And item 9, closed later:
 
 9. **The Act I → Act II transition**, never seen firing. Killing Eikthyr should
    banner "ACT II — THE BLACK FOREST" and immediately seat the first Black Forest
