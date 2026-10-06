@@ -19,6 +19,8 @@ Everything below is what that file tells it.
 
 ## Where things stand
 
+- **The owner's home test plan** for everything from 2026-10-05/06 (setup, a new character, act by act, boats, the
+  reward, the MacBook): [`2026-10-06-home-test-plan.md`](2026-10-06-home-test-plan.md). Start the next session from what it brings back.
 - **2026-10-06: the first self-check ever read** (the Mac, `...06`): 47 OK, 1 FALLBACK (the Deep North has no
   tale, expected), 1 MISSING, a real Act II stall fixed in `...06c`. Haldor asked for `TrophyForestTroll`, but
   trolls drop only `TrophyFrostTroll`; both items exist and both read "Troll Trophy". **Lesson:** an item that
