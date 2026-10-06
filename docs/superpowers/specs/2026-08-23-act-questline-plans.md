@@ -314,6 +314,12 @@ the key it sets, plus every boss-looking location name. Read those lines from a
 1.0 game, put the real names into `RunService.Bosses` and `DeepNorthChain`,
 drop the flag.
 
+**Read on 2026-10-06** from 1.0.16's asset bundles (`Scripts/unpack_bundle.py`): the altar location is
+`DN_Bossroom`, and the boss is fought in three forms. `FrozenKing` sets `defeated_frozenking`,
+`FrozenKing_p2` summons the earlier gods, and `FrozenKing_p3` sets `defeated_frozenking_p3`, which ends
+the act. They are in the code now, and the placeholder flag is off. Everything below about names is
+history; the title and the chain are still the stand-ins they were.
+
 **Title, as a placeholder:** "What the Cold Keeps" — *Ice does not take light.
 It keeps it. Find out from whom.* The story bible's rule that only Act VII
 answers the shortage is left standing; the Deep North's answer is not written

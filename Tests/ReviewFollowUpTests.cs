@@ -108,5 +108,23 @@ static class ReviewFollowUpTests
         Check.That(all.Lines[0].Verdict == SelfCheckVerdict.Ok && all.Lines[0].Detail.Contains("all 14") &&
                    all.Lines[1].Verdict == SelfCheckVerdict.Missing && all.Lines[1].Detail.Contains("Fenrirr"),
                    "AllOf is OK with the total, or MISSING naming each bad one");
+
+        // The Frozen King is fought in three forms and the FIRST sets a key of its own, so a god's
+        // key is checked against the creature its boss step kills, not taken on trust.
+        var gods = new SagaSelfCheck();
+        gods.GodsKey("Act VIII's god", "FrozenKing_p3", "defeated_frozenking_p3", "defeated_frozenking_p3");
+        gods.GodsKey("Act VIII's god", "FrozenKing", "defeated_frozenking", "defeated_frozenking_p3");
+        gods.GodsKey("Act VIII's god", "FrozenKing_p9", null, "defeated_frozenking_p3");
+        gods.GodsKey("Act I's god", "Eikthyr", "", "defeated_eikthyr");
+        Check.That(gods.Lines[0].Verdict == SelfCheckVerdict.Ok && gods.Lines[0].Detail.Contains("FrozenKing_p3") &&
+                   gods.Lines[0].Detail.Contains("defeated_frozenking_p3"),
+                   "a god whose creature sets the act's own key is OK, naming both");
+        Check.That(gods.Lines[1].Verdict == SelfCheckVerdict.Missing && gods.Lines[1].Detail.Contains("'defeated_frozenking'") &&
+                   gods.Lines[1].Detail.Contains("'defeated_frozenking_p3'") && gods.Lines[1].Detail.Contains("never ends"),
+                   "a creature that sets another key is MISSING: the act would wait for a key that god never sets");
+        Check.That(gods.Lines[2].Verdict == SelfCheckVerdict.Missing && gods.Lines[2].Detail.Contains("no creature 'FrozenKing_p9'"),
+                   "a boss step naming no creature is MISSING");
+        Check.That(gods.Lines[3].Verdict == SelfCheckVerdict.Missing && gods.Lines[3].Detail.Contains("sets nothing"),
+                   "a creature that sets no key at all is MISSING, said plainly");
     }
 }

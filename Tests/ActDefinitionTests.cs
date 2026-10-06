@@ -21,8 +21,8 @@ static class ActDefinitionTests
         Act("act5", "V",   "The Plains",       "defeated_goblinking","pl-yagluth",  "GoblinKing"),
         Act("act6", "VI",  "The Mistlands",    "defeated_queen",     "mi-queen",    "SeekerQueen"),
         Act("act7", "VII", "The Ashlands",     "defeated_fader",     "as-fader",    "Fader"),
-        // The Deep North is a placeholder: its names are stand-ins (see ActDefinition.Placeholder).
-        Act("act8", "VIII","The Deep North",   "__deep_north_defeated", "dn-boss",  "__deep_north_boss", placeholder: true),
+        // The Deep North's god is fought in three forms; the act ends on the third (2026-10-06).
+        Act("act8", "VIII","The Deep North",   "defeated_frozenking_p3", "dn-boss", "FrozenKing_p3"),
     };
 
     static ActDefinition Act(string id, string numeral, string title, string key, string bossStepId, string bossPrefab, bool placeholder = false) =>
@@ -56,8 +56,8 @@ static class ActDefinitionTests
         var acts = Sample();
 
         Check.That(acts.Count == 8, "the saga has eight acts, one per boss");
-        Check.That(acts.Take(7).All(a => !a.Placeholder) && acts[7].Placeholder,
-            "only the Deep North is a placeholder — the flag defaults to false");
+        Check.That(acts.All(a => !a.Placeholder),
+            "no act is a placeholder since the Deep North got its names — the flag defaults to false");
 
         // The banner is what the HUD heads the quest section with and what a transition announces.
         Check.That(acts[1].Banner == "ACT II — THE BLACK FOREST", "the banner reads ACT <numeral> — <TITLE>");

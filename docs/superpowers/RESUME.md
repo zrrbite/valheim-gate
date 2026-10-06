@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-10-05 at `1.0.16-run.2026-10-05q`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-10-06 (code past `1.0.16-run.2026-10-05q`, not yet built — see the first bullet). This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -19,6 +19,30 @@ Everything below is what that file tells it.
 
 ## Where things stand
 
+- **2026-10-06: the Deep North has its real names. Committed, NOT built or tagged** (the session broke
+  off). **Do this first next time:** tag `...06` (`Scripts/nextversion.sh`), `setversion.sh`, build, stage
+  for Windows, `deploy_local.sh` on the Mac, add a HANDOFF task, and change the todo test plan's badge to
+  `...06`. Everything below about `...05q` still holds, since `...06` contains it.
+  - **How the names were found.** The Mac's own `Player.log` "Boss registry" lines gave the altar
+    (`offeraltar_FrozenKing_bossroom`, boss `FrozenKing`, empty bowl key) and the location `DN_Bossroom`.
+    The key is asset data, so 1.0.16's bundles were unpacked with the new `Scripts/unpack_bundle.py`
+    (pure Python; the bundles are LZ4, so a raw grep finds only fragments).
+  - **The Frozen King is fought in three forms.** `FrozenKing` (chained, spawned by the altar) sets
+    `defeated_frozenking`. `FrozenKing_p2` summons the seven earlier gods (`FrozenKing_P2_Summon_Eikthyr`
+    … `_Fader`). `FrozenKing_p3` sets **`defeated_frozenking_p3`**, the key the Deep North's raids stop on
+    and the form the all-bosses achievement names. **Act VIII ends on the third form**: the first form's
+    key would end the act mid-fight. A Vegvisir (`$hud_pin_dnboss`) pins `DN_Bossroom`. The same data
+    confirms the Queen's and Fader's keys.
+  - **In the code.** The boss table, Act VIII and `DeepNorthChain` use the real names, the
+    `SagaNames` stand-ins are gone, and `Placeholder` is off, so the validator checks the act (the flag
+    is kept for the next biome). Two new self-check lines: **"Act N's god"** checks that the creature the
+    boss step kills sets the act's own key (`SagaSelfCheck.GodsKey`, tested), and **"The gods' altars"**
+    checks that every altar is a known location. The Boss registry line now prints `boss sets=`.
+  - **Still open.** Whether `FrozenKing_p3` is a spawnable prefab whose kill is reported under that
+    name: the first launch's self-check says so, and the act ends on the key either way. The STORY is
+    still a stand-in (chapter, two steps), and decision #3 below (the Deep North as an epilogue after
+    Fader, not Act VIII) is still unresolved: the code and the docs disagree. That decision is the
+    owner's.
 - **Nothing built on 2026-10-05 has been played** (`...05f` to `...05q`: Acts III–VII voiced, the saga's
   reward, the self-check, ship fittings, the winds). The owner tests at home from one ordered plan in
   their todo repo (`~/Development/todo/TODO.md`, section "Valheim: The Saga"); the per-build checks are

@@ -145,14 +145,5 @@ namespace ICanShowYouTheWorld.RunMode
 
         public const string BowKillsStat = "SagaThorsBowKills";
         public const string StormAnswersStat = "SagaStormwardAnswers";
-
-        // Act VIII stand-ins (2026-09-12). Valheim 1.0's Deep North boss exists — the assembly has
-        // GP_DeepNorth and a "frozen king" item token — but its prefab, altar location and defeat
-        // key are asset data. These are deliberately un-guessed: a guess that happened to be right
-        // would be a design nobody made. The run-start "Boss registry" log lines print the real
-        // names; put them in RunService's boss table and delete these.
-        public const string DeepNorthBoss = "__deep_north_boss";
-        public const string DeepNorthAltar = "__deep_north_altar";
-        public const string DeepNorthBossKey = "__deep_north_defeated";
     }
 }

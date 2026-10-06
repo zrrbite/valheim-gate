@@ -94,6 +94,22 @@ namespace ICanShowYouTheWorld.RunMode
             else Missing(what, $"{string.Join(", ", missing.ToArray())} - {consequence}");
         }
 
+        /// <summary>
+        /// An act's god: OK when the creature its boss step kills sets the very key the act waits for
+        /// (<paramref name="setsKey"/> is null when there is no such creature). Anything else is
+        /// MISSING - an act ends on its key, and the Frozen King's first form sets one of its own.
+        /// </summary>
+        public void GodsKey(string what, string creature, string setsKey, string actKey)
+        {
+            if (setsKey == null)
+                Missing(what, $"no creature '{creature}' - the boss step never completes, and '{actKey}' is unchecked");
+            else if (setsKey == actKey)
+                Ok(what, $"'{creature}' sets '{actKey}'");
+            else
+                Missing(what, (setsKey.Length == 0 ? $"'{creature}' sets nothing" : $"'{creature}' sets '{setsKey}'") +
+                              $", but the act waits for '{actKey}' - it never ends");
+        }
+
         /// <summary>A header counting each verdict, then the worst lines first. Every line starts with <see cref="Tag"/>.</summary>
         public IEnumerable<string> Format(string build)
         {

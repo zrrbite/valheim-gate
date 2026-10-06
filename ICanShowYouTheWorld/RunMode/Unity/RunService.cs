@@ -30,13 +30,17 @@ namespace ICanShowYouTheWorld.RunMode
             ("Dragonqueen", "Moder",     "defeated_dragon"),
             ("GoblinKing",  "Yagluth",   "defeated_goblinking"),
             // Valheim's own order continues: the Queen, Fader, and since 1.0 the Deep North's boss.
-            // The Queen's and Fader's names are the game's as commonly documented, and the
-            // validator checks the creature names at every run start. The Deep North's three are
-            // STAND-INS — see the Act VIII placeholder and SagaNames. Acts past Yagluth are only
-            // reachable when runFinalBossKey (config) is moved past him.
+            // Acts past Yagluth are only reachable when runFinalBossKey (config) is moved past him.
+            //
+            // The Deep North's names were read out of 1.0.16's asset bundles on 2026-10-06, along
+            // with the Queen's and Fader's keys (which match). The Frozen King is fought in three
+            // forms: FrozenKing (chained) sets defeated_frozenking, FrozenKing_p2 summons the
+            // earlier gods, FrozenKing_p3 sets defeated_frozenking_p3 - the key the Deep North's
+            // raids stop on. The act ends on the THIRD; the first would end it mid-fight. A
+            // Vegvisir pins DN_Bossroom. The self-check's "god" lines confirm all of it per launch.
             ("Mistlands_DvergrBossEntrance1", "The Queen",       "defeated_queen"),
             ("FaderLocation",                 "Fader",           "defeated_fader"),
-            (SagaNames.DeepNorthAltar,        "The Frozen King", SagaNames.DeepNorthBossKey),
+            ("DN_Bossroom",                   "The Frozen King", "defeated_frozenking_p3"),
         };
 
         /// <summary>Used when <see cref="IConfiguration.RunFinalBossKey"/> names something that isn't a boss.</summary>
@@ -244,7 +248,7 @@ namespace ICanShowYouTheWorld.RunMode
         private static readonly HashSet<string> SyntheticCreatureNames =
             new HashSet<string>
             {
-                DeerHerd.HeraldKillName, TheGatherer.KillName, SagaNames.DeepNorthBoss, SagaNames.DrownedKill,
+                DeerHerd.HeraldKillName, TheGatherer.KillName, SagaNames.DrownedKill,
                 // Reported by us when a deer falls in daylight. No prefab is called this, and the
                 // validator would otherwise report the act’s opening step as a dead quest.
                 DeerHerd.DayDeerKillName,
@@ -7126,8 +7130,10 @@ namespace ICanShowYouTheWorld.RunMode
 
                         found++;
                         string boss = bowl.m_bossPrefab != null ? bowl.m_bossPrefab.name : "(none)";
+                        // The bowl's own key is empty for the Frozen King; the boss sets one itself.
+                        string sets = bowl.m_bossPrefab?.GetComponent<Character>()?.m_defeatSetGlobalKey;
                         Debug.Log($"[ICanShowYouTheWorld] Boss registry: altar prefab '{prefab.name}' " +
-                                  $"boss='{boss}' key='{bowl.m_setGlobalKey}' name='{bowl.m_name}'");
+                                  $"boss='{boss}' key='{bowl.m_setGlobalKey}' boss sets='{sets}' name='{bowl.m_name}'");
                     }
 
                     if (found == 0)
@@ -7523,6 +7529,7 @@ namespace ICanShowYouTheWorld.RunMode
             LogLocationRegistry();
             CheckSagaMyth();
             CheckSpeakersAndTraders();
+            CheckGods();
             CheckSagaItems();
             ValidateClassLadder();
             // Thor's bow's flashes: every element's, so a missing fire or frost burst is in the log
@@ -10655,8 +10662,8 @@ namespace ICanShowYouTheWorld.RunMode
                 // answers where it goes, and the finale bookends the theft the saga opens with.
                 //
                 // The saga is SEVEN acts — the five mainland bosses plus the Queen and Fader.
-                // Five are built; VI–VIII are thin stand-ins, and VIII a true placeholder (see
-                // ActDefinition.Placeholder) until 1.0's Deep North has been played.
+                // Five are built; VI–VIII are thin stand-ins. VIII has the game's real names since
+                // 2026-10-06, but its story waits until 1.0's Deep North has been played.
                 // V was called "The Last Harvest" while five was the whole
                 // story and read as a finale; it is a middle, so it takes the Plains' own image
                 // instead. See the act plans spec.
@@ -10785,13 +10792,10 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ActDefinition
             {
-                // PLACEHOLDER (2026-09-12). Valheim 1.0 shipped the Deep North with a boss of its
-                // own — the assembly carries GP_DeepNorth, a "frozen king" item token, a Crowned
-                // status effect and a crown mode on the player — but the boss prefab, its altar
-                // location and its defeat key are asset data this build cannot read. All three
-                // are stand-ins from SagaNames; the run-start "Boss registry" log lines print the
-                // real ones from the live game. Replace the stand-ins in Bosses and DeepNorthChain,
-                // drop Placeholder, and this act validates like any other.
+                // A placeholder from 2026-09-12 until 2026-10-06, when its boss, altar and key were
+                // read out of the game's asset bundles (see Bosses). The STORY is still a stand-in:
+                // the chapter, the two steps, and whether the Deep North is an eighth act at all or
+                // the epilogue the 2026-09-20 decision asked for.
                 Id = "act8", Numeral = "VIII", Title = "What the Cold Keeps",
                 Epigraph = "Ice does not take light. It keeps it. Find out from whom.",
                 RavenLine = "Nothing here has thawed in an age. " +
@@ -10800,8 +10804,7 @@ namespace ICanShowYouTheWorld.RunMode
                     "Nothing in the far north has thawed since before the herd, and the ice is not " +
                     "hungry and never was. It has only been keeping something. You went to find out " +
                     "who it was keeping it for.",
-                BossDefeatKey = SagaNames.DeepNorthBossKey, Tracks = Split(DeepNorthChain()),
-                Placeholder = true,
+                BossDefeatKey = "defeated_frozenking_p3", Tracks = Split(DeepNorthChain()),
             },
         };
 
@@ -11137,6 +11140,42 @@ namespace ICanShowYouTheWorld.RunMode
                 }
             }
             catch (Exception ex) { LogOnce("self-check-speakers", ex); }
+        }
+
+        /// <summary>
+        /// Each act's god: the creature its boss step kills must set the very key the act waits for,
+        /// and its altar must be a place the world has. Added when the Frozen King turned out to set
+        /// one key in his first form and another in his last.
+        /// </summary>
+        private void CheckGods()
+        {
+            if (_selfCheck == null) return;
+            try
+            {
+                var scene = ZNetScene.instance;
+                if (scene == null)
+                {
+                    _selfCheck.Fallback("The gods", "the scene was not ready - not checked this run");
+                    return;
+                }
+
+                foreach (var act in _acts)
+                {
+                    var boss = act.Tracks.FirstOrDefault(t => t.Id == HuntTrackId)?.Chain.LastOrDefault();
+                    if (boss == null || boss.Kind != ChallengeKind.KillPrefab) continue; // ValidateActs says so
+                    string sets = scene.GetPrefab(boss.Param)?.GetComponent<Character>()?.m_defeatSetGlobalKey;
+                    _selfCheck.GodsKey(act.Label + "'s god", boss.Param, sets, act.BossDefeatKey);
+                }
+
+                var places = KnownLocationNames();
+                if (places.Count == 0)
+                    _selfCheck.Fallback("The gods' altars", "the game's location table was empty - not checked this run");
+                else
+                    _selfCheck.AllOf("The gods' altars", Bosses.Length,
+                                     Bosses.Where(b => !places.Contains(b.locName)).Select(b => b.locName).ToList(),
+                                     "never found or pinned: no Waystone, no god's wind, and an altar step stalls");
+            }
+            catch (Exception ex) { LogOnce("self-check-gods", ex); }
         }
 
         /// <summary>
@@ -12761,7 +12800,7 @@ namespace ICanShowYouTheWorld.RunMode
             },
         };
 
-        // --- Act VIII: the Deep North. A PLACEHOLDER — see the act table and ActDefinition.Placeholder. ---
+        // --- Act VIII: the Deep North. Real names, stand-in story — see the act table. ---
 
         internal static List<ChallengeDefinition> DeepNorthChain() => new List<ChallengeDefinition>
         {
@@ -12775,10 +12814,9 @@ namespace ICanShowYouTheWorld.RunMode
             },
             new ChallengeDefinition
             {
-                // A stand-in that no creature answers to, so the step can never complete. The act
-                // still ENDS when the world sets its defeat key — itself a stand-in until the boss
-                // registry lines name the real one.
-                Id = "dn-boss", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = SagaNames.DeepNorthBoss,
+                // The Frozen King's THIRD form: the altar spawns the first (FrozenKing), whose death
+                // is not the end of the fight. See Bosses.
+                Id = "dn-boss", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "FrozenKing_p3",
                 Target = 1, Display = "Defeat what the cold keeps",
             },
         };

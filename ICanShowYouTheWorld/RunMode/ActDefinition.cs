@@ -85,10 +85,11 @@ namespace ICanShowYouTheWorld.RunMode
         /// meant to be, so the validator skips them and says so once, instead of reporting an
         /// unknown creature at every run start for an act nobody can reach yet.
         ///
-        /// Exists for Act VIII. Valheim 1.0 shipped the Deep North with a boss this build cannot
-        /// name — prefab, altar and defeat key are all asset data — and the alternative to a
-        /// placeholder was an act table one biome short of the game. A placeholder can never END
-        /// on its own: its defeat key is a stand-in the world will never set.
+        /// Made for Act VIII, whose boss, altar and defeat key are asset data the assembly cannot
+        /// show; the alternative was an act table one biome short of the game. No act uses it since
+        /// 2026-10-06, when those names were read out of the asset bundles. Kept for the next biome
+        /// Valheim ships. A placeholder can never END on its own: its defeat key is a stand-in the
+        /// world will never set.
         /// </summary>
         public bool Placeholder;
 
