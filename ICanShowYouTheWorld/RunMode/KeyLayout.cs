@@ -20,6 +20,10 @@ namespace ICanShowYouTheWorld.RunMode
         // Dev builds only. Star, Slash and Delete are read bare AND with a modifier; Plus, Minus and
         // Backspace only with one; the rest only bare. See RunService.HandleDevInput.
         DevStar, DevSlash, DevDot, DevEnter, DevPlus, DevMinus, DevDelete, DevHome, DevPageUp, DevBackspace,
+
+        // MACBOOK-TEMP (2026-10-06): hop between the saga's places, bare forward, with a modifier back.
+        // For testing on a MacBook with no mouse; remove with the rest of MACBOOK-TEMP.
+        DevGoTo,
     }
 
     /// <summary>
@@ -58,6 +62,7 @@ namespace ICanShowYouTheWorld.RunMode
         {
             SagaKey.DevStar, SagaKey.DevSlash, SagaKey.DevDot, SagaKey.DevEnter,
             SagaKey.DevDelete, SagaKey.DevHome, SagaKey.DevPageUp,
+            SagaKey.DevGoTo,   // MACBOOK-TEMP
         };
 
         /// <summary>Dev keys read with Shift, Ctrl or Alt held. The player's handler stands down while one is.</summary>
@@ -65,6 +70,7 @@ namespace ICanShowYouTheWorld.RunMode
         {
             SagaKey.DevStar, SagaKey.DevSlash, SagaKey.DevDelete,
             SagaKey.DevPlus, SagaKey.DevMinus, SagaKey.DevBackspace,
+            SagaKey.DevGoTo,   // MACBOOK-TEMP
         };
 
         /// <summary>
@@ -99,6 +105,7 @@ namespace ICanShowYouTheWorld.RunMode
             [SagaKey.DevPlus] = "KeypadPlus", [SagaKey.DevMinus] = "KeypadMinus",
             [SagaKey.DevDelete] = "Delete", [SagaKey.DevHome] = "Home", [SagaKey.DevPageUp] = "PageUp",
             [SagaKey.DevBackspace] = "Backspace",
+            [SagaKey.DevGoTo] = "DownArrow",   // MACBOOK-TEMP: free in play, Valheim scrolls chat with it
         };
 
         private static readonly Dictionary<SagaKey, string> LaptopKeys = new Dictionary<SagaKey, string>
@@ -120,6 +127,7 @@ namespace ICanShowYouTheWorld.RunMode
             [SagaKey.DevPlus] = "P", [SagaKey.DevMinus] = "N",
             [SagaKey.DevDelete] = "Delete", [SagaKey.DevHome] = "Home", [SagaKey.DevPageUp] = "PageUp",
             [SagaKey.DevBackspace] = "Backspace",
+            [SagaKey.DevGoTo] = "DownArrow",   // MACBOOK-TEMP
         };
 
         public static bool IsKnown(string layout) =>

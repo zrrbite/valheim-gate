@@ -59,6 +59,12 @@ static class KeyLayoutTests
             Check.That(clash.Count == 0, $"{name}: no saga key is one Valheim binds ({string.Join(", ", clash.ToArray())})");
         }
 
+        // MACBOOK-TEMP: the dev "go to" key is the down arrow in both layouts, bare for the next place and
+        // with a modifier for the one before. Valheim binds it only to scroll the chat.
+        Check.That(numpad[SagaKey.DevGoTo] == "DownArrow" && laptop[SagaKey.DevGoTo] == "DownArrow" &&
+                   KeyLayout.BareDevKeys.Contains(SagaKey.DevGoTo) && KeyLayout.ModifiedDevKeys.Contains(SagaKey.DevGoTo),
+                   "go-to is the down arrow in both layouts, bare and with a modifier");
+
         // The point of the laptop layout: nothing a MacBook does not have.
         Check.That(!laptop.Values.Any(v => v.StartsWith("Keypad") || v == "Insert"),
                    "the laptop layout uses no numpad key and no Insert");

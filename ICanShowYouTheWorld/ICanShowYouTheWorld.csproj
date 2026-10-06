@@ -365,6 +365,7 @@
     <Compile Include="RunMode\KeyLayout.cs" />
     <Compile Include="RunMode\ItemSources.cs" />
     <Compile Include="RunMode\Afterword.cs" />
+    <Compile Include="RunMode\DevTour.cs" />
     <Compile Include="RunMode\Unity\ItemSourceScan.cs" />
     <Compile Include="RunMode\SagaWind.cs" />
     <Compile Include="RunMode\Unity\SagaWinds.cs" />

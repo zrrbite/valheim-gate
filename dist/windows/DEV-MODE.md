@@ -55,8 +55,26 @@ with a modifier — the ways — while the bare press does what it always did.
 | `mod` + `Keypad *` | **Cycle the way** through all seven and back to none. Gives back the old way's boons first |
 | `mod` + `Delete` | **Thor's bow, the Stormward and five rescued lights** straight into the pack, no anvil, no lever (bare `Delete` slays) |
 | `mod` + `Keypad /` | **Learn every rung** of the held way now, without the bosses the ladder asks for |
+| `↓` (and `mod` + `↓`) | **Go to** the next of the saga's places (with a modifier, the one before). **Temporary**, see below |
 
 Keys only work during an active run.
+
+### `↓`: go to (temporary, for testing on a MacBook)
+
+Added 2026-10-06 for testing on a MacBook with no mouse, where walking two kilometres to a speaker
+is out. It is the same key in both layouts, and it will be **removed** once testing is back at a full
+keyboard: every piece of it is marked `MACBOOK-TEMP` (`grep -rn MACBOOK-TEMP`).
+
+Each press goes to the next place on the list; `mod` + `↓` goes back one. The message says where:
+`DEV: → Haldor's camp (2 of 5)`. The list is built fresh each press, current act first:
+
+- every speaker who has a spot: the shade, Thjalfi, the thane, and from Act II on the act's speaker.
+  A speaker chooses his spot when his step first wants him, so he is on the list from then;
+- the current act's boss altar;
+- Haldor's camp, the Bog Witch's hut and Hildir's camp.
+
+You land a few metres to one side, facing the place. A far hop shows the loading spin, as the map
+teleport does. Walk the last bit: the Bog Witch's hut stands on stilts.
 
 **On a laptop** (no numpad; `runKeyLayout: "laptop"` in the config, since 2026-10-06) the
 numpad keys move to letters Valheim leaves free, and the rest stay:
@@ -69,6 +87,7 @@ numpad keys move to letters Valheim leaves free, and the rest stay:
 | `Keypad Enter` | `Backspace`, bare (`mod` + `Backspace` is still the anvil kit) |
 | `mod` + `Keypad +` / `mod` + `Keypad -` | `mod` + `P` / `mod` + `N` (bare `P` and `N` are the player's) |
 | `Delete`, `Home`, `PageUp` | the same; on a MacBook `fn` + `Backspace`, `fn` + `←`, `fn` + `↑` |
+| `↓` (go to, temporary) | the same |
 
 Dev keys stand down while you are typing (chat, console, a text field), so a `Z` in a chat
 line plants nothing.

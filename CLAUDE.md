@@ -234,7 +234,9 @@ listeners are never both live:
    play, and the GM mod's arrow bindings are dead during a run. Since 2026-10-05 **`↑` blows the
    Wind-horn** (a ship fitting bought at the helm), and **Shift+E at a ship's helm** opens the
    fitting card, whose Keypad 1-4 buy (activation stands down while it is up, because its fourth
-   line shares `Keypad4` with Second Wind). `↓` is still free.
+   line shares `Keypad4` with Second Wind). `↓` is the dev "go to" key since 2026-10-06, in both
+   layouts, but only **temporarily** (tagged `MACBOOK-TEMP`, for testing on a MacBook with no mouse);
+   it is free again once that comes out.
 3. **Dev bindings** are read from that same handler, so the two layers ARE in one mode and
    a modifier is the only thing that can separate them — but only where there is a second
    layer to separate. Dev owns `Keypad . Enter`, `Delete`, `Home` and `PageUp` BARE, and

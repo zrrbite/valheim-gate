@@ -2969,7 +2969,8 @@ namespace ICanShowYouTheWorld.RunMode
                 {
                     $"DEV MODE   {K(SagaKey.DevStar)}items   {K(SagaKey.DevDot)}light   {K(SagaKey.DevSlash)}god+speed   " +
                     $"{K(SagaKey.DevEnter)}home   {K(SagaKey.DevDelete)}slay",
-                    $"{K(SagaKey.DevHome)}map-tp   {K(SagaKey.DevPageUp)}probe",
+                    $"{K(SagaKey.DevHome)}map-tp   {K(SagaKey.DevPageUp)}probe   " +
+                    $"{K(SagaKey.DevGoTo)}go to the saga's places (Shift: back) - MacBook, temporary",
                     $"Shift/Ctrl/Alt + {K(SagaKey.DevPlus)} complete step   \u00b7   + {K(SagaKey.DevMinus)} +2h AND cycle weather: fair/rain/storm",
                     $"Shift/Ctrl/Alt + {K(SagaKey.DevBackspace)} Storm-Anvil + bow + shield + the combine's makings",
                     $"Shift/Ctrl/Alt + {K(SagaKey.DevStar)} cycle the way (all seven)   \u00b7   + {K(SagaKey.DevSlash)} learn all its rungs   " +
@@ -3100,6 +3101,96 @@ namespace ICanShowYouTheWorld.RunMode
         {
             Message(text);
             Debug.Log("[ICanShowYouTheWorld] " + text);
+        }
+
+        // MACBOOK-TEMP (2026-10-06) from here to HandleDevInput: the dev "go to" key. See DevTour.
+        private string _devTourLast;
+
+        /// <summary>
+        /// MACBOOK-TEMP: every place the go-to key can reach now, and where it is. A speaker counts once
+        /// it has a spot, which it chooses when its step first wants it; the act's altar and the three
+        /// traders are looked up the way the saga's own pins find them, so they are always there.
+        /// </summary>
+        private List<(DevTour.Stop stop, Vector3 at)> DevTourStops()
+        {
+            var found = new List<(DevTour.Stop stop, Vector3 at)>();
+            void Add(string name, int act, Vector3? at)
+            {
+                if (at.HasValue) found.Add((new DevTour.Stop(name, act), at.Value));
+            }
+
+            Add(HuntersShade.Name, 0, _shade?.Spot());
+            Add(Thjalfi.Name, 0, _thjalfi?.Position() ?? _thjalfi?.Spot());
+            Add(Thane.Name, 0, _thane?.Position() ?? _thane?.Spot());
+
+            var speakers = new (SagaSpeaker who, int act)[]
+            {
+                (_keeper, 1), (_drowned, 2), (_frozenOne, 3), (_harvester, 4), (_lantern, 5), (_charred, 6),
+            };
+            foreach (var (who, act) in speakers)
+                if (who != null) Add(who.Name, act, who.Position() ?? who.Spot());
+
+            var player = Player.m_localPlayer;
+            var zone = ZoneSystem.instance;
+            if (player != null && zone != null)
+            {
+                Vector3? Closest(string location)
+                {
+                    try
+                    {
+                        return zone.FindClosestLocation(location, player.transform.position, out ZoneSystem.LocationInstance loc)
+                            ? loc.m_position : (Vector3?)null;
+                    }
+                    catch { return null; }
+                }
+
+                if (_actIndex >= 0 && _actIndex < _acts.Count)
+                {
+                    var boss = Bosses.FirstOrDefault(b => b.defeatKey == _acts[_actIndex].BossDefeatKey);
+                    if (boss.locName != null) Add(boss.display + "'s altar", _actIndex, Closest(boss.locName));
+                }
+
+                Add("Haldor's camp", 1, Closest("Vendor_BlackForest"));
+                Add("the Bog Witch's hut", 2, Closest("BogWitch_Camp"));
+                Add("Hildir's camp", 3, Closest("Hildir_camp"));
+            }
+
+            return found;
+        }
+
+        /// <summary>
+        /// MACBOOK-TEMP: teleport to the next place on the tour (the previous one with <paramref name="back"/>).
+        /// The list is built again on every press, so a speaker who has just chosen his spot is on it.
+        /// </summary>
+        private void DevGoTo(bool back)
+        {
+            var teleport = ModBootstrap.GetService<ITeleportService>();
+            if (Player.m_localPlayer == null || teleport == null)
+            {
+                DevMessage("DEV: no player or no teleport service.");
+                return;
+            }
+
+            var stops = DevTourStops();
+            var ordered = DevTour.Order(stops.Select(s => s.stop), _actIndex);
+            var names = ordered.Select(s => s.Name).ToList();
+            int next = DevTour.Next(names, _devTourLast, back);
+            if (next < 0)
+            {
+                DevMessage("DEV: nowhere to go - no speaker has a spot yet, and no altar or trader was found.");
+                return;
+            }
+
+            string name = names[next];
+            Vector3 at = stops.First(s => s.stop.Name == name).at;
+            _devTourLast = name;
+
+            // A few metres to one side and lifted, facing the place: landing inside a speaker, a
+            // trader's tent or an altar's stone is how a teleport becomes a shove or a fall. The game
+            // finds the floor from there, and waits for the zones to load when it is far.
+            var side = new Vector3(4f, 0f, 4f);
+            teleport.TeleportTo(at + side + Vector3.up * 2f, Quaternion.LookRotation(-side));
+            DevMessage($"DEV: \u2192 {name} ({next + 1} of {names.Count})");
         }
 
         private void HandleDevInput()
@@ -3269,6 +3360,12 @@ namespace ICanShowYouTheWorld.RunMode
                     }
                 }
                 catch (Exception ex) { LogOnce("dev-home", ex); }
+            }
+            else if (BoonKeys.Pressed(SagaKey.DevGoTo))
+            {
+                // MACBOOK-TEMP: hop to the next of the saga's places, or with a modifier the one before.
+                try { DevGoTo(back: mod); }
+                catch (Exception ex) { LogOnce("dev-goto", ex); }
             }
             else if (BoonKeys.Pressed(SagaKey.DevHome))
             {
