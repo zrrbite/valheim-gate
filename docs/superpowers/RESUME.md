@@ -21,8 +21,8 @@ Everything below is what that file tells it.
 
 - **Plans ready to build after the home test** (2026-10-06): the hall, slices 0–1
   ([`plans/2026-10-06-the-hall-slices-0-1.md`](plans/2026-10-06-the-hall-slices-0-1.md): an Aspect on the player's
-  side, then Act I's long fire), and Valheim Smith's milestones 0–1 (`~/Development/valheim-smith/docs/plans/`,
-  local repo only). The Mac already allows BepInEx's loader (entitlements `allow-dyld-environment-variables` and
+  side, then Act I's long fire), and Valheim Smith's milestones 0–1 (private on GitHub: `zrrbite/valheim-smith`,
+  `docs/plans/`; Tasks 5–6 already built on branch `milestone-1-skeleton`). The Mac already allows BepInEx's loader (entitlements `allow-dyld-environment-variables` and
   `disable-library-validation`) and is a universal binary, so Rosetta is a real fallback.
 - **The owner's home test plan** for everything from 2026-10-05/06 (setup, a new character, act by act, boats, the
   reward, the MacBook): [`2026-10-06-home-test-plan.md`](2026-10-06-home-test-plan.md). Start the next session from what it brings back.
