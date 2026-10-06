@@ -19,6 +19,8 @@ Everything below is what that file tells it.
 
 ## Where things stand
 
+- **The one-page overview of 2026-10-05/06** (what got built, the story, the boats, the new ideas and
+  where each stands): [`2026-10-06-overview.md`](2026-10-06-overview.md).
 - **2026-10-06: the Deep North has its real names** (`...06`, `saga/deep-north-names`, staged and
   deployed on the Mac). This is now the build to test: everything below about `...05q` still holds, since
   `...06` contains it. Its checks are the top TASK in `HANDOFF_WINDOWS.md`.
