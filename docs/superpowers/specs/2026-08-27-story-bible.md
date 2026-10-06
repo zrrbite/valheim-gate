@@ -437,6 +437,13 @@ answer, practised before it was taught. Act VII spends it.
   run sails wears them, and at run end the ships are only ships again. Hugin tells them when the run's first
   ship is built ("A keel is a promise, and gold keeps it"). Mechanics, not a character - no speaker
   sells them, which is why they never need a line the world does not back. `ShipFittings.cs`, `Shipwright.cs`.
+- **The god's wind** (2026-10-05) — once the act's god is on the map, a prow pointed within 40° of
+  its altar brings the wind round behind the ship: the game's own Moder wind (SailingPower), lent by
+  a sky that wants the god reached. "Point your prow at it, and the wind will come round." Never
+  toward a place the map does not show. `SagaWind.cs`, `SagaWinds.cs`.
+- **The Wind-horn** (2026-10-05) — a ship fitting (200 gold): `↑` at sea, two minutes of wind at your
+  back, ten to recover. Moder's wind before Moder, deliberately not named for her — a card naming the
+  fourth god in Act II would spoil her. After she falls, her own power does the same for longer.
 - **A way** (2026-09-27) — a class. Mechanically a set of boons the wheel never deals and
   death never takes, because what the thane taught was not lent. Everything else about it
   is a boon: applied, repaid at run end, saved and restored on the one path.

@@ -17,6 +17,22 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-10-05 - TASK: the god's wind and the Wind-horn (`1.0.16-run.2026-10-05q`)
+
+**Staged.** `git pull`, `.\dist\windows\Install-Mod.ps1 -ModOnly`. Badge `...05q · DEV`. Includes `...05n`-`...05p`.
+
+- With the act's god pinned (dev: `mod` + `Keypad +` until the altar step), sail with the prow toward
+  the altar: the wind swings behind you, a "The god's wind" icon appears, and the raven speaks once.
+  Turn 90° away: the real wind comes back within a second or two.
+- Buy the Wind-horn at the helm (Shift+E, 200 coins; `Keypad *` puts 500 in the stash). `↑` at sea:
+  two minutes of wind at your back in any direction; the ability bar shows `[↑] Wind-horn` and its
+  cooldown. On land it says to blow it at sea.
+- Self-check: a line for "The winds' icon (Moder's power)" - `GP_Moder`.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-10-05 - TASK: ship fittings (`1.0.16-run.2026-10-05p`)
 
 **Staged.** `git pull`, `.\dist\windows\Install-Mod.ps1 -ModOnly`. Badge `...05p · DEV`. Includes `...05n`/`...05o` below.

@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-10-05 at `1.0.16-run.2026-10-05p`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-10-05 at `1.0.16-run.2026-10-05q`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -31,6 +31,13 @@ Everything below is what that file tells it.
   item looks, flametal, plains foods, every quest name), OK / FALLBACK / MISSING, worst first. MISSING
   is a step that cannot finish; FALLBACK is a guess to correct. `RunService.LogSelfCheck`, pure
   `SagaSelfCheck`. A new guessed name belongs in it.
+- **2026-10-05, wind for the voyage** (`...05q`, `saga/winds`). The **god's wind**: with the act's god
+  on the map (any boss pin at an instance of its altar — the saga's or a Vegvisir's), a ship whose prow
+  is within 40° of it gets the game's own Moder wind (a status effect with `SailingPower`, which
+  `Ship.IsWindControllActive` reads). The **Wind-horn**: a fourth fitting (200 coins), `↑` at sea, two
+  minutes, ten to recover. Pure `SagaWind`, game side `SagaWinds`. **Landmine:** the altar is read
+  off the map pins every few seconds rather than remembered at pin time — the saga pins once, so a
+  resumed run never re-pins.
 - **2026-10-05, ship fittings** (`...05p`, `saga/ship-fittings`). Owner's aim: travelling by boat to a
   god in another biome should be easy. Gold at any helm (Shift+E, card, Keypad 1–3) buys **Sail**
   I–III (+15/30/50% sail and oars), **Hull** I–III (slightly/plainly/very resistant) and, from Act

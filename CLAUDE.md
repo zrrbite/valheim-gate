@@ -231,7 +231,10 @@ listeners are never both live:
    two GENERAL actives (Mending Hands, Farsight): Shaman's Mercy became the Völva's Mending on
    `Keypad7`, Unseen the Hunter's third rung on `Insert`. Since 2026-09-28 the **arrow keys**
    `←`/`→` cycle Thor's bow's element for a Hunter holding Elemental Arrows — unused by vanilla
-   play, and the GM mod's arrow bindings are dead during a run.
+   play, and the GM mod's arrow bindings are dead during a run. Since 2026-10-05 **`↑` blows the
+   Wind-horn** (a ship fitting bought at the helm), and **Shift+E at a ship's helm** opens the
+   fitting card, whose Keypad 1-4 buy (activation stands down while it is up, because its fourth
+   line shares `Keypad4` with Second Wind). `↓` is still free.
 3. **Dev bindings** are read from that same handler, so the two layers ARE in one mode and
    a modifier is the only thing that can separate them — but only where there is a second
    layer to separate. Dev owns `Keypad . Enter`, `Delete`, `Home` and `PageUp` BARE, and
