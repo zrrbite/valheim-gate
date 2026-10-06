@@ -71,6 +71,9 @@ namespace ICanShowYouTheWorld.RunMode
         private bool _burnedPending;
         private bool _afterSaid;
 
+        /// <summary>True once his line for after Fader has been heard (the afterword clears its saved spot then).</summary>
+        public bool AfterSaid => _afterSaid;
+
         public CharredOne(System.Random rng)
         {
             _rng = rng ?? new System.Random();

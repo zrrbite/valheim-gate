@@ -112,6 +112,9 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>The place, once chosen - for the map pin, which wants it even when nobody stands there.</summary>
         public Vector3? Spot() => _spot;
 
+        /// <summary>Puts them back where they were, from a saved spot (the charred one's afterword).</summary>
+        public void PlaceAt(Vector3 spot) => _spot = spot;
+
         /// <summary>Forgets the spot and dismisses them. Run start and run end.</summary>
         public virtual void Reset()
         {

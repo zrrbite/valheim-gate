@@ -927,13 +927,17 @@ and the score, and then *"The skalds have finished your saga."* A page opened in
 Saga of** your character, the myth told through Act VII and its closing, with this run's own deeds
 written under each act. Every loan was repaid, and the score was how brightly you burned.
 
-The charred one has one more thing to say, but a saga that ends at Fader never goes back to the
-landing to hear it: the run is over, and the speakers go with it. Only a saga that goes on into the
-epilogue finds him there, greeting it with *"Go home."*
+The charred one has one more thing to say, and the run ending does not take him with it (since
+`1.0.17-run.2026-10-06f`; the owner: "keep him standing for his last line. Someone might find him"). He stays
+at the landing where you came ashore, with no pin on the map, across sessions, until somebody goes back. He
+greets you with *"Go home."* and, when spoken to:
 
 > "So that is where it all went. Here, to the end of it, the way light should.
 >
 > You can go home now. Whatever you carry back, carry it the way the dvergr do."
+
+After that he does not wait again: he stands for the rest of that visit, and the next time the world loads he
+is gone. A new saga forgets him.
 
 ---
 

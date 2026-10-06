@@ -2610,6 +2610,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // precisely the state the offer exists for. The first version of this sat down there
                 // and could never have fired.
                 OfferLobbyOnWorldEntry();
+                TickAfterword(dt);
                 return;
             }
 
@@ -5126,6 +5127,87 @@ namespace ICanShowYouTheWorld.RunMode
             }
         }
 
+        // --- The charred one's afterword (owner, 2026-10-06: "keep him standing for his last line.
+        //     Someone might find him"). See Afterword. ---
+
+        private Afterword _afterword;
+        private string _afterwordLoadedFor;
+        private bool _afterwordHeard;
+        private float _afterwordTimer;
+
+        /// <summary>A won run with Fader down leaves him standing where he waited: saved on the character.</summary>
+        private void SaveAfterword()
+        {
+            try
+            {
+                var player = Player.m_localPlayer;
+                var spot = _charred?.Spot();
+                bool faderDown = false;
+                try { faderDown = ZoneSystem.instance != null && ZoneSystem.instance.GetGlobalKey("defeated_fader"); } catch { }
+                string world = WorldIdentifier();
+
+                if (player == null || world == null || !Afterword.ShouldSave(won: true, faderDown, spot.HasValue)) return;
+
+                PermanentRecord.SetCharredAfter(player,
+                    new Afterword { World = world, X = spot.Value.x, Y = spot.Value.y, Z = spot.Value.z }.Encode());
+                _afterwordLoadedFor = null;   // re-read on the next idle tick
+                Debug.Log($"[ICanShowYouTheWorld] The charred one stays at the landing for his last line: {spot.Value:0.0}.");
+            }
+            catch (Exception ex) { LogOnce("afterword-save", ex); }
+        }
+
+        /// <summary>A new saga starts clean: no old afterword lingers into it.</summary>
+        private void ForgetAfterword()
+        {
+            try { PermanentRecord.SetCharredAfter(Player.m_localPlayer, null); }
+            catch (Exception ex) { LogOnce("afterword-forget", ex); }
+            _afterword = null;
+            _afterwordLoadedFor = null;
+            _afterwordHeard = false;
+        }
+
+        /// <summary>
+        /// While no run is live: he stands at his saved spot in his own world, in his "after" phase, with no map
+        /// pin. Once his last line is heard the saved spot is forgotten: he stays for the rest of this visit and
+        /// does not come back. His body is never saved into the world (SagaSpeaker makes it non-persistent).
+        /// </summary>
+        private void TickAfterword(float dt)
+        {
+            _afterwordTimer += dt;
+            if (_afterwordTimer < 1f) return;
+            _afterwordTimer = 0f;
+
+            try
+            {
+                var player = Player.m_localPlayer;
+                string world = WorldIdentifier();
+                if (player == null || world == null || _charred == null) return;
+
+                string loadedFor = world + "/" + player.GetPlayerName();
+                if (_afterwordLoadedFor != loadedFor)
+                {
+                    _afterwordLoadedFor = loadedFor;
+                    _afterwordHeard = false;
+                    _afterword = Afterword.Decode(PermanentRecord.GetCharredAfter(player));
+                    _charred.Reset();
+                    if (_afterword != null) _charred.PlaceAt(new Vector3(_afterword.X, _afterword.Y, _afterword.Z));
+                }
+
+                if (!Afterword.Stands(_afterword, world, _active)) return;
+
+                bool spoken, burned;
+                _charred.Tick(player, CharredOne.Phase.After, false, true, out spoken, out burned);
+
+                if (_charred.AfterSaid && !_afterwordHeard)
+                {
+                    _afterwordHeard = true;
+                    PermanentRecord.SetCharredAfter(player, null);
+                    Debug.Log("[ICanShowYouTheWorld] The charred one has said his last line; he will not wait again.");
+                }
+            }
+            catch (Exception ex) { LogOnce("afterword", ex); }
+        }
+
         /// <summary>
         /// The game's flametal, by shared name: the Ashlands made it 'FlametalNew' and older builds
         /// call it 'Flametal'. Resolved from ObjectDB rather than guessed, and logged once.
@@ -6554,6 +6636,8 @@ namespace ICanShowYouTheWorld.RunMode
             RestoreLoanedSkills();  // before EndRun: the snapshots are run state EndRun clears
             DeleteState();
 
+            SaveAfterword();
+
             float finalElapsed = _elapsed;
             EndRun();
 
@@ -7585,6 +7669,7 @@ namespace ICanShowYouTheWorld.RunMode
 
             _boons = new BoonEngine(DefaultBoons(), _rng, _cfg.RunBoonOfferTimeoutSeconds);
             if (freshRun) _boons.FirstOfferPin = FirstBoonPin;
+            if (freshRun) ForgetAfterword();
             _boons.Gained += OnBoonGained;
             _boons.Lost += OnBoonLost;
             RefreshBoonGate();

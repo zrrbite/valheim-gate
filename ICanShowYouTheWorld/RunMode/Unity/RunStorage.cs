@@ -535,6 +535,20 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         private const string RecordKeyPrefix = "ICSYTW_saga_rec_";
 
+        /// <summary>Where the charred one waits after a won saga, with its world (see <see cref="Afterword"/>).</summary>
+        private const string CharredAfterKey = "ICSYTW_saga_charred_after";
+
+        public static string GetCharredAfter(Player p) =>
+            p?.m_customData != null && p.m_customData.TryGetValue(CharredAfterKey, out var value) ? value : null;
+
+        /// <summary>Saves where he waits, or forgets it with null.</summary>
+        public static void SetCharredAfter(Player p, string value)
+        {
+            if (p?.m_customData == null) return;
+            if (value == null) p.m_customData.Remove(CharredAfterKey);
+            else p.m_customData[CharredAfterKey] = value;
+        }
+
         /// <summary>
         /// Records a boss defeat into the character's saga record. No-op if already recorded.
         /// </summary>
