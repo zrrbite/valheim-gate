@@ -30,7 +30,7 @@ It ships `false` and nothing in the mod ever turns it on by itself.
 
 ## The keys
 
-**Seven are bare. Five want a modifier.** `Keypad +` and `Keypad -` need one
+**Seven are bare. Five want a modifier.** (Plus two temporary MacBook keys, `↓` and `mod` + `Keypad .`, at the end of the table.) `Keypad +` and `Keypad -` need one
 because those two keys were the player's — **Mending** (then Shaman's Mercy)
 and **Unseen** activated on a bare press. Since the ways (classes, 2026-09-27)
 those two moved to `[7]` and `[Ins]` and the keys are free, but the modifier
