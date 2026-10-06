@@ -1,13 +1,15 @@
 # The Saga, as it plays — a walkthrough
 
 *This is the saga told as one run would play it, start to finish. It was written on 2026-10-05
-from the code and the story bible, at build `1.0.16-run.2026-10-05e`. Every quoted line is one
-the game actually says. The deeds between the quotes are the questline steps, written as lived
-moments rather than a checklist. Acts change, and this file will drift as they do. When it
-disagrees with `docs/superpowers/specs/2026-08-27-story-bible.md`, the bible wins. Act III is told
-as designed, not as built; Acts VI to VIII are told only as far as their stand-ins go. The run
-below takes up the Hunter's way, because a story has to choose; every other way would read
-differently at the graves and nowhere else.*
+from the code and the story bible, at build `1.0.16-run.2026-10-05e`, and brought up to date on
+2026-10-06 at `1.0.17-run.2026-10-06d`. Every quoted line is one the game actually says. The deeds
+between the quotes are the questline steps, written as lived moments rather than a checklist. Acts
+change, and this file will drift as they do. When it disagrees with
+`docs/superpowers/specs/2026-08-27-story-bible.md`, the bible wins. Acts I to VII are built and
+voiced, and the saga ends at Fader by default. The Deep North after him is an epilogue whose story
+is still a stand-in, and it is told here only as far as that stand-in goes. The run below takes up
+the Hunter's way, because a story has to choose; every other way would read differently at the
+graves and where each god falls, and nowhere else.*
 
 ---
 
@@ -415,7 +417,7 @@ At the burial chamber, the keeper had one more thing to say:
 
 ---
 
-## Act III — Nothing Stays Buried *(as designed — not yet built)*
+## Act III — Nothing Stays Buried
 
 *"What the marsh takes, it keeps."*
 
@@ -423,46 +425,102 @@ At the burial chamber, the keeper had one more thing to say:
 > — Hugin
 
 You hung the Elder's trophy where you had hung Eikthyr's and claimed his power, faster felling for
-the iron ahead. You built a fermenter with honey and herbs that came for it. Then you went out onto
+the iron ahead. You built a fermenter, and honey and thistle came for it. Then you went out onto
 flat, flooded, grey ground with poison mead in your pack. You cleared the mire of leeches in the
-water, blobs on the paths, and draugr wherever the dead had been left. *"The swamp does not let go
-of its dead"*: some of what you put down got up again as bone, once, right where it fell.
+water, blobs on the paths, and draugr wherever the dead had been left: eight draugr, five blobs and
+three leeches, all on one list, and iron arrows, a tower shield and an iron mace came of it. *"The
+swamp does not let go of its dead"*: some of what you put down got up again as bone, once, right
+where it fell.
 
 ### The Bog Witch
 
-*(The lines in this section are the design's meaning; her words are not written yet.)*
+*"Someone lives in the marsh on purpose. Her camp is somewhere in the swamp — walk up to her."*
 
-There was one living thing in the marsh, and she kept a camp there. Her talk was about the place:
-nothing here rots because nothing here lets go, and she lives here because nothing keeps hold of
-her. Bonemass, she said, is decided before the fight, by poison and the mead against it. So you
-stirred a poison mead base at the cauldron and set it to ferment. Her shop stayed her own.
+There was one living thing in the marsh, and she kept a camp there. You walked up to her, and that
+was the whole of finding her: *"She has lived in the marsh longer than anything in it has been
+dead."* Her talk was about the place:
+
+> "Nothing rots here. Did you notice? Nothing lets go long enough to rot."
+>
+> "The marsh keeps everything. The iron, the water, the men. Even its smell."
+>
+> "I live here because nothing here can keep hold of me. I don't let it."
+>
+> "The big one is decided before you ever see him. Poison, child. Brew against it, or don't go."
+
+*"She said it plainly: the big one is decided before you ever see him."* So you stirred a poison
+mead base at a cauldron, from honey, thistle, neck tails and coal, and set it to ferment. Her shop
+stayed her own.
 
 ### The drowned one
 
 *"Men dug here before you. The iron they left is the only thing down there still worth carrying."*
 You hauled twenty scrap iron out of the muddy piles in the sunken crypts, opened with the Elder's
-key.
+key. Coal and nails came for the load.
 
-At the nearest crypt door, standing in the shallows, there was a draugr who had kept his wits. He
-was pale and waterlogged and lit a cold green-grey, and he did not attack. He had held that door
-since before the iron rusted, because holding is all the marsh lets anyone do. What he wore was no
-use to him now. When he had said so, the forge would make it: the **Stormsworn cuirass**, twelve
-iron, six guck and ten leather scraps at an improved forge. *"Third piece. The men who left this
-iron in the water did not have one."* The fen stopped getting into you.
+*"A draugr who does not attack, at the sunken crypt's door. He is marked on your map."* He stood in
+the shallows at the door, pale and water-bleached, lit a cold green-grey, and he spoke first: *"Iron.
+You came out with iron."*
 
-Then he asked the one thing the marsh never does. Put me down.
+> "You came out of there with iron. I watched you go in.
+>
+> I have held this door since before the iron in it rusted. Not because there is anything left
+> behind it worth holding. Because holding is all the marsh lets anyone do. Nothing here is let
+> go of. Not the iron, not the water, not us.
+>
+> What I wore is no use to me now. The storm made it, a long time ago, for a man who meant to come
+> back out. Take it to a forge — iron and guck and leather — and wear it better than I did."
 
-He was not tame any more. He raised his weapon once, out of habit, at a fraction of his strength.
-When he fell, the swamp did not take him back, and a light rose where he lay: the one he had never
-let go of.
+*"He gave you what he wore. Make it at an improved forge."* Hugin said what the forge now knew:
+*"What the drowned one wore. Iron, guck and leather at an improved forge, and it will keep the fen
+out of you, which is more than it did for him."*
+
+So you smelted ten bars, iron enough to stand in, at a smelter at home. Then, at an improved forge,
+twelve iron, six guck and ten leather scraps made the **Stormsworn cuirass**. *"Third piece. The men
+who left this iron in the water did not have one."* The fen stopped getting into you.
+
+Had you gone back to him before it was made, he would only have said *"The coat first"*:
+
+> "Make the coat first. Then come back. There is one more thing, and it is not a thing I can do
+> myself."
+
+With the coat on: *"The drowned one is waiting at the crypt. He asked to be let go."* He greeted you
+with *"Now. Before my hand remembers."*
+
+> "You wore it out of here. Good.
+>
+> Now the other thing. Put me down. I have tried to let go of this door for longer than you have
+> been alive, and my hand will not open. Yours will.
+>
+> I will lift the blade when you come. I always do. Do not let that stop you."
+
+He was not tame any more. He lifted the blade, out of habit, with a third of his strength left. When
+he fell, the swamp did not take him back. *"He let go. Something he kept rises where he fell."* Had
+he fallen by day, it would have waited in the water for the dark, because light rises only then.
+*"The light he kept rises out of the water."* It was a Kept Light, and it burned for two minutes. You
+walked into it, and it went into your pack as a rescued light: the one he had never let go of.
 
 ### The Stormward, reforged
 
-You sailed the fens, six hundred metres of water inland, where most crypts sit on a shore. Then you
-went back to the Bog Witch with the Stormward, ten iron and ten ancient bark, and asked her for the
-one thing her shop does not sell. She took all three and handed back the **Ironbound Stormward**,
-heavier and harder, still answering being hit with the storm. *Act I's capstone, re-made in the
-place that keeps everything.*
+*"Follow the water inland. Most crypts sit on a shore."* You sailed the fens, six hundred metres of
+water, and iron nails and a full hold of provisions came of it. The Bog Witch had one more line
+among her others, and it had been there since you first walked up to her:
+
+> "That shield of yours has a storm in it. Bring it to me with iron and old bark, and I'll make it
+> heavier."
+
+*"The storm's first piece, made heavier by the one person in the marsh who lets go of things."* With
+the Stormward, ten iron and ten ancient bark in your pack, you held Shift and used her; plain Use
+still opened her shop. Had anything been short, she would have said so: *"The shield, ten iron, ten
+of the old bark. All of it, or I can't help you."* She took all three:
+
+> "There. Iron where the hide was, bark where the frame was, and the storm still in it. It will hold
+> longer than you will. Most things here do."
+
+The **Ironbound Stormward** blocked harder, lasted longer, struck back harder when it was hit twice,
+and wore down more slowly for it. It was still the storm's, so it was mended where the first was
+made: alone in the Storm-Anvil's box, the lever pulled in the rain. *Act I's capstone, re-made in
+the place that keeps everything.* After that, the witch's talk lost its shield line.
 
 ### Bonemass
 
@@ -484,19 +542,98 @@ before the herd.
 > "Nothing up here is hungry. That is worse. Hunger at least wants something." — Hugin
 
 You claimed Bonemass's power on the same stones, resistance to blunt, slash and pierce, because the
-mountains would ask for it. You climbed above the snowline with frost mead and warm hide, since frost
-kills without them.
+mountains would ask for it. You climbed above the snowline with frost mead and wolf pelts, since
+frost kills without them.
 
-You hunted the white silence. Wolves came, and fenrings at night, downhill. Wolf armour, frost arrows
-and dragon eggs came of it. Boulders that were not boulders stood up beside you. *"They were set to
-watch something. It has been gone a very long time. Nobody told them."* You killed two Stone Golems.
+### The frozen one
+
+*"Someone stands frozen at the treeline nearest your home. Build a fire beside him, then speak to him
+while it burns."* He stood where the cold begins, frost-white, with something warm and amber very
+deep inside him, and he is marked on your map. Before the fire there was only ice:
+
+> "He does not move. Ice over his eyes, ice in his beard, and under it all, very deep, something
+> faintly warm. A fire might reach him."
+
+You built a fire beside him. While it burned he spoke, *"...is it back?"*:
+
+> "Is it back?
+>
+> I came up to see it come back. When the light started going, below, I said it would come back,
+> and I would climb to where you can see the whole world at once and watch it. I got this far. This
+> is where the cold starts. I did not know it started so low.
+>
+> No — do not tell me it is gone. Gone is a word for things you have seen go. Up there the great one
+> lays her eggs: light that has not woken yet. Bring me one. I want to hold one before I believe
+> you."
+
+*"He wants to hold a dragon egg before he believes the light is gone."* Until you had the silver he
+only said *"An egg. When you can"*:
+
+> "Go and dig your silver, if you must. Then bring me one of hers — an egg, from the peaks. I'll
+> wait. I'm good at it."
+
+### The white silence
+
+You hunted it: six wolves, four drakes, and three fenrings, which only come out at night and come
+downhill. Wolf armour, frost arrows, dragon tears and three dragon eggs came of it. Boulders that
+were not boulders stood up beside you. *"They were set to watch something. It has been gone a very
+long time. Nobody told them."* You killed two Stone Golems, and crystal and a silver blade came of
+that.
 
 *"Nothing up here has moved in an age. Whatever the mountain was keeping, it is under your feet."*
-Bonemass's wishbone rattled over silver buried in the rock, and you dug up fifteen ore. At a level
-three forge, fourteen silver, six wolf pelts and four wolf fangs made the **Stormsworn greaves**.
-*"Fourth piece, and the cold is the easiest thing it will ever have to keep out."*
+Bonemass's wishbone rattled over silver buried in the rock, and you dug up fifteen ore, all of it
+carried at once. Thirty silver, already smelted, came back for it.
 
-On the highest bone-ringed peak you found Moder's altar and called her down.
+### The egg
+
+*"Dragon eggs lie on the high peaks. Heavy, and no portal will take one — carry it down to the
+treeline yourself."* You had eggs now, from the hunt, and you carried one down to him on foot. His
+greeting was *"One of hers. Please."* Without an egg he would have said:
+
+> "One of hers. From the peaks, where it is coldest. It is heavy, and it will not go through any
+> door you have built — you will have to carry it down."
+
+He took it.
+
+> "It's warm. It's — warm.
+>
+> Then it isn't gone. Not all of it. Take what the storm made for the cold; I never needed it,
+> standing still. Silver, wolf pelt and fang, at a forge built high."
+
+Hugin said what the forge now knew: *"What the storm made for the cold, given up by a man who never
+needed it, standing still. Silver, wolf pelt and fang, at a forge built high."* At a forge built up
+to level four, fourteen silver, six wolf pelts and four wolf fangs made the **Stormsworn greaves**.
+*"Fourth piece, and the cold is the easiest thing it will ever have to keep out."* After that he
+said only *"I'll keep the egg warm. Somebody should."*
+
+### Hildir
+
+*"A trader who keeps her camp where it is warm, far below the snow. Homeward is the quick way back
+down."* This was the act's third track, heat for the taking, and it never held Moder up. You walked
+up to her: *"She keeps her camp where it is warm. Something of hers is up in the cold."*
+
+> "The cold doesn't steal, you know. It keeps. Nothing up there rots, and nothing up there is used."
+>
+> "I keep my camp where it's warm. I send other people up into it. That's the trick of it."
+>
+> "Something of mine is up in the Howling Cavern. The cold has it now. It doesn't want it — it just
+> won't give it back."
+>
+> "Wolves on the slopes, and worse things in the caves. Dress for it."
+
+*"A frost cave in the mountains, full of fenrings and worse. Bring her chest out and hand it to
+her."* It was her own errand, the one the game gives her, and you ran it: *"Hildir has her chest
+back. The cold gave it up."*
+
+### Moder
+
+On the highest bone-ringed peak you found Moder's altar, with frost mead and three more eggs handed
+to you for the summons, and called her down. When you passed the treeline again the frozen one said
+*"I was right"*:
+
+> "Did you feel it go past? Up off the peaks, when she fell. It was warm. I was right.
+>
+> It did not help me. Go on."
 
 > *Moder fell out of her own sky and the mountain gave up what it had been keeping. It was still warm.
 > Whatever is up there is not taking light to use it, and that was worse than any answer you had had
@@ -512,54 +649,300 @@ On the highest bone-ringed peak you found Moder's altar and called her down.
 
 Moder's power gave you a following wind, whichever way you sailed. The plains were tall golden grass,
 and the deathsquitos arrived before you heard them. Padded armour was handed to you for exactly that.
-You broke the plains on deathsquitos and on lox that hit like a cart, and came away with black metal,
-needle arrows, a blade and a lox cape.
 
-*"They are still keeping a quota. Nothing has been harvested here in an age, and nobody has told them
-that either."* You killed two Fuling Berserkers, two-handed and unstoppable, and took Yagluth's
-totems from what was left.
+### The harvester
 
-*"The last piece. Wear all of it into what is left — that is what it was for."* At a level three
-workbench, four lox pelts, ten needles and six silver made the **Stormsworn mantle**. Helm, cuirass,
-greaves, mantle and the storm's own shield: the set was a record of what the run had survived. You
-built a windmill on flat open ground to grind barley for the last feast.
+*"A faded gold ghost by the standing stones on the plains. He is marked on your map."* He was one of
+Yagluth's own people, and he spoke first: *"Counting, are you? Come here."*
 
-Yagluth's altar was a ruin of stone hands in the tall grass, with fulings camped near it.
+> "You have been doing what we did. I can tell by how you walk — like somebody counting.
+>
+> We took it from the herd, and from the forest, and from the fields. Then we did it properly: we
+> cut the whole country into straight lines and took it all, and stored it, and took more. We never
+> once sat down. There was always another field.
+>
+> The little ones still keep our quota. Nobody told them it ended. I am telling you.
+>
+> I want to see one thing before I go back into the stones. Eat. Fill yourself with what the field
+> grew — bread from the barley, a pie from the lox — and come and stand where I can see it."
+
+*"He wants to see someone eat from the field."* *"Three foods at once, one of them from the plains:
+barley bread, lox pie or fish wraps. Then let him see."* You ate, three at once with a lox pie among
+them, and stood where he could see it. Not full, or nothing from the field, and he would have said:
+
+> "No. Full, and something from the field in it. Bread, or the lox pie, or the wrapped fish. I have
+> watched people carry food my whole life. I want to watch somebody eat it."
+
+> "There. That is all it was ever for.
+>
+> We wove a mantle against the fire, once, for the ones who worked the fields at midday. Lox pelt,
+> needles and silver, at a table for the fine work. Take it. Wear the whole of the storm's set into
+> what is left — it was made for that."
+
+After that he said only *"Go and eat. That is the whole of the advice."*
+
+### Breaking the plains
+
+*"Deathsquitos arrive before you hear them. Lox are slow and hit like a cart."* Ten fulings, five
+deathsquitos and three lox, and you came away with black metal, needle arrows, a blade and a lox
+cape. *"They are still keeping a quota. Nothing has been harvested here in an age, and nobody has
+told them that either."* You killed two Fuling Berserkers, two-handed and unstoppable, and took
+Yagluth's totems from what was left.
+
+*"The last piece. Wear all of it into what is left — that is what it was for."* Hugin had already
+said what the artisan table knew: *"The harvester's mantle, woven against the midday fire. Lox pelt,
+needles and silver, at a table for the fine work - the storm's set, whole."* At an artisan table,
+four lox pelts, ten needles and six silver made the **Stormsworn mantle**. Helm, cuirass, greaves,
+mantle and the storm's own shield: the set was a record of what the run had survived.
+
+### The steading
+
+The act's third track was home, and it was heat for the taking. You built a windmill on flat open
+ground, and barley and flour came for it. Hildir's talk had changed with the act:
+
+> "The plains were a field once. All of it. You can still see the lines if you stand on a hill."
+>
+> "They took everything and kept it, and then they were gone, and the keeping stayed. That's a
+> harvest for you."
+>
+> "The last of my things is in a sealed tower out on the plains. The little ones built around it.
+> Fetch it?"
+>
+> "Eat well before you go out there. The ones who built it never did."
+
+*"A sealed tower on the plains, fulings all round it. Bring her chest out and hand it to her."* You
+did: *"Hildir has the last of her things. The tower gave it up."*
+
+*"You sat down to a meal in the meadows once, under a roof you had just raised. Do it again."* At
+home, under your own roof, by your own fire, with three foods at once and one of them from your own
+field: *"A full table, in a house you built, with bread from your own field."*
+
+### Yagluth
+
+Yagluth's altar was a ruin of stone hands in the tall grass, with fulings camped near it. When he
+had fallen, the harvester greeted you with *"You can eat from it now"*:
+
+> "His hand closed on nothing. Ours always did, in the end.
+>
+> The field is still there. You can eat from it now. Nobody is counting."
 
 > *Yagluth's hand closed on nothing and stayed shut. The first harvesters were dust in the fields
 > they had cleared, and you were standing in their answer. It had not worked for them either.*
 
-That is where a saga ends unless the final god is moved further on. Its last reward reads, simply,
-**"The saga is complete."** Every loan was repaid, and the score was how brightly you burned.
+A saga used to end here, while five acts were the whole of it. Since 2026-10-06 the last god is Fader
+by default, so Yagluth's fall is a middle: spoils for the road, a Homeward charge, and the next act's
+card. (A config that still sets `runFinalBossKey` to `defeated_goblinking` ends the saga here
+instead.)
 
 ---
 
-## Act VI — A Light to Carry *(stand-in — the act is not yet written)*
+## Act VI — A Light to Carry
 
 *"The dvergr borrow light and give it back. Learn how."*
 
 > "They keep it in lanterns. Borrowed, they say. Odin would like to know from whom." — Hugin
 
-> *In the mist there were lamps, and the lamps were not stolen. The dvergr had worked out how to
-> borrow light and hand it back, and had no intention of explaining it to something as new as you.*
+You claimed Yagluth's power on the same stones, and for a while fire, frost and lightning slid off
+you. Lox pie and bread came with it, provisions for the road. Then you went on into the Mistlands. *"Grey mist over black rock. Nothing shows in it until a wisp is at your belt."*
 
-What exists so far is the frame. You claim Yagluth's power and reach the Mistlands, grey mist over
-black rock where nothing shows until a wisp is at your belt. You thin the seekers' nests, find the
-sealed dvergr door, and defeat the Queen.
+### The lantern-keeper
 
-## Act VII — The Last Light *(stand-in — the act is not yet written)*
+*"A dvergr with a lantern, by one of their sites in the mist. He is marked on your map."*
+
+He stood by the nearest of the dvergr's own places, a town gate or a dig or a watchtower, short and
+broad, with a lantern glow about him. He was the first person in the saga who was alive. Every voice
+before him had belonged to something after its life. *"Living. Hm. Come here."*
+
+> "Living. Hm. We don't get many of those up here.
+>
+> We borrow light. That's the whole of it — we catch it, carry it, let it see for us a while, and
+> give it back. Everyone else in this world grabbed. The forest ate it, the marsh kept it, the cold
+> froze it, the ones on the plains stacked it in barns. We borrow.
+>
+> And you — what's that you're carrying? Let me see. Since the meadows? You've been carrying them
+> honestly since the meadows, and nobody taught you.
+>
+> Then you'll understand what I ask. Bring one here after dark and let it go. Yours from the
+> meadows, or one you catch up here at the roots. Give one back, and I'll show you how we carry the
+> rest."
+
+That was the payoff of everything since the first night in the meadows, and it was said by the one
+person who had the right to say it. *"He wants one light set free, after dark."* *"Borrowed, and
+given back. The only answer anyone in this world ever got right."*
+
+### Letting go
+
+The first time you came back it was still light, and he sent you away:
+
+> "Not in daylight. Light only rises in the dark — you know that better than anyone. After
+> sundown."
+
+After dark you came back with a light in your pack. A rescued light from the meadows goes first;
+a wisp caught at the roots does as well. With neither, he would have told you where to look:
+
+> "You'll need one to let go of. One of yours from the meadows, or a wisp from the roots — they
+> come up at night."
+
+You had one. He took it and let it go.
+
+> "There. Watch it go. That's how it's done — it was never ours.
+>
+> Here's how we carry the rest. Five wisps and some silver, at a galdr table, the way we build our
+> lanterns. It'll push the mist back, and it'll give you light to see by. Borrowed, mind."
+
+*"The light rises into the mist and is gone."* It rose over his head and faded, and it was never an
+item again: nobody could walk into it and take it back. Hugin said what the galdr table now knew:
+*"How the dvergr carry it: five wisps and silver, at a galdr table. It pushes the mist back and
+lights the way. Borrowed, mind."*
+
+### The Borrowed Light
+
+*"At a galdr table: five wisps and twelve silver. It pushes the mist back and lights the way."* You
+caught five wisps at the roots after dark, dug twelve silver, and at a galdr table made the
+**Borrowed Light**:
+
+> *"A wisp in dvergr glass, the way they carry theirs. It pushes the mist back, and it gives you
+> light to see by. None of it is yours. The dvergr were the only ones who ever understood that, and
+> now you are the second."*
+
+It was the dvergr's own wisplight, the dvergr's way. Carried, it pushed the mist back in a ring, and
+a warm light rode above your head, so there was something to see by inside the ring.
+
+### The nests and the Queen
+
+*"Seekers hunt in pairs and hear you before you see them. Ticks latch on."* You thinned the nests,
+eight seekers and five ticks, with the wolf at heel and the menagerie answering Keypad0, and Unseen
+for the approaches you could not afford to be heard on.
+
+*"A sealed dvergr door in the rock. It opens to a key the dvergr made."* You found the Queen's lair,
+opened it with the key, went down, and called her up out of the dark.
+
+When you came back up, the lantern-keeper had a new greeting, *"Lanterns are lit again,"* and one
+thing to say:
+
+> "She's down? Then the lanterns can go back under the mist without a fight.
+>
+> Borrowed light, all of it. Always was. You knew that before I did."
+
+After that he only ever said the same thing, and it was the best advice anyone gave you:
+
+> "Carry it well. Give it back when you're done."
+
+> *The Queen came apart in the dark under the mist, and the dvergr took their lanterns back down
+> without a fight. Nobody in the tenth world had ever owned a light. The dvergr had simply been the
+> only ones honest enough to say so - and you had been carrying yours that way since the meadows.
+> But borrowed light still has to go somewhere in the end. Everything in the world had been running
+> south to find out where.*
+
+---
+
+## Act VII — The Last Light
 
 *"Where light goes to end. Follow it in."*
 
 > "Everything here has already burned once. Mind what you carry." — Hugin
 
-> *Every thread you had pulled ran the same direction, and it ran here, where everything has already
-> burned once. You followed it in.*
+You claimed the Queen's power on the same stones, and for a while eitr came back to you faster. A
+meat platter and seeker aspic came with it. At the helm a new fitting was on offer, **Fire-tar**,
+which no earlier act had shown: four hundred coins, and the boiling sea stops burning the ship.
 
-You claim the Queen's power, cross a sea that boils to a shore that burns, cut through the charred,
-find Fader's fortress of black stone at the heart of the fire, and defeat him.
+*"Far south, across a sea that boils. The shore itself burns."* You sailed south until the water
+steamed. The step called you arrived while you were still at sea, because the world counts the
+boiling water as Ashlands too. The one waiting for you waited for dry ground.
 
-## Act VIII — What the Cold Keeps *(stand-in — a placeholder until the Deep North is played)*
+### The charred one
+
+*"A burned man who does not attack, near where you came ashore. He is marked on your map."*
+
+He stood on the ash a little way from where you landed, burned through and still holding his shape,
+with an ember low inside him. The others of his kind, out in the grey, struck at everything. He did
+not. *"Over the water. They all come, at the end."*
+
+> "You came over the water. They all do, at the end.
+>
+> This is where light goes to end. Everything here has burned once already — the trees, the
+> stone, me. The ones in the marsh could not let go. The ones on the mountain are still waiting.
+> Burning is the only end that lets go. Nothing is kept. Nothing is owed.
+>
+> You carry a bow with the storm in it, and lights you never spent. Build me a fire, here. Put the
+> bow in it, with flametal from the ground and three of your lights. Let it burn. What comes out
+> will be the last light you ever need."
+
+*"A fire beside him: the bow, flametal and three lights. Let it burn."* *"Where light goes to end.
+Let it."*
+
+### The pyre
+
+*"Build a fire beside the charred one. Bring the bow you were given in the meadows, ten flametal and
+three lights. Let it burn."* His greeting was *"A fire. Then let it burn,"* and his hover kept the
+count: the bow, the flametal out of ten, the lights out of three, and whether there was a fire.
+
+The first time you came back with everything, you had forgotten the fire:
+
+> "No fire. It has to burn here, where I can see it."
+
+Another time you were a light short, and he said plainly what he wanted, as he would have said it to
+anyone:
+
+> "The bow, ten flametal, three lights. A wisp will do for a light, and any bow will burn if the
+> storm's has gone. All of it, into the fire, at once."
+
+So you built a fire beside him, and came back with Thor's bow, ten flametal and three lights. He
+took the bow, the flametal, and your rescued lights before any wisp.
+
+> "There. Watch it go.
+>
+> It is not gone. Nothing that burns properly is gone — it is let go of, which is different. Take
+> it. The light is in it now, all of it, spent. That is what it was for."
+
+*"Last Light. The light that strung it is in it now, spent."* The bow came back to you as **Last
+Light**:
+
+> *"Thor's bow, burned. The meadows' hide is ash now, and the light that strung it went into the
+> fire on purpose — so the fire stayed in it. It still answers with the storm, and everything it
+> touches burns a little."*
+
+It did everything Thor's bow had done. The storm still came down where its arrows struck, the arrow
+keys still turned it between lightning, fire and frost, and its kills still counted as the bow's. It
+hit harder, and it kept a fire of its own on top of whichever element it carried. After that the
+charred one only said *"Let it burn. Go on."*
+
+### The charred, and Fader
+
+*"The charred come in bands. Voltures circle before they dive."* You cut through them: eight charred
+warriors (the archers and the mages did not count toward it) and three voltures out of the sky.
+
+*"A fortress of black stone at the heart of the fire."* You found Fader's seat and called him down,
+and he went down in his own fire.
+
+> *Fader went down in his own fire, and everything that had come south went with him. That was where
+> the light had been going all along: here, to the end of it, the way light should. The meadows', the
+> forest's, the marsh's, the mountain's - all of it had been on its way to burn out. Odin had sent you
+> to find out where. You found out, and the last of yours you let go of yourself.*
+
+### The end of the saga
+
+Fader is the saga's last god by default, so his fall ended the run. *"Run complete!"*, with the time
+and the score, and then *"The skalds have finished your saga."* A page opened in the browser: **The
+Saga of** your character, the myth told through Act VII and its closing, with this run's own deeds
+written under each act. Every loan was repaid, and the score was how brightly you burned.
+
+The charred one has one more thing to say, but a saga that ends at Fader never goes back to the
+landing to hear it: the run is over, and the speakers go with it. Only a saga that goes on into the
+epilogue finds him there, greeting it with *"Go home."*
+
+> "So that is where it all went. Here, to the end of it, the way light should.
+>
+> You can go home now. Whatever you carry back, carry it the way the dvergr do."
+
+---
+
+## Epilogue — What the Cold Keeps *(stand-in; Act VIII in the code)*
+
+The Deep North is the epilogue after Fader, not an eighth act (decision #3 of 2026-09-20, reaffirmed
+by the owner on 2026-10-06). A saga reaches it only when `runFinalBossKey` is moved past Fader, to
+`defeated_frozenking_p3`. The code still carries it in the act table as Act VIII, with the game's
+real names since 2026-10-06 and a stand-in story: a card, a raven line, a chapter, and two steps.
 
 *"Ice does not take light. It keeps it. Find out from whom."*
 
@@ -568,22 +951,26 @@ find Fader's fortress of black stone at the heart of the fire, and defeat him.
 > *Nothing in the far north has thawed since before the herd, and the ice is not hungry and never
 > was. It has only been keeping something. You went to find out who it was keeping it for.*
 
-Past the mountains, where the snow slows you and fire melts a path, something the cold keeps is
-waiting. Its name is a stand-in until the act is written.
+*"Past the mountains, where the snow is deep enough to slow you. Fire melts a path."* Both halves of
+that are the game's own: deep snow slows you by its depth, and a fire melts it. Then *"Defeat what
+the cold keeps."* That is the Frozen King, in a boss room a Vegvisir can pin. He is fought in three
+forms, and the epilogue ends on the third, because the first form's fall is not the end of the
+fight. There is no closing chapter yet and no tale in the myth: the saga's page gives the epilogue
+its heading and the deeds done there, and nothing more.
 
 ---
 
-## The ending, as planned *(not yet built)*
+## What it was about
 
 Each act was a failed answer to the same shortage. The forest stole light, and spent it on
 nothing. The marsh kept it, and never used it. The mountain froze around it, still warm. The plains
 harvested it at scale, and the harvesters were dust. Only the dvergr carry light honestly, borrowed
 in lanterns and handed back.
 
-The wisp you pocketed from every race is the same kind of thing the dvergr carry. By the Mistlands
-you would find out you had been doing it all along, since the first night in the meadows: taking
-back what the forest was carrying, and keeping it lit. The dvergr's answer, practised before it was
-taught. The last act spends it, where light goes to end.
+The wisp you pocketed from every race is the same kind of thing the dvergr carry. In the Mistlands
+the lantern-keeper told you that you had been doing it all along, since the first night in the
+meadows: taking back what the forest was carrying, and keeping it lit. The dvergr's answer,
+practised before it was taught. The last act spent it, where light goes to end.
 
 The shortage is the saga, and only the end answers it. The ravens watched all of it, and never once
 helped.
