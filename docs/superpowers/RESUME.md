@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-10-06 at `1.0.17-run.2026-10-06`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-10-06 at `1.0.17-run.2026-10-06b`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -19,6 +19,13 @@ Everything below is what that file tells it.
 
 ## Where things stand
 
+- **2026-10-06: a laptop layout, clickable cards, and the lobby after the intro** (`...06b`,
+  `saga/laptop-keys`). The owner's MacBook could not choose boons: no numpad, and no Mac has `Insert`.
+  `runKeyLayout: "laptop"` moves every saga key onto letters Valheim leaves free (pure `KeyLayout`, tested
+  against 1.0.17's own bindings; see CLAUDE.md's key section). Every card also takes TAB and a click, through
+  the same `RunService.ChooseFromCard` the keys use. Player keys now respect `Player.TakeInput`, so typing in
+  chat fires nothing. And the lobby no longer opens over a new character's Valkyrie intro (`LobbyOffer`,
+  gated on `Player.InCutscene`). The Mac's config is set to `laptop` (backup `.bak-2026-10-06`).
 - **2026-10-06: the game is 1.0.17** (Unity still 6000.0.75), with no source change: `bash Scripts/check_refs.sh`
   found every reference resolving. Rebuilt as `1.0.17-run.2026-10-06`, which is the `...06` build under the new
   prefix, deployed on the Mac. **Windows needs a FULL install** (top TASK in `HANDOFF_WINDOWS.md`). The Deck is

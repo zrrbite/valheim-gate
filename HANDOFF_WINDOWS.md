@@ -17,6 +17,24 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-10-06 - TASK: clickable cards, the lobby after the intro, a laptop layout (`1.0.17-run.2026-10-06b`)
+
+**Staged.** If the FULL install below is done, `git pull` and `.\dist\windows\Install-Mod.ps1 -ModOnly`;
+if not, do the full one (it installs this). Badge `...06b · DEV`. Windows keeps the numpad: nothing changes
+unless the config says `"runKeyLayout": "laptop"`.
+
+- **TAB and click:** with a boon offer up, open the inventory (TAB). Each boon has a **Choose** button; click
+  one. The same for the helm's fittings (**Buy**) and the thane's ways (**Take it up**). With TAB closed the
+  buttons are greyed and an attack never picks anything.
+- **Typing is safe:** with an ability ready, open chat and type a line containing its key. Nothing fires.
+- **The lobby after the intro:** start a NEW character. The saga's menu must not appear during the Valkyrie
+  flight, but right after you land.
+- Self-check: a new line, `Keys (numpad layout): all 31 resolve`.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-10-06 - TASK: Valheim 1.0.17 (`1.0.17-run.2026-10-06`) - a FULL install
 
 **Staged.** Steam moved the game to **1.0.17** on 2026-10-06, which replaces the patched game assembly, so

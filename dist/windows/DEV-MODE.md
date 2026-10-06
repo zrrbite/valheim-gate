@@ -58,6 +58,21 @@ with a modifier — the ways — while the bare press does what it always did.
 
 Keys only work during an active run.
 
+**On a laptop** (no numpad; `runKeyLayout: "laptop"` in the config, since 2026-10-06) the
+numpad keys move to letters Valheim leaves free, and the rest stay:
+
+| Numpad | Laptop |
+|---|---|
+| `Keypad *` (and `mod` + `*`) | `Z` (and `mod` + `Z`) |
+| `Keypad /` (and `mod` + `/`) | `0` on the main row (and `mod` + `0`) |
+| `Keypad .` | `B` |
+| `Keypad Enter` | `Backspace`, bare (`mod` + `Backspace` is still the anvil kit) |
+| `mod` + `Keypad +` / `mod` + `Keypad -` | `mod` + `P` / `mod` + `N` (bare `P` and `N` are the player's) |
+| `Delete`, `Home`, `PageUp` | the same; on a MacBook `fn` + `Backspace`, `fn` + `←`, `fn` + `↑` |
+
+Dev keys stand down while you are typing (chat, console, a text field), so a `Z` in a chat
+line plants nothing.
+
 The Run window's own DEV MODE banner prints this same table in short form, generated from
 `RunService.DevKeyHelp` — the one place the strings live. It went stale once, which is the
 whole reason this page's history below exists.

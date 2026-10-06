@@ -247,6 +247,15 @@ The rule, sayable in one line: a saga key is the player's, a key the saga does n
 tester's, a key they share goes to the tester only with a modifier, and what the cheat mod
 does with any of them is its own business.
 
+**Two layouts since 2026-10-06** (`runKeyLayout` in the config: `numpad`, the default, or `laptop`).
+Everything above is the numpad. A laptop has no numpad and a Mac has no `Insert`, so the laptop layout
+moves the saga onto letters Valheim 1.0.17 leaves free (read from `ZInput`'s defaults): card choices
+`J K L H U I O`, the way's rungs `U I O`, actives `J K L Y P N`, Homeward `9`, dev `Z 0 B Backspace`.
+One table decides it (`RunMode/KeyLayout.cs`, pure and tested against the vanilla bindings), and every
+label reads it. Player keys stand down whenever `Player.TakeInput` says the keyboard is not the
+player's (chat, text fields, menus, the map), because a letter typed into chat must not fire an
+ability. Every card can also be answered with TAB and a click.
+
 A blanket "Shift plus everything" was tried first and reverted: it put a modifier on seven
 keys that had nothing to collide with, and the first tester to reach for `Keypad *` found
 the whole layer missing. Dev keys now also log their line (`DEV:` in `Player.log`), because
