@@ -19,7 +19,7 @@ Standing context for the Windows side:
 
 ## 2026-10-06 - TASK: a temporary dev "go to" key (`1.0.17-run.2026-10-06g`)
 
-**Staged.** Badge `...06g · DEV`. Mod-only is enough over a full `...06f`-or-later install.
+**Staged.** Badge `...06g · DEV`. Mod-only is enough once the full 1.0.17 install (`...06`) is done.
 
 - Dev mode on, in a run: `↓` teleports to the next of the saga's places (speakers with a spot, the act's
   altar, Haldor, the Bog Witch, Hildir), current act first; Shift + `↓` goes back one. Each hop says
