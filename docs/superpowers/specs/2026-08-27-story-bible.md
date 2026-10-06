@@ -311,7 +311,9 @@ answer, practised before it was taught. Act VII spends it.
   and ancient bark and takes up something heavier. That keeps Act I's capstone
   craft, gives the iron version a home, and matches the one-piece-per-act shape
   the Stormsworn already set. A straight move would leave Act I with no last
-  craft, which is the thing it was built to have.
+  craft, which is the thing it was built to have. **As built (2026-10-05)** the
+  materials stayed and the place moved: the Bog Witch reforges it, not the anvil
+  (see the Ironbound Stormward and the Storm-Anvil below).
   It also stays in Act I for now on the owner's call — play with it there first.
 - **The Stormsworn** (2026-09-20) — one piece of armour per act, Acts II to V,
   each answering what its own act kills people with: blunt in the forest, poison
@@ -350,8 +352,33 @@ answer, practised before it was taught. Act VII spends it.
   light is the point, since to raise the thing that breaks light you give one up.
   Vanilla's own price is left alone, so from the Black Forest on, with a Thunder
   Stone from the trader, anyone can build one the ordinary way.
-  **Still to come**: Thor's bow moved off the workbench onto the anvil, the
-  Stormsworn bound there, and the Stormward's Act III reforge. The lever's own
+  **What it makes** (`SagaItems.AnvilCombines`): Act I's two storm items, struck
+  here and nowhere else, since the bench recipes for both are gone. **Thor's bow**
+  is wood, resin, deer hide, flint and three rescued lights. The flint is the
+  shade's, for the quiver it never filled, and it is also what keeps the bow's
+  bill from being a subset of the shield's, so a shield's worth in the box can
+  never fire the bow and burn the troll hide. **The Stormward** is wood, resin,
+  troll hide, deer hide and three rescued lights.
+  **What it mends** (owner, 2026-10-05): both storm shields. The Stormward or the
+  Ironbound Stormward goes into the box alone, the lever is pulled in the rain,
+  and the shield comes back whole, because a conversion gives a new item. No
+  bench repairs either one, so the storm that wears the shield down is also the
+  only thing that mends it, and the hearth rule sends you back to the anvil
+  rather than to a bench.
+  **When it answers**: only under a wet sky. In fair weather the lever refuses
+  before the game's own handler runs, so nothing in the box is touched. A box
+  holding a rescued light or a storm shield counts as an intended combine, and a
+  combine that cannot fire is refused and named, never burned to coal.
+  **What it shows**: the FORGE page lists an anvil shape only once the step that
+  teaches it has opened (`AnvilTaughtBy`, `ForgeReveal`), and never lists a
+  repair. A new shape with no teacher stays hidden.
+  **What it does not do**, though this entry once planned both: the Stormsworn
+  are not bound here. They are forge and artisan-table recipes, each taught by
+  its own act's speaker, and none asks for light. And the Stormward's Act III
+  reforge moved to a person: the Bog Witch does it, with the Stormward, iron and
+  ancient bark (the owner's call: the act should have somebody at the work). The
+  later acts' light-things are not made here either: the Borrowed Light comes off
+  a galdr table and Last Light out of the charred one's pyre. The lever's own
   hover text is a localisation token and will keep saying Obliterator.
 - **Thjalfi** (2026-09-20) — the only named speaking character in Act I, and the one
   who raises the Storm-Anvil. In myth he broke the bone of Thor's goat for the
