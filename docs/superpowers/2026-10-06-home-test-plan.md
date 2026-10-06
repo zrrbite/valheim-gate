@@ -31,7 +31,7 @@ last build you played, and undoes all of it. To install one: `git checkout <tag>
    - Nothing is needed to reach Acts VI and VII: since `...06d` the saga ends at **Fader** by default. If
      your config still has `"runFinalBossKey": "defeated_goblinking"` from before, delete that line.
    - Leave `runKeyLayout` out: Windows keeps the numpad.
-3. **Launch.** The main menu's version line has a gold **`SAGA v1.0.17-run.2026-10-06h · DEV`** under it.
+3. **Launch.** The main menu's version line has a gold **`SAGA v1.0.17-run.2026-10-06j · DEV`** under it.
    Anything else means the wrong build is installed.
 
 ## 1. The first minute of a run (10 minutes)
@@ -47,11 +47,13 @@ last build you played, and undoes all of it. To install one: `git checkout <tag>
      - `Act I's god` … `Act VIII's god`: each `'<creature>' sets '<key>'`, all OK. Act VIII reads
        `'FrozenKing_p3' sets 'defeated_frozenking_p3'`.
      - `The gods' altars: all 8 resolve`.
-     - `Keys (numpad layout): all 31 resolve`.
+     - `Keys (numpad layout): all 33 resolve` (31 plus the two temporary MacBook keys).
      - `Quest items can be got: all N resolve` (`...06d`). Every item a quest asks for is something the game
        drops, crafts, sells, mines or converts, or the saga grants. **A MISSING line here names the item and
        who asks for it: paste it back**, since it is either a step that can never finish or a source this
-       check does not know yet.
+       check does not know yet. Its first reading on the Mac (`...06h`) found one of each, both fixed in
+       `...06j`: Act I's "Cook 5 meat" asked for an item that doesn't exist, and the saga's own items were
+       misread as lost.
 
    **Copy the whole block** for the next session.
 5. **No errors.** `Select-String Player.log -Pattern "ICanShowYouTheWorld.*Exception"` returns nothing.
@@ -188,7 +190,7 @@ Make a **new character** for this part: three of these checks only happen on a f
 
 ## 6. On the MacBook (whenever you have it)
 
-41. The Mac already has `1.0.17-run.2026-10-06h` and `"runKeyLayout": "laptop"` (the old config is
+41. The Mac already has `1.0.17-run.2026-10-06j` and `"runKeyLayout": "laptop"` (the old config is
     beside it as `.bak-2026-10-06`).
     - **Choosing:** `J K L` choose on every card (`H U I O` for the fourth to seventh lines), or press
       TAB and click.
@@ -199,8 +201,9 @@ Make a **new character** for this part: three of these checks only happen on a f
     - **Go to (temporary, `...06g`):** `↓` hops to the next of the saga's places, Shift + `↓` back one.
       The message says where (`DEV: → Haldor's camp (2 of 5)`). With `0` (god mode) and fn + Backspace
       (slay within 10 m), most of the plan can be walked without a mouse.
-    - **A ship (temporary, `...06h`):** Shift + `B` builds a Karve on the nearest deep water and puts you
-      at its helm, taking you to the sea first if it's far. That covers checks 36–38 without building:
+    - **A ship (temporary, `...06h`, boarding fixed in `...06i`):** Shift + `B` builds a Karve on the
+      nearest deep water and puts you at its helm (the rudder at the stern), taking you to the sea first if
+      it's far. If it says to take the helm yourself: walk to the rudder, look at it, `E`. That covers checks 36–38 without building:
       `Z` for coins, take them from the stash, then Shift + E at the helm.
 
 ## What to bring back

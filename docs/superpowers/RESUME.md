@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, restructured and last updated 2026-10-06 at `1.0.17-run.2026-10-06h`. This is the
+Written 2026-08-23, restructured and last updated 2026-10-06 at `1.0.17-run.2026-10-06j`. This is the
 "pick it back up without re-deriving anything" page: where the work stands, the loop it moves in, the
 landmines, and the decisions not to re-open. Its history (the dated status bullets, the alpha era, the
 "Done" write-ups) moved verbatim to [`RESUME-history.md`](RESUME-history.md) on 2026-10-06.
@@ -23,7 +23,7 @@ block first, then the numbered items that did not match.
 
 ## Where things stand
 
-**2026-10-06, `1.0.17-run.2026-10-06h` (dev)**, on `feature/run-mode`: not merged, deliberately, since
+**2026-10-06, `1.0.17-run.2026-10-06j` (dev)**, on `feature/run-mode`: not merged, deliberately, since
 the mode is still being tuned in play. Valheim 1.0.17, Unity 6000.0.75.
 
 - **Seven acts, all built and voiced, and the saga ends at Fader** (the `runFinalBossKey` default since
@@ -37,15 +37,21 @@ the mode is still being tuned in play. Valheim 1.0.17, Unity 6000.0.75.
 - **Temporary test keys for the MacBook** (the owner has no mouse there, so "cant fight or do anything
   complex"). Step 1, `↓` "go to" (`...06g`, `DevTour`), hops between the saga's places; the owner reached
   Haldor with it. Step 2, `Shift` + `B` (`...06h`, `DevSea`, `DevShip`), builds a Karve on the nearest deep
-  water, travelling there first if it is far, and puts you at the helm. Next, one at a time: the act's god
-  beside you. All are in `DEV-MODE.md`, tagged `MACBOOK-TEMP`, and come out with one grep once testing is
-  back at a full keyboard.
+  water, travelling there first if it is far, and puts you at the helm. Its first try built the ship but
+  missed the helm (landed on the stern's edge); `...06i` boards mid-deck, untested. The owner then paused
+  MacBook testing ("too timeconsuming... ill wait until I have a better setup"); step 3 (the act's god
+  beside you) waits for that. All are in `DEV-MODE.md`, tagged `MACBOOK-TEMP`, and come out with one grep
+  once testing is back at a full keyboard.
+- **The self-check found a real stall** on its first Mac reading (`...06j`): Act I's "Cook 5 meat" asked
+  for `$item_cookedmeat`, no item's name. A collect step may now ask for either of two items (`A|B`,
+  `ItemSources.CountWanted`); it takes cooked boar or deer. The same reading listed the saga's own items as
+  lost, the check's fault (it looked up only `$` names), also fixed.
 - **Nothing built on 2026-10-05 or 2026-10-06 has been played.** The owner tests from the
   [home test plan](2026-10-06-home-test-plan.md); the per-build checks are the TASKs atop `HANDOFF_WINDOWS.md`.
 - **First read of any build: `grep "Saga self-check" Player.log`** (OK / FALLBACK / MISSING, worst
   first). Its first reading found Haldor asking for a trophy no troll drops (fixed in `...06c`), so since
   `...06d` a line, **Quest items can be got**, checks that everything the saga asks for can be had.
-- **Machines:** the Mac is current (`...06h`, laptop keys). Windows needs a **full** install for 1.0.17.
+- **Machines:** the Mac is current (`...06j`, laptop keys). Windows needs a **full** install for 1.0.17.
   The Steam Deck has an old patched assembly.
 - **Written up where it lives:** laptop keys and clickable cards (CLAUDE.md); the hall
   ([spec](specs/2026-10-06-the-hall-design.md), [slices 0–1 plan](plans/2026-10-06-the-hall-slices-0-1.md));

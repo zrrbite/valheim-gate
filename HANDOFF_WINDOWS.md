@@ -17,6 +17,22 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-10-06 - TASK: "Cook 5 meat" can finish; the item self-check; the dev ship boards (`1.0.17-run.2026-10-06j`)
+
+**Staged.** Badge `...06j · DEV`. Mod-only is enough once the full 1.0.17 install (`...06`) is done.
+Covers `...06i` too.
+
+- **Self-check:** `Quest items can be got` is OK. On the Mac's `...06h` it was MISSING with eleven items:
+  `$item_cookedmeat` (a real stall, see below) and the saga's own items (the check's fault).
+- **Act I, "Fill the Larder":** "Cook 5 meat" counts cooked boar **and** cooked deer meat, together. It
+  asked for an item that does not exist and could never finish.
+- **Dev ship (`...06i`):** Shift + `Keypad .` lands you mid-deck and takes the rudder (`DEV: at the helm.`).
+  If not, `Player.log` has a `DEV ship:` line saying why (standing, aboard, over-weight, distance).
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-10-06 - TASK: a temporary dev ship (`1.0.17-run.2026-10-06h`)
 
 **Staged.** Badge `...06h · DEV`. Mod-only is enough once the full 1.0.17 install (`...06`) is done.
