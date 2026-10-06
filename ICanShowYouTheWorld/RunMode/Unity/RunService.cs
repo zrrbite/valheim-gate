@@ -12559,7 +12559,7 @@ namespace ICanShowYouTheWorld.RunMode
             new ChallengeDefinition
             {
                 Id = "sw-find", MainQuest = true, Track = HuntTrackId, Kind = ChallengeKind.DiscoverLocation, Param = "Bonemass",
-                Target = 1, Display = "Find Bonemass's altar", RewardText = "Blunt weapons, and a way in",
+                Target = 1, Display = "Find Bonemass's altar", RewardText = "Withered bone to wake him, and mead against the poison",
                 Hint = "A skull on a mound, deep in the mire. Watch the water — it hides the path.",
             },
             new ChallengeDefinition
@@ -12668,7 +12668,7 @@ namespace ICanShowYouTheWorld.RunMode
                 Param = SagaItems.StormLegsName, Target = 1,
                 Display = "Work the Stormsworn greaves",
                 RewardText = "Silver and a warm meal",
-                Hint = "A forge at level 3: 14 silver, 6 wolf pelt, 4 wolf fang. The cold stops mattering.",
+                Hint = "A forge at level 4: 14 silver, 6 wolf pelt, 4 wolf fang. The cold stops mattering.",
                 Opening = "Fourth piece, and the cold is the easiest thing it will ever have to keep out.",
             },
             new ChallengeDefinition
@@ -12798,13 +12798,13 @@ namespace ICanShowYouTheWorld.RunMode
             new ChallengeDefinition
             {
                 Id = "pl-find", MainQuest = true, Track = HuntTrackId, Kind = ChallengeKind.DiscoverLocation, Param = "GoblinKing",
-                Target = 1, Display = "Find Yagluth's altar", RewardText = "The last of the run's provisions",
+                Target = 1, Display = "Find Yagluth's altar", RewardText = "Fuling totems to call him, and healing mead",
                 Hint = "A ruin of stone hands in the tall grass. Fulings camp near it.",
             },
             new ChallengeDefinition
             {
                 Id = "pl-yagluth", MainQuest = true, Kind = ChallengeKind.KillPrefab, Param = "GoblinKing",
-                Target = 1, Display = "Defeat Yagluth", RewardText = "The saga is complete",
+                Target = 1, Display = "Defeat Yagluth",
             },
         };
 
