@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Reflection;
 using ICanShowYouTheWorld.Core;
 using ICanShowYouTheWorld.GameAPI;
 using ICanShowYouTheWorld.Services;
@@ -428,6 +429,7 @@ namespace ICanShowYouTheWorld.RunMode
         {
             _game = game;
             _cfg = cfg;
+            BoonKeys.UseLayout(_cfg?.RunKeyLayout);
 
             // _boons doesn't exist yet at construction time — captured by reference, resolved
             // lazily whenever BoonEffects actually needs the held set.
@@ -1993,7 +1995,19 @@ namespace ICanShowYouTheWorld.RunMode
         /// Never while a run is live: then the HUD is the right window and an offer to begin is a
         /// question already answered.
         /// </remarks>
-        public bool WantsLobbyShown => _lobbyOfferPending && !_active;
+        /// <summary>
+        /// The window opens the lobby when this is true. It waits out a cutscene - a new character's
+        /// Valkyrie intro, sleep, a cinematic - because the player exists from the intro's first frame,
+        /// and the lobby once opened over the intro (2026-10-06). Gated HERE, where the window reads,
+        /// not where the offer is made, so an offer made the frame before the intro began waits too.
+        /// </summary>
+        public bool WantsLobbyShown => LobbyOffer.Shows(_lobbyOfferPending, _active, PlayerInCutscene());
+
+        private static bool PlayerInCutscene()
+        {
+            try { return Player.m_localPlayer != null && Player.m_localPlayer.InCutscene(); }
+            catch { return false; }
+        }
 
         /// <summary>
         /// Called by the window once it has opened itself, so the offer is made once per world and
@@ -2738,51 +2752,91 @@ namespace ICanShowYouTheWorld.RunMode
             }
         }
 
-        /// <summary>THE WAY card's keys, one per grave in catalog order. The card prints "1-N" from this length.</summary>
-        internal static readonly KeyCode[] WayCardKeys =
-        {
-            KeyCode.Keypad1, KeyCode.Keypad2, KeyCode.Keypad3, KeyCode.Keypad4,
-            KeyCode.Keypad5, KeyCode.Keypad6, KeyCode.Keypad7,
-        };
+        /// <summary>How many lines a card can have keys for: THE WAY's seven graves. The card prints "1-N" from this.</summary>
+        internal static int ChoiceKeyCount => KeyLayout.Choices.Length;
 
         private void HandleBoonOfferInput()
         {
-            // The helm's card is only ever opened with nothing else up, and closes the moment
-            // anything else opens (TickFittingCard), so here its keys mean only a fitting.
+            if (!PlayerInputLive()) return;
+
+            for (int i = 0; i < KeyLayout.Choices.Length; i++)
+            {
+                if (!BoonKeys.Pressed(KeyLayout.Choices[i])) continue;
+                ChooseFromCard(i);
+                return;
+            }
+        }
+
+        /// <summary>
+        /// Line <paramref name="index"/> of whichever card is up. Keys and clicks (TAB, then the card's
+        /// button: 2026-10-06, for a keyboard with no numpad) both come here, so they cannot disagree.
+        /// </summary>
+        /// <remarks>
+        /// The helm's card is only ever opened with nothing else up, and closes the moment anything
+        /// else opens (TickFittingCard). THE WAY outranks a boon offer, and no boon offer is dealt
+        /// while it is up (see OnChallengeCompleted). So a line means one thing at a time. Choice keys
+        /// past the first three are also ability keys, but activation stands down while any card is
+        /// up (HandleBoonActivationInput), so here they can only mean a line.
+        /// </remarks>
+        public void ChooseFromCard(int index)
+        {
+            if (index < 0) return;
+
             if (_fittingCardOpen)
             {
-                for (int i = 0; i < FittingCardKeys.Length; i++)
-                {
-                    if (!Input.GetKeyDown(FittingCardKeys[i])) continue;
-                    if (i < _fittingCard.Count) BuyFitting(_fittingCard[i]);
-                    break;
-                }
+                if (index < _fittingCard.Count) BuyFitting(_fittingCard[index]);
                 return;
             }
 
-            // THE WAY first: it outranks a boon offer, and no boon offer is dealt while it is up
-            // (see OnChallengeCompleted), so the keys cannot mean two things at once.
             if (_classChoicePending)
             {
-                // Seven ways since 2026-09-28, so Keypad1-7. Four to seven are ability keys, but
-                // activation stands down while the card is up (HandleBoonActivationInput), so
-                // here they can only mean a grave.
-                int pick = -1;
-                for (int i = 0; i < WayCardKeys.Length; i++)
-                {
-                    if (!Input.GetKeyDown(WayCardKeys[i])) continue;
-                    pick = i;
-                    break;
-                }
-                if (pick >= 0 && pick < _classCatalog.Count) TakeUpWay(_classCatalog[pick]);
+                if (index < _classCatalog.Count) TakeUpWay(_classCatalog[index]);
                 return;
             }
 
-            if (_boons == null || _boons.CurrentOffer.Count == 0) return;
+            if (_boons != null && index < _boons.CurrentOffer.Count) _boons.Pick(index);
+        }
 
-            if (Input.GetKeyDown(KeyCode.Keypad1)) _boons.Pick(0);
-            else if (Input.GetKeyDown(KeyCode.Keypad2)) _boons.Pick(1);
-            else if (Input.GetKeyDown(KeyCode.Keypad3)) _boons.Pick(2);
+        private static MethodInfo _takeInput;
+
+        /// <summary>
+        /// The game's own answer to "is the keyboard the player's?" - Player.TakeInput, false while
+        /// chat, the console, a text field, a shop, the inventory, the menu or the map is up.
+        /// Letters became saga keys with the laptop layout (2026-10-06), and a letter typed into chat
+        /// must not fire an ability. Protected, hence reflection; if it cannot be read the keys stay
+        /// live, which is how they always were.
+        /// </summary>
+        private bool PlayerInputLive()
+        {
+            var player = Player.m_localPlayer;
+            if (player == null) return false;
+
+            try
+            {
+                if (_takeInput == null)
+                    _takeInput = typeof(Player).GetMethod("TakeInput",
+                        BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+                return _takeInput == null || (bool)_takeInput.Invoke(player, null);
+            }
+            catch (Exception ex)
+            {
+                LogOnce("take-input", ex);
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Narrower than <see cref="PlayerInputLive"/>, for dev keys: not while typing, but the map may
+        /// be open (Home teleports to the map's cursor).
+        /// </summary>
+        private static bool Typing()
+        {
+            try
+            {
+                return (Chat.instance != null && Chat.instance.HasFocus()) ||
+                       global::Console.IsVisible() || TextInput.IsVisible();
+            }
+            catch { return false; }
         }
 
         /// <summary>
@@ -2900,15 +2954,27 @@ namespace ICanShowYouTheWorld.RunMode
         /// same medicine as BoonKeys, which exists because a boon that activated perfectly and
         /// never named its key had already happened once.
         /// </remarks>
-        public static readonly string[] DevKeyHelp =
+        // Built from the layout (2026-10-06) rather than written out, so the laptop's letters are what
+        // the tester reads: the drift this array exists to prevent, one layer further down.
+        public static string[] DevKeyHelp
         {
-            "DEV MODE   *items   .light   /god+speed   Ent:home   Del:slay",
-            "Home:map-tp   PgUp:probe",
-            "Shift/Ctrl/Alt + [+] complete step   \u00b7   + [-] +2h AND cycle weather: fair/rain/storm",
-            "Shift/Ctrl/Alt + [Bksp] Storm-Anvil + bow + shield + the combine's makings",
-            "Shift/Ctrl/Alt + [*] cycle the way (all seven)   ·   + [/] learn all its rungs   ·   + [Del] bow + shield + 5 lights",
-            "(+ and - keep their modifier though now free; bare * and / are items and god; Bksp BUILDS)",
-        };
+            get
+            {
+                string K(SagaKey key) => BoonKeys.KeyLabel(key);
+                return new[]
+                {
+                    $"DEV MODE   {K(SagaKey.DevStar)}items   {K(SagaKey.DevDot)}light   {K(SagaKey.DevSlash)}god+speed   " +
+                    $"{K(SagaKey.DevEnter)}home   {K(SagaKey.DevDelete)}slay",
+                    $"{K(SagaKey.DevHome)}map-tp   {K(SagaKey.DevPageUp)}probe",
+                    $"Shift/Ctrl/Alt + {K(SagaKey.DevPlus)} complete step   \u00b7   + {K(SagaKey.DevMinus)} +2h AND cycle weather: fair/rain/storm",
+                    $"Shift/Ctrl/Alt + {K(SagaKey.DevBackspace)} Storm-Anvil + bow + shield + the combine's makings",
+                    $"Shift/Ctrl/Alt + {K(SagaKey.DevStar)} cycle the way (all seven)   \u00b7   + {K(SagaKey.DevSlash)} learn all its rungs   " +
+                    $"\u00b7   + {K(SagaKey.DevDelete)} bow + shield + 5 lights",
+                    $"({K(SagaKey.DevPlus)} and {K(SagaKey.DevMinus)} take a modifier because bare they are the player's; " +
+                    $"bare {K(SagaKey.DevStar)} and {K(SagaKey.DevSlash)} are items and god)",
+                };
+            }
+        }
 
         /// <summary>
         /// Takes the held way back: every boon it taught, through <see cref="BoonEngine.Revoke"/> so
@@ -3036,6 +3102,10 @@ namespace ICanShowYouTheWorld.RunMode
         {
             if (!DevMode || !_active || _frozen) return;
 
+            // The laptop layout puts dev keys on letters (Z, B, 0, Backspace), and a letter typed into
+            // chat must not slay or teleport. The map may be open: Home teleports to its cursor.
+            if (Typing()) return;
+
             // A modifier on TWO keys, not on nine.
             //
             // The first attempt put every dev key behind Shift, reasoning that dev and the
@@ -3059,12 +3129,12 @@ namespace ICanShowYouTheWorld.RunMode
             // dev, which is the one other place it can earn its keep.
             bool mod = DevModifierHeld();
 
-            if (mod && Input.GetKeyDown(KeyCode.KeypadPlus))
+            if (mod && BoonKeys.Pressed(SagaKey.DevPlus))
             {
                 _challenges?.DevCompleteCurrent();
                 DevMessage("DEV: current steps completed.");
             }
-            else if (mod && Input.GetKeyDown(KeyCode.KeypadMinus))
+            else if (mod && BoonKeys.Pressed(SagaKey.DevMinus))
             {
                 DevAdvanceClock();
                 DevCycleWeather();
@@ -3073,12 +3143,12 @@ namespace ICanShowYouTheWorld.RunMode
             // modifier layer here that separates dev from dev. They come before the bare branches,
             // and those are guarded with !mod as well, so the order of this chain is not the only
             // thing standing between Shift+* and a stash full of wood.
-            else if (mod && Input.GetKeyDown(KeyCode.KeypadMultiply))
+            else if (mod && BoonKeys.Pressed(SagaKey.DevStar))
             {
                 try { DevCycleClass(); }
                 catch (Exception ex) { LogOnce("dev-class", ex); }
             }
-            else if (mod && Input.GetKeyDown(KeyCode.KeypadDivide))
+            else if (mod && BoonKeys.Pressed(SagaKey.DevSlash))
             {
                 try
                 {
@@ -3093,7 +3163,7 @@ namespace ICanShowYouTheWorld.RunMode
                 }
                 catch (Exception ex) { LogOnce("dev-class-learn", ex); }
             }
-            else if (!mod && Input.GetKeyDown(KeyCode.KeypadMultiply))
+            else if (!mod && BoonKeys.Pressed(SagaKey.DevStar))
             {
                 // Into the STASH, not the inventory. The kit's raw materials alone are several
                 // hundred weight — granted to the pockets it left the tester over-encumbered on
@@ -3103,7 +3173,7 @@ namespace ICanShowYouTheWorld.RunMode
                 SaveState();
                 DevMessage($"DEV: {DevKit.Length} materials in the stash.");
             }
-            else if (!mod && Input.GetKeyDown(KeyCode.KeypadDivide))
+            else if (!mod && BoonKeys.Pressed(SagaKey.DevSlash))
             {
                 // God mode, plus a fighter's kit. GM commands are gated off during a run
                 // (InputManager.Gate), which is correct for play and wrong for testing — so the
@@ -3134,7 +3204,7 @@ namespace ICanShowYouTheWorld.RunMode
                 }
                 catch (Exception ex) { LogOnce("dev-god", ex); }
             }
-            else if (mod && Input.GetKeyDown(KeyCode.Delete))
+            else if (mod && BoonKeys.Pressed(SagaKey.DevDelete))
             {
                 // The finished things, no lever. Backspace plants the anvil and the BILLS and still
                 // makes the tester pull the lever in weather, which is right for testing the anvil
@@ -3146,7 +3216,7 @@ namespace ICanShowYouTheWorld.RunMode
                 GrantItem(SagaItems.RescuedLightPrefab, 5);
                 DevMessage("DEV: Thor's bow, the Stormward and five rescued lights are in the pack.");
             }
-            else if (!mod && Input.GetKeyDown(KeyCode.Delete))
+            else if (!mod && BoonKeys.Pressed(SagaKey.DevDelete))
             {
                 // Clears a 10m circle, through the ordinary damage path ON PURPOSE: deaths fire
                 // the kill hook, so a nuked deer still drops its light, still counts its quest,
@@ -3173,7 +3243,7 @@ namespace ICanShowYouTheWorld.RunMode
                 }
                 catch (Exception ex) { LogOnce("dev-slay", ex); }
             }
-            else if (Input.GetKeyDown(KeyCode.KeypadEnter))
+            else if (!mod && BoonKeys.Pressed(SagaKey.DevEnter))
             {
                 // Homeward without the charge or the cooldown. Testing the homestead half of the
                 // act means bouncing between the house and the hunt constantly, and the real
@@ -3196,7 +3266,7 @@ namespace ICanShowYouTheWorld.RunMode
                 }
                 catch (Exception ex) { LogOnce("dev-home", ex); }
             }
-            else if (Input.GetKeyDown(KeyCode.Home))
+            else if (BoonKeys.Pressed(SagaKey.DevHome))
             {
                 // The GM mod's map-cursor teleport, reachable during a run (owner: "It would be
                 // helpful to have a teleport option like i do in my original mod").
@@ -3218,7 +3288,7 @@ namespace ICanShowYouTheWorld.RunMode
                 }
                 catch (Exception ex) { LogOnce("dev-teleport", ex); }
             }
-            else if (Input.GetKeyDown(KeyCode.PageUp))
+            else if (BoonKeys.Pressed(SagaKey.DevPageUp))
             {
                 // Dumps what the creature in view is actually made of — renderers, materials,
                 // shader slots and their live values, plus the rig. Groundwork for giving the
@@ -3251,7 +3321,7 @@ namespace ICanShowYouTheWorld.RunMode
                 }
                 catch (Exception ex) { LogOnce("dev-probe", ex); }
             }
-            else if (mod && Input.GetKeyDown(KeyCode.Backspace))
+            else if (mod && BoonKeys.Pressed(SagaKey.DevBackspace))
             {
                 // THE THIRD KEY THAT WANTS A MODIFIER, and for a reason the other two do not have.
                 //
@@ -3268,7 +3338,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // key collides, AND where an accident persists. Nothing else in the dev layer builds.
                 DevPlantStormAnvil();
             }
-            else if (Input.GetKeyDown(KeyCode.KeypadPeriod))
+            else if (BoonKeys.Pressed(SagaKey.DevDot))
             {
                 var player = Player.m_localPlayer;
                 if (_lights != null && player != null)
@@ -3623,6 +3693,8 @@ namespace ICanShowYouTheWorld.RunMode
         {
             if (_boons == null || _boons.CurrentOffer.Count > 0) return;
 
+            if (!PlayerInputLive()) return;
+
             // Nor while THE WAY card is up. Keypad0 is a class key, and nothing of a way is held
             // before one is chosen, but a card that is being read should not have its keys fire
             // anything else in the same press.
@@ -3655,12 +3727,12 @@ namespace ICanShowYouTheWorld.RunMode
 
             // Keypad 9 is not a boon: Homeward is a run mechanic earned from bosses, so it sits
             // beside the boon keys rather than among them.
-            if (Input.GetKeyDown(KeyCode.Keypad9)) TryHomeward();
+            if (BoonKeys.Pressed(SagaKey.Homeward)) TryHomeward();
 
             // PageDown, because the keypad is full. It is a GM binding (cycle prefab backward) that
             // InputManager.Gate makes dead during a run, which is exactly the reuse the key-scoping
             // rule allows - and the HUD names it, which is the condition attached to that rule.
-            else if (Input.GetKeyDown(KeyCode.PageDown)) TryCorpseGate();
+            else if (BoonKeys.Pressed(SagaKey.GateBack)) TryCorpseGate();
         }
 
         private void TryActivateHeldBoon(string boonId, bool reverse = false)
@@ -3761,7 +3833,7 @@ namespace ICanShowYouTheWorld.RunMode
 
                 // The way back. Waystone's charge got you here; this one gets you home.
                 _homewardCharges++;
-                Message($"Homeward charge earned — Keypad 9 to return to your bed. ({_homewardCharges} held)");
+                Message($"Homeward charge earned — {BoonKeys.KeyLabel(SagaKey.Homeward)} to return to your bed. ({_homewardCharges} held)");
 
                 if (boss.defeatKey == _finalBossKey) finished = true;
             }
@@ -6581,7 +6653,6 @@ namespace ICanShowYouTheWorld.RunMode
 
         private const float FittingCardSeconds = 30f;
 
-        private static readonly KeyCode[] FittingCardKeys = { KeyCode.Keypad1, KeyCode.Keypad2, KeyCode.Keypad3, KeyCode.Keypad4 };
 
         private const string FittingsLine =
             "A keel is a promise, and gold keeps it. Any helm will take coin now for a stronger sail and a " +
@@ -6858,13 +6929,13 @@ namespace ICanShowYouTheWorld.RunMode
 
         /// <summary>
         /// The up arrow blows the Wind-horn: at sea only, then ten minutes to recover. Not while chat
-        /// has the keyboard - the up arrow is chat's history key.
+        /// or any panel has the keyboard - the up arrow is chat's history key.
         /// </summary>
         private void HandleHornInput()
         {
-            if (!Input.GetKeyDown(KeyCode.UpArrow)) return;
+            if (!BoonKeys.Pressed(SagaKey.WindHorn)) return;
             if (!ShipFittings.HasWindHorn(_fittings)) return;
-            try { if (Chat.instance != null && Chat.instance.HasFocus()) return; } catch { }
+            if (!PlayerInputLive()) return;
 
             var player = Player.m_localPlayer;
             if (player == null) return;
@@ -7531,6 +7602,7 @@ namespace ICanShowYouTheWorld.RunMode
             CheckSpeakersAndTraders();
             CheckGods();
             CheckSagaItems();
+            CheckKeys();
             ValidateClassLadder();
             // Thor's bow's flashes: every element's, so a missing fire or frost burst is in the log
             // before the Hunter can switch to it.
@@ -11176,6 +11248,25 @@ namespace ICanShowYouTheWorld.RunMode
                                      "never found or pinned: no Waystone, no god's wind, and an altar step stalls");
             }
             catch (Exception ex) { LogOnce("self-check-gods", ex); }
+        }
+
+        /// <summary>
+        /// The key layout (2026-10-06): a layout name the config does not know falls back to the
+        /// numpad, and a key name Unity cannot parse is an action with no key.
+        /// </summary>
+        private void CheckKeys()
+        {
+            if (_selfCheck == null) return;
+            try
+            {
+                string asked = _cfg?.RunKeyLayout;
+                var unparsed = BoonKeys.UseLayout(asked);
+                if (!KeyLayout.IsKnown(asked))
+                    _selfCheck.Fallback("Key layout", $"'{asked}' is not numpad or laptop - using the numpad");
+                _selfCheck.AllOf($"Keys ({BoonKeys.Layout} layout)", KeyLayout.For(BoonKeys.Layout).Count, unparsed,
+                                 "those actions have no key");
+            }
+            catch (Exception ex) { LogOnce("self-check-keys", ex); }
         }
 
         /// <summary>

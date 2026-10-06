@@ -117,7 +117,7 @@ namespace ICanShowYouTheWorld.RunMode
         private const float GmPageWidth = 470f;
         private const float GmPageHeight = 460f;
         private const float OfferWidth = 460f;
-        private const float OfferHeight = 200f;
+        private const float OfferHeight = 228f; // +28 for the choose buttons (2026-10-06)
 
         /// <summary>
         /// THE WAY card. Seven graves since 2026-09-28, each a paragraph in the thane's voice, and
@@ -127,7 +127,7 @@ namespace ICanShowYouTheWorld.RunMode
         /// description runs long.
         /// </summary>
         private const float WayCardWidth = 900f;
-        private const float WayCardHeight = 420f;
+        private const float WayCardHeight = 448f; // +28 for the choose buttons (2026-10-06)
         private const int WayCardColumns = 4;
         private const float StripWidth = 300f;
         private const float StripHeight = 24f;
@@ -219,6 +219,10 @@ namespace ICanShowYouTheWorld.RunMode
         // for every window drawn afterwards. -1 means nothing pending.
         private bool _pendingDeposit;
         private int _pendingWithdraw = -1;
+
+        // A card line clicked (TAB, then the line's button): applied at Layout, because choosing closes
+        // the card, which removes a window. -1 means nothing pending.
+        private int _pendingChoice = -1;
 
         // Failure sites already logged, keyed by site + message: a new fault still gets a line,
         // a repeating one doesn't flood OnGUI. Capped so a fault with a varying message
@@ -415,8 +419,17 @@ namespace ICanShowYouTheWorld.RunMode
         {
             if (!_pendingStart && !_pendingAbandon && !_pendingDiscard &&
                 !_pendingDeposit && _pendingWithdraw < 0 && !_pendingLobbyClose &&
-                !_pendingGmToggle) return;
+                !_pendingGmToggle && _pendingChoice < 0) return;
             if (Event.current == null || Event.current.type != EventType.Layout) return;
+
+            // The same door as the keys (RunService.ChooseFromCard), so a click and a key cannot disagree.
+            if (_pendingChoice >= 0)
+            {
+                int choice = _pendingChoice;
+                _pendingChoice = -1;
+                try { _concrete?.ChooseFromCard(choice); }
+                catch (Exception ex) { LogOnce("choose", ex); }
+            }
 
             // Closing the lobby removes a window, so it waits for Layout with the rest. It touches
             // no service, so it is handled here and returns nothing to the try below.
@@ -983,7 +996,7 @@ namespace ICanShowYouTheWorld.RunMode
             "What you put in the stash follows you. You never have to carry a base to the next act.",
             "The Herald runs. Follow the tracks on the strip, not your instincts.",
             "A boss altar is only marked once the saga asks you to find it.",
-            "Every boss felled is a way home. Keypad 9 returns you to your bed.",
+            $"Every boss felled is a way home. {BoonKeys.KeyLabel(SagaKey.Homeward)} returns you to your bed.",
             "Two questlines run at once. Doing both is stronger, hotter, and worth more.",
             "Power is loaned. Everything the saga grants goes back when it ends.",
         };
@@ -1162,12 +1175,12 @@ namespace ICanShowYouTheWorld.RunMode
                 if (run.HomewardCharges > 0)
                 {
                     GUI.contentColor = RunTheme.AccentGold;
-                    GUILayout.Label($"Homeward x{run.HomewardCharges}  [9]", RunTheme.Small);
+                    GUILayout.Label($"Homeward x{run.HomewardCharges}  {BoonKeys.KeyLabel(SagaKey.Homeward)}", RunTheme.Small);
                 }
                 else if (run.HomewardReady)
                 {
                     GUI.contentColor = RunTheme.AccentGold;
-                    GUILayout.Label("Homeward ready  [9]", RunTheme.Small);
+                    GUILayout.Label($"Homeward ready  {BoonKeys.KeyLabel(SagaKey.Homeward)}", RunTheme.Small);
                 }
                 else
                 {
@@ -2974,7 +2987,7 @@ namespace ICanShowYouTheWorld.RunMode
 
                 GUILayout.BeginHorizontal();
                 GUI.contentColor = RunTheme.AccentGold;
-                GUILayout.Label($"{i + 1}", RunTheme.Header, GUILayout.Width(20f));
+                GUILayout.Label(ChoiceMark(i), RunTheme.Header, GUILayout.Width(20f));
                 GUI.contentColor = Color.white;
                 GUILayout.Label(offer[i].Display, RunTheme.Body);
                 GUILayout.EndHorizontal();
@@ -2988,12 +3001,14 @@ namespace ICanShowYouTheWorld.RunMode
                     RunTheme.Small);
                 if (!string.IsNullOrEmpty(offer[i].Description))
                     GUILayout.Label(offer[i].Description, RunTheme.Body);
+                GUILayout.FlexibleSpace();
+                ChoiceButton(i, "Choose");
                 GUILayout.EndVertical();
             }
             GUILayout.EndHorizontal();
 
             GUILayout.FlexibleSpace();
-            GUILayout.Label("press Keypad 1/2/3", RunTheme.Small);
+            GUILayout.Label(KeyLayout.ChoiceHint(BoonKeys.Layout, offer.Count), RunTheme.Small);
         }
 
         // --- The helm's fitting card (display only; buying is RunService.HandleBoonOfferInput) ---
@@ -3032,7 +3047,7 @@ namespace ICanShowYouTheWorld.RunMode
 
                 GUILayout.BeginHorizontal();
                 GUI.contentColor = RunTheme.AccentGold;
-                GUILayout.Label($"{i + 1}", RunTheme.Header, GUILayout.Width(20f));
+                GUILayout.Label(ChoiceMark(i), RunTheme.Header, GUILayout.Width(20f));
                 GUI.contentColor = Color.white;
                 GUILayout.Label(card[i].Name, RunTheme.Body);
                 GUILayout.EndHorizontal();
@@ -3041,12 +3056,14 @@ namespace ICanShowYouTheWorld.RunMode
                 GUILayout.Label($"{card[i].Price} coins", RunTheme.Small);
                 GUI.contentColor = Color.white;
                 GUILayout.Label(card[i].Effect, RunTheme.Body);
+                GUILayout.FlexibleSpace();
+                ChoiceButton(i, "Buy");
                 GUILayout.EndVertical();
             }
             GUILayout.EndHorizontal();
 
             GUILayout.FlexibleSpace();
-            GUILayout.Label(card.Count == 1 ? "press Keypad 1" : $"press Keypad 1-{card.Count}", RunTheme.Small);
+            GUILayout.Label(KeyLayout.ChoiceHint(BoonKeys.Layout, card.Count), RunTheme.Small);
         }
 
         // --- THE WAY (display only; picks are handled in RunService.HandleBoonOfferInput) ---
@@ -3072,7 +3089,7 @@ namespace ICanShowYouTheWorld.RunMode
 
             // As many graves as there are keys to pick them with, and no more: a way the card showed
             // but no key could take would be a line the world does not back.
-            int count = Mathf.Min(classes.Count, RunService.WayCardKeys.Length);
+            int count = Mathf.Min(classes.Count, RunService.ChoiceKeyCount);
             float columnWidth = _wayRect.width / WayCardColumns - 12f;
 
             GUILayout.Label("THE WAY", RunTheme.Header);
@@ -3087,7 +3104,7 @@ namespace ICanShowYouTheWorld.RunMode
 
                     GUILayout.BeginHorizontal();
                     GUI.contentColor = RunTheme.AccentGold;
-                    GUILayout.Label($"{i + 1}", RunTheme.Header, GUILayout.Width(20f));
+                    GUILayout.Label(ChoiceMark(i), RunTheme.Header, GUILayout.Width(20f));
                     GUI.contentColor = Color.white;
                     GUILayout.Label(cls.Display, RunTheme.Header);
                     GUILayout.EndHorizontal();
@@ -3095,6 +3112,8 @@ namespace ICanShowYouTheWorld.RunMode
                     GUILayout.Label("the way of " + cls.Title, RunTheme.Small);
                     if (!string.IsNullOrEmpty(cls.Description))
                         GUILayout.Label(cls.Description, RunTheme.Body);
+                    GUILayout.FlexibleSpace();
+                    ChoiceButton(i, "Take it up");
                     GUILayout.EndVertical();
                 }
                 // A short last row keeps its columns the width of the full one above it.
@@ -3104,7 +3123,30 @@ namespace ICanShowYouTheWorld.RunMode
             }
 
             GUILayout.FlexibleSpace();
-            GUILayout.Label(count > 1 ? $"press Keypad 1–{count}" : "press Keypad 1", RunTheme.Small);
+            GUILayout.Label(KeyLayout.ChoiceHint(BoonKeys.Layout, count), RunTheme.Small);
+        }
+
+        /// <summary>A card line's mark: its key, "1" on the numpad and "J" on a laptop.</summary>
+        private static string ChoiceMark(int index)
+        {
+            if (index >= KeyLayout.Choices.Length) return (index + 1).ToString();
+            return KeyLayout.Label(KeyLayout.For(BoonKeys.Layout)[KeyLayout.Choices[index]]).Trim('[', ']');
+        }
+
+        /// <summary>
+        /// A card line's button (2026-10-06, for a keyboard with no numpad). Clickable only while the
+        /// game itself has freed the cursor - TAB, as for every mod window (see RESUME, "Do not free
+        /// the cursor"). With the cursor locked, Unity reports clicks at the screen's centre, and an
+        /// attack must never pick a boon. Drawn disabled rather than hidden, so the card's layout does
+        /// not jump when TAB opens.
+        /// </summary>
+        private void ChoiceButton(int index, string label)
+        {
+            bool free = Cursor.lockState != CursorLockMode.Locked;
+            bool wasEnabled = GUI.enabled;
+            GUI.enabled = free;
+            if (GUILayout.Button(label) && free) _pendingChoice = index;
+            GUI.enabled = wasEnabled;
         }
 
         // --- Helpers ---

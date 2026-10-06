@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
@@ -41,10 +43,14 @@ namespace ICanShowYouTheWorld.RunMode
         public struct Binding
         {
             public string Id;
-            public KeyCode Key;
+
+            /// <summary>Which saga action this boon is pressed with. The KEY is the layout's (<see cref="KeyLayout"/>).</summary>
+            public SagaKey Slot;
+
+            public KeyCode Key => Code(Slot);
 
             /// <summary>What the HUD and the offer card show. Short: the status column is 104px.</summary>
-            public string Label;
+            public string Label => KeyLabel(Slot);
 
             /// <summary>
             /// The second key of a boon that has two, pressed to go the other way. Only Elemental
@@ -60,48 +66,94 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         public static readonly Binding[] Actives =
         {
-            new Binding { Id = "wind",      Key = KeyCode.Keypad4,     Label = "[4]" },
-            new Binding { Id = "ember",     Key = KeyCode.Keypad5,     Label = "[5]" },
-            new Binding { Id = "way",       Key = KeyCode.Keypad6,     Label = "[6]" },
-            new Binding { Id = "windfall",  Key = KeyCode.Keypad8,     Label = "[8]" },
-            new Binding { Id = "mend",      Key = KeyCode.KeypadPlus,  Label = "[+]" },
-            new Binding { Id = "farsight",  Key = KeyCode.KeypadMinus, Label = "[-]" },
+            new Binding { Id = "wind",      Slot = SagaKey.Wind },
+            new Binding { Id = "ember",     Slot = SagaKey.Ember },
+            new Binding { Id = "way",       Slot = SagaKey.Way },
+            new Binding { Id = "windfall",  Slot = SagaKey.Windfall },
+            new Binding { Id = "mend",      Slot = SagaKey.Mend },
+            new Binding { Id = "farsight",  Slot = SagaKey.Farsight },
 
             // Rung 1 of each way.
-            new Binding { Id = "brother",   Key = KeyCode.Keypad7,     Label = "[7]" },
-            new Binding { Id = "shaman",    Key = KeyCode.Keypad7,     Label = "[7]" },
-            new Binding { Id = "rend",      Key = KeyCode.Keypad7,     Label = "[7]" },
-            new Binding { Id = "bash",      Key = KeyCode.Keypad7,     Label = "[7]" },
-            new Binding { Id = "march",     Key = KeyCode.Keypad7,     Label = "[7]" },
-            new Binding { Id = "tide",      Key = KeyCode.Keypad7,     Label = "[7]" },
-            new Binding { Id = "fieldforge",Key = KeyCode.Keypad7,     Label = "[7]" },
+            new Binding { Id = "brother",   Slot = SagaKey.Rung1 },
+            new Binding { Id = "shaman",    Slot = SagaKey.Rung1 },
+            new Binding { Id = "rend",      Slot = SagaKey.Rung1 },
+            new Binding { Id = "bash",      Slot = SagaKey.Rung1 },
+            new Binding { Id = "march",     Slot = SagaKey.Rung1 },
+            new Binding { Id = "tide",      Slot = SagaKey.Rung1 },
+            new Binding { Id = "fieldforge",Slot = SagaKey.Rung1 },
 
             // Rung 2.
-            new Binding { Id = "menagerie", Key = KeyCode.Keypad0,     Label = "[0]" },
-            new Binding { Id = "bonecaller",Key = KeyCode.Keypad0,     Label = "[0]" },
-            new Binding { Id = "rage",      Key = KeyCode.Keypad0,     Label = "[0]" },
-            new Binding { Id = "bulwark",   Key = KeyCode.Keypad0,     Label = "[0]" },
-            new Binding { Id = "warsong",   Key = KeyCode.Keypad0,     Label = "[0]" },
-            new Binding { Id = "fairwind",  Key = KeyCode.Keypad0,     Label = "[0]" },
-            new Binding { Id = "mastersminute", Key = KeyCode.Keypad0, Label = "[0]" },
+            new Binding { Id = "menagerie", Slot = SagaKey.Rung2 },
+            new Binding { Id = "bonecaller",Slot = SagaKey.Rung2 },
+            new Binding { Id = "rage",      Slot = SagaKey.Rung2 },
+            new Binding { Id = "bulwark",   Slot = SagaKey.Rung2 },
+            new Binding { Id = "warsong",   Slot = SagaKey.Rung2 },
+            new Binding { Id = "fairwind",  Slot = SagaKey.Rung2 },
+            new Binding { Id = "mastersminute", Slot = SagaKey.Rung2 },
 
             // The Hunter's second rung-2 boon, beside Menagerie on [0]: a switch for Thor's bow,
             // so it gets keys that read as "next / previous". The arrow keys are free in the saga
             // and in vanilla play, and the GM mod's arrow bindings are gated dead during a run.
-            new Binding { Id = "elemental", Key = KeyCode.RightArrow,  Label = "[\u2192]" },
-            new Binding { Id = "elemental", Key = KeyCode.LeftArrow,   Label = "[\u2190]", Reverse = true },
+            new Binding { Id = "elemental", Slot = SagaKey.ElementNext },
+            new Binding { Id = "elemental", Slot = SagaKey.ElementPrev, Reverse = true },
 
             // Rung 3.
-            new Binding { Id = "unseen",    Key = KeyCode.Insert,      Label = "[Ins]" },
-            new Binding { Id = "wrath",     Key = KeyCode.Insert,      Label = "[Ins]" },
-            new Binding { Id = "warcry",    Key = KeyCode.Insert,      Label = "[Ins]" },
-            new Binding { Id = "laststand", Key = KeyCode.Insert,      Label = "[Ins]" },
-            new Binding { Id = "bragi",     Key = KeyCode.Insert,      Label = "[Ins]" },
-            new Binding { Id = "sealegs",   Key = KeyCode.Insert,      Label = "[Ins]" },
-            new Binding { Id = "reinforce", Key = KeyCode.Insert,      Label = "[Ins]" },
+            new Binding { Id = "unseen",    Slot = SagaKey.Rung3 },
+            new Binding { Id = "wrath",     Slot = SagaKey.Rung3 },
+            new Binding { Id = "warcry",    Slot = SagaKey.Rung3 },
+            new Binding { Id = "laststand", Slot = SagaKey.Rung3 },
+            new Binding { Id = "bragi",     Slot = SagaKey.Rung3 },
+            new Binding { Id = "sealegs",   Slot = SagaKey.Rung3 },
+            new Binding { Id = "reinforce", Slot = SagaKey.Rung3 },
         };
 
         /// <summary>The key label for a boon, or empty for a passive. Never null.</summary>
+        // --- The layout (2026-10-06): which physical key each SagaKey is, from the config's runKeyLayout ---
+
+        private static string _layout = KeyLayout.Numpad;
+        private static readonly Dictionary<SagaKey, KeyCode> Codes = new Dictionary<SagaKey, KeyCode>();
+
+        /// <summary>The layout in use: "numpad" or "laptop".</summary>
+        public static string Layout => _layout;
+
+        /// <summary>
+        /// Resolves every saga key for <paramref name="layout"/>. An unknown name gets the numpad and
+        /// says so (a typo in the config must not leave the saga with no keys). Returns the key names
+        /// that are not Unity KeyCodes, for the self-check; KeyLayoutTests keeps that list empty in
+        /// principle, but only the game can parse a KeyCode.
+        /// </summary>
+        public static List<string> UseLayout(string layout)
+        {
+            if (!KeyLayout.IsKnown(layout))
+                Debug.LogWarning($"[ICanShowYouTheWorld] runKeyLayout '{layout}' is not a layout (numpad, laptop) - using the numpad.");
+
+            _layout = KeyLayout.IsKnown(layout) ? layout.ToLowerInvariant() : KeyLayout.Numpad;
+            Codes.Clear();
+
+            var unparsed = new List<string>();
+            foreach (var pair in KeyLayout.For(_layout))
+            {
+                try { Codes[pair.Key] = (KeyCode)Enum.Parse(typeof(KeyCode), pair.Value); }
+                catch { Codes[pair.Key] = KeyCode.None; unparsed.Add(pair.Value); }
+            }
+
+            Debug.Log($"[ICanShowYouTheWorld] Saga keys: the {_layout} layout.");
+            return unparsed;
+        }
+
+        /// <summary>The physical key for a saga action in the current layout.</summary>
+        public static KeyCode Code(SagaKey key)
+        {
+            if (Codes.Count == 0) UseLayout(_layout);
+            return Codes.TryGetValue(key, out var code) ? code : KeyCode.None;
+        }
+
+        /// <summary>A saga action's key as the HUD prints it, e.g. "[4]" or "[J]".</summary>
+        public static string KeyLabel(SagaKey key) =>
+            KeyLayout.Label(KeyLayout.For(_layout).TryGetValue(key, out var name) ? name : null);
+
+        public static bool Pressed(SagaKey key) => Input.GetKeyDown(Code(key));
+
         public static string Label(string boonId)
         {
             if (string.IsNullOrEmpty(boonId)) return string.Empty;

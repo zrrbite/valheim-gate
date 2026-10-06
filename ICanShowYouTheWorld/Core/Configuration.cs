@@ -107,6 +107,7 @@ namespace ICanShowYouTheWorld.Core
         float RunBossHpPerBoon { get; set; }
         float RunBossHpPerHeat { get; set; }
         string RunFinalBossKey { get; set; }
+        string RunKeyLayout { get; set; }
 
         // === Debug & System ===
         bool EnableDebugMode { get; set; }
@@ -339,6 +340,8 @@ namespace ICanShowYouTheWorld.Core
         [SerializeField] private float runBossHpPerBoon = 0.12f;
         [SerializeField] private float runBossHpPerHeat = 0.03f;
         [SerializeField] private string runFinalBossKey = "defeated_goblinking";
+        // "numpad" (the default) or "laptop": the saga's keys for a keyboard with no numpad. See RunMode/KeyLayout.cs.
+        [SerializeField] private string runKeyLayout = "numpad";
 
         // === Debug & System ===
         [SerializeField] private bool enableDebugMode = false;
@@ -432,6 +435,7 @@ namespace ICanShowYouTheWorld.Core
         public float RunBossHpPerBoon { get => runBossHpPerBoon; set => runBossHpPerBoon = value; }
         public float RunBossHpPerHeat { get => runBossHpPerHeat; set => runBossHpPerHeat = value; }
         public string RunFinalBossKey { get => runFinalBossKey; set => runFinalBossKey = value; }
+        public string RunKeyLayout { get => runKeyLayout; set => runKeyLayout = value; }
 
         public bool EnableDebugMode { get => enableDebugMode; set => enableDebugMode = value; }
         public bool EnableDebugLogs { get => enableDebugLogs; set => enableDebugLogs = value; }
