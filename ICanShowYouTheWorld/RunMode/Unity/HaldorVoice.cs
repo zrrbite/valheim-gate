@@ -17,8 +17,16 @@ namespace ICanShowYouTheWorld.RunMode
     /// </remarks>
     internal static class HaldorVoice
     {
-        /// <summary>The troll's trophy, by prefab. Its drop chance is logged at run start.</summary>
-        public const string TrophyPrefab = "TrophyForestTroll";
+        /// <summary>
+        /// The troll's trophy, by prefab. Its drop chance is logged at run start.
+        ///
+        /// "TrophyFrostTroll", not "TrophyForestTroll": the game has both items, both called "Troll
+        /// Trophy", but the Troll drops only the Frost one (50% per kill, read from its drop table).
+        /// The Forest one was the guess until 2026-10-06, when the first self-check read on the Mac
+        /// said MISSING. Haldor would have refused a trophy that looked identical to the one he asked
+        /// for, and Act II's altar would never have been pinned.
+        /// </summary>
+        public const string TrophyPrefab = "TrophyFrostTroll";
 
         public static readonly string[] Talk =
         {
