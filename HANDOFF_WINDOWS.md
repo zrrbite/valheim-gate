@@ -17,6 +17,19 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-10-06 - TASK: four reward and hint lines made true (`1.0.17-run.2026-10-06e`)
+
+**Staged.** As below. Badge `...06e · DEV`. Includes everything from `...06b`.
+
+- Finding Bonemass's altar: "Withered bone to wake him, and mead against the poison" (it said blunt weapons).
+- Finding Yagluth's altar: "Fuling totems to call him, and healing mead".
+- Killing Yagluth no longer says "The saga is complete": Fader is the ending.
+- The Stormsworn greaves hint says forge **level 4**, as the recipe needs.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-10-06 - TASK: Fader is the default ending, and every quest item can be got (`1.0.17-run.2026-10-06d`)
 
 **Staged.** As below (a full install if the 1.0.17 one is not done yet, otherwise `-ModOnly`). Badge
