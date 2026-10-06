@@ -197,11 +197,11 @@ Somebody had done all of this before you. The plains were built out of their lea
 
 ### Act VI &mdash; A Light to Carry
 
-`Thin stand-in` &middot; `8 steps` &middot; `2 tracks`
+`Written, not yet played` &middot; `8 steps` &middot; `2 tracks`
 
 > *The dvergr borrow light and give it back. Learn how.*
 
-In the mist there were lamps, and the lamps were not stolen. The dvergr had worked out how to borrow light and hand it back, and had no intention of explaining it.
+In the mist there were lamps, and the lamps were not stolen. The dvergr had worked out how to borrow light and hand it back, and had no intention of explaining it to something as new as you.
 
 | # | HUNT | CRAFT |
 |--:| --- | --- |
@@ -211,9 +211,11 @@ In the mist there were lamps, and the lamps were not stolen. The dvergr had work
 | 4 |  | Set a light free |
 | 5 |  | Carry the Borrowed Light |
 
+**Chapter ends.** The Queen came apart in the dark under the mist, and the dvergr took their lanterns back down without a fight. Nobody in the tenth world had ever owned a light. The dvergr had simply been the only ones honest enough to say so - and you had been carrying yours that way since the meadows. But borrowed light still has to go somewhere in the end. Everything in the world had been running south to find out where.
+
 ### Act VII &mdash; The Last Light
 
-`Thin stand-in` &middot; `7 steps` &middot; `2 tracks`
+`Written, not yet played` &middot; `7 steps` &middot; `2 tracks`
 
 > *Where light goes to end. Follow it in.*
 
@@ -226,9 +228,11 @@ Every thread you had pulled ran the same direction, and it ran here, where every
 | 3 | **Defeat Fader** | Speak with the charred one |
 | 4 |  | Carry Last Light |
 
+**Chapter ends.** Fader went down in his own fire, and everything that had come south went with him. That was where the light had been going all along: here, to the end of it, the way light should. The meadows', the forest's, the marsh's, the mountain's - all of it had been on its way to burn out. Odin had sent you to find out where. You found out, and the last of yours you let go of yourself.
+
 ### Act VIII &mdash; What the Cold Keeps
 
-`Placeholder` &middot; `2 steps` &middot; `2 tracks`
+`Epilogue stand-in` &middot; `2 steps` &middot; `2 tracks`
 
 > *Ice does not take light. It keeps it. Find out from whom.*
 

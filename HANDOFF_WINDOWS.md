@@ -17,6 +17,22 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-10-06 - TASK: Fader is the default ending, and every quest item can be got (`1.0.17-run.2026-10-06d`)
+
+**Staged.** As below (a full install if the 1.0.17 one is not done yet, otherwise `-ModOnly`). Badge
+`...06d · DEV`. Includes `...06b` and `...06c`.
+
+- **The saga ends at Fader by default** (it was Yagluth). If the config still has
+  `"runFinalBossKey": "defeated_goblinking"`, remove that line. Acts VI and VII are then reached without
+  edits. The Deep North stays the epilogue after Fader.
+- **Self-check:** a new line, `Quest items can be got`. Expect it OK. A MISSING line names an item and who
+  asks for it: paste it.
+- An Act II reward line no longer promises seeds the troll does not give.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-10-06 - TASK: Haldor takes the troll trophy trolls drop (`1.0.17-run.2026-10-06c`)
 
 **Staged.** As below (full install if the 1.0.17 one is not done yet, else `-ModOnly`). Badge `...06c · DEV`.

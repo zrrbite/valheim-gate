@@ -1,7 +1,7 @@
 # Home test plan: everything from 2026-10-05 and 2026-10-06
 
 For the owner, at home on the Windows machine. It covers every build from `1.0.16-run.2026-10-05`
-to `1.0.17-run.2026-10-06c`: about 85 commits, **none of which has been played**. It is in the order
+to `1.0.17-run.2026-10-06d`: about 85 commits, **none of which has been played**. It is in the order
 that tests the most with the least: setup, then a new character through Act I, then act by act.
 
 Each item says **do**, then what you should **see**. When something does not match, note the item
@@ -28,10 +28,10 @@ last build you played, and undoes all of it. To install one: `git checkout <tag>
      - `Keypad Enter` takes you home.
 
      The full table is `dist/windows/DEV-MODE.md`.
-   - `"runFinalBossKey": "defeated_fader"` makes Acts VI and VII reachable. The default ends the saga
-     at Yagluth.
+   - Nothing is needed to reach Acts VI and VII: since `...06d` the saga ends at **Fader** by default. If
+     your config still has `"runFinalBossKey": "defeated_goblinking"` from before, delete that line.
    - Leave `runKeyLayout` out: Windows keeps the numpad.
-3. **Launch.** The main menu's version line has a gold **`SAGA v1.0.17-run.2026-10-06c · DEV`** under it.
+3. **Launch.** The main menu's version line has a gold **`SAGA v1.0.17-run.2026-10-06d · DEV`** under it.
    Anything else means the wrong build is installed.
 
 ## 1. The first minute of a run (10 minutes)
@@ -48,6 +48,10 @@ last build you played, and undoes all of it. To install one: `git checkout <tag>
        `'FrozenKing_p3' sets 'defeated_frozenking_p3'`.
      - `The gods' altars: all 8 resolve`.
      - `Keys (numpad layout): all 31 resolve`.
+     - `Quest items can be got: all N resolve` (`...06d`). Every item a quest asks for is something the game
+       drops, crafts, sells, mines or converts, or the saga grants. **A MISSING line here names the item and
+       who asks for it: paste it back**, since it is either a step that can never finish or a source this
+       check does not know yet.
 
    **Copy the whole block** for the next session.
 5. **No errors.** `Select-String Player.log -Pattern "ICanShowYouTheWorld.*Exception"` returns nothing.
@@ -125,7 +129,7 @@ Make a **new character** for this part: three of these checks only happen on a f
 28. **STEADING** (optional): the windmill, Hildir's Sealed Tower chest, and "A feast at your own table":
     at home, three foods with one from the plains. **Yagluth must not wait for it.**
 
-**Act VI, the lantern-keeper** (`...05i`; needs `runFinalBossKey` past Yagluth)
+**Act VI, the lantern-keeper** (`...05i`; reached by default since `...06d`)
 
 29. A dvergr with a lantern glow at a dvergr site in the Mistlands. Speak. At night, give him a rescued
     light or a caught wisp: a light rises above him and fades, and "Set a light free" completes. It
@@ -170,11 +174,11 @@ Make a **new character** for this part: three of these checks only happen on a f
 ## 5. Winning, and the reward (`...05l`)
 
 40. To try it quickly, set `"runFinalBossKey": "defeated_eikthyr"` and win after Eikthyr. Otherwise win
-    for real.
+    for real: the default ending is Fader since `...06d`.
     **See:** "The skalds have finished your saga.", and the browser opens **The Saga of <your
     character>**: the myth up to your last act, your deeds under each, and a reckoning. Nothing from an
     act past the one you ended in. The lobby then shows **Read your saga**.
-    Set `runFinalBossKey` back afterwards.
+    Remove that `runFinalBossKey` line afterwards, so the saga ends at Fader again.
 
 ## 6. On the MacBook (whenever you have it)
 

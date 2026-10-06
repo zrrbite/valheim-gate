@@ -102,17 +102,24 @@ ACTS = [
             "and the fuling had put their huts on top without asking what any of it had been for.",
          cl="The first harvesters were dust in the fields they had cleared, and you were standing in "
             "their answer. It had not worked for them either."),
-    dict(n='VI', t='A Light to Carry', m='MistlandsChain', st='thin',
+    dict(n='VI', t='A Light to Carry', m='MistlandsChain', st='written',
          ep='The dvergr borrow light and give it back. Learn how.',
          ch="In the mist there were lamps, and the lamps were not stolen. The dvergr had worked out "
-            "how to borrow light and hand it back, and had no intention of explaining it.",
-         cl=''),
-    dict(n='VII', t='The Last Light', m='AshlandsChain', st='thin',
+            "how to borrow light and hand it back, and had no intention of explaining it to something as new as you.",
+         cl="The Queen came apart in the dark under the mist, and the dvergr took their lanterns back down "
+            "without a fight. Nobody in the tenth world had ever owned a light. The dvergr had simply been the "
+            "only ones honest enough to say so - and you had been carrying yours that way since the meadows. But "
+            "borrowed light still has to go somewhere in the end. Everything in the world had been running south "
+            "to find out where."),
+    dict(n='VII', t='The Last Light', m='AshlandsChain', st='written',
          ep='Where light goes to end. Follow it in.',
          ch="Every thread you had pulled ran the same direction, and it ran here, where everything "
             "has already burned once. You followed it in.",
-         cl=''),
-    dict(n='VIII', t='What the Cold Keeps', m='DeepNorthChain', st='placeholder',
+         cl="Fader went down in his own fire, and everything that had come south went with him. That was where "
+            "the light had been going all along: here, to the end of it, the way light should. The meadows', the "
+            "forest's, the marsh's, the mountain's - all of it had been on its way to burn out. Odin had sent you "
+            "to find out where. You found out, and the last of yours you let go of yourself."),
+    dict(n='VIII', t='What the Cold Keeps', m='DeepNorthChain', st='epilogue',
          ep='Ice does not take light. It keeps it. Find out from whom.',
          ch="Nothing in the far north has thawed since before the herd, and the ice is not hungry "
             "and never was. It has only been keeping something.",
@@ -124,6 +131,7 @@ STATUS = {
     'written':     ('Written, not yet played', 'mid'),
     'thin':        ('Thin stand-in', 'thin'),
     'placeholder': ('Placeholder', 'no'),
+    'epilogue':    ('Epilogue stand-in', 'no'),
 }
 SLUG = {'HUNT': 'hunt', 'CRAFT': 'craft', 'HEARTH': 'hearth', 'FORGE': 'forge', 'MARSH': 'marsh', 'PEAK': 'peak', 'STEADING': 'steading'}
 
@@ -287,7 +295,7 @@ PAGE = u"""<title>Saga Atlas</title>
   <h1>Saga Atlas</h1>
   <p class="lede">Every questline in the saga, lane by lane, with the story each act is telling
   and an honest note on how finished it is.</p>
-  <p class="meta">Generated from RunService.cs at 1.0.16-run.2026-10-05l &middot; 5 October 2026</p>
+  <p class="meta">Generated from RunService.cs at 1.0.17-run.2026-10-06d &middot; 6 October 2026</p>
 
   <div class="tally">
     <div><b>__TOTAL__</b><span>quest steps</span></div>
@@ -337,7 +345,6 @@ flowchart TD
   classDef gold fill:#241f14,stroke:#8a6f2a,color:#f2c85e;
   classDef thin fill:#191d22,stroke:#39414c,color:#98a0a8;
   class P,A1 gold;
-  class A6,A7 thin;
 </pre>
     </div>
   </section>
@@ -394,20 +401,31 @@ __ACTS__
 
   <section>
     <h2>The log</h2>
-    <p>Two days of building, newest first. Every line shipped as its own installed build.</p>
+    <p>Newest first. Every line shipped as its own build; nothing from 5 or 6 October has been played yet.</p>
     <ul class="log">
-      <li class="today"><span class="d">5 Oct</span><span>The saga&rsquo;s reward &mdash; a won run writes &ldquo;The Saga of &lt;character&gt;&rdquo;: the myth up to their last act, their deeds woven in, opened in the browser</span></li>
-      <li class="today"><span class="d">5 Oct</span><span>Act VII gets a voice &mdash; the charred one at the landing; his pyre burns Thor&rsquo;s bow with flametal and three lights into Last Light. Acts VI and VII get closing chapters</span></li>
-      <li class="today"><span class="d">5 Oct</span><span>Storm shields mend at the Storm-Anvil only, in the rain</span></li>
-      <li class="today"><span class="d">5 Oct</span><span>Act VI gets a voice &mdash; the lantern-keeper, a living dvergr who names the saga&rsquo;s payoff; one light set free; the Borrowed Light</span></li>
-      <li class="today"><span class="d">5 Oct</span><span>Review fixes: freed lights work in every act, speakers can&rsquo;t be killed by monsters, the frozen one always findable</span></li>
-      <li class="today"><span class="d">5 Oct</span><span>Act V gets voices &mdash; the harvester at the standing stones (eat from the field, the mantle), Hildir&rsquo;s last chest, and a STEADING track ending on a feast at your own table</span></li>
-      <li class="today"><span class="d">5 Oct</span><span>Act IV gets voices &mdash; the frozen one at the treeline (a fire to wake him, a dragon egg carried down, the greaves) and Hildir&rsquo;s cold, on a new PEAK track: her own Howling Cavern chest</span></li>
-      <li class="today"><span class="d">5 Oct</span><span>Act III gets voices &mdash; the drowned one at the sunken crypt (the cuirass, then let him go), the Bog Witch (preparation, and the Stormward reforged into the Ironbound Stormward)</span></li>
-      <li class="today"><span class="d">5 Oct</span><span>Act II gets voices &mdash; the barrow-keeper at the burial chamber&rsquo;s door (a light for the Stormsworn helm) and Haldor, who trades the couriers&rsquo; road for a troll&rsquo;s head and marks the altar</span></li>
-      <li class="today"><span class="d">5 Oct</span><span>Three Act II chores cut (sign, beehive, herd); the altar pin waits for the altar&rsquo;s own step</span></li>
-      <li class="today"><span class="d">5 Oct</span><span>A way&rsquo;s rungs are taught where the god falls, and rung 3 moves to the Elder</span></li>
-      <li class="today"><span class="d">5 Oct</span><span>Dev mode exists only in dev builds; the &ldquo;gm&rdquo; flavour is renamed &ldquo;dev&rdquo;</span></li>
+      <li class="today"><span class="d">6 Oct</span><span>The self-check asks whether every item a quest wants can actually be got &mdash; dropped, crafted, sold, mined or converted</span></li>
+      <li class="today"><span class="d">6 Oct</span><span>The saga ends at Fader by default; the Deep North stays the epilogue after him</span></li>
+      <li class="today"><span class="d">6 Oct</span><span>Haldor takes the troll trophy trolls actually drop &mdash; caught by the first self-check anyone read</span></li>
+      <li class="today"><span class="d">6 Oct</span><span>A laptop key layout, every card answered with TAB and a click, keys silent while typing, and the saga menu waits out the Valkyrie intro</span></li>
+      <li class="today"><span class="d">6 Oct</span><span>Valheim 1.0.17 &mdash; rebuilt, no source change; a script now checks every reference before compiling</span></li>
+      <li class="today"><span class="d">6 Oct</span><span>The Deep North&rsquo;s real names &mdash; Kall Fimbulbringer, fought in three forms, read out of the game&rsquo;s own files</span></li>
+      <li class="today"><span class="d">6 Oct</span><span>Designed: the hall &mdash; rebuilding Valheim act by act, each god&rsquo;s place instead of the sacrificial stones, and a horn at Fader that calls the seated gods down</span></li>
+      <li><span class="d">5 Oct</span><span>Wind for the voyage &mdash; the god&rsquo;s wind toward a pinned altar, and a Wind-horn on the up arrow</span></li>
+      <li><span class="d">5 Oct</span><span>Ship fittings &mdash; Sail, Hull and Fire-tar bought with gold at any helm, following the captain</span></li>
+      <li><span class="d">5 Oct</span><span>The saga so far &mdash; each god felled writes its chapter, readable from the BOOK</span></li>
+      <li><span class="d">5 Oct</span><span>The FORGE page keeps the anvil&rsquo;s secrets, and a run-start self-check lists every name the saga guesses</span></li>
+      <li><span class="d">5 Oct</span><span>The saga&rsquo;s reward &mdash; a won run writes &ldquo;The Saga of &lt;character&gt;&rdquo;: the myth up to their last act, their deeds woven in, opened in the browser</span></li>
+      <li><span class="d">5 Oct</span><span>Act VII gets a voice &mdash; the charred one at the landing; his pyre burns Thor&rsquo;s bow with flametal and three lights into Last Light. Acts VI and VII get closing chapters</span></li>
+      <li><span class="d">5 Oct</span><span>Storm shields mend at the Storm-Anvil only, in the rain</span></li>
+      <li><span class="d">5 Oct</span><span>Act VI gets a voice &mdash; the lantern-keeper, a living dvergr who names the saga&rsquo;s payoff; one light set free; the Borrowed Light</span></li>
+      <li><span class="d">5 Oct</span><span>Review fixes: freed lights work in every act, speakers can&rsquo;t be killed by monsters, the frozen one always findable</span></li>
+      <li><span class="d">5 Oct</span><span>Act V gets voices &mdash; the harvester at the standing stones (eat from the field, the mantle), Hildir&rsquo;s last chest, and a STEADING track ending on a feast at your own table</span></li>
+      <li><span class="d">5 Oct</span><span>Act IV gets voices &mdash; the frozen one at the treeline (a fire to wake him, a dragon egg carried down, the greaves) and Hildir&rsquo;s cold, on a new PEAK track: her own Howling Cavern chest</span></li>
+      <li><span class="d">5 Oct</span><span>Act III gets voices &mdash; the drowned one at the sunken crypt (the cuirass, then let him go), the Bog Witch (preparation, and the Stormward reforged into the Ironbound Stormward)</span></li>
+      <li><span class="d">5 Oct</span><span>Act II gets voices &mdash; the barrow-keeper at the burial chamber&rsquo;s door (a light for the Stormsworn helm) and Haldor, who trades the couriers&rsquo; road for a troll&rsquo;s head and marks the altar</span></li>
+      <li><span class="d">5 Oct</span><span>Three Act II chores cut (sign, beehive, herd); the altar pin waits for the altar&rsquo;s own step</span></li>
+      <li><span class="d">5 Oct</span><span>A way&rsquo;s rungs are taught where the god falls, and rung 3 moves to the Elder</span></li>
+      <li><span class="d">5 Oct</span><span>Dev mode exists only in dev builds; the &ldquo;gm&rdquo; flavour is renamed &ldquo;dev&rdquo;</span></li>
       <li><span class="d">27 Sep</span><span>The thane at the graves &mdash; Act I&rsquo;s third speaker, by day, who hands out the WAYS; a HEARTH step to find him and THE WAY card to choose</span></li>
       <li><span class="d">27 Sep</span><span>Four new abilities: Rend, Blood Rage, Warcry (Berserker) and Thor&rsquo;s Wrath (V&ouml;lva)</span></li>
       <li><span class="d">27 Sep</span><span>Classes as boons &mdash; a way is a passive and three rungs the wheel never deals and death never takes; nine boons moved into Hunter, V&ouml;lva and Berserker</span></li>
@@ -445,20 +463,12 @@ __ACTS__
   <section>
     <h2>What is next</h2>
     <ul class="next">
-      <li><b>Playing:</b> the three class milestones together &mdash; the thane&rsquo;s spot and palette, the card, whether
-      the four new numbers are anywhere near right. Then the doc pass, and refilling the general pool (21 boons since the move).</li>
-      <li><b>Answered:</b> the Storm-Anvil&rsquo;s prefab is <code>incinerator</code>, printed by a running
-      game at last. The mod still finds it by component, because a component search cannot go stale.</li>
-      <li><b>Done:</b> Thor&rsquo;s bow and the Stormward both moved off the workbench onto the anvil, so the
-      walk to Thjalfi is what the whole craft lane now runs through.</li>
-      <li>Whether the two-handed Stormward changes Act I&rsquo;s pace: no bow, no torch and no weapon while it
-      is up, which is a real cost and may want the discharge tuned down rather than up.</li>
-      <li>The Stormsworn bound at the anvil, one piece per act.</li>
-      <li>The Stormward <em>reforged</em> in Act III with iron and ancient bark — not moved there, so Act I
-      keeps the capstone craft it was built to have.</li>
-      <li>Act II has never been reached in a play-test. <code>forge</code> is still an unverified station name.</li>
-      <li>Search at the crafting bench, parked: alphabetical sorting turned out to be most of what it was for.</li>
-      <li>A tint or glow for the saga&rsquo;s own items, to be written from the probe dump rather than guessed.</li>
+      <li class="block"><b>The owner&rsquo;s home test</b> of everything from 5 and 6 October: 41 checks, in order, from the first launch to the reward page.</li>
+      <li><b>The hall</b>, after the test: first a dev key that calls one Aspect to the player&rsquo;s side, then Act I&rsquo;s long fire. Spec and plan are written.</li>
+      <li><b>A smaller run window:</b> shown with TAB beside the inventory, hidden otherwise (the owner&rsquo;s idea).</li>
+      <li><b>The Deep North</b> as the epilogue after Fader: the Frozen King turns the gods you seated against you.</li>
+      <li>The heat curve, still never tuned in play.</li>
+      <li>The Steam Deck&rsquo;s patched assembly, two game versions behind.</li>
     </ul>
   </section>
 
@@ -483,6 +493,7 @@ MD_STATUS = {
     'written':     'Written, not yet played',
     'thin':        'Thin stand-in',
     'placeholder': 'Placeholder',
+    'epilogue':    'Epilogue stand-in',
 }
 
 md = []
