@@ -17,6 +17,21 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-10-05 - TASK: ship fittings (`1.0.16-run.2026-10-05p`)
+
+**Staged.** `git pull`, `.\dist\windows\Install-Mod.ps1 -ModOnly`. Badge `...05p · DEV`. Includes `...05n`/`...05o` below.
+
+- Dev kit (`mod` + `*`) now has 500 coins in the stash. Build a raft: Hugin says the helm takes gold.
+- Look at the helm: a second line "[Shift + E] Fit out the ship". Shift+E opens a card (Sail I, Hull I,
+  50 coins each); Keypad 1/2 buys. `End` → FORGE → SHIP shows what is fitted.
+- Sail I-III should be visibly faster under sail AND paddling. Walk around the deck after buying -
+  you must stay "on the ship" (no "Player over board" in `Player.log`).
+- `Player.log`: "The helm ... takes fittings" is gone (no collider any more); look for "Ship fitted:".
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-10-05 - TASK: the saga so far, from the BOOK (`1.0.16-run.2026-10-05o`)
 
 **Staged.** `git pull`, `.\dist\windows\Install-Mod.ps1 -ModOnly`. Badge `...05o · DEV`. Includes `...05n` below.

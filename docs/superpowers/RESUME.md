@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, last updated 2026-10-05 at `1.0.16-run.2026-10-05o`. This is the "pick it back up
+Written 2026-08-23, last updated 2026-10-05 at `1.0.16-run.2026-10-05p`. This is the "pick it back up
 without re-deriving anything" page: where the work stands, the loop it moves
 in, and the questions that are waiting on a human.
 
@@ -31,6 +31,13 @@ Everything below is what that file tells it.
   item looks, flametal, plains foods, every quest name), OK / FALLBACK / MISSING, worst first. MISSING
   is a step that cannot finish; FALLBACK is a guess to correct. `RunService.LogSelfCheck`, pure
   `SagaSelfCheck`. A new guessed name belongs in it.
+- **2026-10-05, ship fittings** (`...05p`, `saga/ship-fittings`). Owner's aim: travelling by boat to a
+  god in another biome should be easy. Gold at any helm (Shift+E, card, Keypad 1–3) buys **Sail**
+  I–III (+15/30/50% sail and oars), **Hull** I–III (slightly/plainly/very resistant) and, from Act
+  VII only, **Fire-tar** (`m_ashlandsReady`). They follow the captain: the run owns them, every loaded
+  ship wears them, restored at run end. Unlocked by building any ship (or the raft step). Pure
+  `ShipFittings`, game side `Shipwright`. **Landmine:** never put a collider under a ship — its
+  trigger events reach `Ship.OnTriggerExit`, which throws the player overboard.
 - **2026-10-05, the saga so far** (`...05o`, `saga/story-so-far`). The BOOK and the myth stay two
   texts, linked: each god felled writes its chapter, and the BOOK's title page gets **Read your saga
   so far** (browser, cut at the last god felled, never the act being played; no epilogue or
