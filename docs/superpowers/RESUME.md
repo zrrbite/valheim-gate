@@ -42,7 +42,8 @@ the mode is still being tuned in play. Valheim 1.0.17, Unity 6000.0.75.
   MacBook testing ("too timeconsuming... ill wait until I have a better setup"); step 3 (the act's god
   beside you) waits for that. All are in `DEV-MODE.md`, tagged `MACBOOK-TEMP`, and come out with one grep
   once testing is back at a full keyboard.
-- **The dev keys have their own window** (`1.0.17-run.2026-10-07`): `Shift` + `End`, centre screen, in the layout's keys.
+- **The dev keys have their own window** (`1.0.17-run.2026-10-07`, confirmed on the Mac): `Shift` + `End`, centre
+  screen, in the layout's keys.
   The HUD keeps one red line, `DEV · Shift+End: dev keys` (the owner: dev mode was "clogging up the run-ui").
 - **The self-check found a real stall** on its first Mac reading (`...06j`): Act I's "Cook 5 meat" asked
   for `$item_cookedmeat`, no item's name. A collect step may now ask for either of two items (`A|B`,
