@@ -2945,39 +2945,49 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
-        /// The dev key list exactly as the HUD prints it.
+        /// The dev keys, as the dev keys window lists them (Shift+End): a group, the key as pressed in
+        /// the current layout, and what it does.
         /// </summary>
         /// <remarks>
         /// It lives HERE, three lines from the handler that reads those keys, because the drift
-        /// between the two cost a whole play session: the keys went behind a modifier and this
+        /// between the two cost a whole play session: the keys went behind a modifier and the help
         /// line did not, so the tester pressed them bare, got nothing, and reported the layer as
         /// broken - "Oh we changed it to shift + ? I didnt know... Its just that the help text
         /// didnt reflect that". The keys were working perfectly. Nothing on screen said how.
         ///
-        /// The HUD renders whatever this array holds, one label per entry, so adding a dev key and
-        /// telling the tester about it are now edits to the same screenful of code. That is the
-        /// same medicine as BoonKeys, which exists because a boon that activated perfectly and
-        /// never named its key had already happened once.
+        /// Adding a dev key and telling the tester about it are edits to the same screenful of code.
+        /// That is the same medicine as BoonKeys, which exists because a boon that activated perfectly
+        /// and never named its key had already happened once.
+        ///
+        /// Until 2026-10-07 this was six red lines on the HUD, above QUESTS; the owner found them
+        /// "clogging up the run-ui" and asked for a window that can be toggled, centre screen.
         /// </remarks>
-        // Built from the layout (2026-10-06) rather than written out, so the laptop's letters are what
-        // the tester reads: the drift this array exists to prevent, one layer further down.
-        public static string[] DevKeyHelp
+        public static (string group, string keys, string does)[] DevKeyTable
         {
             get
             {
                 string K(SagaKey key) => BoonKeys.KeyLabel(key);
+                string M(SagaKey key) => "Shift + " + BoonKeys.KeyLabel(key);
+                const string Bare = "Keys";
+                const string Mod = "With Shift, Ctrl or Alt";
+                const string Temp = "Temporary, for testing on a MacBook";
                 return new[]
                 {
-                    $"DEV MODE   {K(SagaKey.DevStar)}items   {K(SagaKey.DevDot)}light   {K(SagaKey.DevSlash)}god+speed   " +
-                    $"{K(SagaKey.DevEnter)}home   {K(SagaKey.DevDelete)}slay",
-                    $"{K(SagaKey.DevHome)}map-tp   {K(SagaKey.DevPageUp)}probe   " +
-                    $"{K(SagaKey.DevGoTo)}go to the saga's places (Shift: back)   Shift + {K(SagaKey.DevShip)} a ship at sea - MacBook, temporary",
-                    $"Shift/Ctrl/Alt + {K(SagaKey.DevPlus)} complete step   \u00b7   + {K(SagaKey.DevMinus)} +2h AND cycle weather: fair/rain/storm",
-                    $"Shift/Ctrl/Alt + {K(SagaKey.DevBackspace)} Storm-Anvil + bow + shield + the combine's makings",
-                    $"Shift/Ctrl/Alt + {K(SagaKey.DevStar)} cycle the way (all seven)   \u00b7   + {K(SagaKey.DevSlash)} learn all its rungs   " +
-                    $"\u00b7   + {K(SagaKey.DevDelete)} bow + shield + 5 lights",
-                    $"({K(SagaKey.DevPlus)} and {K(SagaKey.DevMinus)} take a modifier because bare they are the player's; " +
-                    $"bare {K(SagaKey.DevStar)} and {K(SagaKey.DevSlash)} are items and god)",
+                    (Bare, K(SagaKey.DevStar),   "Materials and 500 coins, into the stash"),
+                    (Bare, K(SagaKey.DevSlash),  "God mode, a fighter's kit and +75% speed (again: off)"),
+                    (Bare, K(SagaKey.DevDot),    "A deer's light at your feet, and the pack it draws"),
+                    (Bare, K(SagaKey.DevEnter),  "Gate home to your bed, free"),
+                    (Bare, K(SagaKey.DevDelete), "Slay everything hostile within 10 m"),
+                    (Bare, K(SagaKey.DevHome),   "Teleport to the map cursor (with the map open)"),
+                    (Bare, K(SagaKey.DevPageUp), "Probe the creature in view, or the held item, to ICSYTW_probe.txt"),
+                    (Mod,  M(SagaKey.DevPlus),   "Complete the current step on every track"),
+                    (Mod,  M(SagaKey.DevMinus),  "+2 hours, and cycle the weather: fair, rain, storm"),
+                    (Mod,  M(SagaKey.DevStar),   "Cycle the way through all seven, then none"),
+                    (Mod,  M(SagaKey.DevSlash),  "Learn every rung of the held way"),
+                    (Mod,  M(SagaKey.DevDelete), "Thor's bow, the Stormward and five rescued lights"),
+                    (Mod,  M(SagaKey.DevBackspace), "Plant a Storm-Anvil, with the bow, the shield and the combine's makings"),
+                    (Temp, K(SagaKey.DevGoTo),   "Go to the next of the saga's places (Shift: the one before)"),
+                    (Temp, M(SagaKey.DevShip),   "A Karve on the nearest sea, and you at its helm"),
                 };
             }
         }

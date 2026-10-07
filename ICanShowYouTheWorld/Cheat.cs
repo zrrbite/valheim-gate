@@ -200,8 +200,14 @@ namespace ICanShowYouTheWorld
                 },
                 new CommandBinding {
                     Key         = KeyCode.End,
-                    Description = "Run Mode window",
-                    Execute     = () => UIManager.Instance.ToggleRunWindow(),
+                    Description = "Run Mode window (Shift: the dev keys, in dev mode)",
+                    // Shift+End is the dev keys window (2026-10-07). With no dev keys to show, it is
+                    // End as before, so a Shift held by accident never swallows the press.
+                    Execute     = () =>
+                    {
+                        bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+                        if (!(shift && UIManager.Instance.ToggleDevKeys())) UIManager.Instance.ToggleRunWindow();
+                    },
                     GetState    = () => true
                 },
                 new CommandBinding {

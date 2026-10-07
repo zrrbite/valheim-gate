@@ -67,6 +67,18 @@ namespace ICanShowYouTheWorld.RunMode
         private const float StashWidth = 320f;
         private const float StashHeight = 250f;
 
+        // The dev keys, in a window of their own in the middle of the screen, toggled with Shift+End
+        // (owner, 2026-10-07: "Dev mode is clogging up the run-ui with red text. Can we move everything
+        // to a window that can be toggled on/off (center screen)?"). The HUD keeps one line saying dev
+        // mode is on and where the keys are. Re-centred every frame, so not draggable: there is
+        // nothing in it to click, and it is closed with the key that opened it.
+        private const int DevKeysWindowId = 15;
+        private const float DevKeysWidth = 620f;
+        private Rect _devKeysRect = new Rect(0f, 0f, DevKeysWidth, 360f);
+
+        /// <summary>Whether the dev keys window is up. Starts hidden each session.</summary>
+        public bool DevKeysVisible;
+
         /// <summary>
         /// Species colors, so a row keeps its identity when the list re-sorts. Distance ordering
         /// means rows swap places constantly as things move, and a wall of same-colored text is
@@ -258,6 +270,18 @@ namespace ICanShowYouTheWorld.RunMode
         private Hud _tippedHud;
 
         public void ToggleVisible() => Visible = !Visible;
+
+        /// <summary>
+        /// Shift+End. Toggles the dev keys window and says true, or, with no dev keys to show (no run,
+        /// or dev mode off), changes nothing and says false, so the key falls back to the Run window.
+        /// </summary>
+        public bool ToggleDevKeys()
+        {
+            var run = Service;
+            if (run == null || !run.IsRunActive || !run.DevMode) return false;
+            DevKeysVisible = !DevKeysVisible;
+            return true;
+        }
 
         /// <summary>Which page of the run window is showing.</summary>
         private enum HudPage
@@ -628,6 +652,14 @@ namespace ICanShowYouTheWorld.RunMode
                         {
                             GUI.color = Color.white;
                         }
+                    }
+
+                    if (DevKeysVisible && run.DevMode && !MapOpen())
+                    {
+                        _devKeysRect.x = Mathf.Max(10f, (viewWidth - DevKeysWidth) / 2f);
+                        _devKeysRect.y = Mathf.Max(10f, (viewHeight - _devKeysRect.height) / 2f);
+                        _devKeysRect = GUILayout.Window(DevKeysWindowId, _devKeysRect, DrawDevKeys,
+                            GUIContent.none, RunTheme.Panel, GUILayout.Width(DevKeysWidth));
                     }
                 }
                 else
@@ -1098,6 +1130,48 @@ namespace ICanShowYouTheWorld.RunMode
                 RunTheme.ShadowedLabel(new Rect(rect.x - 100f, lineY, StripWidth + 200f, 20f),
                     notice, _noticeStyle, RunTheme.AccentGoldBright);
             }
+        }
+
+        // --- Dev keys ---
+
+        private void DrawDevKeys(int id)
+        {
+            try { DrawDevKeysBody(); }
+            catch (Exception ex) { LogOnce("dev-keys", ex); }
+        }
+
+        /// <summary>RunService.DevKeyTable, a group at a time: the key, then what it does.</summary>
+        private void DrawDevKeysBody()
+        {
+            GUILayout.Label("DEV KEYS", RunTheme.Header);
+
+            string group = null;
+            foreach (var (rowGroup, keys, does) in RunService.DevKeyTable)
+            {
+                if (rowGroup != group)
+                {
+                    group = rowGroup;
+                    GUILayout.Space(6f);
+                    GUI.contentColor = RunTheme.AccentGold;
+                    GUILayout.Label(group, RunTheme.Small);
+                    GUI.contentColor = Color.white;
+                }
+
+                GUILayout.BeginHorizontal();
+                GUI.contentColor = RunTheme.AccentGoldBright;
+                GUILayout.Label(keys, RunTheme.Body, GUILayout.Width(130f));
+                GUI.contentColor = RunTheme.TextParchment;
+                GUILayout.Label(does, RunTheme.Body);
+                GUI.contentColor = Color.white;
+                GUILayout.EndHorizontal();
+            }
+
+            GUILayout.Space(6f);
+            GUILayout.Label("Ctrl or Alt work as Shift does. Dev keys stand down while you type. Shift+End closes this.",
+                            RunTheme.Small);
+            if (string.Equals(BoonKeys.Layout, KeyLayout.Laptop, StringComparison.OrdinalIgnoreCase))
+                GUILayout.Label("On a MacBook: [Del] is fn + Backspace, [Home] is fn + \u2190, [PgUp] is fn + \u2191.",
+                                RunTheme.Small);
         }
 
         // --- Heat HUD ---
@@ -1881,20 +1955,16 @@ namespace ICanShowYouTheWorld.RunMode
             // DrawHudBody. Repeating it would be the third time the same words appear on one panel.
             // Never silently on. A testing aid nobody can see is one somebody forgets is running,
             // and then reports its effects as bugs.
+            //
+            // One line, since 2026-10-07: the keys themselves moved to their own window (Shift+End),
+            // because six red lines here were "clogging up the run-ui". The line stays so dev mode is
+            // never on unseen, and says where the keys went.
             if (run.DevMode)
             {
                 // AlertSmall, not Small: contentColor multiplies, so tinting a muted style gave a
-                // dark red times a 72%-alpha parchment and produced something unreadable. Small
-                // in SIZE without being muted in colour is what this line actually wanted — it
-                // has to be readable and it has to stop dominating the panel it sits above.
-                //
-                // The text comes from RunService.DevKeyHelp rather than living here, because the
-                // copy that lived here went stale the moment two of the keys gained a modifier -
-                // and a help line that is wrong is worse than none, since the tester trusts it and
-                // concludes the feature is broken. See the remarks on that field.
+                // dark red times a 72%-alpha parchment and produced something unreadable.
                 GUI.contentColor = RunTheme.HeatRed;
-                foreach (var line in RunService.DevKeyHelp)
-                    GUILayout.Label(line, RunTheme.AlertSmall);
+                GUILayout.Label("DEV \u00b7 Shift+End: dev keys", RunTheme.AlertSmall);
                 GUI.contentColor = Color.white;
             }
 
@@ -2696,7 +2766,7 @@ namespace ICanShowYouTheWorld.RunMode
         /// <remarks>
         /// The table is generated from <see cref="CommandRegistry.All"/>, which is the list the
         /// input manager was registered FROM - so a binding that exists is listed and a binding
-        /// that was skipped is not. That is the same medicine as BoonKeys and DevKeyHelp, and it is
+        /// that was skipped is not. That is the same medicine as BoonKeys and DevKeyTable, and it is
         /// applied here for the third time because this codebase has now twice shipped a command
         /// nobody could discover and once shipped a help line that had gone stale.
         ///

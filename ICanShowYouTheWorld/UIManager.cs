@@ -89,6 +89,9 @@ namespace ICanShowYouTheWorld
         /// <summary>End key: opens the Run Mode lobby, or the Heat HUD while a run is live.</summary>
         public void ToggleRunWindow() => runWindow.ToggleVisible();
 
+        /// <summary>Shift+End: the dev keys window. False when there are none to show (see RunWindow).</summary>
+        public bool ToggleDevKeys() => runWindow.ToggleDevKeys();
+
 
 
 
