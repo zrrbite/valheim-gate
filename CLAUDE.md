@@ -287,7 +287,8 @@ landmines. Design lives in `docs/superpowers/specs/`, the reasoning behind the
 landmines in `docs/superpowers/2026-08-16-run-mode-build-notes.md`.
 **The first launch of any build is read with `grep "Saga self-check" Player.log`**: one block at run
 start, a line per asset name the saga guesses, OK / FALLBACK / MISSING (`RunService.LogSelfCheck`).
-`End` opens the Run window: lobby outside a run, Heat HUD during one. While a
+`End` opens the Run window: lobby outside a run, Heat HUD during one; in dev mode, `Shift+End` opens the
+dev keys window (`RunService.DevKeyTable`, since 2026-10-07). While a
 run is live, GM-mode commands are gated off (`InputManager.Gate`) and F1 shows
 the Heat HUD instead of the cheat windows.
 

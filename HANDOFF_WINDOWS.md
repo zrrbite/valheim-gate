@@ -17,6 +17,19 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-10-07 - TASK: the dev keys window (`1.0.17-run.2026-10-07`)
+
+**Staged.** Badge `1.0.17-run.2026-10-07 · DEV`. Mod-only is enough once the full 1.0.17 install (`...06`) is done.
+
+- Dev mode on, in a run: the HUD has one red line above QUESTS, `DEV · Shift+End: dev keys`, instead of six.
+- `Shift` + `End` opens a window in the middle of the screen listing every dev key (plain, with a modifier,
+  the temporary MacBook keys); `Shift` + `End` again closes it. `End` alone still toggles the Run window.
+- With dev mode off, `Shift` + `End` behaves as `End`.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-10-06 - TASK: "Cook 5 meat" can finish; the item self-check; the dev ship boards (`1.0.17-run.2026-10-06j`)
 
 **Staged.** Badge `...06j · DEV`. Mod-only is enough once the full 1.0.17 install (`...06`) is done.

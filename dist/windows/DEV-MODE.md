@@ -107,9 +107,12 @@ numpad keys move to letters Valheim leaves free, and the rest stay:
 Dev keys stand down while you are typing (chat, console, a text field), so a `Z` in a chat
 line plants nothing.
 
-The Run window's own DEV MODE banner prints this same table in short form, generated from
-`RunService.DevKeyHelp` — the one place the strings live. It went stale once, which is the
-whole reason this page's history below exists.
+**In the game, `Shift` + `End` opens this table** in a window in the middle of the screen, in your
+layout's keys, and closes it again (since 2026-10-07). The HUD keeps one red line, `DEV · Shift+End:
+dev keys`, so dev mode is never on unseen. The window is generated from `RunService.DevKeyTable`,
+the one place the descriptions live, beside the handler that reads the keys. Until 2026-10-07 it
+was six red lines above QUESTS, which the owner found were "clogging up the run-ui". The help went
+stale once, which is the whole reason this page's history below exists.
 
 ### Why it is not "Shift plus everything"
 
