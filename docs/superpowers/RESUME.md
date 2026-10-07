@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, restructured and last updated 2026-10-07 at `1.0.17-run.2026-10-07`. This is the
+Written 2026-08-23, restructured and last updated 2026-10-07 at `1.0.17-run.2026-10-07b`. This is the
 "pick it back up without re-deriving anything" page: where the work stands, the loop it moves in, the
 landmines, and the decisions not to re-open. Its history (the dated status bullets, the alpha era, the
 "Done" write-ups) moved verbatim to [`RESUME-history.md`](RESUME-history.md) on 2026-10-06.
@@ -23,7 +23,7 @@ block first, then the numbered items that did not match.
 
 ## Where things stand
 
-**2026-10-07, `1.0.17-run.2026-10-07` (dev)**, on `feature/run-mode`: not merged, deliberately, since
+**2026-10-07, `1.0.17-run.2026-10-07b` (dev)**, on `feature/run-mode`: not merged, deliberately, since
 the mode is still being tuned in play. Valheim 1.0.17, Unity 6000.0.75.
 
 - **Seven acts, all built and voiced, and the saga ends at Fader** (the `runFinalBossKey` default since
@@ -45,6 +45,10 @@ the mode is still being tuned in play. Valheim 1.0.17, Unity 6000.0.75.
 - **The dev keys have their own window** (`1.0.17-run.2026-10-07`, confirmed on the Mac): `Shift` + `End`, centre
   screen, in the layout's keys.
   The HUD keeps one red line, `DEV · Shift+End: dev keys` (the owner: dev mode was "clogging up the run-ui").
+- **The run window fits its page** (`1.0.17-run.2026-10-07b`): it was nearly screen-tall whatever it held. A **BOONS** tab now
+  holds THE WAY and BOONS (tabs: RUN · BOONS · BOOK · HEARD · FORGE), so RUN is the header, the quest
+  step and the tasks. The window grows to at most 60% of the screen, and longer pages scroll.
+  `RunWindow.HudScrollHeight`. The rest of the cleanup (TAB to show it) still wants a design session.
 - **The self-check found a real stall** on its first Mac reading (`...06j`): Act I's "Cook 5 meat" asked
   for `$item_cookedmeat`, no item's name. A collect step may now ask for either of two items (`A|B`,
   `ItemSources.CountWanted`); it takes cooked boar or deer. The same reading listed the saga's own items as
@@ -54,7 +58,7 @@ the mode is still being tuned in play. Valheim 1.0.17, Unity 6000.0.75.
 - **First read of any build: `grep "Saga self-check" Player.log`** (OK / FALLBACK / MISSING, worst
   first). Its first reading found Haldor asking for a trophy no troll drops (fixed in `...06c`), so since
   `...06d` a line, **Quest items can be got**, checks that everything the saga asks for can be had.
-- **Machines:** the Mac is current (`...07`, laptop keys). Windows needs a **full** install for 1.0.17.
+- **Machines:** the Mac is current (`...07b`, laptop keys). Windows needs a **full** install for 1.0.17.
   The Steam Deck has an old patched assembly.
 - **Written up where it lives:** laptop keys and clickable cards (CLAUDE.md); the hall
   ([spec](specs/2026-10-06-the-hall-design.md), [slices 0–1 plan](plans/2026-10-06-the-hall-slices-0-1.md));

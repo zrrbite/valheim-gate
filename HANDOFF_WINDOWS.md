@@ -17,6 +17,19 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-10-07 - TASK: the run window fits its page, a BOONS tab (`1.0.17-run.2026-10-07b`)
+
+**Staged.** Badge `1.0.17-run.2026-10-07b · DEV`. Mod-only is enough once the full 1.0.17 install (`...06`) is done.
+
+- `End` in a run: the window is only as tall as the page. RUN shows the header, the quest step and the
+  three tasks; THE WAY and BOONS are on a new **BOONS** tab (RUN · BOONS · BOOK · HEARD · FORGE).
+- BOOK and HEARD grow up to about 60% of the screen and scroll beyond it. The Abandon button stays reachable.
+- Look for a window that keeps the full height on RUN (the fit failed), or tabs that overflow the window.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-10-07 - TASK: the dev keys window (`1.0.17-run.2026-10-07`)
 
 **Staged.** Badge `1.0.17-run.2026-10-07 · DEV`. Mod-only is enough once the full 1.0.17 install (`...06`) is done.
