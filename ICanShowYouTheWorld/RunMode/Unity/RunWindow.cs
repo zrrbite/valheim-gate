@@ -28,6 +28,21 @@ namespace ICanShowYouTheWorld.RunMode
 
         private const float HudWidth = 420f;
 
+        // The HUD fits its page (2026-10-07). _hudCap is the tallest it may be, set by Layout from the
+        // screen; _hudChrome is what everything outside the scroll view takes, measured; each page's
+        // content height is measured as it is drawn. See HudScrollHeight.
+        private float _hudCap = 480f;
+        private float _hudChrome = 220f;
+        private float _hudScrollHeightUsed;
+        private readonly Dictionary<HudPage, float> _pageHeights = new Dictionary<HudPage, float>();
+
+        /// <summary>The page's own height, within what the cap leaves; the cap's room for a page not yet measured.</summary>
+        private float HudScrollHeight()
+        {
+            float room = Mathf.Max(80f, _hudCap - _hudChrome);
+            return _pageHeights.TryGetValue(_page, out float content) ? Mathf.Clamp(content + 2f, 24f, room) : room;
+        }
+
         /// <summary>
         /// Width available to a row INSIDE the HUD's scroll view: the window less its padding and
         /// the vertical scrollbar. Rows are sized against this rather than eyeballed, because a
@@ -286,8 +301,11 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>Which page of the run window is showing.</summary>
         private enum HudPage
         {
-            /// <summary>What you act on: the numbers, the step in play, the tasks, the boons.</summary>
+            /// <summary>What you act on: the numbers, the step in play, the tasks.</summary>
             Run,
+
+            /// <summary>The way's kit and the held boons, with descriptions (2026-10-07, off the RUN page).</summary>
+            Boons,
 
             /// <summary>
             /// Every line the saga has said this run, newest first. Labelled HEARD.
@@ -610,8 +628,16 @@ namespace ICanShowYouTheWorld.RunMode
                         var hudRect = _hudRect;
                         hudRect.x = Mathf.Max(10f, _hudRect.x - offset);
 
+                        // Height 0 going in, so the window fits its page (see HudScrollHeight); a
+                        // GUILayout window given its last height grows but never shrinks.
+                        hudRect.height = 0f;
                         hudRect = GUILayout.Window(HudWindowId, hudRect, DrawHud, GUIContent.none, RunTheme.Panel,
-                            GUILayout.Width(HudWidth), GUILayout.Height(_hudRect.height));
+                            GUILayout.Width(HudWidth));
+
+                        // What the header, tabs, quest step and button take: the cap less this is
+                        // what the page may have. Measured, because the quest step's length varies.
+                        if (Event.current.type == EventType.Repaint && hudRect.height > _hudScrollHeightUsed)
+                            _hudChrome = hudRect.height - _hudScrollHeightUsed;
 
                         // Only the un-offset position is remembered, so dragging the window while
                         // a menu is open doesn't permanently shunt the HUD across the screen.
@@ -721,7 +747,12 @@ namespace ICanShowYouTheWorld.RunMode
             // Scales with the window instead of sitting at a fixed 480: the HUD carries a
             // questline step, three tasks, every held boon and a split per boss, and on a tall
             // screen there is no reason to scroll any of it.
-            float hudHeight = Mathf.Clamp(viewHeight - 90f, 360f, 720f);
+            //
+            // Since 2026-10-07 that is a CAP, not a size: the window fits its page and grows to this
+            // only for a long one (BOOK, HEARD), which then scrolls. 60% of the screen rather than
+            // all of it, because the owner kept hiding the window to see the game.
+            float hudHeight = Mathf.Clamp(viewHeight * 0.6f, 320f, 720f);
+            _hudCap = hudHeight;
             _hudRect = new Rect(viewWidth - HudWidth - 10f, 40f, HudWidth, hudHeight);
             // Bottom-left, anchored to the bottom edge (owner, alpha24). The top-left belongs to
             // Valheim's own health/stamina/food readout and the hotbar; down here it is out of the
@@ -1306,24 +1337,41 @@ namespace ICanShowYouTheWorld.RunMode
 
             GUILayout.Space(4f);
 
-            // The window height is fixed, so the body — which grows with splits, challenges and
-            // held boons — scrolls. Without this it would overflow and clip the Abandon button
-            // out of reach, and with the input gate on, that button is the only way out of a run.
-            // Explicitly no horizontal scrollbar: every row below is sized to HudContentWidth, so
-            // sideways scrolling could only ever mean a row has outgrown the window — and a HUD
-            // the player has to drag sideways to read is worse than one that wraps.
+            // The body scrolls, so a long page can never push the Abandon button out of reach, and
+            // with the input gate on, that button is the only way out of a run. Explicitly no
+            // horizontal scrollbar: every row below is sized to HudContentWidth, so sideways
+            // scrolling could only ever mean a row has outgrown the window — and a HUD the player
+            // has to drag sideways to read is worse than one that wraps.
+            //
+            // FITTED TO ITS PAGE since 2026-10-07 (owner: "make the run window smaller"). The
+            // window used to be nearly screen-tall whatever it held. Now the scroll view is as tall
+            // as the page last measured, up to what the cap leaves after the header and the button,
+            // and the window shrinks around it (see the HUD's GUILayout.Window call). The height is
+            // measured at Repaint and used from the next frame, so a frame's Layout and Repaint
+            // always agree; a page not yet measured starts at the cap and shrinks a frame later.
+            float scrollHeight = HudScrollHeight();
             _hudScroll = GUILayout.BeginScrollView(_hudScroll, false, false,
-                GUIStyle.none, GUI.skin.verticalScrollbar, GUIStyle.none, GUILayout.ExpandHeight(true));
+                GUIStyle.none, GUI.skin.verticalScrollbar, GUIStyle.none, GUILayout.Height(scrollHeight));
             // finally, not a plain call: a throw inside the body must still close the group,
             // or every window drawn after this one inherits a broken layout stack.
             try
             {
-                if (_page == HudPage.Quests) DrawQuestLog(run);
-                else if (_page == HudPage.Heard) DrawHeard(run);
-                else if (_page == HudPage.Forge) DrawForge(run);
-                else DrawHudSections(run);
+                GUILayout.BeginVertical();
+                try
+                {
+                    if (_page == HudPage.Quests) DrawQuestLog(run);
+                    else if (_page == HudPage.Heard) DrawHeard(run);
+                    else if (_page == HudPage.Forge) DrawForge(run);
+                    else if (_page == HudPage.Boons) DrawBoonsPage(run);
+                    else DrawHudSections(run);
+                }
+                finally { GUILayout.EndVertical(); }
+
+                if (Event.current.type == EventType.Repaint)
+                    _pageHeights[_page] = GUILayoutUtility.GetLastRect().height;
             }
             finally { GUILayout.EndScrollView(); }
+            _hudScrollHeightUsed = scrollHeight;
 
             // Read here, after the scroll view has closed: the pointer is back in the WINDOW's
             // coordinates, which is what the panel is placed and clamped in. Drawn after the
@@ -1446,6 +1494,7 @@ namespace ICanShowYouTheWorld.RunMode
             GUILayout.BeginHorizontal();
 
             DrawPageTab("RUN", HudPage.Run);
+            DrawPageTab("BOONS", HudPage.Boons);
             DrawPageTab("BOOK", HudPage.Quests);
             DrawPageTab("HEARD", HudPage.Heard);
             DrawPageTab("FORGE", HudPage.Forge);
@@ -1462,7 +1511,8 @@ namespace ICanShowYouTheWorld.RunMode
             // custom style: contentColor over the skin's button is enough to say which is which,
             // and this panel already tints everything else the same way.
             GUI.contentColor = active ? RunTheme.AccentGoldBright : RunTheme.TextMuted;
-            if (GUILayout.Button(active ? "• " + label : label, GUILayout.Width(88f)) && !active)
+            // 74, not 88, since a fifth tab (BOONS) joined: five at 88 overflow the 420 px window.
+            if (GUILayout.Button(active ? "• " + label : label, GUILayout.Width(74f)) && !active)
                 _page = page;
             GUI.contentColor = Color.white;
         }
@@ -2299,8 +2349,16 @@ namespace ICanShowYouTheWorld.RunMode
                 // (owner, 2026-09-12). The refusal when heat is short still names the cost.
             }
 
-            GUILayout.Space(4f);
+        }
 
+        /// <summary>
+        /// The BOONS page (2026-10-07): the way's kit and every held boon, with their descriptions. They
+        /// were the long half of the RUN page, which made the window nearly screen-tall (owner: "make the
+        /// run window smaller too"; "We can add more tabs if we want"). Nothing on it is needed mid-fight:
+        /// each active's key and cooldown is on the ability bar under the strip, which is always drawn.
+        /// </summary>
+        private void DrawBoonsPage(IRunService run)
+        {
             // --- The way ---
             // Who the run is walking as, and the whole kit with where each piece stands. It used to
             // be the name and a notice, on the grounds that the way's boons are boons and already in
