@@ -90,5 +90,14 @@ static class WayRulesTests
         Check.That(WayRules.RageSeconds(3) == 15f && WayRules.RageSeconds(4) == 25f, "Blood Rage 15 s, 25 after Moder");
         Check.That(WayRules.RendRadius(2) == 5f && WayRules.RendRadius(3) == 7.5f, "Rend 5 m, half again after Bonemass");
         Check.That(WayRules.WarcryRadius(4) == 8f && WayRules.WarcryRadius(5) == 12f, "Warcry 8 m, 12 after Yagluth");
+
+        // The Húskarl's Guard.
+        Check.That(WayRules.GuardBlockHeal(0, false) == 4f && WayRules.GuardParryHeal(0, false) == 10f, "a block heals 4, a parry 10");
+        Check.That(WayRules.GuardBlockHeal(0, true) == 8f && WayRules.GuardParryHeal(0, true) == 20f, "double behind Shield Wall");
+        Check.That(WayRules.GuardBlockHeal(6, false) == 8f && WayRules.GuardBlockHeal(6, true) == 16f, "and double again after the Queen");
+        Check.That(WayRules.GuardStaminaRefund == 0.5f, "half the block's stamina back");
+        Check.That(WayRules.BashRadius(2) == 4f && WayRules.BashRadius(3) == 6f, "Shield Bash 4 m, 6 after Bonemass");
+        Check.That(WayRules.WallSeconds(3) == 20f && WayRules.WallSeconds(4) == 30f, "Shield Wall 20 s, 30 after Moder");
+        Check.That(WayRules.LastStandSeconds(4) == 6f && WayRules.LastStandSeconds(5) == 10f, "Last Stand 6 s, 10 after Yagluth");
     }
 }

@@ -85,6 +85,15 @@ namespace ICanShowYouTheWorld.RunMode
         public static float RageSeconds(int gods) => Tempered(gods, TemperSlot.Rung2) ? 25f : 15f;
         public static float RendRadius(int gods) => Tempered(gods, TemperSlot.Rung1) ? 7.5f : 5f;
         public static float WarcryRadius(int gods) => Tempered(gods, TemperSlot.Rung3) ? 12f : 8f;
+
+        // --- The Húskarl ---
+        public const float GuardStaminaRefund = 0.5f;
+        private static float GuardFactor(int gods, bool wall) => (wall ? 2f : 1f) * (Tempered(gods, TemperSlot.Engine) ? 2f : 1f);
+        public static float GuardBlockHeal(int gods, bool wall) => 4f * GuardFactor(gods, wall);
+        public static float GuardParryHeal(int gods, bool wall) => 10f * GuardFactor(gods, wall);
+        public static float BashRadius(int gods) => Tempered(gods, TemperSlot.Rung1) ? 6f : 4f;
+        public static float WallSeconds(int gods) => Tempered(gods, TemperSlot.Rung2) ? 30f : 20f;
+        public static float LastStandSeconds(int gods) => Tempered(gods, TemperSlot.Rung3) ? 10f : 6f;
     }
 
     /// <summary>What a god tempers: a way's three rungs, then its engine.</summary>

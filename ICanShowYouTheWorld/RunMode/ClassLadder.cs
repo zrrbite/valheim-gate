@@ -184,8 +184,8 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 Id = "huskarl", Display = "Húskarl", Title = "Halvard",
                 Description = "You stand and things break on you. A bash that staggers what is in front; later a wall " +
-                              "that shrugs off blows, and after that a last stand nothing can end. His shield and spear " +
-                              "are yours the moment you take his name.",
+                              "that shrugs off blows, and after that a last stand nothing can end. What lands on your " +
+                              "shield comes back to you as health. His shield and spear are yours the moment you take his name.",
                 PassiveBoonIds = new[] { "hirdman" },
                 Rungs = new[] { new[] { "bash" }, new[] { "bulwark" }, new[] { "laststand" } },
                 GrantItems = new[] { ("ShieldWood", 1), ("SpearFlint", 1) },

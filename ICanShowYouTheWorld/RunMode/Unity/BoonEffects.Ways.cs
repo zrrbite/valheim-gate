@@ -116,5 +116,64 @@ namespace ICanShowYouTheWorld.RunMode
             }
             catch { /* a missed heal is a missed heal */ }
         }
+
+        // --- The Húskarl ---
+
+        private const string GuardName = "ICSYTW_Guard";
+        private static readonly int GuardHash = GuardName.GetStableHashCode();
+        private static GuardEffect _guard;
+
+        private static GuardEffect Guard()
+        {
+            if (_guard != null) return _guard;
+            var se = ScriptableObject.CreateInstance<GuardEffect>();
+            se.name = GuardName;
+            se.m_name = "Guard";
+            se.m_tooltip = "What lands on your shield comes back to you.";
+            se.m_ttl = 0f;
+            se.m_blockStaminaUseModifier = -WayRules.GuardStaminaRefund;
+            _guard = se;
+            return se;
+        }
+
+        private static bool _guardLogged;
+
+        /// <summary>The Húskarl's passive: lays Guard on the player (idempotent; re-run on respawn).</summary>
+        private void ApplyGuard()
+        {
+            try
+            {
+                var seman = Player.m_localPlayer?.GetSEMan();
+                if (seman == null || seman.HaveStatusEffect(GuardHash)) return;
+                GuardEffect.OnGuard = OnGuard;
+                seman.AddStatusEffect(Guard());
+                if (!_guardLogged)
+                {
+                    _guardLogged = true;
+                    // The first launch's proof that a mod-defined StatusEffect subclass works (research: likely, not proven).
+                    Debug.Log($"[ICanShowYouTheWorld] Guard on: SE '{GuardName}' ({seman.HaveStatusEffect(GuardHash)}).");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[ICanShowYouTheWorld] Guard failed: {ex.Message}");
+            }
+        }
+
+        private void UnapplyGuard()
+        {
+            GuardEffect.OnGuard = null;
+            try { Player.m_localPlayer?.GetSEMan()?.RemoveStatusEffect(GuardHash, quiet: true); }
+            catch (Exception ex) { Debug.LogWarning($"[ICanShowYouTheWorld] Guard removal failed: {ex.Message}"); }
+        }
+
+        private void OnGuard(bool parry)
+        {
+            var player = Player.m_localPlayer;
+            if (player == null) return;
+            int gods = _defeatedBossCount();
+            bool wall = IsWindowOpen("bulwark");
+            player.Heal(parry ? WayRules.GuardParryHeal(gods, wall) : WayRules.GuardBlockHeal(gods, wall), false);
+        }
     }
 }

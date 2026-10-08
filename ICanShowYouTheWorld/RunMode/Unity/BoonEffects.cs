@@ -144,10 +144,6 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>Craftsman's carry: "100 more weight", Packmule's number.</summary>
         private const float CraftsmanCarryWeightBonus = 100f;
 
-        /// <summary>Shield Bash's reach: a shield's length and a step. Shorter than Rend's five,
-        /// because it only reaches forward.</summary>
-        private const float BashRadius = 4f;
-
         /// <summary>
         /// How far off the look direction a foe may stand and still be "in front": the cosine of
         /// sixty degrees, so a 120-degree wedge. Wide enough that a player who is not aiming
@@ -155,12 +151,6 @@ namespace ICanShowYouTheWorld.RunMode
         /// not get staggered by a shield pointed the other way.
         /// </summary>
         private const float BashFrontDot = 0.5f;
-
-        /// <summary>Shield Wall's window: "twenty seconds".</summary>
-        private const float BulwarkSeconds = 20f;
-
-        /// <summary>Last Stand's window: "six seconds nothing can end".</summary>
-        private const float LastStandSeconds = 6f;
 
         /// <summary>Last Stand's close: "half your health back".</summary>
         private const float LastStandHealFraction = 0.5f;
@@ -511,8 +501,14 @@ namespace ICanShowYouTheWorld.RunMode
                     break;
 
                 case "hirdman":
+                    // Craftsman's two halves, and a third: Guard (2026-10-08), a status effect of ours.
+                    ApplySkillBoon(boonId);
+                    ApplyFieldBoost(boonId);
+                    ApplyGuard();
+                    break;
+
                 case "craftsman":
-                    // Two halves each: skills through the host's loan (SkillBoons), and one Player
+                    // Two halves: skills through the host's loan (SkillBoons), and one Player
                     // field through the ledger (FieldLoans). Both are re-run safely on respawn.
                     ApplySkillBoon(boonId);
                     ApplyFieldBoost(boonId);
@@ -679,6 +675,13 @@ namespace ICanShowYouTheWorld.RunMode
                     _fury.Reset();
                     _lastFuryBonus = -1f;
                     _lastEnemyHits = -1;
+                    break;
+
+                case "hirdman":
+                    // What the default did for it (the field loan), and Guard, which is ours and which nothing else
+                    // would ever take off.
+                    UnapplyFieldBoost(boonId);
+                    UnapplyGuard();
                     break;
 
                 case "glasscannon":
@@ -849,6 +852,8 @@ namespace ICanShowYouTheWorld.RunMode
                 // The Hunter's hush has no ttl, so a run that ended on a path where the held-boon
                 // loop threw would otherwise leave the player quiet for the rest of the session.
                 SafeInvoke(UnapplyHunterHush);
+                // And Guard, likewise: a permanent status effect of ours that nothing else would ever take off.
+                SafeInvoke(UnapplyGuard);
                 // Pugilist is run baseline rather than a held boon, so the held-boon loop above
                 // never reaches it — unwind it here so weapon stamina costs always come back.
                 SafeInvoke(UnapplyPugilist);
@@ -2299,7 +2304,7 @@ namespace ICanShowYouTheWorld.RunMode
                 look.Normalize();
 
                 Vector3 from = player.transform.position;
-                var foes = HostilesNear(from, BashRadius, player, skipBosses: true)
+                var foes = HostilesNear(from, WayRules.BashRadius(_defeatedBossCount()), player, skipBosses: true)
                     .Where(c =>
                     {
                         Vector3 d = c.transform.position - from;
@@ -2360,7 +2365,7 @@ namespace ICanShowYouTheWorld.RunMode
             if (!_damageModBoons.Contains("bulwark")) return false;
 
             RemovePending("bulwark");
-            SchedulePending("bulwark", BulwarkSeconds, EndBulwark);
+            SchedulePending("bulwark", WayRules.WallSeconds(_defeatedBossCount()), EndBulwark);
 
             held.CooldownRemaining = held.Def.CooldownSeconds;
             return true;
@@ -2425,9 +2430,11 @@ namespace ICanShowYouTheWorld.RunMode
             }
 
             RemovePending("laststand");
-            SchedulePending("laststand", LastStandSeconds, () => EndLastStand(heal: true));
+            float standSeconds = WayRules.LastStandSeconds(_defeatedBossCount());
+            SchedulePending("laststand", standSeconds, () => EndLastStand(heal: true));
 
-            LastActivationMessage = "For six seconds, nothing can end you.";
+            // Six, or ten once Yagluth has fallen (the tempering): the message says the seconds it really is.
+            LastActivationMessage = $"For {(standSeconds >= 10f ? "ten" : "six")} seconds, nothing can end you.";
             held.CooldownRemaining = held.Def.CooldownSeconds;
             return true;
         }

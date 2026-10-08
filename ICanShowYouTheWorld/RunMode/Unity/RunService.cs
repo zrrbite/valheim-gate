@@ -7904,6 +7904,7 @@ namespace ICanShowYouTheWorld.RunMode
             CheckSagaMyth();
             CheckSpeakersAndTraders();
             CheckSea();
+            CheckWayEffects();
             CheckGods();
             CheckSagaItems();
             CheckItemsObtainable();
@@ -11681,6 +11682,32 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
+        /// The ways' mod-defined status effects (2026-10-08): the Húskarl's Guard is a StatusEffect subclass the game has
+        /// never heard of. Whether the engine can make one is proven here, once, instead of by a Húskarl who blocks and
+        /// is not healed.
+        /// </summary>
+        private void CheckWayEffects()
+        {
+            if (_selfCheck == null) return;
+            try
+            {
+                var probe = ScriptableObject.CreateInstance<GuardEffect>();
+                if (probe != null)
+                {
+                    _selfCheck.Ok("Way effects", "a mod StatusEffect can be made");
+                    UnityEngine.Object.Destroy(probe);
+                }
+                else
+                    _selfCheck.Missing("Way effects", "Guard will not work");
+            }
+            catch (Exception ex)
+            {
+                _selfCheck.Missing("Way effects", "Guard will not work (" + ex.Message + ")");
+                LogOnce("self-check-way-effects", ex);
+            }
+        }
+
+        /// <summary>
         /// The key layout (2026-10-06): a layout name the config does not know falls back to the
         /// numpad, and a key name Unity cannot parse is an action with no key.
         /// </summary>
@@ -13724,9 +13751,9 @@ namespace ICanShowYouTheWorld.RunMode
             // here.
 
             // Húskarl - Halvard, who stood where he was put.
-            new BoonDefinition { Id = "hirdman",   ClassId = "huskarl", Display = "Hirdman",      IsPassive = true,  Description = "Blocking and spear skill to 50, and +20 max health." },
+            new BoonDefinition { Id = "hirdman",   ClassId = "huskarl", Display = "Hirdman",      IsPassive = true,  Description = "Blocking and spear skill to 50, +20 max health. Guard: a block costs half the stamina and heals 4, a parry heals 10." },
             new BoonDefinition { Id = "bash",      ClassId = "huskarl", Display = "Shield Bash",  IsPassive = false, CooldownSeconds = 25f,  Description = "Stagger what stands in front of you." },
-            new BoonDefinition { Id = "bulwark",   ClassId = "huskarl", Display = "Shield Wall",  IsPassive = false, CooldownSeconds = 120f, Description = "Twenty seconds of a wall: blows of every kind land softer." },
+            new BoonDefinition { Id = "bulwark",   ClassId = "huskarl", Display = "Shield Wall",  IsPassive = false, CooldownSeconds = 120f, Description = "Twenty seconds of a wall: blows of every kind land softer, and Guard heals double." },
             new BoonDefinition { Id = "laststand", ClassId = "huskarl", Display = "Last Stand",   IsPassive = false, CooldownSeconds = 240f, Description = "Six seconds nothing can end, then half your health back." },
 
             // Skald - Ormr, who sang the rest of them onward.
