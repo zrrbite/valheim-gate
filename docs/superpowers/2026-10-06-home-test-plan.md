@@ -72,6 +72,14 @@ Make a **new character** for this part: three of these checks only happen on a f
 8. **Clicking a choice** (`...06b`). When a boon offer comes up, press **TAB**.
    **See:** each boon has a **Choose** button; click one and it is taken. With TAB closed, the buttons
    are greyed out and swinging a weapon never picks anything. Keypad 1–3 work as before.
+8b. **A boon offer waits** (`...08e`). Let an offer sit for 45 s without choosing.
+   **See:**
+   - the card steps aside, and a gold `Boon offer waits · End` appears right of the strip;
+   - your actives' keys work again;
+   - **End** brings the card back with the Run window, and End again steps it aside;
+   - finish a second task while one waits: the card comes back saying "one more after this", and picking
+     deals the next at once;
+   - quit and reload with one waiting: the flag is still there (the three choices may differ).
 9. **Typing is safe** (`...06b`). With an ability ready, open chat and type a line containing a number.
    **See:** nothing fires.
 10. **Act I's speakers can't be killed by monsters** (`...05n`). The shade, Thjalfi and the thane stay

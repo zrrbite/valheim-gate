@@ -29,11 +29,48 @@ static class BoonEngineTests
         Check.That(b.CurrentOffer.Count == 0, "offer cleared after pick");
         Check.That(b.Held.Count == 1 && b.Held[0].Def.Id == picked.Id, "picked boon held");
 
-        // Offer expiry
+        // The timeout steps the card aside; the offer waits (2026-10-08). It used to be thrown away, boon and all,
+        // and the owner watched one vanish while still choosing.
         b.CreateOffer();
+        Check.That(b.OfferShown && !b.OfferStowed && b.OffersWaiting == 1, "a new offer is shown");
+        var waitingIds = b.CurrentOffer.Select(x => x.Id).ToList();
         b.Tick(46f);
-        Check.That(b.CurrentOffer.Count == 0, "offer expires after timeout");
-        Check.That(b.Held.Count == 1, "expiry grants nothing");
+        Check.That(b.CurrentOffer.Count == 3 && b.OfferStowed && !b.OfferShown,
+                   "after the timeout the offer is kept, stowed: the card steps aside");
+        Check.That(b.Held.Count == 1, "stowing grants nothing");
+        b.Tick(1000f);
+        Check.That(b.CurrentOffer.Select(x => x.Id).SequenceEqual(waitingIds) && b.OfferStowed,
+                   "a stowed offer waits as long as it takes, the same three");
+        Check.That(b.Recall() && b.OfferShown && !b.OfferStowed, "recalled (End), it is shown again");
+        b.Tick(30f);
+        Check.That(b.OfferShown, "with a fresh timeout: 30 s after the recall it is still up");
+        b.Tick(16f);
+        Check.That(b.OfferStowed, "and it steps aside again 45 s after the recall");
+        b.Recall();
+        b.Stow();
+        Check.That(b.OfferStowed && b.CurrentOffer.Count == 3, "Stow (End closing the window) steps it aside at once");
+        Check.That(!new BoonEngine(Pool(), new Random(1), 45f).Recall(), "nothing to recall without an offer");
+
+        // Offers queue: a task finished while one waits is owed its own, dealt once the first is picked.
+        b.CreateOffer();
+        Check.That(b.OffersOwed == 1 && b.OffersWaiting == 2 && b.OfferShown,
+                   "a second offer is owed, not lost - and a stowed card comes back with the news");
+        Check.That(b.CurrentOffer.Select(x => x.Id).SequenceEqual(waitingIds), "the waiting one is still first");
+        b.Pick(0);
+        Check.That(b.Held.Count == 2 && b.OffersOwed == 0 && b.CurrentOffer.Count == 3 && b.OfferShown,
+                   "picking deals the owed one at once, shown");
+        b.Pick(0);
+        Check.That(b.Held.Count == 3 && b.OffersWaiting == 0 && !b.OfferShown && !b.OfferStowed, "and then none wait");
+
+        // What waits survives a reload: the run save keeps the count, and the offer is dealt afresh.
+        var reloaded = new BoonEngine(Pool(), new Random(3), 45f);
+        reloaded.RestoreWaiting(2);
+        Check.That(reloaded.CurrentOffer.Count == 3 && reloaded.OfferStowed && reloaded.OffersOwed == 1 &&
+                   reloaded.OffersWaiting == 2,
+                   "a reload re-deals what waited: one offer, stowed under its flag, and the rest owed");
+        var nothingSaved = new BoonEngine(Pool(), new Random(3), 45f);
+        nothingSaved.RestoreWaiting(0);
+        Check.That(nothingSaved.OffersWaiting == 0 && nothingSaved.CurrentOffer.Count == 0, "none saved, none waits");
 
         // Held passives never re-offered
         for (int i = 0; i < 10; i++) { b.CreateOffer(); if (b.CurrentOffer.Count > 0) b.Pick(0); }
@@ -194,9 +231,9 @@ static class BoonEngineTests
                 laterOffers++;
                 if (p.CurrentOffer[0].Id == "pack") laterOffersLedByPin++;
             }
-            // Let the offer expire rather than picking it, so the held set (and with it the
-            // option pool) stops changing and only the pin behaviour is under test.
-            p.Tick(50f);
+            // Drop the offer rather than picking it, so the held set (and with it the option pool)
+            // stops changing and only the pin behaviour is under test. (A timeout only stows it now.)
+            p.ClearOffer();
         }
         Check.That(laterOffers == 25, "every later CreateOffer produced an offer");
         Check.That(laterOffersLedByPin < laterOffers, "later offers do not force the pin into slot 0");

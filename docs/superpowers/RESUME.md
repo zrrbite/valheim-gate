@@ -52,6 +52,11 @@ the mode is still being tuned in play. Valheim 1.0.17, Unity 6000.0.75.
     grazing deer or a boar being tamed (`ShipFittings.WardStrikes`).
   - **Coins:** trolls drop x3, and the sea's creatures pay (`RunCoins`).
   - **Untested in play.** Check 38b in the home test plan.
+- **A boon offer waits** (`...08e`, from the owner's Mac test): left 45 s, the card steps aside instead of
+  vanishing with the boon; a gold flag beside the strip says so, and End brings it back. Offers finished
+  while one waits queue up, and survive a reload (`BoonEngine.Stow`/`Recall`/`RestoreWaiting`). Also from
+  that test: Shift+E closes the fittings card (`...08d`), the Ward's strikes show, and the Run window may
+  grow to 75% of the screen (`...08c`).
 - **The dev keys have their own window** (`1.0.17-run.2026-10-07`, confirmed on the Mac): `Shift` + `End`, centre
   screen, in the layout's keys.
   The HUD keeps one red line, `DEV · Shift+End: dev keys` (the owner: dev mode was "clogging up the run-ui").

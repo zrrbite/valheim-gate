@@ -2802,7 +2802,24 @@ namespace ICanShowYouTheWorld.RunMode
                 return;
             }
 
-            if (_boons != null && index < _boons.CurrentOffer.Count) _boons.Pick(index);
+            // Only a SHOWN offer: a stowed one waits behind the strip's flag while J K L are actives again.
+            if (_boons != null && _boons.OfferShown && index < _boons.CurrentOffer.Count) _boons.Pick(index);
+        }
+
+        /// <summary>
+        /// End opened the run window: a waiting boon offer's card comes back (2026-10-08, the owner: "be able to call
+        /// it back up"). Never over THE WAY's card, which owns the choice keys while it is up.
+        /// </summary>
+        public void RecallBoonOffer()
+        {
+            if (!_active || _boons == null || _classChoicePending) return;
+            _boons.Recall();
+        }
+
+        /// <summary>End closed the run window: the boon card steps aside with it, the offer kept.</summary>
+        public void StowBoonOffer()
+        {
+            if (_active) _boons?.Stow();
         }
 
         private static MethodInfo _takeInput;
@@ -3817,7 +3834,7 @@ namespace ICanShowYouTheWorld.RunMode
 
         private void HandleBoonActivationInput()
         {
-            if (_boons == null || _boons.CurrentOffer.Count > 0) return;
+            if (_boons == null || _boons.OfferShown) return;
 
             if (!PlayerInputLive()) return;
 
@@ -6981,7 +6998,7 @@ namespace ICanShowYouTheWorld.RunMode
                 _fittingCardOpen = false;
                 return true;
             }
-            if (_classChoicePending || (_boons != null && _boons.CurrentOffer.Count > 0))
+            if (_classChoicePending || (_boons != null && _boons.OfferShown))
             {
                 Message("Not now - answer the card that is up first.");
                 return true;
@@ -7005,7 +7022,7 @@ namespace ICanShowYouTheWorld.RunMode
             if (!_fittingCardOpen) return;
             _fittingCardAge += dt;
             if (_fittingCardAge >= FittingCardSeconds || _classChoicePending ||
-                (_boons != null && _boons.CurrentOffer.Count > 0))
+                (_boons != null && _boons.OfferShown))
                 _fittingCardOpen = false;
         }
 
@@ -10102,6 +10119,11 @@ namespace ICanShowYouTheWorld.RunMode
             // free charge on every resume.
             ReapplyPassiveBoonEffects();
 
+            // What waited, dealt afresh and stowed under the strip's flag (2026-10-08). After the held set, and
+            // with the boss count read first, so the deal sees what this run may be offered.
+            RefreshBoonGate();
+            _boons.RestoreWaiting(s.boonOffersWaiting);
+
             _trackedPlayer = Player.m_localPlayer;
 
             // Seed the world's TRUE pre-run values before touching any global key. Without
@@ -10276,6 +10298,7 @@ namespace ICanShowYouTheWorld.RunMode
                 shipWard = _fittings.Ward,
                 godWindTold = _godWindTold,
                 seaRavenTold = _seaRavenTold,
+                boonOffersWaiting = (_boons?.OffersWaiting ?? 0) + (_boonOfferOwed ? 1 : 0),
                 shipFittingsTold = _fittingsTold,
                 shipFireTarTold = _fireTarTold,
                 transcript = SagaTranscript.Save(),

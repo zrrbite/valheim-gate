@@ -63,6 +63,9 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>Whether the raven has said the sea came for you (the first encounter); it also unlocks the Ward.</summary>
         public bool seaRavenTold;
 
+        /// <summary>Boon offers waiting when the run was saved (2026-10-08): dealt afresh on load, stowed under the strip's flag.</summary>
+        public int boonOffersWaiting;
+
         /// <summary>Everything said this run, one packed string per line. See SagaTranscript.</summary>
         public List<string> transcript;
 

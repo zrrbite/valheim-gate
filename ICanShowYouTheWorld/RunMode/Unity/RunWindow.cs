@@ -262,6 +262,7 @@ namespace ICanShowYouTheWorld.RunMode
         // because they're one-off sizes/purposes (the big timer digits, the notice line).
         private GUIStyle _stripStyle;
         private GUIStyle _noticeStyle;
+        private GUIStyle _stripFlagStyle;   // the waiting boon offer's flag beside the strip
         private GUIStyle _timerStyle;
         private GUIStyle _titleStyle;
         private GUIStyle _subtitleStyle;
@@ -284,7 +285,14 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>The Hud whose tip list we have already added to; guards against adding twice.</summary>
         private Hud _tippedHud;
 
-        public void ToggleVisible() => Visible = !Visible;
+        public void ToggleVisible()
+        {
+            Visible = !Visible;
+            // End is also the waiting boon offer's door (2026-10-08): its card comes back with the window, and steps
+            // aside with it. Called from Update, so which windows exist never changes part-way through an OnGUI frame.
+            if (Visible) _concrete?.RecallBoonOffer();
+            else _concrete?.StowBoonOffer();
+        }
 
         /// <summary>
         /// Shift+End. Toggles the dev keys window and says true, or, with no dev keys to show (no run,
@@ -588,7 +596,7 @@ namespace ICanShowYouTheWorld.RunMode
                     UpdateOfferFadeState(run.ClassChoicePending
                         ? (run.Classes?.Count ?? 0)
                         : fitCard ? _concrete.FittingCard.Count
-                        : (run.Boons?.CurrentOffer?.Count ?? 0));
+                        : (run.Boons != null && run.Boons.OfferShown ? run.Boons.CurrentOffer.Count : 0));
 
                     // The strip is the one piece that survives with the rest of the UI hidden.
                     DrawStrip(run, viewWidth);
@@ -647,7 +655,7 @@ namespace ICanShowYouTheWorld.RunMode
 
                     var boons = run.Boons;
                     bool wayCard = run.ClassChoicePending && (run.Classes?.Count ?? 0) > 0;
-                    if (wayCard || fitCard || (boons != null && boons.CurrentOffer.Count > 0))
+                    if (wayCard || fitCard || (boons != null && boons.OfferShown))
                     {
                         // Fade-in: alpha is a pure function of (now - _offerShownAt), a value only
                         // ever written at a Layout event above — so Layout and Repaint of the same
@@ -795,6 +803,13 @@ namespace ICanShowYouTheWorld.RunMode
                 alignment = TextAnchor.MiddleCenter,
                 fontStyle = FontStyle.Bold,
                 fontSize = 15,
+                normal = { textColor = Color.white } // tinted per-draw via GUI.contentColor
+            };
+            _stripFlagStyle = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.MiddleLeft,
+                fontStyle = FontStyle.Bold,
+                fontSize = 12,
                 normal = { textColor = Color.white } // tinted per-draw via GUI.contentColor
             };
             _noticeStyle = new GUIStyle(GUI.skin.label)
@@ -1084,6 +1099,16 @@ namespace ICanShowYouTheWorld.RunMode
             GUI.contentColor = HeatDisplayColor();
             GUI.Label(rightRect, $"Heat {run.Heat:0.#}", _stripStyle);
             GUI.contentColor = Color.white;
+
+            // A boon offer waiting, its card stepped aside (2026-10-08): flagged BESIDE the strip, not under it, where
+            // only two lines are ever allowed. End brings the card back (RunService.RecallBoonOffer).
+            var boons = run.Boons;
+            if (boons != null && !boons.OfferShown && boons.OffersWaiting > 0)
+            {
+                string flag = boons.OffersWaiting == 1 ? "Boon offer waits  ·  End" : $"{boons.OffersWaiting} boon offers wait  ·  End";
+                RunTheme.ShadowedLabel(new Rect(rect.xMax + 8f, rect.y, 220f, rect.height), flag, _stripFlagStyle,
+                    RunTheme.AccentGoldBright);
+            }
 
             float abilityHeight = DrawAbilityBar(run, rect);
 
@@ -3139,7 +3164,9 @@ namespace ICanShowYouTheWorld.RunMode
             GUILayout.EndHorizontal();
 
             GUILayout.FlexibleSpace();
-            GUILayout.Label(KeyLayout.ChoiceHint(BoonKeys.Layout, offer.Count), RunTheme.Small);
+            string more = boons.OffersOwed == 1 ? "   ·   one more after this"
+                        : boons.OffersOwed > 1 ? $"   ·   {boons.OffersOwed} more after this" : "";
+            GUILayout.Label(KeyLayout.ChoiceHint(BoonKeys.Layout, offer.Count) + more, RunTheme.Small);
         }
 
         // --- The helm's fitting card (display only; buying is RunService.HandleBoonOfferInput) ---

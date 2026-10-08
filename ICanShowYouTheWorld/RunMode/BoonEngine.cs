@@ -61,8 +61,29 @@ namespace ICanShowYouTheWorld.RunMode
         private readonly List<BoonDefinition> offer = new List<BoonDefinition>();
         private readonly List<HeldBoon> held = new List<HeldBoon>();
         private float offerAge;
+        private bool stowed;
+        private int owed;
 
+        /// <summary>
+        /// The offer, shown or stowed - what a key or a click picks from only while <see cref="OfferShown"/>.
+        /// </summary>
         public IReadOnlyList<BoonDefinition> CurrentOffer => offer;
+
+        /// <summary>
+        /// The card is up: the choice keys mean its lines. Since 2026-10-08 the timeout STOWS an offer instead
+        /// of throwing it away (the owner watched one vanish while still choosing): the card steps aside, the
+        /// actives get their keys back, and the offer waits for <see cref="Recall"/> (End).
+        /// </summary>
+        public bool OfferShown => offer.Count > 0 && !stowed;
+
+        /// <summary>An offer waits, its card stepped aside.</summary>
+        public bool OfferStowed => offer.Count > 0 && stowed;
+
+        /// <summary>Offers owed beyond the current one: tasks finished while one waited, dealt as each is picked.</summary>
+        public int OffersOwed => owed;
+
+        /// <summary>Every offer waiting, the current one included - the strip's flag and the run save count these.</summary>
+        public int OffersWaiting => (offer.Count > 0 ? 1 : 0) + owed;
         public IReadOnlyList<HeldBoon> Held => held;
         public event Action<BoonDefinition> Gained;
         public event Action<BoonDefinition> Lost;
@@ -97,8 +118,43 @@ namespace ICanShowYouTheWorld.RunMode
         public BoonDefinition Definition(string id) =>
             string.IsNullOrEmpty(id) ? null : pool.FirstOrDefault(d => d.Id == id);
 
-        /// <summary>Drops the current offer without picking from it. Used by the timeout and by tests.</summary>
-        public void ClearOffer() => offer.Clear();
+        /// <summary>Drops the current offer without picking from it. Used by tests; the timeout only stows now.</summary>
+        public void ClearOffer()
+        {
+            offer.Clear();
+            stowed = false;
+        }
+
+        /// <summary>The card steps aside, the offer kept (the timeout, or End closing the run window).</summary>
+        public void Stow()
+        {
+            if (offer.Count > 0) stowed = true;
+        }
+
+        /// <summary>A waiting offer's card comes back, with a fresh timeout. False when nothing waits.</summary>
+        public bool Recall()
+        {
+            if (offer.Count == 0) return false;
+            stowed = false;
+            offerAge = 0f;
+            return true;
+        }
+
+        /// <summary>
+        /// A reload: deals one offer afresh for what waited, stowed under its flag, and owes the rest. Call it after
+        /// the held set and <see cref="DefeatedBosses"/> are restored, so the deal sees what this run may be offered.
+        /// </summary>
+        public void RestoreWaiting(int count)
+        {
+            offer.Clear();
+            owed = 0;
+            stowed = false;
+            if (count <= 0) return;
+            CreateOffer();
+            if (offer.Count == 0) return;
+            owed = count - 1;
+            stowed = true;
+        }
 
         /// <summary>True once an offer has actually been produced, which is what spends the pin.</summary>
         private bool firstOfferMade;
@@ -112,7 +168,13 @@ namespace ICanShowYouTheWorld.RunMode
 
         public void CreateOffer()
         {
-            if (offer.Count > 0) return;
+            // One already waits: this one is owed, not lost, and a stowed card comes back with the news.
+            if (offer.Count > 0)
+            {
+                owed++;
+                Recall();
+                return;
+            }
             // Nothing already held is ever offered again — passive or active (owner, alpha18:
             // "we shouldn't offer boons we already have, I was offered many I already had").
             // Actives used to be exempt so that a second Waystone pick could buy another charge,
@@ -159,6 +221,7 @@ namespace ICanShowYouTheWorld.RunMode
             }
 
             offerAge = 0f;
+            stowed = false;
             firstOfferMade = true;
         }
 
@@ -189,8 +252,17 @@ namespace ICanShowYouTheWorld.RunMode
             if (index < 0 || index >= offer.Count) return false;
             var def = offer[index];
             offer.Clear();
+            stowed = false;
             held.Add(new HeldBoon { Def = def });
             Gained?.Invoke(def);
+
+            // The next owed offer comes at once; if the pool has nothing left to deal, nothing is owed.
+            if (owed > 0)
+            {
+                owed--;
+                CreateOffer();
+                if (offer.Count == 0) owed = 0;
+            }
             return true;
         }
 
@@ -233,10 +305,10 @@ namespace ICanShowYouTheWorld.RunMode
 
         public void Tick(float dt)
         {
-            if (offer.Count > 0)
+            if (offer.Count > 0 && !stowed)
             {
                 offerAge += dt;
-                if (offerAge >= offerTimeout) offer.Clear();
+                if (offerAge >= offerTimeout) stowed = true;
             }
             foreach (var h in held)
                 if (h.CooldownRemaining > 0f)
