@@ -310,6 +310,14 @@ tin and coal came back. You hung a trophy on a wall and raised a raft, because t
 always wait on your shore. Then you raised a cart. *"Goods have to move. The couriers know it, and so
 does the trader."*
 
+Out on open water, the sea answered your heat. The hotter the run, the more often something rose off the
+bow: a serpent, starred when the heat ran high. The raven said it once: *"The sea has found your wake. The
+hotter you burn, the more of it comes. A ward at the helm keeps the worst of it off."* From then on the helm
+sold a **Ward**, a crackle of lightning around the ship that struck whatever came close. Coins came easier
+too: trolls paid three times what they used to, and what the sea sent paid its own. Later, sailing past
+mountains, plains, mist and ash, the sea's company changed with the shore: drakes, deathsquitos, a gjall, a
+fallen valkyrie, and on the boiling sea a Bonemaw.
+
 ### The burial chambers
 
 *"The forest did not take every light. Some were carried down and buried, and the dead have been

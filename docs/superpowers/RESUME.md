@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, restructured and last updated 2026-10-07 at `1.0.17-run.2026-10-07b`. This is the
+Written 2026-08-23, restructured and last updated 2026-10-08 at `1.0.17-run.2026-10-08`. This is the
 "pick it back up without re-deriving anything" page: where the work stands, the loop it moves in, the
 landmines, and the decisions not to re-open. Its history (the dated status bullets, the alpha era, the
 "Done" write-ups) moved verbatim to [`RESUME-history.md`](RESUME-history.md) on 2026-10-06.
@@ -23,7 +23,7 @@ block first, then the numbered items that did not match.
 
 ## Where things stand
 
-**2026-10-07, `1.0.17-run.2026-10-07b` (dev)**, on `feature/run-mode`: not merged, deliberately, since
+**2026-10-08, `1.0.17-run.2026-10-08` (dev)**, on `feature/run-mode`: not merged, deliberately, since
 the mode is still being tuned in play. Valheim 1.0.17, Unity 6000.0.75.
 
 - **Seven acts, all built and voiced, and the saga ends at Fader** (the `runFinalBossKey` default since
@@ -42,6 +42,15 @@ the mode is still being tuned in play. Valheim 1.0.17, Unity 6000.0.75.
   MacBook testing ("too timeconsuming... ill wait until I have a better setup"); step 3 (the act's god
   beside you) waits for that. All are in `DEV-MODE.md`, tagged `MACBOOK-TEMP`, and come out with one grep
   once testing is back at a full keyboard.
+- **The sea answers the heat** (`1.0.17-run.2026-10-08`; spec `specs/2026-10-08-sea-danger-design.md`, plan
+  `plans/2026-10-08-sea-danger.md`).
+  - **What comes:** from Act II, aboard a moving ship at sea, heat 0 is vanilla's sea, and the average gap
+    falls to 2 minutes at full heat (40). Serpents come, or a reached act's flyers off its coast, or a Bonemaw
+    on the Ashlands sea; they are starred by heat, hunt you, and are never saved (`SeaDanger`, `SeaWatch`).
+  - **The answer:** the raven speaks once, then the helm offers a **Ward** (I-III, a lightning pulse
+    around the ship).
+  - **Coins:** trolls drop x3, and the sea's creatures pay (`RunCoins`).
+  - **Untested in play.** Check 38b in the home test plan.
 - **The dev keys have their own window** (`1.0.17-run.2026-10-07`, confirmed on the Mac): `Shift` + `End`, centre
   screen, in the layout's keys.
   The HUD keeps one red line, `DEV · Shift+End: dev keys` (the owner: dev mode was "clogging up the run-ui").
@@ -58,7 +67,7 @@ the mode is still being tuned in play. Valheim 1.0.17, Unity 6000.0.75.
 - **First read of any build: `grep "Saga self-check" Player.log`** (OK / FALLBACK / MISSING, worst
   first). Its first reading found Haldor asking for a trophy no troll drops (fixed in `...06c`), so since
   `...06d` a line, **Quest items can be got**, checks that everything the saga asks for can be had.
-- **Machines:** the Mac is current (`...07b`, laptop keys). Windows needs a **full** install for 1.0.17.
+- **Machines:** the Mac is current (`...08`, laptop keys). Windows needs a **full** install for 1.0.17.
   The Steam Deck has an old patched assembly.
 - **Written up where it lives:** laptop keys and clickable cards (CLAUDE.md); the hall
   ([spec](specs/2026-10-06-the-hall-design.md), [slices 0–1 plan](plans/2026-10-06-the-hall-slices-0-1.md));

@@ -17,6 +17,24 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-10-08 - TASK: the sea answers the heat, the Ward, and coins (`1.0.17-run.2026-10-08`)
+
+**Staged.** Badge `1.0.17-run.2026-10-08 · DEV`. Mod-only is enough once the full 1.0.17 install (`...06`) is done.
+
+- **Self-check:** a new line, `Sea creatures`, should read OK (six prefabs).
+- **The sea:** with heat above 0 from Act II, sail open water for a few minutes.
+  - The raven speaks once ("The sea has found your wake...").
+  - Each encounter shows a message, and `Player.log` gets a `Sea:` line.
+  - Serpents come off the bow; near a reached act's coast, its flyers come.
+- **The Ward:** after the raven, the helm's card (Shift + E) offers Ward I (100 coins). Bought, it strikes
+  hostiles within 20 m every 3 s.
+- **Coins:** a troll drops 60-90 coins; a creature the sea sent drops coins.
+- **Dev:** Shift + Keypad `.` aboard over open water calls an encounter now.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
 ## 2026-10-07 - TASK: the run window fits its page, a BOONS tab (`1.0.17-run.2026-10-07b`)
 
 **Staged.** Badge `1.0.17-run.2026-10-07b · DEV`. Mod-only is enough once the full 1.0.17 install (`...06`) is done.

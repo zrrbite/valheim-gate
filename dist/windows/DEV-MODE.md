@@ -89,6 +89,9 @@ you put at its helm. B for boat on the laptop; bare `B` is still the deer's ligh
 - **The helm is taken for you** once you stand on the deck: `DEV: at the helm.` If that hasn't happened
   within twelve seconds (over-weight, say), it tells you to press `E` at the helm yourself.
 - The prow points out to sea, away from where you stood. `W` sails; `Shift` + `E` opens the fittings.
+- **Aboard a ship over open water, `mod` + `B` calls the sea instead** (2026-10-08): an encounter now, chosen
+  as normal for the place and by your heat, ignoring the odds, the quiet minute, the cooldown and the limit.
+  `Player.log` says `Sea:` and what came.
 
 **On a laptop** (no numpad; `runKeyLayout: "laptop"` in the config, since 2026-10-06) the
 numpad keys move to letters Valheim leaves free, and the rest stay:
