@@ -1159,8 +1159,8 @@ namespace ICanShowYouTheWorld.RunMode
         /// </remarks>
         private static void ApplyBowElement(ItemDrop.ItemData.SharedData shared, BowElement element, bool lastLight = false)
         {
-            float e = lastLight ? LastLightElement : ThorsBowLightning;
-            float ep = lastLight ? LastLightElementPerLevel : ThorsBowLightningPerLevel;
+            float e = (lastLight ? LastLightElement : ThorsBowLightning) * ElementScale;
+            float ep = (lastLight ? LastLightElementPerLevel : ThorsBowLightningPerLevel) * ElementScale;
             // Last Light keeps a standing fire on top of whichever element it carries.
             float baseFire = lastLight ? LastLightFire : 0f;
             float baseFireP = lastLight ? LastLightFirePerLevel : 0f;
@@ -1173,6 +1173,9 @@ namespace ICanShowYouTheWorld.RunMode
             shared.m_damagesPerLevel.m_fire = (element == BowElement.Fire ? ep : 0f) + baseFireP;
             shared.m_damagesPerLevel.m_frost = element == BowElement.Frost ? ep : 0f;
         }
+
+        /// <summary>The Hunter's Moder tempering (2026-10-08): the element x1.5. Set by RunService; 1 otherwise.</summary>
+        public static float ElementScale = 1f;
 
         /// <summary>The element as the HUD and the save spell it: "lightning", "fire", "frost".</summary>
         public static string ElementName(BowElement element)

@@ -6149,6 +6149,21 @@ namespace ICanShowYouTheWorld.RunMode
 
             try { _boonEffects.RefreshHearthlight(HoldsBoon("hearthlight")); }
             catch (Exception ex) { LogOnce("hearthlight-refresh", ex); }
+
+            try { _boonEffects.TickWays(); }
+            catch (Exception ex) { LogOnce("ways-tick", ex); }
+
+            // The Hunter's Moder tempering: Thor's bow's element x1.5, re-applied when it changes.
+            try
+            {
+                float scale = _classId == "hunter" ? WayRules.BowElementScale(DefeatedBosses) : 1f;
+                if (Math.Abs(SagaItems.ElementScale - scale) > 0.001f)
+                {
+                    SagaItems.ElementScale = scale;
+                    _items.SetThorsBowElement(_items.ThorsBowElement);
+                }
+            }
+            catch (Exception ex) { LogOnce("bow-scale", ex); }
         }
 
         private bool HoldsBoon(string boonId) =>
@@ -7299,6 +7314,7 @@ namespace ICanShowYouTheWorld.RunMode
             // The saga's recipes, dreams and raids are run-only: outside a run the game is vanilla.
             _recipes.Remove();
             _shipwright.Restore();
+            SagaItems.ElementScale = 1f;   // the bow ships unscaled; the SetThorsBowElement below re-applies it
             _fittingCardOpen = false;
             _winds.Clear(Player.m_localPlayer);
             CreatureDressing.Forget();

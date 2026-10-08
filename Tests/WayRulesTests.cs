@@ -39,5 +39,11 @@ static class WayRulesTests
         Check.That(WayRules.MenagerieBeasts(4).Contains("Lox") && !WayRules.MenagerieBeasts(5).Contains("Asksvin") &&
                    WayRules.MenagerieBeasts(6).Contains("Asksvin"),
                    "the Lox after Moder, the Asksvin after the Queen");
+
+        // The Hunter's tempering.
+        Check.That(WayRules.PackSize(2) == 2 && WayRules.PackSize(3) == 3, "two wolves at a time; three after Bonemass");
+        Check.That(WayRules.BowElementScale(3) == 1f && WayRules.BowElementScale(4) == 1.5f, "the bow's element x1.5 after Moder");
+        Check.That(WayRules.UnseenSeconds(4) == 20f && WayRules.UnseenSeconds(5) == 30f, "Unseen 20 s, 30 s after Yagluth");
+        Check.That(WayRules.PackRegenPerSecond(5) == 0f && WayRules.PackRegenPerSecond(6) == 2f, "the pack mends 2 a second after the Queen");
     }
 }

@@ -40,18 +40,12 @@ namespace ICanShowYouTheWorld.RunMode
     /// legitimately reach them a second time, and stacking there would also snapshot the boosted
     /// value as the "original".
     /// </summary>
-    public class BoonEffects
+    public partial class BoonEffects
     {
         private const float SharpDamageMultiplier = 1.2f;
         private const float FleetSpeedIncrements = 2f;
         private const float WindOnSeconds = 10f;
         private const float EmberOnSeconds = 30f;
-
-        /// <summary>
-        /// How long Unseen lasts. Short on purpose: ghost mode is a total answer to every melee in
-        /// the game, so its value has to be "get out of this", not "win this".
-        /// </summary>
-        private const float UnseenOnSeconds = 20f;
 
         private const float MuleCarryWeightBonus = 100f;   // vanilla Player.m_maxCarryWeight is 300
 
@@ -283,6 +277,9 @@ namespace ICanShowYouTheWorld.RunMode
         /// and only the ZDOID survives that round trip.
         /// </summary>
         private readonly List<ZDOID> _companions = new List<ZDOID>();
+
+        /// <summary>Packbrother's wolves, oldest first: two at a time, three after Bonemass (WayRules.PackSize).</summary>
+        private readonly List<ZDOID> _pack = new List<ZDOID>();
         private int _companionNameIndex;
 
         private struct PendingOff
@@ -1846,7 +1843,9 @@ namespace ICanShowYouTheWorld.RunMode
             }
 
             RemovePending("unseen");
-            SchedulePending("unseen", UnseenOnSeconds, ForceGhostOff);
+            // Short on purpose (WayRules.UnseenSeconds: 20 s, 30 after Yagluth): ghost mode is a total answer to
+            // every melee in the game, so its value has to be "get out of this", not "win this".
+            SchedulePending("unseen", WayRules.UnseenSeconds(_defeatedBossCount()), ForceGhostOff);
 
             held.CooldownRemaining = held.Def.CooldownSeconds;
             return true;
@@ -3698,7 +3697,23 @@ namespace ICanShowYouTheWorld.RunMode
             return true;
         }
 
-        private bool ActivateBrother() => Summon(CompanionPrefab, 1, named: true);
+        /// <summary>
+        /// One wolf per call, and the pack is at most WayRules.PackSize: the card's "two at a time" was never held to
+        /// (2026-10-08) - only the retinue cap of four was. The oldest wolf goes home for the new one.
+        /// </summary>
+        private bool ActivateBrother()
+        {
+            var man = ZDOMan.instance;
+            _pack.RemoveAll(id => man == null || man.GetZDO(id) == null || !_companions.Contains(id));
+            while (_pack.Count >= WayRules.PackSize(_defeatedBossCount()))
+            {
+                DespawnCompanion(_pack[0]);
+                _pack.RemoveAt(0);
+            }
+            if (!Summon(CompanionPrefab, 1, named: true)) return false;
+            _pack.Add(_companions[_companions.Count - 1]);
+            return true;
+        }
 
         /// <summary>
         /// Raises skeletons that stay raised — Tameable's own Tame(), so they follow, fight, and
@@ -3791,6 +3806,7 @@ namespace ICanShowYouTheWorld.RunMode
         private void DespawnAllCompanions()
         {
             _menagerie = ZDOID.None;
+            _pack.Clear();
 
             foreach (var id in _companions.ToList()) DespawnCompanion(id);
             _companions.Clear();

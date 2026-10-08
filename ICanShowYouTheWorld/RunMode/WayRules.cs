@@ -63,6 +63,12 @@ namespace ICanShowYouTheWorld.RunMode
             if (gods >= 6) beasts.Add("Asksvin");
             return beasts;
         }
+
+        // --- The Hunter ---
+        public static int PackSize(int gods) => Tempered(gods, TemperSlot.Rung1) ? 3 : 2;
+        public static float BowElementScale(int gods) => Tempered(gods, TemperSlot.Rung2) ? 1.5f : 1f;
+        public static float UnseenSeconds(int gods) => Tempered(gods, TemperSlot.Rung3) ? 30f : 20f;
+        public static float PackRegenPerSecond(int gods) => Tempered(gods, TemperSlot.Engine) ? 2f : 0f;
     }
 
     /// <summary>What a god tempers: a way's three rungs, then its engine.</summary>
