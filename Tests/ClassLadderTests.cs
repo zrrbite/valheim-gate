@@ -189,5 +189,9 @@ static class ClassLadderTests
             "the whole way reads 100");
         Check.That(ClassLadder.MirrorLevel(ClassLadder.Find("volva"), new[] { "brother", "menagerie", "elemental", "unseen" }) == 0,
             "another way's boons do not count toward this one");
+
+        Check.That(ClassLadder.Find("volva").Rungs[0].SequenceEqual(new[] { "bonecaller" }) &&
+                   ClassLadder.Find("volva").Rungs[1].SequenceEqual(new[] { "shaman" }),
+                   "the Völva's dead come first, Mending second (class balance, 2026-10-08)");
     }
 }

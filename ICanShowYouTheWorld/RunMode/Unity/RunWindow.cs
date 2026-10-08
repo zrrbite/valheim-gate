@@ -2598,7 +2598,9 @@ namespace ICanShowYouTheWorld.RunMode
                 // relying on the "12s" text alone.
                 if (!ready && h.Def.CooldownSeconds > 0f)
                 {
-                    float remaining01 = Mathf.Clamp01(h.CooldownRemaining / h.Def.CooldownSeconds);
+                    // Over the cooldown that actually started: a tempered Mending cools from 60 s, not the card's 90.
+                    float started = h.Def.Id == "shaman" ? WayRules.MendingCooldown(run.DefeatedBosses) : h.Def.CooldownSeconds;
+                    float remaining01 = Mathf.Clamp01(h.CooldownRemaining / started);
                     RunTheme.Radialish(slot, remaining01);
                 }
 

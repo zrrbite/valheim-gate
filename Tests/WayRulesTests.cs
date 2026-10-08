@@ -45,5 +45,15 @@ static class WayRulesTests
         Check.That(WayRules.BowElementScale(3) == 1f && WayRules.BowElementScale(4) == 1.5f, "the bow's element x1.5 after Moder");
         Check.That(WayRules.UnseenSeconds(4) == 20f && WayRules.UnseenSeconds(5) == 30f, "Unseen 20 s, 30 s after Yagluth");
         Check.That(WayRules.PackRegenPerSecond(5) == 0f && WayRules.PackRegenPerSecond(6) == 2f, "the pack mends 2 a second after the Queen");
+
+        // The Völva.
+        Check.That(WayRules.HearthlightPerSecond(0) == 3f && WayRules.HearthlightPerSecond(2) == 5f &&
+                   WayRules.HearthlightPerSecond(5) == 8f,
+                   "Hearthlight: 3 a second in the Meadows, +1 per god, to 8");
+        Check.That(WayRules.HearthlightPerSecond(6) == 12f && WayRules.HearthlightPerSecond(20) == 12f,
+                   "the Queen's tempering lifts it to 12 at once - true the moment its line turns green");
+        Check.That(WayRules.BoneCount(2) == 2 && WayRules.BoneCount(3) == 3, "two skeletons, three after Bonemass");
+        Check.That(WayRules.MendingCooldown(3) == 90f && WayRules.MendingCooldown(4) == 60f, "Mending every 90 s, 60 after Moder");
+        Check.That(WayRules.WrathRadius(4) == 6f && WayRules.WrathRadius(5) == 9f, "Thor's Wrath 6 m, 9 after Yagluth");
     }
 }

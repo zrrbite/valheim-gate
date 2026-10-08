@@ -69,6 +69,15 @@ namespace ICanShowYouTheWorld.RunMode
         public static float BowElementScale(int gods) => Tempered(gods, TemperSlot.Rung2) ? 1.5f : 1f;
         public static float UnseenSeconds(int gods) => Tempered(gods, TemperSlot.Rung3) ? 30f : 20f;
         public static float PackRegenPerSecond(int gods) => Tempered(gods, TemperSlot.Engine) ? 2f : 0f;
+
+        // --- The Völva ---
+        /// <summary>3 a second, +1 per god, to 8; the Queen's tempering lifts it to 12 at once, so "Hearthlight mends up to
+        /// 12 a second" is true the moment its line turns green (3 + gods reached only 9 at the Queen).</summary>
+        public static float HearthlightPerSecond(int gods) =>
+            Tempered(gods, TemperSlot.Engine) ? 12f : Math.Min(8f, 3f + Math.Max(0, gods));
+        public static int BoneCount(int gods) => Tempered(gods, TemperSlot.Rung1) ? 3 : 2;
+        public static float MendingCooldown(int gods) => Tempered(gods, TemperSlot.Rung2) ? 60f : 90f;
+        public static float WrathRadius(int gods) => Tempered(gods, TemperSlot.Rung3) ? 9f : 6f;
     }
 
     /// <summary>What a god tempers: a way's three rungs, then its engine.</summary>

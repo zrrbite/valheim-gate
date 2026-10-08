@@ -188,7 +188,7 @@ namespace ICanShowYouTheWorld.RunMode
                            "when you call now. The rest of her comes as the gods fall.";
                 case "volva":
                     return "Sigrún, then. What she touched, mended; what she called, came up out of the ground. " +
-                           "The mending is yours now. The calling comes when a god has fallen.";
+                           "The dead rise at your word from the first. Then the warmth you can pour out, and last, the sky.";
                 case "berserker":
                     return "Ulfr, then. He struck all round him and never once from behind a shield. The sweep " +
                            "is yours now. The rest of him comes when a god has fallen — and you may not want it. Take his axes.";

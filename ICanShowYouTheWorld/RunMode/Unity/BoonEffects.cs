@@ -106,9 +106,6 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>Warcry's reach: "eight metres", a shout rather than a swing.</summary>
         private const float WarcryRadius = 8f;
 
-        /// <summary>Thor's Wrath's blast: "six metres" around where it lands.</summary>
-        private const float WrathRadius = 6f;
-
         /// <summary>Wrath's lightning, before boss scaling. Above the Stormward's 26 per discharge
         /// because it is a sixty-second cooldown the player aims, not a block every few seconds.</summary>
         private const float WrathLightning = 40f;
@@ -1330,7 +1327,12 @@ namespace ICanShowYouTheWorld.RunMode
         private float _hearthlightAt;
 
         /// <summary>
-        /// Hearthlight: a slow mending pulse around the player, reaching tamed animals too.
+        /// Hearthlight: a mending pulse around the player once a second, reaching tamed animals too.
+        ///
+        /// 3 a second in the Meadows, +1 for every god felled, to 8, and 12 once the Queen tempers it
+        /// (<see cref="WayRules.HearthlightPerSecond"/>) - it was 4 every 5 s, 0.8 a second (class balance, 2026-10-08).
+        /// RunService calls this every poll second, so the timer here is the once-a-second gate and a late poll costs
+        /// one pulse, not a burst.
         ///
         /// Implemented directly rather than through the legacy AoE-renewal statics — those gate
         /// on god mode and tick through PeriodicManager, and the Shepherd just demonstrated what
@@ -1339,21 +1341,24 @@ namespace ICanShowYouTheWorld.RunMode
         public void RefreshHearthlight(bool held)
         {
             if (!held || Time.time < _hearthlightAt) return;
-            _hearthlightAt = Time.time + 5f;
+            _hearthlightAt = Time.time + 1f;
 
             var player = Player.m_localPlayer;
             if (player == null) return;
 
+            // No number pops - it would be one a second. Character.Heal routes to the owner, so tames mend from
+            // this client.
+            float hp = WayRules.HearthlightPerSecond(_defeatedBossCount());
             try
             {
-                player.Heal(4f);
+                player.Heal(hp, false);
 
                 var list = new List<Character>();
                 Character.GetCharactersInRange(player.transform.position, 15f, list);
                 foreach (var c in list)
                 {
-                    if (c == null || c.IsPlayer() || !c.IsTamed()) continue;
-                    c.Heal(8f);
+                    if (c == null || c.IsPlayer() || !c.IsTamed() || c.IsDead()) continue;
+                    c.Heal(hp, false);
                 }
             }
             catch { /* a missed pulse is a missed pulse */ }
@@ -1663,7 +1668,7 @@ namespace ICanShowYouTheWorld.RunMode
 
             WithLegacyGodModeBracket(CheatCommands.CastHealAOE);
 
-            held.CooldownRemaining = held.Def.CooldownSeconds;
+            held.CooldownRemaining = WayRules.MendingCooldown(_defeatedBossCount());
             return true;
         }
 
@@ -2033,7 +2038,7 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 Vector3 point = WrathAimPoint(player);
 
-                var foes = HostilesNear(point, WrathRadius, player, skipBosses: false);
+                var foes = HostilesNear(point, WayRules.WrathRadius(_defeatedBossCount()), player, skipBosses: false);
                 if (foes.Count == 0)
                 {
                     LastActivationMessage = "Nothing there for the lightning.";
@@ -3719,9 +3724,10 @@ namespace ICanShowYouTheWorld.RunMode
         /// Raises skeletons that stay raised — Tameable's own Tame(), so they follow, fight, and
         /// are cleaned up at run end like any other companion.
         ///
-        /// Two at a time, because one skeleton is a curiosity and a pair is a shield wall.
+        /// Two at a time, because one skeleton is a curiosity and a pair is a shield wall; three after
+        /// Bonemass (<see cref="WayRules.BoneCount"/>).
         /// </summary>
-        private bool ActivateBonecaller() => Summon(BonePrefab, 2, named: false);
+        private bool ActivateBonecaller() => Summon(BonePrefab, WayRules.BoneCount(_defeatedBossCount()), named: false);
 
         /// <summary>
         /// Spawns <paramref name="count"/> tamed followers of a prefab, within the shared retinue

@@ -13606,13 +13606,14 @@ namespace ICanShowYouTheWorld.RunMode
             // a spell - no cooldown, no charges - because it changes the KIND of Thor's bow's
             // elemental damage and never the amount; see BoonEffects.ActivateElemental.
             new BoonDefinition { Id = "elemental", ClassId = "hunter", Display = "Elemental Arrows", IsPassive = false, CooldownSeconds = 0f, Description = "Thor\u2019s bow loosens lightning, fire or frost. Frost slows what it strikes." },
-            new BoonDefinition { Id = "hearthlight", ClassId = "volva", Display = "Hearthlight", IsPassive = true, Description = "A mending warmth follows you. You and your animals heal near it." },
+            new BoonDefinition { Id = "hearthlight", ClassId = "volva", Display = "Hearthlight", IsPassive = true, Description = "A mending warmth: you and every ally within 15 m heal 3 a second, more with every god felled." },
             new BoonDefinition { Id = "shepherd", ClassId = "hunter", Display = "Shepherd", IsPassive = true, Weight = 3, Description = "Every animal on your side gains a star: twice the health, half again the bite. They keep up with you." },
-            // Act II onward. Skeletons in the Meadows would be a Black Forest answer to a Meadows
-            // problem, and the flavour belongs with the burial chambers. That used to be MinBosses
-            // = 1; it is the Völva's rung 2 now, and the ladder's first threshold (one god down)
-            // says the same thing. MinBosses only gates the wheel, which never deals a way's boons.
-            new BoonDefinition { Id = "bonecaller", ClassId = "volva", Display = "Bonecaller", IsPassive = false, CooldownSeconds = 180f, Description = "Raise two skeletons to fight for you." },
+            // Skeletons used to wait for Act II: a Black Forest answer to a Meadows problem, with the
+            // flavour of the burial chambers. That was MinBosses = 1, then the Völva's rung 2. Since
+            // 2026-10-08 (class balance) they are her rung 1, from the choice itself: Hearthlight mends
+            // whoever is at her side, so she needs allies from the start. MinBosses only gates the
+            // wheel, which never deals a way's boons.
+            new BoonDefinition { Id = "bonecaller", ClassId = "volva", Display = "Bonecaller", IsPassive = false, CooldownSeconds = 120f, Description = "Raise two skeletons to fight for you." },
             new BoonDefinition { Id = "mule",  Display = "Packmule",     IsPassive = true,  Description = "Carry 100 more weight." },
             new BoonDefinition { Id = "hearty", Display = "Hearty",      IsPassive = true,  Description = "+15 max health." },
             // Owner, 2026-09-28: "We need another boon. 'stuffed' - food lasts for hours." Meals burn

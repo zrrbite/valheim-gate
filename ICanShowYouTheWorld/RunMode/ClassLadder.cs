@@ -134,10 +134,12 @@ namespace ICanShowYouTheWorld.RunMode
             new ClassDefinition
             {
                 Id = "volva", Display = "Völva", Title = "Sigrún",
-                Description = "A mending warmth follows you, and you can pour it out where you stand. Later " +
-                              "the dead rise at your word, and after that the sky answers where you point.",
+                Description = "A mending warmth follows you and everyone at your side. The dead rise at your word from " +
+                              "the start; later you can pour the warmth out where you stand, and after that the sky " +
+                              "answers where you point.",
                 PassiveBoonIds = new[] { "hearthlight" },
-                Rungs = new[] { new[] { "shaman" }, new[] { "bonecaller" }, new[] { "wrath" } },
+                // Her dead first (class balance, 2026-10-08): the aura needs allies to mend from the start.
+                Rungs = new[] { new[] { "bonecaller" }, new[] { "shaman" }, new[] { "wrath" } },
             },
             new ClassDefinition
             {
