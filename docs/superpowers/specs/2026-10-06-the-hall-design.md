@@ -115,6 +115,31 @@ that god's place now goes. **The two become one beat: "Raise Eikthyr's place in 
 - **Trophies stay on the stands**, as they stay on the stones in vanilla, so the hall shows every god the
   player has felled.
 
+## 4b. The tally: the gods' places (added 2026-10-08)
+
+The owner: "if we build a hall in our home to hang the heads, then we can add a quest (sacrifice forsaken
+1/7)". Each god's place is already its own step (section 4a). The tally is the running count over all of
+them: **how many gods have a seat in your hall.**
+
+- **What it counts:** latched places (section 4), so a place raised late still counts and a trophy taken
+  down later does not uncount.
+- **Out of what: the gods felled so far, not the six to come.** "Places raised: 2 of 3 felled gods". A
+  fixed "of 6" would tell an Act II player how many gods stand between them and the end, which the
+  no-spoilers rule forbids (section 9). The count reaches six when the Queen falls, so by Act VII it reads
+  as the full set. It also nudges: "2 of 3" says one felled god still has no seat.
+- **Where it shows:**
+  - a standing line under the HALL questline on the HUD's RUN page;
+  - the BOOK, beside the hall's sections;
+  - Hugin, once per place raised ("Two of your gods have a seat at your fire").
+- **Why it matters:** it is the finale's strength. The horn calls the latched set, so the line says so
+  once the horn exists: "The horn will call 4."
+- **The quest.** The HALL questline's capstone, in Act VII: **"Every god in his seat"**, 6 of 6 before
+  Fader. Reward: the horn's call lasts twice as long (section 5's duration is config, so this is a
+  multiplier on it). Optional, like every place: the saga stays winnable with an empty hall (decision #4).
+- **The seventh.** The owner's "1/7" counts the Deep North's Frozen King. Whether he gets a place depends on
+  whether the Deep North comes before or after Fader (section 7). The tally counts whatever places exist,
+  so a seventh adds itself.
+
 ## 5. The horn and the call
 
 **The cast.** The game's Aspects, named in its own English text:
@@ -189,6 +214,7 @@ or Act VIII, which the code currently has.
   farewells. Whether she comes for the living one after Fader, and whether they go, is a story decision.
 - **The Frozen King's mirror.** In his second form he summons the same Aspects against the player. It is
   the natural sequel to the horn, if the Deep North becomes the epilogue.
+- **A seventh place** (section 4b): the Frozen King's, if the Deep North comes before the horn is needed.
 - **The rest of the catalogue**, to be pulled in act by act when it helps: Hervor's journal, the frozen
   ships of earlier settlers, the captives of Mörkhalla, the hidden White Deer, the traders' companions
   (Halstein, Blåbär and Hallon, Kvastur), and the Fallen Warriors beyond the fallback.
@@ -203,7 +229,8 @@ Each slice is played before the next, gets a `saga/` milestone tag, and may chan
 1. **Act I's section.** HEARTH becomes HALL: the anchor, the roof over the long fire, the floor's length.
    This proves the checking (section 4).
 2. **Acts II–VI**, one slice each: the section, the previous god's place and power, and the cast that comes with it
-   (Hildir from Act II, the witch's wicks in Act III, Haldor's lines throughout).
+   (Hildir from Act II, the witch's wicks in Act III, Haldor's lines throughout). The tally (section 4b)
+   comes with Act II's slice, the first place.
 3. **Act VII**: the finished hall, the Queen's place, the Bone Throne, Odin's verdict, the horn.
 4. **The call at Fader.**
 
@@ -214,6 +241,7 @@ Each slice is played before the next, gets a `saga/` milestone tag, and may chan
   - which trophy goes with which seat
   - how much of the act's material is present
   - when a place latches
+  - the tally: latched places out of gods felled, the line it reads, and the capstone at six
 - **The self-check** gains every new guessed name: the six Aspects, the six trophies, the six guardian
   powers (`GP_Eikthyr`, `GP_TheElder`, `GP_Bonemass`, `GP_Moder`, `GP_Yagluth`, `GP_Queen`, from the
   catalogue; `Player.SetGuardianPower(string)` confirmed in 1.0.17's IL), `HardAntler`,
