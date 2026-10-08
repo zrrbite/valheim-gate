@@ -7092,7 +7092,7 @@ namespace ICanShowYouTheWorld.RunMode
             "The sea has found your wake. The hotter you burn, the more of it comes. A ward at the helm keeps the worst of it off.";
         private bool _seaRavenTold;
         private SeaWatch _sea;
-        private SeaWatch Sea => _sea ?? (_sea = new SeaWatch(Message, SeaFirstEncounter, _rng));
+        private SeaWatch Sea => _sea ?? (_sea = new SeaWatch(Message, SeaFirstEncounter, () => _rng));
 
         private SeaSettings SeaSettingsNow() => new SeaSettings
         {

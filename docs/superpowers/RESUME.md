@@ -52,6 +52,10 @@ the mode is still being tuned in play. Valheim 1.0.17, Unity 6000.0.75.
     grazing deer or a boar being tamed (`ShipFittings.WardStrikes`).
   - **Coins:** trolls drop x3, and the sea's creatures pay (`RunCoins`).
   - **Untested in play.** Check 38b in the home test plan.
+  - **The final review's minors are fixed** (`...08j`): a horn blown with no voyage is forgotten after two
+    minutes; Serpents surface only over 3 m of water; flyers come 15 m above a cliff, not inside it; coins
+    carry the world level; one bad target cannot stop the Ward or the sea; the dev call says when there is
+    no room; the sea uses the run's current generator. `SeaDanger.Comes` makes "heat 0 calls nothing" tested.
 - **Shepherd is one star** (`...08i`): it was the GM mod's pet buff (5000 health, and a damage copy through
   `m_shared` that wild wolves and boars shared). Now one star per animal on your side (`TameStars`), marked in
   its ZDO so it comes off; tames saved at 5000 are repaired on sight. Hearthlight and Shepherd now refresh on the

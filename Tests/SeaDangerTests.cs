@@ -88,22 +88,65 @@ static class SeaDangerTests
         Check.That(v.Live == 1 && v.Tick(401f, true) == SeaTurn.Roll, "one ends, and the rolls resume");
         v.Ended(); v.Ended();
         Check.That(v.Live == 0, "the live count never goes below zero");
-        v.HornBlown();
+        v.HornBlown(410f);
         Check.That(v.Tick(411f, true) == SeaTurn.Certain && v.Tick(421f, true) == SeaTurn.Roll,
                    "the horn makes the next roll certain, once");
         // Last at sea at 421: under two minutes later (540) the voyage still holds.
         Check.That(v.Tick(430f, false) == SeaTurn.None && v.OnVoyage && v.Tick(540f, false) == SeaTurn.None && v.OnVoyage,
                    "off the ship for under two minutes: the voyage goes on");
         Check.That(v.Tick(541f, true) == SeaTurn.Roll, "and back at sea it rolls at once, not quiet");
-        v.HornBlown();
+        v.HornBlown(541f);
         // Last at sea at 541: two minutes later (661) the voyage is over.
         Check.That(v.Tick(600f, false) == SeaTurn.None && v.OnVoyage && v.Tick(661f, false) == SeaTurn.None && !v.OnVoyage,
                    "two minutes off the sea end the voyage");
         Check.That(v.Tick(670f, true) == SeaTurn.None && v.Tick(729f, true) == SeaTurn.None && v.Tick(730f, true) == SeaTurn.Roll,
                    "the next voyage is quiet again for a minute, and the old horn was forgotten");
         var w = new SeaVoyage();
-        w.HornBlown();
+        w.HornBlown(0f);
         Check.That(w.Tick(0f, true) == SeaTurn.None && w.Tick(30f, true) == SeaTurn.None && w.Tick(60f, true) == SeaTurn.Certain,
                    "a horn blown before the quiet minute is over waits for it");
+
+        // The horn's leftovers (final review, 2026-10-08). Blown with no voyage - at the dock, in Act I, with sea
+        // danger off - it waited for ANY later voyage, acts later, and made its first roll certain.
+        var dock = new SeaVoyage();
+        dock.HornBlown(0f);
+        Check.That(dock.Tick(119f, false) == SeaTurn.None && dock.Tick(120f, false) == SeaTurn.None &&
+                   dock.Tick(200f, true) == SeaTurn.None && dock.Tick(260f, true) == SeaTurn.Roll,
+                   "a horn blown with no voyage is forgotten after two minutes: the next voyage rolls, not certain");
+        var setOff = new SeaVoyage();
+        setOff.HornBlown(0f);
+        Check.That(setOff.Tick(100f, false) == SeaTurn.None && setOff.Tick(110f, true) == SeaTurn.None &&
+                   setOff.Tick(170f, true) == SeaTurn.Certain,
+                   "blown just before setting sail, it still counts");
+        var cool = new SeaVoyage();
+        cool.Tick(0f, true);
+        cool.Tick(60f, true);
+        cool.Arrived(60f);
+        cool.HornBlown(70f);
+        Check.That(cool.Tick(80f, true) == SeaTurn.None && cool.Tick(149f, true) == SeaTurn.None &&
+                   cool.Tick(150f, true) == SeaTurn.Certain,
+                   "a horn blown in the cooldown waits it out, then is certain");
+        var full = new SeaVoyage();
+        full.Tick(0f, true);
+        full.Arrived(0f); full.Arrived(0f);
+        full.HornBlown(10f);
+        Check.That(full.Tick(200f, true) == SeaTurn.None, "with the limit full, a horn waits");
+        full.Ended();
+        Check.That(full.Tick(201f, true) == SeaTurn.Certain, "and is certain once a slot frees");
+
+        // Whether one comes, out of SeaWatch so it is tested: a certain turn at heat 0 calls nothing.
+        Check.That(!SeaDanger.Comes(SeaTurn.Certain, 0f, 0.5f, 0.0) && !SeaDanger.Comes(SeaTurn.Roll, 0f, 0.5f, 0.0),
+                   "heat 0: the sea is vanilla's, and even the horn calls nothing");
+        Check.That(SeaDanger.Comes(SeaTurn.Certain, 0.1f, 0.5f, 0.999) && !SeaDanger.Comes(SeaTurn.None, 1f, 0.5f, 0.0),
+                   "the horn comes whatever the roll; no turn, nothing");
+        double p = SeaDanger.ChancePerRoll(0.5f, 0.5f);
+        Check.That(SeaDanger.Comes(SeaTurn.Roll, 0.5f, 0.5f, p - 0.001) && !SeaDanger.Comes(SeaTurn.Roll, 0.5f, 0.5f, p + 0.001),
+                   "a roll comes below its chance and not above");
+
+        // Where they come: swimmers in water deep enough to swim, flyers clear of the land below them.
+        Check.That(SeaDanger.DeepEnough(27f, 30f) && !SeaDanger.DeepEnough(28f, 30f) && !SeaDanger.DeepEnough(29.5f, 30f),
+                   "a Serpent surfaces only over three metres of water, not the one the voyage counts as sea");
+        Check.That(SeaDanger.FlyerHeight(0f, 30f) == 45f && SeaDanger.FlyerHeight(80f, 30f) == 95f,
+                   "flyers come 15 m above the water - or above the cliff, where the coast is high");
     }
 }

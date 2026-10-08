@@ -14,7 +14,11 @@ namespace ICanShowYouTheWorld.RunMode
             if (prefab == null) return;
             var go = Object.Instantiate(prefab, at + Vector3.up, Quaternion.identity);
             var drop = go != null ? go.GetComponent<ItemDrop>() : null;
-            if (drop != null) drop.SetStack(count);
+            if (drop == null) return;
+            drop.SetStack(count);
+            // The world level, as RunService.DropAtPlayerFeet does: a fitting's price is counted with
+            // CountItems, which skips coins below the world's level (final review, 2026-10-08).
+            ItemDrop.OnCreateNew(drop);
         }
     }
 }

@@ -37,7 +37,8 @@ namespace ICanShowYouTheWorld.RunMode
 
         private readonly Action<string> _say;
         private readonly Action _firstEncounter;
-        private readonly System.Random _rng;
+        private readonly Func<System.Random> _runRng;
+        private bool _pulseFailLogged;
         private readonly List<Group> _groups = new List<Group>();
         private SeaVoyage _voyage = new SeaVoyage();
         private bool _noSerpentLogged;
@@ -55,11 +56,14 @@ namespace ICanShowYouTheWorld.RunMode
         internal static readonly string[] SparkPrefabs =
             { "fx_chainlightning_hit", "fx_lightningstaffprojectile_hit", "fx_lightningweapon_hit", "fx_Lightning" };
 
-        public SeaWatch(Action<string> say, Action firstEncounter, System.Random rng)
+        /// <param name="rng">The run's generator, asked each time: StartRun and a resume reseed the run's, and a
+        /// watcher built once kept the first one (final review, 2026-10-08).</param>
+        public SeaWatch(Action<string> say, Action firstEncounter, Func<System.Random> rng)
         {
             _say = say;
             _firstEncounter = firstEncounter;
-            _rng = rng ?? new System.Random();
+            var fallback = new System.Random();
+            _runRng = () => rng?.Invoke() ?? fallback;
         }
 
         /// <summary>A run starts or ends: forget the voyage and what was sent (they vanish with their area).</summary>
@@ -70,24 +74,32 @@ namespace ICanShowYouTheWorld.RunMode
             _nextPulse = 0f;
         }
 
-        public void HornBlown() => _voyage.HornBlown();
+        public void HornBlown() => _voyage.HornBlown(Time.time);
 
         /// <summary>Once a second while a run is live.</summary>
         public void Tick(Player player, SeaSettings s)
         {
             if (player == null) return;
             Prune(player);
-            Pulse(player, s);   // the Ward works whether sea danger is on or not
+            // The Ward works whether sea danger is on or not. Its own try, so a target that throws can stop neither
+            // the sea's rolls nor the next pulse (final review, 2026-10-08).
+            try { Pulse(player, s); }
+            catch (Exception e)
+            {
+                if (!_pulseFailLogged) Debug.LogWarning("[ICanShowYouTheWorld] Ward pulse failed: " + e.Message);
+                _pulseFailLogged = true;
+            }
 
-            if (!s.Enabled || s.ActIndex < SeaDanger.FirstActIndex) return;
+            if (!s.Enabled || s.ActIndex < SeaDanger.FirstActIndex)
+            {
+                _voyage.Tick(Time.time, false);   // never a voyage here; a horn blown now is forgotten in time
+                return;
+            }
             var ship = Ship.GetLocalShip();
             var turn = _voyage.Tick(Time.time, AtSea(ship, true));
-            if (turn == SeaTurn.None) return;
-
             float h = SeaDanger.Dial(s.Heat, s.FullHeat);
-            if (h <= 0f) return;   // heat 0: the sea is vanilla's, and the horn calls nothing
-            bool comes = turn == SeaTurn.Certain || _rng.NextDouble() < SeaDanger.ChancePerRoll(h, s.PeakPerMinute);
-            if (comes) Encounter(player, ship, s, h, turn == SeaTurn.Certain ? "the horn" : "rolled");
+            if (SeaDanger.Comes(turn, h, s.PeakPerMinute, _runRng().NextDouble()))
+                Encounter(player, ship, s, h, turn == SeaTurn.Certain ? "the horn" : "rolled");
         }
 
         /// <summary>Dev: an encounter now, if the player is aboard a ship over open water. False otherwise.</summary>
@@ -95,7 +107,9 @@ namespace ICanShowYouTheWorld.RunMode
         {
             var ship = Ship.GetLocalShip();
             if (player == null || !AtSea(ship, false)) return false;
-            Encounter(player, ship, s, SeaDanger.Dial(s.Heat, s.FullHeat), "dev");
+            // Said on screen too: on the Mac, a press that brought nothing looked like a dead key (final review).
+            if (!Encounter(player, ship, s, SeaDanger.Dial(s.Heat, s.FullHeat), "dev"))
+                _say?.Invoke("DEV: no room for the sea here - sail out to deeper water.");
             return true;
         }
 
@@ -132,22 +146,33 @@ namespace ICanShowYouTheWorld.RunMode
             Character.GetCharactersInRange(ship.transform.position, ShipFittings.WardRadius(s.WardTier), _inRange);
             foreach (var c in _inRange)
             {
-                if (c == null) continue;
-                var ai = c.GetBaseAI();
-                if (!ShipFittings.WardStrikes(new WardTarget
-                    {
-                        Player = c.IsPlayer(), Tamed = c.IsTamed(), Dead = c.IsDead(), Enemy = BaseAI.IsEnemy(player, c),
-                        LightningImmune = c.GetDamageModifiers(null).m_lightning == HitData.DamageModifier.Immune,
-                        Monster = ai is MonsterAI, Alerted = ai != null && ai.IsAlerted(),
-                    })) continue;
-
-                var hit = new HitData();
-                hit.m_damage.m_lightning = damage;
-                hit.m_point = c.GetCenterPoint();
-                hit.SetAttacker(player);
-                c.Damage(hit);
-                Spark(hit.m_point);
+                // One target at a time: one that throws is skipped, not the rest (final review, 2026-10-08).
+                try { StrikeOne(c, player, damage); }
+                catch (Exception e)
+                {
+                    if (!_pulseFailLogged) Debug.LogWarning("[ICanShowYouTheWorld] Ward strike failed: " + e.Message);
+                    _pulseFailLogged = true;
+                }
             }
+        }
+
+        private void StrikeOne(Character c, Player player, float damage)
+        {
+            if (c == null) return;
+            var ai = c.GetBaseAI();
+            if (!ShipFittings.WardStrikes(new WardTarget
+                {
+                    Player = c.IsPlayer(), Tamed = c.IsTamed(), Dead = c.IsDead(), Enemy = BaseAI.IsEnemy(player, c),
+                    LightningImmune = c.GetDamageModifiers(null).m_lightning == HitData.DamageModifier.Immune,
+                    Monster = ai is MonsterAI, Alerted = ai != null && ai.IsAlerted(),
+                })) return;
+
+            var hit = new HitData();
+            hit.m_damage.m_lightning = damage;
+            hit.m_point = c.GetCenterPoint();
+            hit.SetAttacker(player);
+            c.Damage(hit);
+            Spark(hit.m_point);
         }
 
         /// <summary>A small spark where the ward strikes, if the game has the effect (asset names are guesses).</summary>
@@ -196,13 +221,14 @@ namespace ICanShowYouTheWorld.RunMode
             }
         }
 
-        private void Encounter(Player player, Ship ship, SeaSettings s, float h, string why)
+        /// <summary>Sends one encounter. False when nothing came: no creature, or no room for it.</summary>
+        private bool Encounter(Player player, Ship ship, SeaSettings s, float h, string why)
         {
             Vector3 at = ship.transform.position;
             var coasts = CoastsNear(at);
             var wg = WorldGenerator.instance;
             bool ashSea = wg != null && wg.GetBiome(at) == Heightmap.Biome.AshLands;
-            var enc = SeaDanger.Choose(coasts.Keys, ashSea, s.ActIndex, h, _rng.NextDouble);
+            var enc = SeaDanger.Choose(coasts.Keys, ashSea, s.ActIndex, h, _runRng().NextDouble);
 
             var prefab = Prefab(enc.Prefab);
             if (prefab == null)
@@ -215,7 +241,7 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 if (!_noSerpentLogged) Debug.LogWarning("[ICanShowYouTheWorld] Sea: no Serpent prefab - the sea stays calm.");
                 _noSerpentLogged = true;
-                return;
+                return false;
             }
 
             var group = new Group { Creature = enc.Creature, Level = enc.Level };
@@ -226,7 +252,7 @@ namespace ICanShowYouTheWorld.RunMode
             if (group.Members.Count == 0)
             {
                 Debug.Log($"[ICanShowYouTheWorld] Sea: no room for {enc.Prefab} ({why}) - no open water ahead.");
-                return;
+                return false;
             }
 
             _groups.Add(group);
@@ -235,6 +261,7 @@ namespace ICanShowYouTheWorld.RunMode
             _say?.Invoke(enc.Message);
             Debug.Log($"[ICanShowYouTheWorld] Sea: {group.Members.Count} x {enc.Prefab}, level {enc.Level} ({why}); " +
                       $"heat {s.Heat:0.#}, dial {h:0.00}, gap {SeaDanger.GapMinutes(h, s.PeakPerMinute):0.#} min.");
+            return true;
         }
 
         private static GameObject Prefab(string name) => ZNetScene.instance != null ? ZNetScene.instance.GetPrefab(name) : null;
@@ -273,11 +300,12 @@ namespace ICanShowYouTheWorld.RunMode
             }
         }
 
-        /// <summary>Sea creatures surface 50-70 m ahead, within 45 degrees of the heading, on open water. Up to 8 tries.</summary>
+        /// <summary>Sea creatures surface 50-70 m ahead, within 45 degrees of the heading, over three metres of water. Up to 8 tries.</summary>
         private void SpawnSwimmers(GameObject prefab, SeaEncounter enc, Ship ship, Group group)
         {
             var zs = ZoneSystem.instance;
-            if (zs == null) return;
+            var wg = WorldGenerator.instance;
+            if (zs == null || wg == null) return;
             Vector3 fwd = ship.transform.forward;
             fwd.y = 0f;
             if (fwd.sqrMagnitude < 0.01f) fwd = Vector3.forward;
@@ -285,24 +313,25 @@ namespace ICanShowYouTheWorld.RunMode
 
             for (int tries = 0; tries < 8; tries++)
             {
-                float angle = (float)(_rng.NextDouble() * 90.0 - 45.0);
-                float dist = 50f + (float)_rng.NextDouble() * 20f;
+                float angle = (float)(_runRng().NextDouble() * 90.0 - 45.0);
+                float dist = 50f + (float)_runRng().NextDouble() * 20f;
                 Vector3 spot = ship.transform.position + Quaternion.Euler(0f, angle, 0f) * fwd * dist;
-                if (!OverOpenWater(spot)) continue;
+                if (!SeaDanger.DeepEnough(wg.GetHeight(spot.x, spot.z), zs.m_waterLevel)) continue;
                 spot.y = zs.m_waterLevel;
                 for (int i = 0; i < enc.Count; i++) Make(prefab, spot + Side(i), enc.Level, ship.transform.position, group);
                 return;
             }
         }
 
-        /// <summary>Flyers come from the coast's side, 40-60 m out and about 15 m up.</summary>
+        /// <summary>Flyers come from the coast's side, 40-60 m out, 15 m above the water or the cliff below.</summary>
         private void SpawnFlyers(GameObject prefab, SeaEncounter enc, Vector3 ship, Vector3 dir, Group group)
         {
             var zs = ZoneSystem.instance;
             if (zs == null) return;
-            float dist = 40f + (float)_rng.NextDouble() * 20f;
+            float dist = 40f + (float)_runRng().NextDouble() * 20f;
             Vector3 spot = ship + dir * dist;
-            spot.y = zs.m_waterLevel + 15f;
+            var wg = WorldGenerator.instance;
+            spot.y = SeaDanger.FlyerHeight(wg != null ? wg.GetHeight(spot.x, spot.z) : zs.m_waterLevel, zs.m_waterLevel);
             for (int i = 0; i < enc.Count; i++) Make(prefab, spot + Side(i), enc.Level, ship, group);
         }
 

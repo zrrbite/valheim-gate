@@ -41,6 +41,30 @@ namespace ICanShowYouTheWorld.RunMode
         public const float VoyageEndSeconds = 120f;
         public const float CooldownSeconds = 90f;
         public const int MaxLive = 2;
+
+        /// <summary>
+        /// Water a Serpent or a Bonemaw surfaces in: three metres, deeper than the one metre that counts as being at
+        /// sea, so nothing surfaces in a shallow it cannot swim (final review, 2026-10-08).
+        /// </summary>
+        public const float SurfaceDepth = 3f;
+
+        /// <summary>How high flyers arrive above whatever is below them, water or a cliff.</summary>
+        public const float FlyerLift = 15f;
+
+        public static bool DeepEnough(float ground, float waterLevel) => ground <= waterLevel - SurfaceDepth;
+
+        /// <summary>Above the water, or above the land where the coast is high (they spawned inside cliffs).</summary>
+        public static float FlyerHeight(float ground, float waterLevel) => Math.Max(ground, waterLevel) + FlyerLift;
+
+        /// <summary>
+        /// Whether an encounter comes on this turn. Heat 0 is vanilla's sea, so not even the horn calls one; the
+        /// horn is otherwise certain; a roll comes below its chance. Out of SeaWatch.Tick so it is tested.
+        /// </summary>
+        public static bool Comes(SeaTurn turn, float h, float peakPerMinute, double roll)
+        {
+            if (turn == SeaTurn.None || h <= 0f) return false;
+            return turn == SeaTurn.Certain || roll < ChancePerRoll(h, peakPerMinute);
+        }
         public const double FlyerShare = 2.0 / 3.0;
 
         /// <summary>How far up the dial heat has the sea: 0 (calm) to 1 (full).</summary>
@@ -181,6 +205,7 @@ namespace ICanShowYouTheWorld.RunMode
         private float _cooldownUntil = float.NegativeInfinity;
         private int _live;
         private bool _horn;
+        private float _hornAt;
 
         public bool OnVoyage => !float.IsNaN(_startedAt);
         public int Live => _live;
@@ -195,6 +220,8 @@ namespace ICanShowYouTheWorld.RunMode
                     _startedAt = float.NaN;
                     _horn = false;
                 }
+                // Blown with no voyage (a dock, Act I, sea danger off): it waits as long as a voyage would, then goes.
+                if (!OnVoyage && _horn && now - _hornAt >= SeaDanger.VoyageEndSeconds) _horn = false;
                 return SeaTurn.None;
             }
 
@@ -229,7 +256,14 @@ namespace ICanShowYouTheWorld.RunMode
             if (_live > 0) _live--;
         }
 
-        /// <summary>The Wind-horn: the next roll is certain. Forgotten when the voyage ends.</summary>
-        public void HornBlown() => _horn = true;
+        /// <summary>
+        /// The Wind-horn: the next roll is certain. Forgotten when the voyage ends - or, blown with none running, two
+        /// minutes later unless one begins (it used to wait for any voyage, acts later).
+        /// </summary>
+        public void HornBlown(float now)
+        {
+            _horn = true;
+            _hornAt = now;
+        }
     }
 }
