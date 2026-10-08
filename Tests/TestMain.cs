@@ -45,6 +45,7 @@ static class TestMain
         DevSeaTests.Run();
         SeaDangerTests.Run();
         LandSpotTests.Run();
+        TameStarsTests.Run();
         RunCoinsTests.Run();
         Console.WriteLine(Check.Failures == 0 ? "ALL PASS" : $"{Check.Failures} FAILURES");
         return Check.Failures == 0 ? 0 : 1;

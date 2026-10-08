@@ -227,7 +227,10 @@ where reachable. And one for Shepherd: a wild boar's bite is unchanged while a H
 ## Order of work
 
 1. **Shepherd honest, the star rule, Menagerie by biome.** First, because Shepherd's shared-data write is a bug
-   that reaches wild creatures today.
+   that reaches wild creatures today. **Shepherd and the star rule are done** (`...08i`, the owner: "fix
+   Shepherd now"): `TameStars`, a ZDO mark per animal, a repair for tames saved at 5000. Menagerie by biome is
+   not. The same build moved Shepherd's and Hearthlight's refresh onto the run's poll: both had run only when
+   heat changed.
 2. **The engines**, one way per task, Hunter-relative numbers.
 3. **Tempering.**
 4. **The wheel's tilt and the damage ceiling.**

@@ -570,24 +570,10 @@ namespace ICanShowYouTheWorld.RunMode
                     break;
 
                 case "shepherd":
-                    // Rides the legacy PetBuff statics rather than IPetService: the legacy world is
-                    // the one that is actually ticked, and — more to the point — it is the one with
-                    // a ResetPetBuffs. Power is loaned, so an effect with no way back is not an
-                    // option.
-                    // Through the legacy god-mode bracket, like every other effect that rides
-                    // the GM statics. Unbracketed, RequireGodMode refused in every fair run —
-                    // the boon was a SILENT NO-OP that printed a GM warning, which is how it was
-                    // finally caught: "I was choosing a boon and then it showed a message from
-                    // my gm mod."
-                    //
-                    // quiet: true, because the GM readouts are addressed to somebody who typed a
-                    // command. A saga player who picked a boon and had no animals yet was told
-                    // "No baseline, nothing buffed" - a diagnostic reading as a broken quest
-                    // (owner: "the shephard quest says 'no baseline', which is confusing for a
-                    // player"). This class says nothing to the player by design; the boon grant is
-                    // announced where boons are announced, and the blessing finding an empty pen
-                    // is not news - RefreshShepherd blesses whatever is tamed later.
-                    try { WithLegacyGodModeBracket(() => PetBuff.BuffAllPets(false, quiet: true)); }
+                    // One star for every animal on your side (2026-10-08, class balance). It rode the GM
+                    // mod's pet buff until then - 5000 health, and a damage copy written through m_shared
+                    // that every wild wolf and boar shared. See RefreshShepherd.
+                    try { RefreshShepherd(true, force: true); }
                     catch (Exception e) { Debug.LogWarning($"[ICanShowYouTheWorld] Shepherd: {e.Message}"); }
                     break;
 
@@ -722,7 +708,7 @@ namespace ICanShowYouTheWorld.RunMode
                 case "elemental":     _resetBowElement(); break;
 
                 case "shepherd":
-                    try { WithLegacyGodModeBracket(() => PetBuff.ResetPetBuffs(quiet: true)); }
+                    try { RefreshShepherd(false, force: true); }
                     catch (Exception e) { Debug.LogWarning($"[ICanShowYouTheWorld] Shepherd reset: {e.Message}"); }
                     break;
 
@@ -1360,19 +1346,90 @@ namespace ICanShowYouTheWorld.RunMode
             catch { /* a missed pulse is a missed pulse */ }
         }
 
-        /// <summary>
-        /// Re-applies the shepherd's blessing to anything tamed SINCE it was granted.
-        ///
-        /// A passive applied once would only ever bless the animals you already had, and the whole
-        /// point of Act I's hearth is that the pen grows. Cheap enough to run on the same slow
-        /// tick that refreshes Forge-fed.
-        /// </summary>
-        public void RefreshShepherd(bool held)
-        {
-            if (!held) return;
+        private float _shepherdAt;
 
-            try { WithLegacyGodModeBracket(() => PetBuff.BuffAllPets(false, quiet: true)); }
-            catch { /* a missed refresh is cosmetic; the next one catches it */ }
+        /// <summary>ZDO int on an animal Shepherd starred: its level before the star (0 = not ours).</summary>
+        private const string ShepherdMark = "ICSYTW_shepherd";
+
+        /// <summary>How far the shepherd's eye reaches: the pen at home, and the pack around you.</summary>
+        private const float ShepherdRadius = 30f;
+
+        /// <summary>
+        /// The shepherd's star, kept true every few seconds: every animal on your side within reach gets ONE star
+        /// (TameStars.WithShepherd) while it is held, and gives it back when it is not.
+        /// </summary>
+        /// <remarks>
+        /// Since 2026-10-08. It rode the GM mod's pet buff (CheatCommands.BuffAllPets) until then: every tame to
+        /// 5000 health, and the strongest tame's weapon x1.2 written into m_shared - which ItemData.Clone does
+        /// not copy, so every wild wolf and boar bit harder too. The star is per animal, and the animal carries
+        /// a ZDO mark with its old level, so the star comes off after a reload as well: whenever a run sees a
+        /// marked animal without the boon. One the old buff left at 5000 (saved into the world - the legacy
+        /// reset never undid it) is recomputed from its level on sight, held or not.
+        /// The speed match stays from the old buff: it was already per animal, and prefab-anchored.
+        /// </remarks>
+        public void RefreshShepherd(bool held, bool force = false)
+        {
+            if (!force && Time.time < _shepherdAt) return;
+            _shepherdAt = Time.time + 5f;
+
+            var player = Player.m_localPlayer;
+            if (player == null) return;
+
+            var list = new List<Character>();
+            Character.GetCharactersInRange(player.transform.position, ShepherdRadius, list);
+            foreach (var c in list)
+            {
+                if (c == null || c.IsPlayer() || !c.IsTamed()) continue;
+                try { ShepherdStar(c, held, player); }
+                catch (Exception e) { Debug.LogWarning($"[ICanShowYouTheWorld] Shepherd on {c.name}: {e.Message}"); }
+            }
+        }
+
+        /// <summary>One animal's star, given or given back. Health keeps its share of the new maximum.</summary>
+        private static void ShepherdStar(Character c, bool held, Player player)
+        {
+            var view = c.GetComponent<ZNetView>();
+            var zdo = view != null && view.IsValid() ? view.GetZDO() : null;
+            if (zdo == null) return;
+            if (!view.IsOwner()) view.ClaimOwnership();
+
+            int marked = zdo.GetInt(ShepherdMark, 0);
+
+            if (TameStars.IsLegacyBlessing(c.GetMaxHealth())) SetLevelKeepingShare(c, c.GetLevel());
+
+            if (held && marked == 0)
+            {
+                int was = c.GetLevel();
+                zdo.Set(ShepherdMark, was);
+                SetLevelKeepingShare(c, TameStars.WithShepherd(was));
+                MatchSpeed(c, player, true);
+            }
+            else if (!held && marked > 0)
+            {
+                zdo.Set(ShepherdMark, 0);
+                SetLevelKeepingShare(c, marked);
+                MatchSpeed(c, player, false);
+            }
+        }
+
+        private static void SetLevelKeepingShare(Character c, int level)
+        {
+            float share = c.GetMaxHealth() > 0f ? Mathf.Clamp01(c.GetHealth() / c.GetMaxHealth()) : 1f;
+            c.SetLevel(level);
+            c.SetHealth(Mathf.Max(1f, c.GetMaxHealth() * share));
+        }
+
+        /// <summary>
+        /// Keeps up with its shepherd: the player's pace, never below the prefab's own (a wolf is never slowed), and
+        /// back to the prefab's when the star goes. Prefab-anchored, so repeating it cannot compound.
+        /// </summary>
+        private static void MatchSpeed(Character c, Player player, bool on)
+        {
+            var prefab = ZNetScene.instance?.GetPrefab(c.gameObject.name.Replace("(Clone)", ""));
+            var orig = prefab != null ? prefab.GetComponent<Character>() : null;
+            if (orig == null) return;
+            c.m_runSpeed = on ? Mathf.Max(orig.m_runSpeed, player.m_runSpeed) : orig.m_runSpeed;
+            c.m_speed = on ? Mathf.Max(orig.m_speed, player.m_walkSpeed) : orig.m_speed;
         }
 
         public void RefreshForgeFed(float heat)
@@ -3686,6 +3743,12 @@ namespace ICanShowYouTheWorld.RunMode
 
             ch.SetTamed(true);
             ch.SetLevel(CompanionLevel());
+            // The Hunter's star at once, not at the next refresh (2026-10-08): she summons mid-fight.
+            if (_heldBoons().Any(h => h.Def.Id == "shepherd"))
+            {
+                try { ShepherdStar(ch, true, player); }
+                catch (Exception e) { Debug.LogWarning($"[ICanShowYouTheWorld] Shepherd on a summon: {e.Message}"); }
+            }
 
             // SetTamed is the whole of it: Tameable.Tame() is private, and this is the same path
             // Packbrother's wolves have used since alpha1.
@@ -3704,7 +3767,7 @@ namespace ICanShowYouTheWorld.RunMode
         /// One star per boss felled, capped at two — a meadows wolf is a real bodyguard at the
         /// start and still worth summoning in the Plains, without ever eclipsing the player.
         /// </summary>
-        private int CompanionLevel() => Mathf.Clamp(1 + _defeatedBossCount(), 1, 3);
+        private int CompanionLevel() => TameStars.SummonLevel(_defeatedBossCount());
 
         private void DespawnAllCompanions()
         {

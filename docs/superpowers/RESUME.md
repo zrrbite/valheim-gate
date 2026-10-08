@@ -52,6 +52,10 @@ the mode is still being tuned in play. Valheim 1.0.17, Unity 6000.0.75.
     grazing deer or a boar being tamed (`ShipFittings.WardStrikes`).
   - **Coins:** trolls drop x3, and the sea's creatures pay (`RunCoins`).
   - **Untested in play.** Check 38b in the home test plan.
+- **Shepherd is one star** (`...08i`): it was the GM mod's pet buff (5000 health, and a damage copy through
+  `m_shared` that wild wolves and boars shared). Now one star per animal on your side (`TameStars`), marked in
+  its ZDO so it comes off; tames saved at 5000 are repaired on sight. Hearthlight and Shepherd now refresh on the
+  poll; they had run only when heat changed. The rest of the balance is a spec, not built.
 - **The wheel deals no blank cards** (`...08h`): a boon a held one wholly covers is never offered
   (`BoonDefinition.CoveredBy`) - Wayfarer for a Skald (Poet is the same card), Steady Hands for a Húskarl,
   Miner for a Smiðr. Part of the class-balance review; the rest is a spec.

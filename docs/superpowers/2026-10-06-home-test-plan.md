@@ -84,6 +84,11 @@ Make a **new character** for this part: three of these checks only happen on a f
    load the character. **See:** "Run resumed", and the Herald's bearing pointing where it did. Before `...08g`
    this deleted the run (`Failed to resume run` in `Player.log`); a failure now says so on screen and keeps
    `ICSYTW_run_<name>.failed-<time>.json` beside the config.
+8e. **Shepherd is one star** (`...08i`). As a Hunter in the Meadows, summon the wolves (`U`/`[7]`).
+   **See:** one star on each (a wolf's 80 health doubled), not the old near-immortal 5000; a wild boar still
+   dies to a few hits and bites as before; the hearth boar shows one star while you hold Shepherd, and loses it
+   when the way is laid down or the run ends. As a Völva, stand hurt beside the hearth for a minute: Hearthlight
+   now mends every five seconds (it only pulsed when heat changed before).
 8c. **The Gatherer stays ashore** (`...08f`). With its step open at night, sail out to open water.
    **See:** if it is out, "The Gatherer will not follow you onto the sea." and it is gone; nothing comes
    while you are afloat. Land at night: "Something heavy is coming through the trees", over land.

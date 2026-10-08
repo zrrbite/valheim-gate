@@ -2745,6 +2745,7 @@ namespace ICanShowYouTheWorld.RunMode
                 if (_active) PollShipwright();
                 if (_active) PollWinds();
                 if (_active) PollSea();
+                if (_active) PollCompanionPassives();
             }
 
             if (!_active) return;
@@ -6134,12 +6135,19 @@ namespace ICanShowYouTheWorld.RunMode
 
             try { _boonEffects.RefreshForgeFed(_heat.Heat); }
             catch (Exception ex) { LogOnce("forgefed-refresh", ex); }
+        }
 
-            // The pen grows during a run, so the shepherd's blessing has to find the new arrivals.
-            try { _boonEffects.RefreshShepherd(_boons != null && _boons.Held.Any(h => h.Def.Id == "shepherd")); }
+        /// <summary>
+        /// The shepherd's star and Hearthlight's pulse, each at its own few-second pace (2026-10-08). Both rode
+        /// OnHeatChanged until then, so they ran only when heat moved - on a completion or a death - and
+        /// Hearthlight's "slow mending pulse" every five seconds almost never pulsed.
+        /// </summary>
+        private void PollCompanionPassives()
+        {
+            try { _boonEffects.RefreshShepherd(HoldsBoon("shepherd")); }
             catch (Exception ex) { LogOnce("shepherd-refresh", ex); }
 
-            try { _boonEffects.RefreshHearthlight(_boons != null && _boons.Held.Any(h => h.Def.Id == "hearthlight")); }
+            try { _boonEffects.RefreshHearthlight(HoldsBoon("hearthlight")); }
             catch (Exception ex) { LogOnce("hearthlight-refresh", ex); }
         }
 
@@ -13580,7 +13588,7 @@ namespace ICanShowYouTheWorld.RunMode
             // elemental damage and never the amount; see BoonEffects.ActivateElemental.
             new BoonDefinition { Id = "elemental", ClassId = "hunter", Display = "Elemental Arrows", IsPassive = false, CooldownSeconds = 0f, Description = "Thor\u2019s bow loosens lightning, fire or frost. Frost slows what it strikes." },
             new BoonDefinition { Id = "hearthlight", ClassId = "volva", Display = "Hearthlight", IsPassive = true, Description = "A mending warmth follows you. You and your animals heal near it." },
-            new BoonDefinition { Id = "shepherd", ClassId = "hunter", Display = "Shepherd", IsPassive = true, Weight = 3, Description = "Your tamed animals are stronger, tougher and faster. New ones too." },
+            new BoonDefinition { Id = "shepherd", ClassId = "hunter", Display = "Shepherd", IsPassive = true, Weight = 3, Description = "Every animal on your side gains a star: twice the health, half again the bite. They keep up with you." },
             // Act II onward. Skeletons in the Meadows would be a Black Forest answer to a Meadows
             // problem, and the flavour belongs with the burial chambers. That used to be MinBosses
             // = 1; it is the Völva's rung 2 now, and the ladder's first threshold (one god down)
