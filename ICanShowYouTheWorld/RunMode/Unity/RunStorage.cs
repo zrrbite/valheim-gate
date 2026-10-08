@@ -478,6 +478,30 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
+        /// Copies the named character's run-state file aside as <c>ICSYTW_run_&lt;name&gt;.failed-&lt;time&gt;.json</c>,
+        /// before a failed resume deletes it (2026-10-08). Returns the copy's path, or null when there was nothing
+        /// to copy or the copy failed. The game never reads it back: it is for the owner, and for whoever fixes the bug.
+        /// </summary>
+        public static string KeepFailed(string characterName)
+        {
+            if (string.IsNullOrEmpty(characterName)) return null;
+            try
+            {
+                string path = PathForCharacter(characterName);
+                if (!File.Exists(path)) return null;
+                string copy = path.Substring(0, path.Length - ".json".Length) + ".failed-" +
+                              DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".json";
+                File.Copy(path, copy, true);
+                return copy;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[ICanShowYouTheWorld] Failed to keep a copy of the run state for '{characterName}': {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
         /// Delete the run-state file for the named character, if it exists.
         /// </summary>
         public static void Delete(string characterName)

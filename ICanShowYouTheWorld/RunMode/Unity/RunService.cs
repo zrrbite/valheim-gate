@@ -9916,7 +9916,11 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 string name = CharacterName();
                 Debug.LogError($"[ICanShowYouTheWorld] Failed to resume run for '{name}', discarding state: {ex}");
+                // A copy first (2026-10-08): this used to delete the only one, silently, and the reason
+                // was a bug in this method, not in the save.
+                string kept = name != null ? RunStorage.KeepFailed(name) : null;
                 if (name != null) RunStorage.Delete(name);
+                Announce("The saved run could not be resumed" + (kept != null ? " - a copy is kept beside the config." : "."));
 
                 // RestoreFrom may have partially applied boon effects (BuildEngines/RestoreHeld
                 // succeeded before whatever threw) — unwind them rather than leaving a cheat
@@ -10012,12 +10016,6 @@ namespace ICanShowYouTheWorld.RunMode
                 foreach (var loc in s.discoveredLocations)
                     if (!string.IsNullOrEmpty(loc)) _discovered.Add(loc);
 
-            // Same hunt, same ground. Re-rolling on resume would move the Herald after the player
-            // had already walked most of the way to where the bearing had been pointing.
-            _deer.HeraldTarget = s.heraldTargetSet
-                ? new Vector3(s.heraldTargetX, s.heraldTargetY, s.heraldTargetZ)
-                : (Vector3?)null;
-
             // Re-lend what completions had already paid, so a resumed run keeps the health it
             // earned. 0 on a pre-alpha35 save, which simply starts the accumulation from there.
             _taskHealthReward = Math.Max(0f, s.taskHealthReward);
@@ -10025,6 +10023,17 @@ namespace ICanShowYouTheWorld.RunMode
 
             _rng = new Random(_rngSeed);
             BuildActSystems();
+
+            // Same hunt, same ground. Re-rolling on resume would move the Herald after the player
+            // had already walked most of the way to where the bearing had been pointing.
+            //
+            // AFTER BuildActSystems, which makes the herd (2026-10-08). From 2026-08-23 this sat above
+            // it: after a full restart _deer was null, the resume threw, and the save was deleted (the
+            // owner's Mac log, ...08e); after a quit to the menu it went to the OLD herd, which was then
+            // replaced, so the Herald re-rolled anyway.
+            _deer.HeraldTarget = s.heraldTargetSet
+                ? new Vector3(s.heraldTargetX, s.heraldTargetY, s.heraldTargetZ)
+                : (Vector3?)null;
 
             BuildEngines(BuildChallengePool(), freshRun: false);
 

@@ -80,6 +80,10 @@ Make a **new character** for this part: three of these checks only happen on a f
    - finish a second task while one waits: the card comes back saying "one more after this", and picking
      deals the next at once;
    - quit and reload with one waiting: the flag is still there (the three choices may differ).
+8d. **A run resumes after a full restart** (`...08g`). Mid-run, quit Valheim completely, start it again, and
+   load the character. **See:** "Run resumed", and the Herald's bearing pointing where it did. Before `...08g`
+   this deleted the run (`Failed to resume run` in `Player.log`); a failure now says so on screen and keeps
+   `ICSYTW_run_<name>.failed-<time>.json` beside the config.
 8c. **The Gatherer stays ashore** (`...08f`). With its step open at night, sail out to open water.
    **See:** if it is out, "The Gatherer will not follow you onto the sea." and it is gone; nothing comes
    while you are afloat. Land at night: "Something heavy is coming through the trees", over land.

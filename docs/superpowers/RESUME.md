@@ -52,6 +52,9 @@ the mode is still being tuned in play. Valheim 1.0.17, Unity 6000.0.75.
     grazing deer or a boar being tamed (`ShipFittings.WardStrikes`).
   - **Coins:** trolls drop x3, and the sea's creatures pay (`RunCoins`).
   - **Untested in play.** Check 38b in the home test plan.
+- **A run resumes after a full restart again** (`...08g`). Since 2026-08-23 the Herald's target was restored
+  before the herd existed: a cold resume threw and DELETED the save (found in the Mac's log, 2026-10-08), and a
+  warm one re-rolled the Herald. A failed resume now keeps a `.failed-<time>.json` copy and says so on screen.
 - **A boon offer waits** (`...08e`, from the owner's Mac test): left 45 s, the card steps aside instead of
   vanishing with the boon; a gold flag beside the strip says so, and End brings it back. Offers finished
   while one waits queue up, and survive a reload (`BoonEngine.Stow`/`Recall`/`RestoreWaiting`). Also from
