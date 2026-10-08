@@ -6907,6 +6907,9 @@ namespace ICanShowYouTheWorld.RunMode
         private float _fittingCardAge;
         private List<ShipFittingOffer> _fittingCard = new List<ShipFittingOffer>();
 
+        /// <summary>The weapon bonuses held have reached WayRules.WeaponCeiling; the BOONS page says so.</summary>
+        public bool WeaponCeilingReached => _active && _boonEffects != null && _boonEffects.WeaponCeilingReached;
+
         /// <summary>The helm's card is up. The window draws it in the offer's place.</summary>
         public bool FittingCardOpen => _active && _fittingCardOpen;
 

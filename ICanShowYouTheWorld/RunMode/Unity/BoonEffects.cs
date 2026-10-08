@@ -538,8 +538,13 @@ namespace ICanShowYouTheWorld.RunMode
                 case "fireblood":
                 case "thickskin":
                 case "hardshell":
-                case "reckless":
                     ApplyDamageModifier(boonId);
+                    break;
+
+                case "reckless":
+                    // Both halves (2026-10-08): the +50% was declared and never applied, so the boon was all cost.
+                    ApplyDamageModifier(boonId);
+                    ApplyWeaponMultiplier(RecklessDamageMultiplier, "reckless");
                     break;
 
                 case "stoker":
@@ -669,8 +674,12 @@ namespace ICanShowYouTheWorld.RunMode
                 case "fireblood":
                 case "thickskin":
                 case "hardshell":
+                    UnapplyDamageModifier(boonId);
+                    break;
+
                 case "reckless":
                     UnapplyDamageModifier(boonId);
+                    RemoveWeaponMultiplier(boonId);
                     break;
 
                 case "stoker":
@@ -1058,6 +1067,10 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         private readonly Dictionary<string, float> _weaponMultipliers = new Dictionary<string, float>();
 
+        /// <summary>True while the live weapon factors multiply past <see cref="WayRules.WeaponCeiling"/>, so the
+        /// BOONS page can say a further damage card adds nothing.</summary>
+        public bool WeaponCeilingReached { get; private set; }
+
         private void ApplySharp() => ApplyWeaponMultiplier(SharpDamageMultiplier, "sharp");
 
         private void UnapplySharp() => RemoveWeaponMultiplier("sharp");
@@ -1094,8 +1107,12 @@ namespace ICanShowYouTheWorld.RunMode
             var inventory = Player.m_localPlayer?.GetInventory();
             if (inventory == null || _weaponMultipliers.Count == 0) return;
 
-            float product = 1f;
-            foreach (var m in _weaponMultipliers.Values) product *= m;
+            // Capped (2026-10-08): Sharpened, Glass Cannon, Stoker, Reckless, Forge-fed and Fury held together
+            // reached about x4.5. See WayRules.WeaponCeiling.
+            float raw = 1f;
+            foreach (var m in _weaponMultipliers.Values) raw *= m;
+            WeaponCeilingReached = raw > WayRules.WeaponCeiling;
+            float product = WayRules.WeaponProduct(_weaponMultipliers.Values);
 
             foreach (var item in inventory.GetEquippedItems())
             {
@@ -1199,25 +1216,24 @@ namespace ICanShowYouTheWorld.RunMode
             if (hardshell) RaiseToResistant(ref mods.m_pierce);
             if (slashResisted) RaiseToResistant(ref mods.m_slash);
 
-            // Reckless's cost. "Weak" is the game's own one-step-worse modifier, which is roughly
-            // the stated 25% and, more importantly, is a value Valheim already balances around
-            // rather than a number invented here.
+            // Reckless's cost, and Blood Rage's. "SlightlyWeak" is the game's x1.25 - the cards' "25% more"; it was
+            // "Weak" (x1.5) until 2026-10-08, half again what the cards said.
             //
             // Blood Rage pays the same price, for its fifteen seconds only. It is not a separate
             // modifier because there is no separate armour to put it on: one struct, one snapshot,
-            // and both claims collapse to the same Weak — holding Reckless and raging at once costs
+            // and both claims collapse to the same SlightlyWeak — holding Reckless and raging at once costs
             // no more than either, which is the honest reading of "one step worse".
             //
             // Thick-skinned and Hardshell were the first boons to claim the same slots. Written as
             // "last one wins", holding Reckless would silently delete a resistance the player also
             // picked, and which of the two the player kept would depend on nothing they could see.
             // One step better and one step worse is no step at all, so a resisted type goes to
-            // Normal under the cost rather than to Weak: both picks still mean what their cards say.
+            // Normal under the cost rather than to SlightlyWeak: both picks still mean what their cards say.
             if (_damageModBoons.Contains("reckless") || _damageModBoons.Contains("rage"))
             {
-                mods.m_blunt = thickskin ? HitData.DamageModifier.Normal : HitData.DamageModifier.Weak;
-                mods.m_slash = slashResisted ? HitData.DamageModifier.Normal : HitData.DamageModifier.Weak;
-                mods.m_pierce = hardshell ? HitData.DamageModifier.Normal : HitData.DamageModifier.Weak;
+                mods.m_blunt = thickskin ? HitData.DamageModifier.Normal : HitData.DamageModifier.SlightlyWeak;
+                mods.m_slash = slashResisted ? HitData.DamageModifier.Normal : HitData.DamageModifier.SlightlyWeak;
+                mods.m_pierce = hardshell ? HitData.DamageModifier.Normal : HitData.DamageModifier.SlightlyWeak;
             }
 
             player.m_damageModifiers = mods;
@@ -1452,6 +1468,7 @@ namespace ICanShowYouTheWorld.RunMode
             }
             _sharpSnapshots.Clear();
             _weaponMultipliers.Clear();
+            WeaponCeilingReached = false;
         }
 
         // --- pugilist ---

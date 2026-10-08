@@ -2414,6 +2414,13 @@ namespace ICanShowYouTheWorld.RunMode
             // --- Boons ---
             GUILayout.Label("BOONS", RunTheme.Header);
 
+            if (_concrete != null && _concrete.WeaponCeilingReached)
+            {
+                GUI.contentColor = RunTheme.TextMuted;
+                GUILayout.Label($"  your weapon bonuses are at their ceiling (x{WayRules.WeaponCeiling:0.#})", RunTheme.Small);
+                GUI.contentColor = Color.white;
+            }
+
             // Baseline powers every run starts with, listed here so the HUD answers "what am I
             // carrying" completely rather than only listing what was picked from an offer.
             foreach (var granted in BaselineBoons)
