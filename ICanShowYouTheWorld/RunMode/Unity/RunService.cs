@@ -2369,6 +2369,8 @@ namespace ICanShowYouTheWorld.RunMode
             _fireTarTold = false;
             _fittingCardOpen = false;
             _godWindTold = false;
+            _seaRavenTold = false;
+            _sea?.Reset();
             _hornBlownAt = float.NegativeInfinity;
             _actAltarAt = null;
             _altarForAct = -1;
@@ -2728,6 +2730,7 @@ namespace ICanShowYouTheWorld.RunMode
                 if (_active) _dreams.Ensure();
                 if (_active) PollShipwright();
                 if (_active) PollWinds();
+                if (_active) PollSea();
             }
 
             if (!_active) return;
@@ -2987,7 +2990,7 @@ namespace ICanShowYouTheWorld.RunMode
                     (Mod,  M(SagaKey.DevDelete), "Thor's bow, the Stormward and five rescued lights"),
                     (Mod,  M(SagaKey.DevBackspace), "Plant a Storm-Anvil, with the bow, the shield and the combine's makings"),
                     (Temp, K(SagaKey.DevGoTo),   "Go to the next of the saga's places (Shift: the one before)"),
-                    (Temp, M(SagaKey.DevShip),   "A Karve on the nearest sea, and you at its helm"),
+                    (Temp, M(SagaKey.DevShip),   "A Karve on the nearest sea, you at its helm; aboard at sea: the sea answers now"),
                 };
             }
         }
@@ -3385,7 +3388,8 @@ namespace ICanShowYouTheWorld.RunMode
             {
                 // MACBOOK-TEMP: a Karve on the nearest deep water, with you at its helm. The light's key
                 // with a modifier; the light's own branch below is guarded with !mod as well.
-                try { DevShipYard.Launch(Player.m_localPlayer); }
+                // MACBOOK-TEMP: aboard at sea, B calls the sea instead of building another ship.
+                try { if (!Sea.Force(Player.m_localPlayer, SeaSettingsNow())) DevShipYard.Launch(Player.m_localPlayer); }
                 catch (Exception ex) { LogOnce("dev-ship", ex); }
             }
             else if (BoonKeys.Pressed(SagaKey.DevHome))
@@ -6971,7 +6975,7 @@ namespace ICanShowYouTheWorld.RunMode
                 return true;
             }
 
-            _fittingCard = ShipFittings.Offers(_fittings, FireTarTold);
+            _fittingCard = ShipFittings.Offers(_fittings, FireTarTold, _seaRavenTold);
             if (_fittingCard.Count == 0)
             {
                 Message("The ship carries everything gold can fit.");
@@ -7013,7 +7017,7 @@ namespace ICanShowYouTheWorld.RunMode
             SaveState();
 
             // Stay open for the next tier, with a fresh clock; close when there is nothing left.
-            _fittingCard = ShipFittings.Offers(_fittings, FireTarTold);
+            _fittingCard = ShipFittings.Offers(_fittings, FireTarTold, _seaRavenTold);
             _fittingCardAge = 0f;
             if (_fittingCard.Count == 0) _fittingCardOpen = false;
         }
@@ -7031,6 +7035,38 @@ namespace ICanShowYouTheWorld.RunMode
         private float _altarLookedAt = float.NegativeInfinity;
 
         private bool _godWindTold;
+
+        // The sea answers the heat (2026-10-08): see SeaWatch and SeaDanger.
+        private const string SeaRavenLine =
+            "The sea has found your wake. The hotter you burn, the more of it comes. A ward at the helm keeps the worst of it off.";
+        private bool _seaRavenTold;
+        private SeaWatch _sea;
+        private SeaWatch Sea => _sea ?? (_sea = new SeaWatch(Message, SeaFirstEncounter, _rng));
+
+        private SeaSettings SeaSettingsNow() => new SeaSettings
+        {
+            Enabled = _cfg.RunSeaDanger,
+            Heat = _heat.Heat,
+            FullHeat = _cfg.RunSeaFullHeat,
+            PeakPerMinute = _cfg.RunSeaPeakPerMinute,
+            ActIndex = _actIndex,
+            WardTier = _fittings.Ward,
+        };
+
+        /// <summary>The raven speaks of the sea once a run, at its first encounter; that also unlocks the Ward.</summary>
+        private void SeaFirstEncounter()
+        {
+            if (_seaRavenTold) return;
+            _seaRavenTold = true;
+            if (!TrySpawnRaven("sea", SeaRavenLine)) Message(SeaRavenLine);
+            SaveState();
+        }
+
+        private void PollSea()
+        {
+            try { Sea.Tick(Player.m_localPlayer, SeaSettingsNow()); }
+            catch (Exception ex) { LogOnce("sea", ex); }
+        }
         private float _hornBlownAt = float.NegativeInfinity;
 
         /// <summary>
@@ -7150,6 +7186,7 @@ namespace ICanShowYouTheWorld.RunMode
 
             _hornBlownAt = Time.time;
             _winds.BlowHorn(player);
+            Sea.HornBlown();   // noise: the sea answers
             Message("The horn sounds, and the wind comes round behind you.");
             Debug.Log("[ICanShowYouTheWorld] The Wind-horn blown: two minutes of wind.");
         }
@@ -7796,6 +7833,7 @@ namespace ICanShowYouTheWorld.RunMode
             LogLocationRegistry();
             CheckSagaMyth();
             CheckSpeakersAndTraders();
+            CheckSea();
             CheckGods();
             CheckSagaItems();
             CheckItemsObtainable();
@@ -9959,6 +9997,8 @@ namespace ICanShowYouTheWorld.RunMode
             _fireTarTold = false;
             _fittingCardOpen = false;
             _godWindTold = false;
+            _seaRavenTold = false;
+            _sea?.Reset();
             _hornBlownAt = float.NegativeInfinity;
             _actAltarAt = null;
             _altarForAct = -1;
@@ -9973,8 +10013,9 @@ namespace ICanShowYouTheWorld.RunMode
             _stormwardAnswers = s.stormwardAnswers;
             _thorsBowKills = s.thorsBowKills;
             _anvilRaised = s.anvilRaised;
-            _fittings = new ShipFittingState { Sail = s.shipSail, Hull = s.shipHull, FireTar = s.shipFireTar, WindHorn = s.shipWindHorn };
+            _fittings = new ShipFittingState { Sail = s.shipSail, Hull = s.shipHull, FireTar = s.shipFireTar, WindHorn = s.shipWindHorn, Ward = s.shipWard };
             _godWindTold = s.godWindTold;
+            _seaRavenTold = s.seaRavenTold;
             _fittingsTold = s.shipFittingsTold;
             _fireTarTold = s.shipFireTarTold;
             SagaTranscript.Restore(s.transcript);
@@ -10205,7 +10246,9 @@ namespace ICanShowYouTheWorld.RunMode
                 shipHull = _fittings.Hull,
                 shipFireTar = _fittings.FireTar,
                 shipWindHorn = _fittings.WindHorn,
+                shipWard = _fittings.Ward,
                 godWindTold = _godWindTold,
+                seaRavenTold = _seaRavenTold,
                 shipFittingsTold = _fittingsTold,
                 shipFireTarTold = _fireTarTold,
                 transcript = SagaTranscript.Save(),
@@ -11514,6 +11557,25 @@ namespace ICanShowYouTheWorld.RunMode
                                  "nothing in the game drops, crafts, sells or yields them, so those steps can never finish");
             }
             catch (Exception ex) { LogOnce("self-check-sources", ex); }
+        }
+
+        /// <summary>The six creatures sea danger can send (2026-10-08): a missing one becomes a Serpent.</summary>
+        private void CheckSea()
+        {
+            if (_selfCheck == null) return;
+            try
+            {
+                var scene = ZNetScene.instance;
+                if (scene == null)
+                {
+                    _selfCheck.Fallback("Sea creatures", "the scene was not ready - not checked this run");
+                    return;
+                }
+                var names = SeaDanger.All.Select(SeaDanger.PrefabOf).ToList();
+                var missing = names.Where(n => scene.GetPrefab(n)?.GetComponent<Character>() == null).ToList();
+                _selfCheck.AllOf("Sea creatures", names.Count, missing, "a Serpent comes instead; with no Serpent the sea stays calm");
+            }
+            catch (Exception ex) { LogOnce("self-check-sea", ex); }
         }
 
         /// <summary>

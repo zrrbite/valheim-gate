@@ -108,6 +108,11 @@ namespace ICanShowYouTheWorld.Core
         float RunBossHpPerHeat { get; set; }
         string RunFinalBossKey { get; set; }
         string RunKeyLayout { get; set; }
+        bool RunSeaDanger { get; set; }
+        float RunSeaFullHeat { get; set; }
+        float RunSeaPeakPerMinute { get; set; }
+        float RunTrollCoinMultiplier { get; set; }
+        float RunSeaCoinMultiplier { get; set; }
 
         // === Debug & System ===
         bool EnableDebugMode { get; set; }
@@ -343,6 +348,14 @@ namespace ICanShowYouTheWorld.Core
         [SerializeField] private string runFinalBossKey = "defeated_fader";
         // "numpad" (the default) or "laptop": the saga's keys for a keyboard with no numpad. See RunMode/KeyLayout.cs.
         [SerializeField] private string runKeyLayout = "numpad";
+        // Sea danger (docs/superpowers/specs/2026-10-08-sea-danger-design.md): the sea sends creatures as heat rises.
+        // Full danger at this heat; the average minutes between encounters is 1 / (peak x heat/full), cooldown included.
+        [SerializeField] private bool runSeaDanger = true;
+        [SerializeField] private float runSeaFullHeat = 40f;
+        [SerializeField] private float runSeaPeakPerMinute = 0.5f;
+        // Coins for the fittings: trolls drop this many times their coins during a run; the sea's creatures pay x this.
+        [SerializeField] private float runTrollCoinMultiplier = 3f;
+        [SerializeField] private float runSeaCoinMultiplier = 1f;
 
         // === Debug & System ===
         [SerializeField] private bool enableDebugMode = false;
@@ -437,6 +450,11 @@ namespace ICanShowYouTheWorld.Core
         public float RunBossHpPerHeat { get => runBossHpPerHeat; set => runBossHpPerHeat = value; }
         public string RunFinalBossKey { get => runFinalBossKey; set => runFinalBossKey = value; }
         public string RunKeyLayout { get => runKeyLayout; set => runKeyLayout = value; }
+        public bool RunSeaDanger { get => runSeaDanger; set => runSeaDanger = value; }
+        public float RunSeaFullHeat { get => runSeaFullHeat; set => runSeaFullHeat = value; }
+        public float RunSeaPeakPerMinute { get => runSeaPeakPerMinute; set => runSeaPeakPerMinute = value; }
+        public float RunTrollCoinMultiplier { get => runTrollCoinMultiplier; set => runTrollCoinMultiplier = value; }
+        public float RunSeaCoinMultiplier { get => runSeaCoinMultiplier; set => runSeaCoinMultiplier = value; }
 
         public bool EnableDebugMode { get => enableDebugMode; set => enableDebugMode = value; }
         public bool EnableDebugLogs { get => enableDebugLogs; set => enableDebugLogs = value; }
