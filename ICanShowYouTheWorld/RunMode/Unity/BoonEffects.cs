@@ -3663,7 +3663,7 @@ namespace ICanShowYouTheWorld.RunMode
         private static readonly string[] MenagerieRoster = { "Boar", "Wolf", "Lox", "Hen", "Chicken", "Asksvin" };
 
         /// <summary>
-        /// Odin lends a beast — ANY beast. Casting again trades the old one back and rolls fresh,
+        /// Odin lends a beast — any of the lands you have opened (WayRules.MenagerieBeasts). Casting again trades the old one back and rolls fresh,
         /// which is the whole game of it: the reroll is the player's choice to make, at the cost
         /// of whatever they had (owner: "you can always just respawn it to try for a different
         /// one"). One menagerie beast at a time; it shares the retinue cap with the wolves and
@@ -3675,7 +3675,9 @@ namespace ICanShowYouTheWorld.RunMode
             var scene = ZNetScene.instance;
             if (player == null || scene == null) return false;
 
-            var available = MenagerieRoster.Where(n => scene.GetPrefab(n) != null).ToList();
+            // By biome (2026-10-08): the beasts the gods felled have opened, not all six from the start.
+            var opened = WayRules.MenagerieBeasts(_defeatedBossCount());
+            var available = MenagerieRoster.Where(n => opened.Contains(n) && scene.GetPrefab(n) != null).ToList();
             if (available.Count == 0)
             {
                 LastActivationMessage = "The Allfather has nothing to lend.";

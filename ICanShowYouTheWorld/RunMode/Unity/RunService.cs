@@ -13585,7 +13585,7 @@ namespace ICanShowYouTheWorld.RunMode
             new BoonDefinition { Id = "brother", ClassId = "hunter", Display = "Packbrother", IsPassive = false, CooldownSeconds = 240f, Description = "Summon a wolf to fight for you. Two at a time." },
             // Testable from Act I: you tame a boar on the hearth track, so this has something to
             // work on long before a boss falls.
-            new BoonDefinition { Id = "menagerie", ClassId = "hunter", Display = "Menagerie", IsPassive = false, CooldownSeconds = 90f, Description = "Odin lends a beast \u2014 any beast. Cast again to trade it back." },
+            new BoonDefinition { Id = "menagerie", ClassId = "hunter", Display = "Menagerie", IsPassive = false, CooldownSeconds = 90f, Description = "Odin lends a beast \u2014 of the lands you have opened. Cast again to trade it back." },
             // Beside Menagerie on the Hunter's second rung (owner, 2026-09-28). A switch rather than
             // a spell - no cooldown, no charges - because it changes the KIND of Thor's bow's
             // elemental damage and never the amount; see BoonEffects.ActivateElemental.

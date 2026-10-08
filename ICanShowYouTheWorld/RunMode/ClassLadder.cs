@@ -36,6 +36,7 @@ namespace ICanShowYouTheWorld.RunMode
         private static readonly Dictionary<int, string> BossAtCount = new Dictionary<int, string>
         {
             { 1, "Eikthyr" }, { 2, "the Elder" }, { 3, "Bonemass" }, { 4, "Moder" }, { 5, "Yagluth" },
+            { 6, "the Queen" },
         };
 
         /// <summary>"after Eikthyr" for threshold 1, and so on - the HUD's state for a rung not yet due.</summary>
@@ -121,7 +122,7 @@ namespace ICanShowYouTheWorld.RunMode
             new ClassDefinition
             {
                 Id = "hunter", Display = "Hunter", Title = "Eydís",
-                Description = "Beasts answer you. A wolf comes when you call. Later, any creature on loan, " +
+                Description = "Beasts answer you. A wolf comes when you call. Later, a beast on loan from the lands you have opened, " +
                               "and the trick of going unseen. Your bow hand knows more than it did, and your tames are stronger." +
                               " You move quietly." +
                               " Later your arrows learn fire and frost.",

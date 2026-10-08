@@ -172,6 +172,7 @@ static class ClassLadderTests
         Check.That(ClassLadder.AfterLine(2) == "after the Elder" && ClassLadder.AfterLine(5) == "after Yagluth",
             "the table covers the gods between");
         Check.That(ClassLadder.AfterLine(9) == "after 9 gods", "a count past the table falls back to a number");
+        Check.That(ClassLadder.AfterLine(6) == "after the Queen", "the Queen is named for the engine's tempering");
 
         // The way's skill in the Skills window mirrors the ladder: 0 / 33 / 66 / 100.
         Check.That(ClassLadder.MirrorLevel(null, new[] { "brother" }) == 0, "no way held: the mirror reads 0");

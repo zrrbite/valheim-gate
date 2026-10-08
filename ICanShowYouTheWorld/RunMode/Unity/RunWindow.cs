@@ -2407,6 +2407,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // so the two readouts of one ladder can never be caught disagreeing.
                 GUILayout.Label($"  Way skill {run.WaySkillLevel}", RunTheme.Small);
                 DrawWayKit(run, way);
+                DrawWayTempering(way);
             }
 
             GUILayout.Space(4f);
@@ -2486,6 +2487,24 @@ namespace ICanShowYouTheWorld.RunMode
                     else DrawWayKitLine(KitName(boons, id), ClassLadder.AfterLine(threshold), false, desc);
                 }
             }
+        }
+
+        /// <summary>
+        /// The way's tempering (2026-10-08): one per god from Bonemass to the Queen, shown once its god is the next to
+        /// fall, "tempered" in the ready colour once it has.
+        /// </summary>
+        private void DrawWayTempering(ClassDefinition way)
+        {
+            int gods = _concrete != null ? _concrete.DefeatedBosses : 0;
+            foreach (TemperSlot slot in Enum.GetValues(typeof(TemperSlot)))
+            {
+                if (!WayRules.TemperShown(gods, slot)) continue;
+                bool done = WayRules.Tempered(gods, slot);
+                GUI.contentColor = done ? RunTheme.CompleteGreen : RunTheme.TextMuted;
+                string when = done ? "tempered" : ClassLadder.AfterLine(WayRules.TemperGods[(int)slot]);
+                GUILayout.Label($"  {when}: {WayRules.TemperLine(way.Id, slot)}", RunTheme.Small);
+            }
+            GUI.contentColor = Color.white;
         }
 
         /// <summary>The boon's one-sentence description, or null when the pool does not know it.</summary>
