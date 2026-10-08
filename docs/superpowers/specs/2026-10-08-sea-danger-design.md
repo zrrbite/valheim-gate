@@ -127,7 +127,9 @@ skill you could buy", then "Arsenal + a ward fitting"):
 - **What it does:** while the player is aboard the ship, a pulse every **3 s** strikes every hostile creature
   within the radius of the ship. That includes the saga's, vanilla's serpents, and flyers over the deck.
   - It is **lightning** damage, the saga's storm motif, through the ordinary damage path, so kills count.
-  - It never hurts players, tamed creatures, or the saga's speakers (they are immune).
+  - It never strikes players, tamed creatures, non-hostiles (`BaseAI.IsEnemy`), or anything immune to
+    lightning. That last rule spares every saga speaker, since `SagaSpeaker.MakeImmune` makes them immune to
+    lightning too, with no list to keep.
   - **It is passive,** so it needs no key (laptop keys are scarce), and it helps every way, melee ones too.
 
   | Tier | Price | Radius | Damage per pulse |
@@ -144,6 +146,28 @@ skill you could buy", then "Arsenal + a ward fitting"):
   data, so no spark is better than a guessed one that fails loudly.
 - **The card can now show five lines** (Sail, Hull, Wind-horn, Ward, Fire-tar). It already divides its width by
   the count. `Choice5` is `Keypad 5`, or `U` on the laptop. The narrower columns get checked on the Mac.
+
+**Coins, which pay for the fittings** (owner, 2026-10-08: "money is difficult to come by, so maybe we could
+increase the coin drops for trolls?", then "Trolls x3, plus the sea pays"):
+- The fittings, ward included, cost about 2,400 coins in all. A vanilla troll drops 20–30.
+- **During a run, a Troll drops three times its coins.** The saga adds `(multiplier − 1) ×` a roll of 20–30
+  beside the troll's own drop, so 60–90 in all by default.
+  - Config: `runTrollCoinMultiplier` (3). Only the `Troll` prefab: a summoned troll drops nothing in vanilla
+    and nothing here.
+- **The sea pays.** A creature the saga sent drops coins: a base per creature, times its level, times
+  `runSeaCoinMultiplier` (1).
+
+  | Creature | Base | Two stars (level 3) |
+  |---|---|---|
+  | Serpent | 30 | 90 |
+  | Bonemaw | 60 | 180 |
+  | Drake | 10 | 30 |
+  | Deathsquito | 5 | 15 |
+  | Gjall | 40 | 120 |
+  | Fallen Valkyrie | 60 | 180 |
+
+- **How coins drop:** one stack of the game's `Coins` item at the creature, through the saga's death hook. Items
+  float, so coins dropped at sea can be picked up from the water or the deck.
 
 **Tie-ins:**
 - **The Wind-horn draws them.** Blowing it at sea with heat above 0 makes the next roll certain. That still
@@ -185,6 +209,11 @@ skill you could buy", then "Arsenal + a ward fitting"):
 - `Offers(state, fireTarTold, wardTold)` offers the next Ward tier only when `wardTold`;
 - `Bought` and `Summary` know the ward ("Sail II · Hull I · Ward I").
 
+**`RunMode/RunCoins.cs`, pure:**
+- `ExtraTrollCoins(multiplier, vanillaRoll)` and `SeaCoins(creature, level, multiplier)`.
+
+**`RunMode/Unity/CoinDrops.cs`:** `Drop(position, count)`, one `Coins` stack via `ItemDrop.SetStack`.
+
 **`RunMode/Unity/SeaWatch.cs`, the game side:**
 - **Called once a second** from `RunService`'s poll, beside `PollWinds`.
 - **Reads:** `Ship.GetLocalShip()`, the ship's body velocity, `WorldGenerator.instance.GetHeight` and
@@ -220,6 +249,8 @@ skill you could buy", then "Arsenal + a ward fitting"):
 | `runSeaDanger` | `true` |
 | `runSeaFullHeat` | `40` |
 | `runSeaPeakPerMinute` | `0.5` |
+| `runTrollCoinMultiplier` | `3` |
+| `runSeaCoinMultiplier` | `1` |
 
 **Self-check:**
 - One line, "Sea creatures", over the six prefab names: OK, or MISSING with each missing name.
@@ -241,6 +272,10 @@ skill you could buy", then "Arsenal + a ward fitting"):
   - the 120 s end makes the next voyage quiet again;
   - the cooldown, and the limit of two;
   - the horn makes the next roll certain within all three.
+- **Coins** (`RunCoinsTests`):
+  - the troll's extra is 2× the roll at ×3, and nothing at ×1;
+  - the sea coins per creature and level;
+  - zero or negative multipliers drop nothing.
 - **The ward** (`ShipFittingsTests`):
   - not offered before the raven's line, offered after it;
   - the tiers in order, with their prices;
@@ -282,6 +317,7 @@ skill you could buy", then "Arsenal + a ward fitting"):
 
 - `FullHeat` and `PeakPerMinute` (the heat curve as a whole is still untuned).
 - The ward's prices, radius, damage and pulse.
+- The coin numbers, against the fittings' prices.
 - The 2/3 flyer share.
 - The message and raven wording.
 - Whether flyers' AI behaves over open water. It is untested in vanilla, and the reason the log line says
