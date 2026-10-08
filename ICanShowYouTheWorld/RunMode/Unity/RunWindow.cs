@@ -749,9 +749,12 @@ namespace ICanShowYouTheWorld.RunMode
             // screen there is no reason to scroll any of it.
             //
             // Since 2026-10-07 that is a CAP, not a size: the window fits its page and grows to this
-            // only for a long one (BOOK, HEARD), which then scrolls. 60% of the screen rather than
-            // all of it, because the owner kept hiding the window to see the game.
-            float hudHeight = Mathf.Clamp(viewHeight * 0.6f, 320f, 720f);
+            // only for a long one (BOOK, HEARD), which then scrolls. 75% of the screen rather than
+            // all of it, because the owner kept hiding the window to see the game. It was 60% until
+            // 2026-10-08, when the RUN page's tasks were cut off on the MacBook: the quest step is
+            // pinned above the scroll, so a long step left the tasks too little (owner: "a little
+            // bit longer"). A short page still fits itself, so the cap costs nothing there.
+            float hudHeight = Mathf.Clamp(viewHeight * 0.75f, 320f, 860f);
             _hudCap = hudHeight;
             _hudRect = new Rect(viewWidth - HudWidth - 10f, 40f, HudWidth, hudHeight);
             // Bottom-left, anchored to the bottom edge (owner, alpha24). The top-left belongs to
@@ -3191,7 +3194,7 @@ namespace ICanShowYouTheWorld.RunMode
             GUILayout.EndHorizontal();
 
             GUILayout.FlexibleSpace();
-            GUILayout.Label(KeyLayout.ChoiceHint(BoonKeys.Layout, card.Count), RunTheme.Small);
+            GUILayout.Label(KeyLayout.ChoiceHint(BoonKeys.Layout, card.Count) + "   ·   Shift + E again: close", RunTheme.Small);
         }
 
         // --- THE WAY (display only; picks are handled in RunService.HandleBoonOfferInput) ---

@@ -159,7 +159,7 @@ Make a **new character** for this part: three of these checks only happen on a f
 ## 4. Boats (20 minutes; dev makes it quick)
 
 36. **Fittings** (`...05p`). Build a raft; the raven says the helm takes gold. `Keypad *` puts 500 coins
-    in the stash: take them out. Look at the helm: **Shift+E** opens the card.
+    in the stash: take them out. Look at the helm: **Shift+E** opens the card, and again closes it (`...08c`).
     **See:** Sail I and Hull I, 50 coins each. Keypad 1–2 (or TAB and **Buy**) buys.
     - Sail should feel faster under sail **and** oars.
     - Walk the deck after buying: no "Player over board" in the log.

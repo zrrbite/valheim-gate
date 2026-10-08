@@ -6965,10 +6965,18 @@ namespace ICanShowYouTheWorld.RunMode
             catch (Exception ex) { LogOnce("helm-input", ex); }
         }
 
-        /// <summary>The helm's second key. Never over another card: the keys would mean two things.</summary>
+        /// <summary>
+        /// The helm's second key. Never over another card: the keys would mean two things. Pressed while the card is up,
+        /// it closes it (owner, 2026-10-08: "Do I close the fittings window with Shift E again?").
+        /// </summary>
         private bool OpenFittingCard(Humanoid user)
         {
             if (!_active) return false;
+            if (_fittingCardOpen)
+            {
+                _fittingCardOpen = false;
+                return true;
+            }
             if (_classChoicePending || (_boons != null && _boons.CurrentOffer.Count > 0))
             {
                 Message("Not now - answer the card that is up first.");
