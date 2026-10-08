@@ -110,9 +110,9 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
-        /// The Ward (2026-10-08): every few seconds while the player is aboard, lightning strikes every hostile within
-        /// the ward's radius of the ship - through the ordinary damage path, so kills count. Never the player, the
-        /// tamed, non-enemies, or anything lightning cannot hurt (every saga speaker is made immune to it).
+        /// The Ward (2026-10-08): every few seconds while the player is aboard, lightning strikes every attacker within
+        /// the ward's radius of the ship - through the ordinary damage path, so kills count. Who counts as an attacker
+        /// is <see cref="ShipFittings.WardStrikes"/>: an alerted, hostile monster, never a grazing deer.
         /// </summary>
         private void Pulse(Player player, SeaSettings s)
         {
@@ -126,8 +126,14 @@ namespace ICanShowYouTheWorld.RunMode
             Character.GetCharactersInRange(ship.transform.position, ShipFittings.WardRadius(s.WardTier), _inRange);
             foreach (var c in _inRange)
             {
-                if (c == null || c.IsPlayer() || c.IsTamed() || c.IsDead() || !BaseAI.IsEnemy(player, c)) continue;
-                if (c.GetDamageModifiers(null).m_lightning == HitData.DamageModifier.Immune) continue;
+                if (c == null) continue;
+                var ai = c.GetBaseAI();
+                if (!ShipFittings.WardStrikes(new WardTarget
+                    {
+                        Player = c.IsPlayer(), Tamed = c.IsTamed(), Dead = c.IsDead(), Enemy = BaseAI.IsEnemy(player, c),
+                        LightningImmune = c.GetDamageModifiers(null).m_lightning == HitData.DamageModifier.Immune,
+                        Monster = ai is MonsterAI, Alerted = ai != null && ai.IsAlerted(),
+                    })) continue;
 
                 var hit = new HitData();
                 hit.m_damage.m_lightning = damage;

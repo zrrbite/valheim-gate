@@ -127,9 +127,12 @@ skill you could buy", then "Arsenal + a ward fitting"):
 - **What it does:** while the player is aboard the ship, a pulse every **3 s** strikes every hostile creature
   within the radius of the ship. That includes the saga's, vanilla's serpents, and flyers over the deck.
   - It is **lightning** damage, the saga's storm motif, through the ordinary damage path, so kills count.
-  - It never strikes players, tamed creatures, non-hostiles (`BaseAI.IsEnemy`), or anything immune to
-    lightning. That last rule spares every saga speaker, since `SagaSpeaker.MakeImmune` makes them immune to
-    lightning too, with no list to keep.
+  - It never strikes players, tamed creatures, non-hostiles, or anything immune to lightning. That last rule
+    spares every saga speaker, since `SagaSpeaker.MakeImmune` makes them immune to lightning too, with no list
+    to keep.
+  - **A hostile is an alerted `MonsterAI`** that `BaseAI.IsEnemy` names (`ShipFittings.WardStrikes`). Corrected
+    by the final review: `IsEnemy(player, c)` alone is true for nearly every wild creature, so the first build
+    struck deer, boars and a creature being tamed. Taming needs a calm creature, and an animal's alert is flight.
   - **It is passive,** so it needs no key (laptop keys are scarce), and it helps every way, melee ones too.
 
   | Tier | Price | Radius | Damage per pulse |

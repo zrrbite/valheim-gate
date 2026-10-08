@@ -15,6 +15,18 @@ namespace ICanShowYouTheWorld.RunMode
         public int Ward;
     }
 
+    /// <summary>What the ward sees of one creature in its radius - read off the game by SeaWatch, judged here.</summary>
+    public struct WardTarget
+    {
+        public bool Player, Tamed, Dead, LightningImmune;
+        /// <summary><c>BaseAI.IsEnemy(player, it)</c>: true for nearly every wild creature, so never enough alone.</summary>
+        public bool Enemy;
+        /// <summary>Its AI is a MonsterAI. AnimalAI (deer, hares) never attacks; its alert is flight.</summary>
+        public bool Monster;
+        /// <summary>Its AI is alerted - hunting. Taming needs a calm creature, and the sea's own are alerted when sent.</summary>
+        public bool Alerted;
+    }
+
     /// <summary>One line on the helm's card: the next tier of one fitting, and its price.</summary>
     public sealed class ShipFittingOffer
     {
@@ -88,6 +100,14 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         public static float WardRadius(int tier) => WardRadii[Clamp(tier, WardRadii.Length - 1)];
         public static float WardDamage(int tier) => WardDamages[Clamp(tier, WardDamages.Length - 1)];
+
+        /// <summary>
+        /// The ward strikes attackers only: an alerted, hostile monster (final review, 2026-10-08). "An enemy" alone
+        /// struck every deer by the dock and the boar half tamed; never the player, the tamed, the dead, or what
+        /// lightning cannot hurt (every saga speaker is made immune to it).
+        /// </summary>
+        public static bool WardStrikes(WardTarget t) =>
+            !t.Player && !t.Tamed && !t.Dead && !t.LightningImmune && t.Enemy && t.Monster && t.Alerted;
 
         public static bool AshlandsReady(ShipFittingState state) => state != null && state.FireTar >= 1;
 

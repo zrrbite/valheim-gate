@@ -72,6 +72,21 @@ static class ShipFittingsTests
                    ShipFittings.Summary(new ShipFittingState { Sail = 1, Ward = 1 }) == "Sail I · Ward I",
                    "the ward has a tier and shows in the summary");
 
+        // Who the ward strikes: attackers only. BaseAI.IsEnemy(player, c) is true for nearly every wild creature,
+        // so "an enemy" alone would kill the deer by the dock and the boar being tamed (final review, 2026-10-08).
+        var attacker = new WardTarget { Enemy = true, Monster = true, Alerted = true };
+        Check.That(ShipFittings.WardStrikes(attacker), "an alerted hostile monster - the sea's own, a hunting troll - is struck");
+        Check.That(!ShipFittings.WardStrikes(new WardTarget { Enemy = true, Monster = true, Alerted = false }),
+                   "a calm one is not: a wild boar or wolf, and the one being tamed (taming needs it calm)");
+        Check.That(!ShipFittings.WardStrikes(new WardTarget { Enemy = true, Monster = false, Alerted = true }),
+                   "nor an animal - a deer or hare's alert is flight, not attack");
+        Check.That(!ShipFittings.WardStrikes(new WardTarget { Player = true, Enemy = true, Monster = true, Alerted = true }) &&
+                   !ShipFittings.WardStrikes(new WardTarget { Tamed = true, Enemy = true, Monster = true, Alerted = true }) &&
+                   !ShipFittings.WardStrikes(new WardTarget { Dead = true, Enemy = true, Monster = true, Alerted = true }) &&
+                   !ShipFittings.WardStrikes(new WardTarget { Enemy = false, Monster = true, Alerted = true }) &&
+                   !ShipFittings.WardStrikes(new WardTarget { LightningImmune = true, Enemy = true, Monster = true, Alerted = true }),
+                   "and never a player, the tamed, the dead, a friend, or what lightning cannot hurt (the saga's speakers)");
+
         // The god's wind: the prow within forty degrees of the pinned altar, aboard, god pinned.
         Check.That(System.Math.Abs(SagaWind.Heading(0f, 1f)) < 0.01f && System.Math.Abs(SagaWind.Heading(1f, 0f) - 90f) < 0.01f &&
                    System.Math.Abs(SagaWind.Heading(-1f, 0f) - 270f) < 0.01f,

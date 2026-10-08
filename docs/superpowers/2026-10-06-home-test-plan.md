@@ -174,7 +174,8 @@ Make a **new character** for this part: three of these checks only happen on a f
     **See:**
     - the raven's line once, then a message per encounter;
     - a Serpent ahead, or flyers near a reached act's coast, starred as heat rises;
-    - after the raven, the helm offers **Ward I** (100 coins); bought, it strikes what comes within 20 m;
+    - after the raven, the helm offers **Ward I** (100 coins); bought, it strikes what comes within 20 m, but
+      never a grazing deer or a calm boar by the dock (`...08b`);
     - a troll drops 60-90 coins, and a sea creature drops coins;
     - `Select-String Player.log -Pattern "Sea:"` lists each encounter.
 
