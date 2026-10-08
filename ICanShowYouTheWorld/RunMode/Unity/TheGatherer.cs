@@ -101,9 +101,16 @@ namespace ICanShowYouTheWorld.RunMode
                 return false;
             }
 
-            float angle = (float)(_rng.NextDouble() * Math.PI * 2.0);
-            Vector3 pos = player.transform.position
-                        + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * ArrivalRange;
+            // Over land, never out of the sea (2026-10-08: it was sent beside a player afloat, and swam after them
+            // into the deep ocean). No dry ground within reach: not yet - it comes when there is.
+            var wg = WorldGenerator.instance;
+            var zs = ZoneSystem.instance;
+            if (wg == null || zs == null) return false;
+            Vector3 at = player.transform.position;
+            if (!LandSpot.Find((x, z) => wg.GetHeight(x, z), zs.m_waterLevel, at.x, at.z, ArrivalRange,
+                               _rng.NextDouble() * Math.PI * 2.0, out float sx, out float sz))
+                return false;
+            Vector3 pos = new Vector3(sx, zs.GetGroundHeight(new Vector3(sx, at.y, sz)), sz);
 
             var inst = UnityEngine.Object.Instantiate(prefab, pos, Quaternion.identity);
             if (inst == null) return false;
@@ -154,6 +161,19 @@ namespace ICanShowYouTheWorld.RunMode
                 try { ai.SetHuntPlayer(true); } catch { /* it will find him regardless */ }
             }
 
+            return true;
+        }
+
+        /// <summary>
+        /// It turns back at the water's edge (2026-10-08): taken out of the world, to come again over land, at full
+        /// health - as it does when its area unloads. True if it was out.
+        /// </summary>
+        public bool SendBack()
+        {
+            if (_it == ZDOID.None) return false;
+            try { BoonEffects.DestroyByZdo(_it); }
+            catch (Exception ex) { Debug.LogWarning("[ICanShowYouTheWorld] The Gatherer could not be sent back: " + ex.Message); }
+            _it = ZDOID.None;
             return true;
         }
 

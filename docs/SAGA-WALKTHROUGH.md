@@ -252,7 +252,7 @@ carcass: *"The meadows heard that."*
 
 Something else heard it too. *"The Gatherer knows what you have taken."* The oldest splinter, fat
 enough to have a name, had followed the hunt all act and let its kin do the carrying. It came at
-night, and it came as the race had made it. Every light you had let the forest take was health it
+night, over land (it would not follow you onto the sea), and it came as the race had made it. Every light you had let the forest take was health it
 walked in with:
 
 > "The Gatherer comes lean and furious. You left it nothing."

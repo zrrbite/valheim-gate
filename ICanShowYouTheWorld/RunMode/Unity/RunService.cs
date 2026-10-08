@@ -1099,6 +1099,20 @@ namespace ICanShowYouTheWorld.RunMode
             var player = Player.m_localPlayer;
             if (player == null) return;
 
+            // It comes through the trees, never over the sea (2026-10-08; the owner, chased "into the deep ocean":
+            // "maybe not ideal"). Aboard a ship at sea it turns back if it is out, and neither it nor its raid
+            // comes until you are ashore. Swimming is not escaping: only a ship takes you out of its reach.
+            var ship = Ship.GetLocalShip();
+            if (ship != null && SeaWatch.OverOpenWater(ship.transform.position))
+            {
+                if (_gatherer.Alive && _gatherer.SendBack())
+                {
+                    Announce($"{TheGatherer.Name} will not follow you onto the sea.");
+                    Message("It will be waiting.");
+                }
+                return;
+            }
+
             // The Gatherer keeps the act's rule too: it has been following the hunt, and the hunt
             // happens in the dark. Arriving at noon would also squander the arrival — a heavy
             // shape coming through the trees is a different event at night.

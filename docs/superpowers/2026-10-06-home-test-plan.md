@@ -80,6 +80,9 @@ Make a **new character** for this part: three of these checks only happen on a f
    - finish a second task while one waits: the card comes back saying "one more after this", and picking
      deals the next at once;
    - quit and reload with one waiting: the flag is still there (the three choices may differ).
+8c. **The Gatherer stays ashore** (`...08f`). With its step open at night, sail out to open water.
+   **See:** if it is out, "The Gatherer will not follow you onto the sea." and it is gone; nothing comes
+   while you are afloat. Land at night: "Something heavy is coming through the trees", over land.
 9. **Typing is safe** (`...06b`). With an ability ready, open chat and type a line containing a number.
    **See:** nothing fires.
 10. **Act I's speakers can't be killed by monsters** (`...05n`). The shade, Thjalfi and the thane stay

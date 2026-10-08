@@ -170,11 +170,12 @@ namespace ICanShowYouTheWorld.RunMode
             catch (Exception e) { Debug.LogWarning("[ICanShowYouTheWorld] Ward spark failed: " + e.Message); }
         }
 
-        private static bool OverOpenWater(Vector3 p)
+        /// <summary>Open water under <paramref name="p"/> by the world generator's ground (also the Gatherer's shore).</summary>
+        internal static bool OverOpenWater(Vector3 p)
         {
             var wg = WorldGenerator.instance;
             var zs = ZoneSystem.instance;
-            return wg != null && zs != null && wg.GetHeight(p.x, p.z) <= zs.m_waterLevel - 1f;
+            return wg != null && zs != null && LandSpot.OpenWater(wg.GetHeight(p.x, p.z), zs.m_waterLevel);
         }
 
         /// <summary>Aboard a ship over open water - and, for the rolls, moving (sail or oars).</summary>

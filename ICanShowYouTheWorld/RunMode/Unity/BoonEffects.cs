@@ -3736,7 +3736,7 @@ namespace ICanShowYouTheWorld.RunMode
         /// same problem: a station whose zone unloaded keeps its ZDO and would come back from the
         /// PREFAB, a real bench, on the player's return.
         /// </summary>
-        private static void DestroyByZdo(ZDOID id)
+        internal static void DestroyByZdo(ZDOID id)
         {
             if (id == ZDOID.None) return;
 

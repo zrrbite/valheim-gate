@@ -56,7 +56,8 @@ the mode is still being tuned in play. Valheim 1.0.17, Unity 6000.0.75.
   vanishing with the boon; a gold flag beside the strip says so, and End brings it back. Offers finished
   while one waits queue up, and survive a reload (`BoonEngine.Stow`/`Recall`/`RestoreWaiting`). Also from
   that test: Shift+E closes the fittings card (`...08d`), the Ward's strikes show, and the Run window may
-  grow to 75% of the screen (`...08c`).
+  grow to 75% of the screen (`...08c`). And the Gatherer comes over land and turns back at the sea
+  (`...08f`, `LandSpot`): it had swum after the owner into the deep ocean.
 - **The dev keys have their own window** (`1.0.17-run.2026-10-07`, confirmed on the Mac): `Shift` + `End`, centre
   screen, in the layout's keys.
   The HUD keeps one red line, `DEV · Shift+End: dev keys` (the owner: dev mode was "clogging up the run-ui").
