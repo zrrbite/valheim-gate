@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, restructured and last updated 2026-10-08 at `1.0.17-run.2026-10-08`. This is the
+Written 2026-08-23, restructured and last updated 2026-10-08 at `1.0.17-run.2026-10-08b`. This is the
 "pick it back up without re-deriving anything" page: where the work stands, the loop it moves in, the
 landmines, and the decisions not to re-open. Its history (the dated status bullets, the alpha era, the
 "Done" write-ups) moved verbatim to [`RESUME-history.md`](RESUME-history.md) on 2026-10-06.
@@ -23,7 +23,7 @@ block first, then the numbered items that did not match.
 
 ## Where things stand
 
-**2026-10-08, `1.0.17-run.2026-10-08` (dev)**, on `feature/run-mode`: not merged, deliberately, since
+**2026-10-08, `1.0.17-run.2026-10-08b` (dev)**, on `feature/run-mode`: not merged, deliberately, since
 the mode is still being tuned in play. Valheim 1.0.17, Unity 6000.0.75.
 
 - **Seven acts, all built and voiced, and the saga ends at Fader** (the `runFinalBossKey` default since
@@ -48,7 +48,8 @@ the mode is still being tuned in play. Valheim 1.0.17, Unity 6000.0.75.
     falls to 2 minutes at full heat (40). Serpents come, or a reached act's flyers off its coast, or a Bonemaw
     on the Ashlands sea; they are starred by heat, hunt you, and are never saved (`SeaDanger`, `SeaWatch`).
   - **The answer:** the raven speaks once, then the helm offers a **Ward** (I-III, a lightning pulse
-    around the ship).
+    around the ship). It strikes attackers only, an alerted hostile monster: since `...08b`, never a
+    grazing deer or a boar being tamed (`ShipFittings.WardStrikes`).
   - **Coins:** trolls drop x3, and the sea's creatures pay (`RunCoins`).
   - **Untested in play.** Check 38b in the home test plan.
 - **The dev keys have their own window** (`1.0.17-run.2026-10-07`, confirmed on the Mac): `Shift` + `End`, centre
