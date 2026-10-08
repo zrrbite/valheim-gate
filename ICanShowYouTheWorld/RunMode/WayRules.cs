@@ -78,6 +78,13 @@ namespace ICanShowYouTheWorld.RunMode
         public static int BoneCount(int gods) => Tempered(gods, TemperSlot.Rung1) ? 3 : 2;
         public static float MendingCooldown(int gods) => Tempered(gods, TemperSlot.Rung2) ? 60f : 90f;
         public static float WrathRadius(int gods) => Tempered(gods, TemperSlot.Rung3) ? 9f : 6f;
+
+        // --- The Berserker ---
+        public const float BloodiedShare = 0.1f;
+        public static int FuryMax(int gods) => Tempered(gods, TemperSlot.Engine) ? 15 : 10;
+        public static float RageSeconds(int gods) => Tempered(gods, TemperSlot.Rung2) ? 25f : 15f;
+        public static float RendRadius(int gods) => Tempered(gods, TemperSlot.Rung1) ? 7.5f : 5f;
+        public static float WarcryRadius(int gods) => Tempered(gods, TemperSlot.Rung3) ? 12f : 8f;
     }
 
     /// <summary>What a god tempers: a way's three rungs, then its engine.</summary>

@@ -87,14 +87,8 @@ namespace ICanShowYouTheWorld.RunMode
         // The descriptions in RunService.DefaultBoons state the radii, the duration and "half again",
         // so those numbers are the card's as much as this class's; change one, change both.
 
-        /// <summary>Blood Rage's gain: "half again the damage", on the same product Sharpened rides.</summary>
-        private const float RageMultiplier = 1.5f;
-
-        /// <summary>Blood Rage's window: "fifteen seconds". Short, because the cost only lasts as long.</summary>
-        private const float RageSeconds = 15f;
-
-        /// <summary>Rend reaches what a sweep of a blade reaches — about a spear's length and a step.</summary>
-        private const float RendRadius = 5f;
+        // Blood Rage's window, Rend's reach and Warcry's reach are WayRules.RageSeconds / RendRadius / WarcryRadius
+        // (2026-10-08): the god-tempered numbers live there, tested. Blood Rage's gain is the Berserker's Fury, full.
 
         /// <summary>Rend's cut, before boss scaling: about one early sword swing, spent on everyone at once.</summary>
         private const float RendSlash = 20f;
@@ -102,9 +96,6 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>Rend's bleed, before boss scaling. Poison, because RPC_Damage hands it to the game's
         /// own SE_Poison as a damage-over-time — the bleed costs no status effect of ours.</summary>
         private const float RendPoison = 15f;
-
-        /// <summary>Warcry's reach: "eight metres", a shout rather than a swing.</summary>
-        private const float WarcryRadius = 8f;
 
         /// <summary>Wrath's lightning, before boss scaling. Above the Stormward's 26 per discharge
         /// because it is a sixty-second cooldown the player aims, not a block every few seconds.</summary>
@@ -678,6 +669,16 @@ namespace ICanShowYouTheWorld.RunMode
 
                 case "stoker":
                     RemoveWeaponMultiplier(boonId);
+                    break;
+
+                case "warrior":
+                    // The skill loan is the host's to give back (RestoreLoanedSkills); this id used to fall to the
+                    // default's UnapplyFieldBoost, which is kept. The Fury is ours: its weapon factor and its stacks.
+                    UnapplyFieldBoost(boonId);
+                    RemoveWeaponMultiplier("fury");
+                    _fury.Reset();
+                    _lastFuryBonus = -1f;
+                    _lastEnemyHits = -1;
                     break;
 
                 case "glasscannon":
@@ -1859,13 +1860,16 @@ namespace ICanShowYouTheWorld.RunMode
         // --- The ways' actives: Blood Rage, Rend, Warcry, Thor's Wrath ---
 
         /// <summary>
-        /// Blood Rage: the Emberskin shape — switch on, schedule the off — carried by the weapon
-        /// multiplier product and the damage-modifier snapshot, both of which already know how to
-        /// give back exactly what they took.
+        /// Blood Rage: the Emberskin shape — switch on, schedule the off. The gain is the Berserker's Fury, filled
+        /// and held full until EndRage lets go (WayRules.RageSeconds from the press); the price is the
+        /// damage-modifier snapshot, which already knows how to give back exactly what it took. Both end in
+        /// EndRage, off the one pending timer, so they cannot run on different clocks: that timer stops while
+        /// the player is dead, and a hold timed on Time.time would have run out during the respawn while the
+        /// price carried on.
         ///
         /// Discrete rather than per-frame on purpose. The boon design turned down "damage rises as
         /// health falls" because it would be a number moving every frame against the player's own
-        /// health; fifteen seconds you chose to start is a decision, and a readable one.
+        /// health; a window you chose to start is a decision, and a readable one.
         ///
         /// Recasting is refused while the window is open, like Emberskin and Unseen: a recast that
         /// merely restarted the timer would waste the cooldown for nothing the player could see.
@@ -1875,7 +1879,7 @@ namespace ICanShowYouTheWorld.RunMode
             var held = FindHeld("rage");
             if (held == null || held.CooldownRemaining > 0f) return false;
 
-            if (_weaponMultipliers.ContainsKey("rage"))
+            if (IsWindowOpen("rage"))
             {
                 LastActivationMessage = "The rage is already on you.";
                 return false;
@@ -1883,13 +1887,15 @@ namespace ICanShowYouTheWorld.RunMode
 
             if (Player.m_localPlayer == null) return false;
 
+            float rageSeconds = WayRules.RageSeconds(_defeatedBossCount());
             try
             {
                 // The cost first, then the gain: if the second half throws, EndRage below unwinds
-                // whichever half landed, and the player is never left with the damage but not the
-                // price.
+                // whichever half landed, and the player is never left with the Fury held but not
+                // the price. The hold is open-ended; EndRage's Release is its only end.
                 ApplyDamageModifier("rage");
-                ApplyWeaponMultiplier(RageMultiplier, "rage");
+                _fury.Fill(Time.time, float.PositiveInfinity);
+                if (Holds("warrior")) RefreshFuryFactor();
             }
             catch (Exception ex)
             {
@@ -1899,22 +1905,22 @@ namespace ICanShowYouTheWorld.RunMode
             }
 
             RemovePending("rage");
-            SchedulePending("rage", RageSeconds, EndRage);
+            SchedulePending("rage", rageSeconds, EndRage);
 
             held.CooldownRemaining = held.Def.CooldownSeconds;
             return true;
         }
 
         /// <summary>
-        /// Closes the rage window: the pending timer, the weapon factor, and the cost. Idempotent —
-        /// each half is a no-op when it has nothing registered — because it is reached from the
-        /// timer, from Unapply, from the pending flush and from UnapplyAll's finally, and on a bad
-        /// day from more than one of them.
+        /// Closes the rage window: the pending timer, the Fury's hold (the stacks then fade from here), and the
+        /// cost. Idempotent — each half is a no-op when it has nothing registered — because it is reached from
+        /// the timer, from Unapply, from the pending flush and from UnapplyAll's finally, and on a bad day from
+        /// more than one of them.
         /// </summary>
         private void EndRage()
         {
             RemovePending("rage");
-            try { RemoveWeaponMultiplier("rage"); }
+            try { _fury.Release(Time.time); }
             finally { UnapplyDamageModifier("rage"); }
         }
 
@@ -1940,7 +1946,7 @@ namespace ICanShowYouTheWorld.RunMode
 
             try
             {
-                var foes = HostilesNear(player.transform.position, RendRadius, player, skipBosses: false);
+                var foes = HostilesNear(player.transform.position, WayRules.RendRadius(_defeatedBossCount()), player, skipBosses: false);
                 if (foes.Count == 0)
                 {
                     LastActivationMessage = "Nothing within reach.";
@@ -1988,7 +1994,7 @@ namespace ICanShowYouTheWorld.RunMode
 
             try
             {
-                var foes = HostilesNear(player.transform.position, WarcryRadius, player, skipBosses: true);
+                var foes = HostilesNear(player.transform.position, WayRules.WarcryRadius(_defeatedBossCount()), player, skipBosses: true);
                 if (foes.Count == 0)
                 {
                     LastActivationMessage = "Nothing within earshot to cow.";
@@ -2000,6 +2006,11 @@ namespace ICanShowYouTheWorld.RunMode
                 {
                     try { c.Stagger(AwayFrom(from, c)); }
                     catch (Exception ex) { Debug.LogWarning("[ICanShowYouTheWorld] Warcry: " + ex.Message); }
+                }
+                if (Holds("warrior"))
+                {
+                    _fury.AddHalf(Time.time);
+                    RefreshFuryFactor();
                 }
             }
             catch (Exception ex)

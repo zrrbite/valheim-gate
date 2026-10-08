@@ -165,6 +165,7 @@ namespace ICanShowYouTheWorld.RunMode
                 Id = "berserker", Display = "Berserker", Title = "Ulfr",
                 Description = "Axe, sword and club sit better in your hand. You strike all round you. Later " +
                               "you can rage — hit harder, and take more — and after that your cry staggers everything that hears it." +
+                              " Every blow you land feeds your fury, and from halfway it feeds you." +
                               " Ulfr’s axes are yours the moment you take his name.",
                 PassiveBoonIds = new[] { "warrior" },
                 Rungs = new[] { new[] { "rend" }, new[] { "rage" }, new[] { "warcry" } },

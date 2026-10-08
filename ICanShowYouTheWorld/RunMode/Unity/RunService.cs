@@ -13631,7 +13631,7 @@ namespace ICanShowYouTheWorld.RunMode
             new BoonDefinition { Id = "wayfarer", Display = "Wayfarer",     IsPassive = true, CoveredBy = new[] { "poet" }, Description = "Run, jump and swim skill to 50." },
             new BoonDefinition { Id = "steady",   Display = "Steady Hands", IsPassive = true, CoveredBy = new[] { "hirdman" }, Description = "Blocking skill to 50. Parries come easier." },
             new BoonDefinition { Id = "hunter", ClassId = "hunter", Display = "Hunter",   IsPassive = true, Description = "Bow and sneak skill to 50, and you make less noise. Straighter shots, quieter feet." },
-            new BoonDefinition { Id = "warrior", ClassId = "berserker", Display = "Warrior",  IsPassive = true, Description = "Axe, sword and club skill to 50." },
+            new BoonDefinition { Id = "warrior", ClassId = "berserker", Display = "Warrior",  IsPassive = true, Description = "Axe, sword and club skill to 50. Fury: every hit that lands +5% damage, to +50% at ten; from five, each hit heals a tenth of its damage." },
             // The first skill boon that is not a one-off grant (owner: "a boon that gives
             // accelerated skills"). The other three hand you a level in one skill and are done;
             // this pays out in whatever you actually spend the run doing, which makes it a pick for
@@ -13714,8 +13714,8 @@ namespace ICanShowYouTheWorld.RunMode
             // until Phase 2 these are held, keyed and labelled but say "not ready" when pressed.
             new BoonDefinition { Id = "wrath",  ClassId = "volva",     Display = "Thor\u2019s Wrath", IsPassive = false, CooldownSeconds = 60f,  Description = "Call lightning down where you aim. Everything within six metres takes it." },
             new BoonDefinition { Id = "rend",   ClassId = "berserker", Display = "Rend",       IsPassive = false, CooldownSeconds = 20f,  Description = "A sweep of the blade around you: every foe within reach bleeds." },
-            new BoonDefinition { Id = "rage",   ClassId = "berserker", Display = "Blood Rage", IsPassive = false, CooldownSeconds = 120f, Description = "Fifteen seconds of half again the damage. You take more while it lasts." },
-            new BoonDefinition { Id = "warcry", ClassId = "berserker", Display = "Warcry",     IsPassive = false, CooldownSeconds = 90f,  Description = "Stagger every foe within eight metres. Not the gods." },
+            new BoonDefinition { Id = "rage",   ClassId = "berserker", Display = "Blood Rage", IsPassive = false, CooldownSeconds = 120f, Description = "Fills your Fury and holds it full for 15 s. You take 25% more while it lasts." },
+            new BoonDefinition { Id = "warcry", ClassId = "berserker", Display = "Warcry",     IsPassive = false, CooldownSeconds = 90f,  Description = "Stagger every foe within eight metres, not the gods, and fill half your Fury." },
 
             // --- The four ways of 2026-09-28 ---
             //

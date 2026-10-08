@@ -371,6 +371,7 @@
     <Compile Include="RunMode\SeaDanger.cs" />
     <Compile Include="RunMode\LandSpot.cs" />
     <Compile Include="RunMode\TameStars.cs" />
+    <Compile Include="RunMode\FuryMeter.cs" />
     <Compile Include="RunMode\WayRules.cs" />
     <Compile Include="RunMode\RunCoins.cs" />
     <Compile Include="RunMode\Unity\DevShip.cs" />

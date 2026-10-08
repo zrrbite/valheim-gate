@@ -55,5 +55,40 @@ static class WayRulesTests
         Check.That(WayRules.BoneCount(2) == 2 && WayRules.BoneCount(3) == 3, "two skeletons, three after Bonemass");
         Check.That(WayRules.MendingCooldown(3) == 90f && WayRules.MendingCooldown(4) == 60f, "Mending every 90 s, 60 after Moder");
         Check.That(WayRules.WrathRadius(4) == 6f && WayRules.WrathRadius(5) == 9f, "Thor's Wrath 6 m, 9 after Yagluth");
+
+        // The Berserker's Fury.
+        var fury = new FuryMeter();
+        fury.SetMax(WayRules.FuryMax(0));
+        fury.Hit(3, 0f);
+        Check.That(fury.Stacks == 3 && Math.Abs(fury.Bonus - 0.15f) < 0.001f && !fury.Bloodied, "+5% a hit");
+        fury.Hit(20, 0.5f);
+        Check.That(fury.Stacks == 10 && Math.Abs(fury.Bonus - 0.5f) < 0.001f && fury.Bloodied, "to +50% at ten; Bloodied from five");
+        fury.Tick(1.4f);
+        Check.That(fury.Stacks == 10, "no fading within a second of the last hit");
+        fury.Tick(1.6f); fury.Tick(2.6f);
+        Check.That(fury.Stacks == 8, "then one hit's worth a second");
+        fury.Fill(3f, 18f);
+        fury.Tick(10f);
+        Check.That(fury.Stacks == 10, "Blood Rage fills it and holds it");
+        fury.Tick(19f);
+        Check.That(fury.Stacks == 9, "and lets go when it ends");
+        var cut = new FuryMeter(); cut.SetMax(10); cut.Fill(0f, 100f); cut.Release(5f);
+        cut.Tick(5.5f);
+        Check.That(cut.Stacks == 10, "a rage cut short lets go where it was cut");
+        cut.Tick(6.5f);
+        Check.That(cut.Stacks == 9, "and fades from there");
+        var open = new FuryMeter(); open.SetMax(10); open.Fill(0f, float.PositiveInfinity);
+        open.Tick(1000f);
+        Check.That(open.Stacks == 10, "an open-ended hold stays full however long it runs");
+        open.Release(1000f); open.Tick(1000.5f);
+        Check.That(open.Stacks == 10, "and a Release lets go at once, with a second's grace");
+        open.Tick(1001.5f);
+        Check.That(open.Stacks == 9, "then fades from the release");
+        var half = new FuryMeter(); half.SetMax(10); half.AddHalf(0f);
+        Check.That(half.Stacks == 5, "Warcry fills half");
+        Check.That(WayRules.FuryMax(5) == 10 && WayRules.FuryMax(6) == 15, "fifteen hits, +75%, after the Queen");
+        Check.That(WayRules.RageSeconds(3) == 15f && WayRules.RageSeconds(4) == 25f, "Blood Rage 15 s, 25 after Moder");
+        Check.That(WayRules.RendRadius(2) == 5f && WayRules.RendRadius(3) == 7.5f, "Rend 5 m, half again after Bonemass");
+        Check.That(WayRules.WarcryRadius(4) == 8f && WayRules.WarcryRadius(5) == 12f, "Warcry 8 m, 12 after Yagluth");
     }
 }
