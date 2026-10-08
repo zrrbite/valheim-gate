@@ -249,6 +249,11 @@ namespace ICanShowYouTheWorld.RunMode
             var known = new HashSet<string>(classList.Select(c => c.Id));
             foreach (var def in poolList.Where(b => b.ClassId != null && !known.Contains(b.ClassId)))
                 yield return $"boon '{def.Id}' has ClassId '{def.ClassId}', which is no class";
+
+            // A cover that names nothing covers nothing, and the blank card stays on the wheel (2026-10-08).
+            foreach (var def in poolList.Where(b => b.CoveredBy != null))
+                foreach (var cover in def.CoveredBy.Where(c => !byId.ContainsKey(c ?? "")))
+                    yield return $"boon '{def.Id}' is CoveredBy '{cover}', which is not in the pool";
         }
     }
 }

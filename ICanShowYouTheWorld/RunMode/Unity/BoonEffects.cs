@@ -3394,9 +3394,10 @@ namespace ICanShowYouTheWorld.RunMode
                 ["steady"]   = new[] { (Skills.SkillType.Blocking, 50f) },
 
                 // The four ways' passives (2026-09-28). Overlaps with the general skill boons are
-                // harmless - a loan only ever raises, and never lends a skill twice - so a Skald who
-                // also drew Wayfarer holds two cards that say the same thing, and the higher level
-                // wins where they differ (the Sæfari's Swim 60 over Wayfarer's 50).
+                // harmless - a loan only ever raises, and never lends a skill twice - and the higher
+                // level wins where they differ (the Sæfari's Swim 60 over Wayfarer's 50). A WHOLE
+                // overlap is kept off the wheel since 2026-10-08 (BoonDefinition.CoveredBy): Wayfarer
+                // for a Skald, Steady Hands for a Húskarl, Miner for a Smiðr.
                 ["hirdman"]  = new[]
                 {
                     (Skills.SkillType.Blocking, 50f),

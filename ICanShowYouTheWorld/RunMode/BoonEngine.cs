@@ -43,6 +43,14 @@ namespace ICanShowYouTheWorld.RunMode
         /// exactly the runs that built a pen for it.
         /// </summary>
         public int Weight = 1;
+
+        /// <summary>
+        /// Boons that already give everything this one does: while any is held, the wheel never deals this
+        /// (2026-10-08). A way's passive is the usual one - the Skald's Poet IS Wayfarer - and a card that
+        /// changes nothing is a wasted pick. Only for a WHOLE cover: a boon that still adds something (Woodsman's
+        /// 60 over the Smiðr's 50) stays on the wheel.
+        /// </summary>
+        public string[] CoveredBy;
     }
 
     public class HeldBoon
@@ -186,6 +194,8 @@ namespace ICanShowYouTheWorld.RunMode
                 .Where(d => d.MinBosses <= DefeatedBosses)
                 // The wheel is Odin's. A way's kit is taught at the graves, never dealt.
                 .Where(d => d.ClassId == null)
+                // Nor a card a held boon already covers: it would change nothing.
+                .Where(d => d.CoveredBy == null || !d.CoveredBy.Any(heldIds.Contains))
                 .ToList();
             if (options.Count == 0) return;
 

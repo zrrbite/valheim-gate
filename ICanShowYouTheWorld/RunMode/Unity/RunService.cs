@@ -13599,9 +13599,9 @@ namespace ICanShowYouTheWorld.RunMode
             // them. These three are skills every run leans on and none teaches: Miner gated to the
             // Black Forest, where the first ore is, since in the Meadows there is nothing to swing
             // a pickaxe at.
-            new BoonDefinition { Id = "miner",    Display = "Miner",        IsPassive = true, MinBosses = 1, Description = "Pickaxe skill to 50. Rock and ore give way faster." },
-            new BoonDefinition { Id = "wayfarer", Display = "Wayfarer",     IsPassive = true, Description = "Run, jump and swim skill to 50." },
-            new BoonDefinition { Id = "steady",   Display = "Steady Hands", IsPassive = true, Description = "Blocking skill to 50. Parries come easier." },
+            new BoonDefinition { Id = "miner",    Display = "Miner",        IsPassive = true, MinBosses = 1, CoveredBy = new[] { "craftsman" }, Description = "Pickaxe skill to 50. Rock and ore give way faster." },
+            new BoonDefinition { Id = "wayfarer", Display = "Wayfarer",     IsPassive = true, CoveredBy = new[] { "poet" }, Description = "Run, jump and swim skill to 50." },
+            new BoonDefinition { Id = "steady",   Display = "Steady Hands", IsPassive = true, CoveredBy = new[] { "hirdman" }, Description = "Blocking skill to 50. Parries come easier." },
             new BoonDefinition { Id = "hunter", ClassId = "hunter", Display = "Hunter",   IsPassive = true, Description = "Bow and sneak skill to 50, and you make less noise. Straighter shots, quieter feet." },
             new BoonDefinition { Id = "warrior", ClassId = "berserker", Display = "Warrior",  IsPassive = true, Description = "Axe, sword and club skill to 50." },
             // The first skill boon that is not a one-off grant (owner: "a boon that gives

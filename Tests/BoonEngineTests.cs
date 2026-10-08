@@ -72,6 +72,32 @@ static class BoonEngineTests
         nothingSaved.RestoreWaiting(0);
         Check.That(nothingSaved.OffersWaiting == 0 && nothingSaved.CurrentOffer.Count == 0, "none saved, none waits");
 
+        // A boon a held one already covers is never dealt (2026-10-08): the Skald's Poet IS Wayfarer, word for word,
+        // so a Skald offered Wayfarer was handed a blank card.
+        Func<List<BoonDefinition>> covering = () => new List<BoonDefinition>
+        {
+            new BoonDefinition { Id = "poet", ClassId = "skald", IsPassive = true },
+            new BoonDefinition { Id = "wayfarer", IsPassive = true, CoveredBy = new[] { "poet" } },
+            new BoonDefinition { Id = "fleet", IsPassive = true },
+            new BoonDefinition { Id = "sharp", IsPassive = true },
+            new BoonDefinition { Id = "hearty", IsPassive = true },
+        };
+        bool everDealt(BoonEngine e)
+        {
+            for (int i = 0; i < 40; i++)
+            {
+                e.CreateOffer();
+                bool dealt = e.CurrentOffer.Any(d => d.Id == "wayfarer");
+                e.ClearOffer();
+                if (dealt) return true;
+            }
+            return false;
+        }
+        var skald = new BoonEngine(covering(), new Random(5), 45f);
+        skald.Grant("poet");
+        Check.That(!everDealt(skald), "a Skald (holding Poet) is never dealt Wayfarer, which Poet covers");
+        Check.That(everDealt(new BoonEngine(covering(), new Random(5), 45f)), "anyone else still is");
+
         // Held passives never re-offered
         for (int i = 0; i < 10; i++) { b.CreateOffer(); if (b.CurrentOffer.Count > 0) b.Pick(0); }
         Check.That(b.Held.Count(h => h.Def.Id == "fleet") <= 1, "no duplicate passive");

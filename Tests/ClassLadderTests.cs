@@ -127,6 +127,11 @@ static class ClassLadderTests
         Check.That(ClassLadder.Validate(shared, Pool()).Any(p => p.Contains("claimed by both")),
             "an id two ways both teach is caught");
 
+        var badCover = Pool();
+        badCover.Add(new BoonDefinition { Id = "wayfarer", CoveredBy = new[] { "peot" } });
+        Check.That(ClassLadder.Validate(catalog, badCover).Any(p => p.Contains("wayfarer") && p.Contains("peot")),
+            "a CoveredBy id the pool does not have is caught - a typo would leave the blank card on the wheel");
+
         // What a way hands over at the graves. Only the Berserker gives something to hold, and
         // exactly one pair: TakeUpWay grants these once, so a count here is a count in the pack.
         var berserker = ClassLadder.Find("berserker");

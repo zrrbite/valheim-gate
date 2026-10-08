@@ -52,6 +52,9 @@ the mode is still being tuned in play. Valheim 1.0.17, Unity 6000.0.75.
     grazing deer or a boar being tamed (`ShipFittings.WardStrikes`).
   - **Coins:** trolls drop x3, and the sea's creatures pay (`RunCoins`).
   - **Untested in play.** Check 38b in the home test plan.
+- **The wheel deals no blank cards** (`...08h`): a boon a held one wholly covers is never offered
+  (`BoonDefinition.CoveredBy`) - Wayfarer for a Skald (Poet is the same card), Steady Hands for a Húskarl,
+  Miner for a Smiðr. Part of the class-balance review; the rest is a spec.
 - **A run resumes after a full restart again** (`...08g`). Since 2026-08-23 the Herald's target was restored
   before the herd existed: a cold resume threw and DELETED the save (found in the Mac's log, 2026-10-08), and a
   warm one re-rolled the Herald. A failed resume now keeps a `.failed-<time>.json` copy and says so on screen.
