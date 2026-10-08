@@ -193,5 +193,22 @@ static class ClassLadderTests
         Check.That(ClassLadder.Find("volva").Rungs[0].SequenceEqual(new[] { "bonecaller" }) &&
                    ClassLadder.Find("volva").Rungs[1].SequenceEqual(new[] { "shaman" }),
                    "the Völva's dead come first, Mending second (class balance, 2026-10-08)");
+
+        // A rung's key follows its place in the ladder: BoonKeys calls RungIndex for every rung boon (KeyLayoutTests
+        // covers the index-to-key step).
+        Check.That(ClassLadder.RungIndex("bonecaller") == 0 && ClassLadder.RungIndex("shaman") == 1 &&
+                   ClassLadder.RungIndex("wrath") == 2,
+                   "the Völva's rungs read 0, 1, 2 off the ladder, in ladder order");
+        Check.That(ClassLadder.RungIndex("brother") == 0 && ClassLadder.RungIndex("menagerie") == 1 &&
+                   ClassLadder.RungIndex("elemental") == 1 && ClassLadder.RungIndex("unseen") == 2,
+                   "the Hunter's: a rung of two boons gives both its index");
+        Check.That(ClassLadder.RungIndex("fleet") == -1 && ClassLadder.RungIndex("hearthlight") == -1,
+                   "a general boon and a passive are on no rung");
+        Check.That(ClassLadder.RungIndex(null) == -1 && ClassLadder.RungIndex("") == -1 && ClassLadder.RungIndex("nobody") == -1,
+                   "null, empty and unknown ids are on no rung, not an error");
+        foreach (var way in ClassLadder.Catalog())
+            for (int i = 0; i < way.Rungs.Length; i++)
+                foreach (var id in way.Rungs[i])
+                    Check.That(ClassLadder.RungIndex(id) == i, $"{way.Id}: {id} reads rung {i} (a boon id sits on one rung only)");
     }
 }

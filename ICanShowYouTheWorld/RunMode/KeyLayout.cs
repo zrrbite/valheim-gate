@@ -47,6 +47,14 @@ namespace ICanShowYouTheWorld.RunMode
         public const string Numpad = "numpad";
         public const string Laptop = "laptop";
 
+        /// <summary>
+        /// The key a ladder rung is pressed with: rung 0 is <see cref="SagaKey.Rung1"/>, rung 1 is Rung2, and any
+        /// later rung Rung3 (a way has three; a fourth would clash, which the run-start check reports). The
+        /// rung itself is <c>ClassLadder.RungIndex</c>'s; BoonKeys composes the two for every rung boon.
+        /// </summary>
+        public static SagaKey RungKey(int rungIndex) =>
+            rungIndex == 0 ? SagaKey.Rung1 : rungIndex == 1 ? SagaKey.Rung2 : SagaKey.Rung3;
+
         public static readonly SagaKey[] Choices =
         {
             SagaKey.Choice1, SagaKey.Choice2, SagaKey.Choice3, SagaKey.Choice4,

@@ -107,6 +107,25 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
+        /// Which rung a boon sits on: the 0-based index in the first way of the <see cref="Catalog"/> whose
+        /// <see cref="ClassDefinition.Rungs"/> hold the id, or -1 for a null, empty, unknown or passive id.
+        /// BoonKeys calls this for every rung boon and turns the index into a key with
+        /// <see cref="KeyLayout.RungKey"/> (Keypad 7 / 0 / Insert, or U / I / O), so a way's keys follow its ladder
+        /// and reordering a rung cannot leave a boon on the wrong key.
+        /// </summary>
+        public static int RungIndex(string boonId)
+        {
+            if (string.IsNullOrEmpty(boonId)) return -1;
+            foreach (var cls in Catalog())
+            {
+                var rungs = cls.Rungs ?? new string[0][];
+                for (int i = 0; i < rungs.Length; i++)
+                    if (rungs[i] != null && rungs[i].Contains(boonId)) return i;
+            }
+            return -1;
+        }
+
+        /// <summary>
         /// The table: Hunter, Völva, Berserker (v1), then Húskarl, Skald, Sæfari, Smiðr - the seven
         /// graves the thane names. Catalog order is card order and key order (Keypad1-7).
         ///

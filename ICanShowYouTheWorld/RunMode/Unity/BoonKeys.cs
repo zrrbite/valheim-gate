@@ -15,8 +15,9 @@ namespace ICanShowYouTheWorld.RunMode
     /// requirement exactly: "as long as the key is indicated by the saga mode".
     ///
     /// So the table is the definition, the input handler walks it, the HUD labels from it, and the
-    /// offer panel appends the label itself. Adding an active is one row here, and forgetting to
-    /// show its key is no longer possible.
+    /// offer panel appends the label itself. Adding a general active is one row here, and forgetting to
+    /// show its key is no longer possible. A way's rungs need no row: they are read off
+    /// <see cref="ClassLadder"/> (2026-10-08), so a rung's key is its place in the ladder.
     ///
     /// It lives in the Unity layer rather than on <see cref="BoonDefinition"/> because
     /// <c>KeyCode</c> is UnityEngine, and RunMode's pure half is compiled without Unity at all by
@@ -26,7 +27,7 @@ namespace ICanShowYouTheWorld.RunMode
     /// InputManager.Gate and are dead while a run is live.
     ///
     /// Within the saga, the three ability keys are per SLOT, shared across the ways: [7], [0] and
-    /// [Ins] are rungs 1, 2 and 3 of whichever way the run took up. A run holds one way, so at most
+    /// [Ins] are rungs 1, 2 and 3 of whichever way the run took up (the ladder's order, not a copy of it). A run holds one way, so at most
     /// one id on a shared key is ever held, and the activation handler fires the HELD row rather
     /// than the first row that matches. Keeping a way's three rungs on three distinct keys is
     /// checked at run start (RunService.ValidateClassLadder). General actives keep keys of their own.
@@ -64,48 +65,48 @@ namespace ICanShowYouTheWorld.RunMode
         /// Every activatable boon and its key. Keypad1-3 are deliberately absent — they pick from an
         /// offer, and the activation handler stands down while one is up.
         /// </summary>
-        public static readonly Binding[] Actives =
+        public static readonly Binding[] Actives = BuildActives();
+
+        private static Binding[] BuildActives()
         {
-            new Binding { Id = "wind",      Slot = SagaKey.Wind },
-            new Binding { Id = "ember",     Slot = SagaKey.Ember },
-            new Binding { Id = "way",       Slot = SagaKey.Way },
-            new Binding { Id = "windfall",  Slot = SagaKey.Windfall },
-            new Binding { Id = "mend",      Slot = SagaKey.Mend },
-            new Binding { Id = "farsight",  Slot = SagaKey.Farsight },
+            var rows = new List<Binding>
+            {
+                new Binding { Id = "wind",      Slot = SagaKey.Wind },
+                new Binding { Id = "ember",     Slot = SagaKey.Ember },
+                new Binding { Id = "way",       Slot = SagaKey.Way },
+                new Binding { Id = "windfall",  Slot = SagaKey.Windfall },
+                new Binding { Id = "mend",      Slot = SagaKey.Mend },
+                new Binding { Id = "farsight",  Slot = SagaKey.Farsight },
+            };
 
-            // Rung 1 of each way.
-            new Binding { Id = "brother",   Slot = SagaKey.Rung1 },
-            new Binding { Id = "shaman",    Slot = SagaKey.Rung1 },
-            new Binding { Id = "rend",      Slot = SagaKey.Rung1 },
-            new Binding { Id = "bash",      Slot = SagaKey.Rung1 },
-            new Binding { Id = "march",     Slot = SagaKey.Rung1 },
-            new Binding { Id = "tide",      Slot = SagaKey.Rung1 },
-            new Binding { Id = "fieldforge",Slot = SagaKey.Rung1 },
+            // A way's rungs, read off its ladder (2026-10-08): every rung boon's index is ClassLadder.RungIndex and its
+            // key is KeyLayout.RungKey of that - rung 1 is [7] (or U), rung 2 is [0] (I), rung 3 is [Ins] (O),
+            // whichever way the run took up. It was a hand-written table, and the day the Völva's first two rungs
+            // swapped her dead sat on her second key; the ladder is the one place a rung's place is written, so the
+            // keys follow it. This loop only collects the ids (each once, Elemental Arrows aside: it has the arrow
+            // keys, below); both steps that decide a key are pure and tested. Several ids share each key across the
+            // ways, and the activation handler fires the HELD one.
+            var rungIds = new List<string>();
+            foreach (var way in ClassLadder.Catalog())
+                foreach (var rung in way.Rungs ?? new string[0][])
+                    foreach (var id in rung ?? new string[0])
+                        if (id != "elemental" && !rungIds.Contains(id)) rungIds.Add(id);
 
-            // Rung 2.
-            new Binding { Id = "menagerie", Slot = SagaKey.Rung2 },
-            new Binding { Id = "bonecaller",Slot = SagaKey.Rung2 },
-            new Binding { Id = "rage",      Slot = SagaKey.Rung2 },
-            new Binding { Id = "bulwark",   Slot = SagaKey.Rung2 },
-            new Binding { Id = "warsong",   Slot = SagaKey.Rung2 },
-            new Binding { Id = "fairwind",  Slot = SagaKey.Rung2 },
-            new Binding { Id = "mastersminute", Slot = SagaKey.Rung2 },
+            foreach (var id in rungIds)
+            {
+                int rung = ClassLadder.RungIndex(id);
+                if (rung >= 0) rows.Add(new Binding { Id = id, Slot = KeyLayout.RungKey(rung) });
+            }
 
             // The Hunter's second rung-2 boon, beside Menagerie on [0]: a switch for Thor's bow,
             // so it gets keys that read as "next / previous". The arrow keys are free in the saga
             // and in vanilla play, and the GM mod's arrow bindings are gated dead during a run.
-            new Binding { Id = "elemental", Slot = SagaKey.ElementNext },
-            new Binding { Id = "elemental", Slot = SagaKey.ElementPrev, Reverse = true },
+            // The forward row is listed first: Label answers with the first row that matches.
+            rows.Add(new Binding { Id = "elemental", Slot = SagaKey.ElementNext });
+            rows.Add(new Binding { Id = "elemental", Slot = SagaKey.ElementPrev, Reverse = true });
 
-            // Rung 3.
-            new Binding { Id = "unseen",    Slot = SagaKey.Rung3 },
-            new Binding { Id = "wrath",     Slot = SagaKey.Rung3 },
-            new Binding { Id = "warcry",    Slot = SagaKey.Rung3 },
-            new Binding { Id = "laststand", Slot = SagaKey.Rung3 },
-            new Binding { Id = "bragi",     Slot = SagaKey.Rung3 },
-            new Binding { Id = "sealegs",   Slot = SagaKey.Rung3 },
-            new Binding { Id = "reinforce", Slot = SagaKey.Rung3 },
-        };
+            return rows.ToArray();
+        }
 
         /// <summary>The key label for a boon, or empty for a passive. Never null.</summary>
         // --- The layout (2026-10-06): which physical key each SagaKey is, from the config's runKeyLayout ---

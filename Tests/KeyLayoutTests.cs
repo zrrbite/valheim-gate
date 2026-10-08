@@ -24,6 +24,24 @@ static class KeyLayoutTests
                    numpad[SagaKey.GateBack] == "PageDown" && numpad[SagaKey.WindHorn] == "UpArrow" &&
                    numpad[SagaKey.ElementNext] == "RightArrow" && numpad[SagaKey.ElementPrev] == "LeftArrow",
                    "the numpad layout is exactly the saga's keys as they were");
+
+        // A way's rung keys: BoonKeys takes each boon's key from RungKey(ClassLadder.RungIndex(id)).
+        Check.That(KeyLayout.RungKey(0) == SagaKey.Rung1 && KeyLayout.RungKey(1) == SagaKey.Rung2 &&
+                   KeyLayout.RungKey(2) == SagaKey.Rung3,
+                   "rung 0, 1 and 2 of the ladder are the first, second and third rung keys");
+        Check.That(KeyLayout.RungKey(3) == SagaKey.Rung3,
+                   "a rung past the third falls on the third key (ValidateClassLadder flags the clash)");
+        foreach (var way in ClassLadder.Catalog())
+        {
+            var keys = way.Rungs.SelectMany(r => r).Where(id => id != "elemental")
+                .Select(id => KeyLayout.RungKey(ClassLadder.RungIndex(id))).ToList();
+            Check.That(keys.Count == keys.Distinct().Count(),
+                       $"{way.Id}: every rung boon (Elemental Arrows aside - it has arrow keys) is on a key of its own");
+        }
+        Check.That(KeyLayout.RungKey(ClassLadder.RungIndex("bonecaller")) == SagaKey.Rung1 &&
+                   KeyLayout.RungKey(ClassLadder.RungIndex("shaman")) == SagaKey.Rung2 &&
+                   KeyLayout.RungKey(ClassLadder.RungIndex("wrath")) == SagaKey.Rung3,
+                   "the Völva's dead are on the first rung key, Mending on the second, Thor's Wrath on the third");
         Check.That(numpad[SagaKey.DevStar] == "KeypadMultiply" && numpad[SagaKey.DevSlash] == "KeypadDivide" &&
                    numpad[SagaKey.DevDot] == "KeypadPeriod" && numpad[SagaKey.DevEnter] == "KeypadEnter" &&
                    numpad[SagaKey.DevPlus] == "KeypadPlus" && numpad[SagaKey.DevMinus] == "KeypadMinus" &&
