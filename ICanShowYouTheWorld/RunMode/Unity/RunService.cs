@@ -9287,6 +9287,21 @@ namespace ICanShowYouTheWorld.RunMode
                 if (c.IsPlayer() || c.IsTamed()) return;
 
                 string prefabName = PrefabNameOf(c);
+
+                // Coins for the fittings (2026-10-08): trolls pay more during a run, and the creatures the sea sent pay.
+                try
+                {
+                    int coins = 0;
+                    if (prefabName == "Troll")
+                        coins += RunCoins.ExtraTrollCoins(_cfg.RunTrollCoinMultiplier, _rng.Next(RunCoins.TrollRollMin, RunCoins.TrollRollMax + 1));
+                    SeaCreature seaCreature;
+                    int seaLevel;
+                    if (_sea != null && _sea.IsSent(c, out seaCreature, out seaLevel))
+                        coins += RunCoins.SeaCoins(seaCreature, seaLevel, _cfg.RunSeaCoinMultiplier);
+                    if (coins > 0) CoinDrops.Drop(c.transform.position, coins);
+                }
+                catch (Exception ex) { LogOnce("run-coins", ex); }
+
                 _challenges?.ReportKill(prefabName);
 
                 CountThorsBowKill(c);

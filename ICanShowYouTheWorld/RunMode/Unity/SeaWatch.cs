@@ -42,6 +42,13 @@ namespace ICanShowYouTheWorld.RunMode
         private SeaVoyage _voyage = new SeaVoyage();
         private bool _noSerpentLogged;
 
+        // The Ward's pulse (Task 5): when it next strikes, and the effect it shows.
+        private float _nextPulse;
+        private readonly List<Character> _inRange = new List<Character>();
+        private GameObject _spark;
+        private bool _sparkResolved;
+        private static readonly string[] SparkPrefabs = { "vfx_lightning", "fx_lightning" };
+
         public SeaWatch(Action<string> say, Action firstEncounter, System.Random rng)
         {
             _say = say;
@@ -54,6 +61,7 @@ namespace ICanShowYouTheWorld.RunMode
         {
             _groups.Clear();
             _voyage = new SeaVoyage();
+            _nextPulse = 0f;
         }
 
         public void HornBlown() => _voyage.HornBlown();
@@ -63,6 +71,7 @@ namespace ICanShowYouTheWorld.RunMode
         {
             if (player == null) return;
             Prune(player);
+            Pulse(player, s);   // the Ward works whether sea danger is on or not
 
             if (!s.Enabled || s.ActIndex < SeaDanger.FirstActIndex) return;
             var ship = Ship.GetLocalShip();
@@ -98,6 +107,55 @@ namespace ICanShowYouTheWorld.RunMode
             creature = SeaCreature.Serpent;
             level = 0;
             return false;
+        }
+
+        /// <summary>
+        /// The Ward (2026-10-08): every few seconds while the player is aboard, lightning strikes every hostile within
+        /// the ward's radius of the ship - through the ordinary damage path, so kills count. Never the player, the
+        /// tamed, non-enemies, or anything lightning cannot hurt (every saga speaker is made immune to it).
+        /// </summary>
+        private void Pulse(Player player, SeaSettings s)
+        {
+            if (s.WardTier < 1 || Time.time < _nextPulse) return;
+            var ship = Ship.GetLocalShip();
+            if (ship == null) return;
+            _nextPulse = Time.time + ShipFittings.WardPulseSeconds;
+
+            float damage = ShipFittings.WardDamage(s.WardTier);
+            _inRange.Clear();
+            Character.GetCharactersInRange(ship.transform.position, ShipFittings.WardRadius(s.WardTier), _inRange);
+            foreach (var c in _inRange)
+            {
+                if (c == null || c.IsPlayer() || c.IsTamed() || c.IsDead() || !BaseAI.IsEnemy(player, c)) continue;
+                if (c.GetDamageModifiers(null).m_lightning == HitData.DamageModifier.Immune) continue;
+
+                var hit = new HitData();
+                hit.m_damage.m_lightning = damage;
+                hit.m_point = c.GetCenterPoint();
+                hit.SetAttacker(player);
+                c.Damage(hit);
+                Spark(hit.m_point);
+            }
+        }
+
+        /// <summary>A small spark where the ward strikes, if the game has the effect (asset names are guesses).</summary>
+        private void Spark(Vector3 at)
+        {
+            if (!_sparkResolved)
+            {
+                _sparkResolved = true;
+                var scene = ZNetScene.instance;
+                if (scene != null)
+                    foreach (var name in SparkPrefabs)
+                    {
+                        _spark = scene.GetPrefab(name);
+                        if (_spark != null) break;
+                    }
+                if (_spark == null) Debug.Log("[ICanShowYouTheWorld] Ward: no lightning effect resolved; it strikes unseen.");
+            }
+            if (_spark == null) return;
+            try { UnityEngine.Object.Instantiate(_spark, at, Quaternion.identity); }
+            catch (Exception e) { Debug.LogWarning("[ICanShowYouTheWorld] Ward spark failed: " + e.Message); }
         }
 
         private static bool OverOpenWater(Vector3 p)
