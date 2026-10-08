@@ -43,6 +43,7 @@ static class TestMain
         AfterwordTests.Run();
         DevTourTests.Run();
         DevSeaTests.Run();
+        SeaDangerTests.Run();
         Console.WriteLine(Check.Failures == 0 ? "ALL PASS" : $"{Check.Failures} FAILURES");
         return Check.Failures == 0 ? 0 : 1;
     }
