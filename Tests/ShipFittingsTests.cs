@@ -20,7 +20,7 @@ static class ShipFittingsTests
                    "no Fire-tar before the Ashlands act - offering it would name the boiling sea in Act II");
         var told = ShipFittings.Offers(none, fireTarTold: true);
         Check.That(told.Count == 4 && told[3].Kind == FittingKind.FireTar && told[3].Price == 400,
-                   "Fire-tar is offered once the Ashlands act is told, at four hundred, last - four keys at most");
+                   "Fire-tar is offered once the Ashlands act is told, at four hundred, last");
 
         var sail2 = ShipFittings.Bought(ShipFittings.Bought(none, FittingKind.Sail), FittingKind.Sail);
         Check.That(sail2.Sail == 2 && sail2.Hull == 0, "buying raises one fitting a tier at a time");
@@ -28,7 +28,7 @@ static class ShipFittingsTests
                    ShipFittings.Offers(sail2, false).First(o => o.Kind == FittingKind.Sail).Tier == 3,
                    "the card offers the NEXT tier, at its own price");
 
-        var full = new ShipFittingState { Sail = 3, Hull = 3, FireTar = 1, WindHorn = 1 };
+        var full = new ShipFittingState { Sail = 3, Hull = 3, FireTar = 1, WindHorn = 1, Ward = 3 };
         Check.That(ShipFittings.Offers(full, true).Count == 0, "a fully fitted ship is offered nothing");
         Check.That(ShipFittings.Bought(full, FittingKind.Sail).Sail == 3 && ShipFittings.Bought(full, FittingKind.FireTar).FireTar == 1 &&
                    ShipFittings.Bought(full, FittingKind.WindHorn).WindHorn == 1,
@@ -44,12 +44,33 @@ static class ShipFittingsTests
 
         Check.That(ShipFittings.Summary(none) == "" &&
                    ShipFittings.Summary(new ShipFittingState { Sail = 2, Hull = 1 }) == "Sail II · Hull I" &&
-                   ShipFittings.Summary(full) == "Sail III · Hull III · Wind-horn · Fire-tar",
+                   ShipFittings.Summary(full) == "Sail III · Hull III · Ward III · Wind-horn · Fire-tar",
                    "the HUD's summary names what the ship carries, nothing for a bare one");
         Check.That(first.All(o => !string.IsNullOrEmpty(o.Name) && !string.IsNullOrEmpty(o.Effect)),
                    "every offer has a name and says what it does");
         Check.That(!ShipFittings.HasWindHorn(none) && ShipFittings.HasWindHorn(ShipFittings.Bought(none, FittingKind.WindHorn)),
                    "the horn is owned once bought");
+
+        // The ward (2026-10-08): offered once the raven has spoken of the sea, between the horn and Fire-tar.
+        Check.That(!ShipFittings.Offers(none, true).Any(o => o.Kind == FittingKind.Ward),
+                   "no Ward before the raven's sea line - the player would not know what it is for");
+        var warded = ShipFittings.Offers(none, true, wardTold: true);
+        Check.That(warded.Count == 5 && warded[3].Kind == FittingKind.Ward && warded[3].Tier == 1 && warded[3].Price == 100 &&
+                   warded[3].Name == "Ward I" && warded[4].Kind == FittingKind.FireTar,
+                   "then Ward I, at a hundred, after the horn and before Fire-tar: five lines at most");
+        var ward2 = ShipFittings.Bought(ShipFittings.Bought(none, FittingKind.Ward), FittingKind.Ward);
+        Check.That(ward2.Ward == 2 && ShipFittings.Offers(ward2, false, true).First(o => o.Kind == FittingKind.Ward).Price == 450 &&
+                   ShipFittings.Bought(full, FittingKind.Ward).Ward == 3 && !ShipFittings.Offers(full, true, true).Any(),
+                   "Ward II costs 250, III 450, and III is the top");
+        Check.That(ShipFittings.Offers(new ShipFittingState { Ward = 1 }, false, true).First(o => o.Kind == FittingKind.Ward).Price == 250,
+                   "the card offers the ward's NEXT tier");
+        Check.That(ShipFittings.WardRadius(0) == 0f && ShipFittings.WardRadius(1) == 20f && ShipFittings.WardRadius(3) == 30f &&
+                   ShipFittings.WardRadius(9) == 30f && ShipFittings.WardDamage(0) == 0f && ShipFittings.WardDamage(1) == 20f &&
+                   ShipFittings.WardDamage(2) == 40f && ShipFittings.WardDamage(3) == 70f && ShipFittings.WardPulseSeconds == 3f,
+                   "the ward: 20/25/30 m, 20/40/70 lightning every 3 s, clamped");
+        Check.That(ShipFittings.Tier(new ShipFittingState { Ward = 2 }, FittingKind.Ward) == 2 &&
+                   ShipFittings.Summary(new ShipFittingState { Sail = 1, Ward = 1 }) == "Sail I · Ward I",
+                   "the ward has a tier and shows in the summary");
 
         // The god's wind: the prow within forty degrees of the pinned altar, aboard, god pinned.
         Check.That(System.Math.Abs(SagaWind.Heading(0f, 1f)) < 0.01f && System.Math.Abs(SagaWind.Heading(1f, 0f) - 90f) < 0.01f &&

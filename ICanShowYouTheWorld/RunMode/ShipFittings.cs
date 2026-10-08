@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace ICanShowYouTheWorld.RunMode
 {
-    public enum FittingKind { Sail, Hull, FireTar, WindHorn }
+    public enum FittingKind { Sail, Hull, FireTar, WindHorn, Ward }
 
     /// <summary>What a run has fitted. Belongs to the RUN, not to a ship - see <see cref="ShipFittings"/>.</summary>
     public sealed class ShipFittingState
@@ -12,6 +12,7 @@ namespace ICanShowYouTheWorld.RunMode
         public int Hull;
         public int FireTar;
         public int WindHorn;
+        public int Ward;
     }
 
     /// <summary>One line on the helm's card: the next tier of one fitting, and its price.</summary>
@@ -50,6 +51,12 @@ namespace ICanShowYouTheWorld.RunMode
 
         private static readonly float[] SailBoosts = { 1f, 1.15f, 1.30f, 1.50f };
         private static readonly float[] HullFactors = { 1f, 0.75f, 0.5f, 0.25f };
+        private static readonly int[] WardPrices = { 100, 250, 450 };
+        private static readonly float[] WardRadii = { 0f, 20f, 25f, 30f };
+        private static readonly float[] WardDamages = { 0f, 20f, 40f, 70f };
+
+        /// <summary>How often the ward strikes, in seconds.</summary>
+        public const float WardPulseSeconds = 3f;
 
         public static int MaxTier(FittingKind kind) =>
             kind == FittingKind.FireTar || kind == FittingKind.WindHorn ? 1 : 3;
@@ -62,6 +69,7 @@ namespace ICanShowYouTheWorld.RunMode
                 case FittingKind.Sail: return state.Sail;
                 case FittingKind.Hull: return state.Hull;
                 case FittingKind.WindHorn: return state.WindHorn;
+                case FittingKind.Ward: return state.Ward;
                 default: return state.FireTar;
             }
         }
@@ -74,6 +82,13 @@ namespace ICanShowYouTheWorld.RunMode
         public static float HullDamageFactor(int tier) => HullFactors[Clamp(tier, HullFactors.Length - 1)];
         public static float HullDamageFactor(ShipFittingState state) => HullDamageFactor(state?.Hull ?? 0);
 
+        /// <summary>
+        /// The ward (2026-10-08): while the player is aboard, a lightning pulse every few seconds strikes every hostile
+        /// within this radius of the ship - the sea's answer to the sea danger, passive, so it needs no key.
+        /// </summary>
+        public static float WardRadius(int tier) => WardRadii[Clamp(tier, WardRadii.Length - 1)];
+        public static float WardDamage(int tier) => WardDamages[Clamp(tier, WardDamages.Length - 1)];
+
         public static bool AshlandsReady(ShipFittingState state) => state != null && state.FireTar >= 1;
 
         /// <summary>The horn is a thing you carry and blow (SagaWind), not a number on the ship.</summary>
@@ -82,8 +97,9 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>
         /// The next tier of each fitting not yet at its top. Fire-tar only once
         /// <paramref name="fireTarTold"/> - the Ashlands act has begun.
+        /// <paramref name="wardTold"/> - the raven has said the sea came for you (the Ward, 2026-10-08).
         /// </summary>
-        public static List<ShipFittingOffer> Offers(ShipFittingState state, bool fireTarTold)
+        public static List<ShipFittingOffer> Offers(ShipFittingState state, bool fireTarTold, bool wardTold = false)
         {
             var offers = new List<ShipFittingOffer>();
             state = state ?? new ShipFittingState();
@@ -124,6 +140,18 @@ namespace ICanShowYouTheWorld.RunMode
                 });
             }
 
+            // The ward: offered once the raven has said the sea came for you, so the player knows what it is for.
+            if (wardTold && state.Ward < MaxTier(FittingKind.Ward))
+            {
+                int t = state.Ward + 1;
+                offers.Add(new ShipFittingOffer
+                {
+                    Kind = FittingKind.Ward, Tier = t, Price = WardPrices[t - 1],
+                    Name = "Ward " + Roman(t),
+                    Effect = $"aboard: lightning strikes attackers within {WardRadius(t):0} m every {WardPulseSeconds:0} s",
+                });
+            }
+
             if (fireTarTold && state.FireTar < MaxTier(FittingKind.FireTar))
             {
                 offers.Add(new ShipFittingOffer
@@ -141,12 +169,13 @@ namespace ICanShowYouTheWorld.RunMode
         public static ShipFittingState Bought(ShipFittingState state, FittingKind kind)
         {
             var s = state ?? new ShipFittingState();
-            var next = new ShipFittingState { Sail = s.Sail, Hull = s.Hull, FireTar = s.FireTar, WindHorn = s.WindHorn };
+            var next = new ShipFittingState { Sail = s.Sail, Hull = s.Hull, FireTar = s.FireTar, WindHorn = s.WindHorn, Ward = s.Ward };
             switch (kind)
             {
                 case FittingKind.Sail: next.Sail = Math.Min(next.Sail + 1, MaxTier(kind)); break;
                 case FittingKind.Hull: next.Hull = Math.Min(next.Hull + 1, MaxTier(kind)); break;
                 case FittingKind.WindHorn: next.WindHorn = Math.Min(next.WindHorn + 1, MaxTier(kind)); break;
+                case FittingKind.Ward: next.Ward = Math.Min(next.Ward + 1, MaxTier(kind)); break;
                 default: next.FireTar = Math.Min(next.FireTar + 1, MaxTier(kind)); break;
             }
             return next;
@@ -159,6 +188,7 @@ namespace ICanShowYouTheWorld.RunMode
             var parts = new List<string>();
             if (state.Sail > 0) parts.Add("Sail " + Roman(state.Sail));
             if (state.Hull > 0) parts.Add("Hull " + Roman(state.Hull));
+            if (state.Ward > 0) parts.Add("Ward " + Roman(state.Ward));
             if (state.WindHorn > 0) parts.Add("Wind-horn");
             if (state.FireTar > 0) parts.Add("Fire-tar");
             return string.Join(" · ", parts.ToArray());
