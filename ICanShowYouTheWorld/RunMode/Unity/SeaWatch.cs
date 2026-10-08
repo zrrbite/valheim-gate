@@ -47,7 +47,13 @@ namespace ICanShowYouTheWorld.RunMode
         private readonly List<Character> _inRange = new List<Character>();
         private GameObject _spark;
         private bool _sparkResolved;
-        private static readonly string[] SparkPrefabs = { "vfx_lightning", "fx_lightning" };
+        /// <summary>
+        /// The effect where the ward strikes, first that the game has (the self-check names which). Read out of the
+        /// game's assets on 2026-10-08, after the first guesses ("vfx_lightning", "fx_lightning") resolved to nothing
+        /// on the Mac: prefab names are case-sensitive, and the sky's own bolt is "fx_Lightning", the last resort.
+        /// </summary>
+        internal static readonly string[] SparkPrefabs =
+            { "fx_chainlightning_hit", "fx_lightningstaffprojectile_hit", "fx_lightningweapon_hit", "fx_Lightning" };
 
         public SeaWatch(Action<string> say, Action firstEncounter, System.Random rng)
         {

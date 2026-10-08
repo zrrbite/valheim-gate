@@ -21,7 +21,7 @@ Standing context for the Windows side:
 
 **Staged.** Badge `1.0.17-run.2026-10-08 · DEV`. Mod-only is enough once the full 1.0.17 install (`...06`) is done.
 
-- **Self-check:** a new line, `Sea creatures`, should read OK (six prefabs).
+- **Self-check:** two new lines, `Sea creatures` (six prefabs) and `The ward's spark`, should read OK.
 - **The sea:** with heat above 0 from Act II, sail open water for a few minutes.
   - The raven speaks once ("The sea has found your wake...").
   - Each encounter shows a message, and `Player.log` gets a `Sea:` line.

@@ -6944,6 +6944,9 @@ namespace ICanShowYouTheWorld.RunMode
         /// The game handles the same press too - ShipControlls.Interact ignores alt, so Shift+E also
         /// takes the helm - and nobody knows whose Update runs first that frame. So the helm counts as
         /// looked at for a moment after the look ends, and being at the helm counts as looking at it.
+        /// Both are remembered, not just read: at the helm, the same press LETS GO of it, and when the
+        /// game's Update runs first the player is no longer aboard the helm by the time this reads -
+        /// which is how Shift+E failed to close the card on the owner's Mac (2026-10-08).
         /// </remarks>
         private void HandleHelmInput()
         {
@@ -6953,7 +6956,8 @@ namespace ICanShowYouTheWorld.RunMode
                 if (player == null || !_shipwright.Offering) return;
 
                 var hover = player.GetHoverObject();
-                if (hover != null && hover.GetComponentInParent<ShipControlls>() != null) _helmHoveredAt = Time.time;
+                if (player.IsAttachedToShip() || (hover != null && hover.GetComponentInParent<ShipControlls>() != null))
+                    _helmHoveredAt = Time.time;
 
                 bool use = ZInput.GetButtonDown("Use") || ZInput.GetButtonDown("JoyUse");
                 if (!use) return;
@@ -11597,6 +11601,8 @@ namespace ICanShowYouTheWorld.RunMode
                 var names = SeaDanger.All.Select(SeaDanger.PrefabOf).ToList();
                 var missing = names.Where(n => scene.GetPrefab(n)?.GetComponent<Character>() == null).ToList();
                 _selfCheck.AllOf("Sea creatures", names.Count, missing, "a Serpent comes instead; with no Serpent the sea stays calm");
+                _selfCheck.Pick("The ward's spark", SeaWatch.SparkPrefabs, n => scene.GetPrefab(n) != null,
+                                "the ward strikes unseen", stalls: false);
             }
             catch (Exception ex) { LogOnce("self-check-sea", ex); }
         }

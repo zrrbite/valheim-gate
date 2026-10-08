@@ -48,6 +48,8 @@ last build you played, and undoes all of it. To install one: `git checkout <tag>
        `'FrozenKing_p3' sets 'defeated_frozenking_p3'`.
      - `The gods' altars: all 8 resolve`.
      - `Keys (numpad layout): all 33 resolve` (31 plus the two temporary MacBook keys).
+     - `Sea creatures: all 6 resolve` (`...08`), and `The ward's spark: fx_chainlightning_hit` (`...08d`). A
+       FALLBACK on the spark names the effect used instead; none at all means the Ward strikes unseen.
      - `Quest items can be got: all N resolve` (`...06d`). Every item a quest asks for is something the game
        drops, crafts, sells, mines or converts, or the saga grants. **A MISSING line here names the item and
        who asks for it: paste it back**, since it is either a step that can never finish or a source this
