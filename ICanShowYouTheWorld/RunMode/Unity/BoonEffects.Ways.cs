@@ -376,5 +376,58 @@ namespace ICanShowYouTheWorld.RunMode
             bool wall = IsWindowOpen("bulwark");
             player.Heal(parry ? WayRules.GuardParryHeal(gods, wall) : WayRules.GuardBlockHeal(gods, wall), false);
         }
+
+        // --- The Sæfari ---
+
+        private const string TideName = "ICSYTW_TideBorne";
+        private static readonly int TideHash = TideName.GetStableHashCode();
+        private static SE_Stats _tideBorne;
+
+        /// <summary>
+        /// One template, made once and kept (the Guard's and the hush's pattern): SEMan clones what it is handed, and an
+        /// unreferenced ScriptableObject made per apply would never be collected.
+        /// </summary>
+        private static SE_Stats TideBorne()
+        {
+            if (_tideBorne != null) return _tideBorne;
+            var se = ScriptableObject.CreateInstance<SE_Stats>();
+            se.name = TideName;
+            se.m_name = "Tide-borne";
+            se.m_tooltip = "The water never tires you.";
+            se.m_ttl = 0f;
+            // Player.OnSwimming asks the SEMan to modify its stamina use; -1 is minus a hundred percent. (Her regen did
+            // nothing in water: Player.UpdateStats zeroes it while swimming - research 2026-10-08, section 7.)
+            se.m_swimStaminaUseModifier = -1f;
+            _tideBorne = se;
+            return se;
+        }
+
+        private static bool _tideBorneLogged;
+
+        /// <summary>The Sæfari's passive: the water never tires her (idempotent; re-run on respawn).</summary>
+        private void ApplyTideBorne()
+        {
+            try
+            {
+                var seman = Player.m_localPlayer?.GetSEMan();
+                if (seman == null || seman.HaveStatusEffect(TideHash)) return;
+                seman.AddStatusEffect(TideBorne());
+                if (!_tideBorneLogged)
+                {
+                    _tideBorneLogged = true;
+                    Debug.Log($"[ICanShowYouTheWorld] Tide-borne on: SE '{TideName}' ({seman.HaveStatusEffect(TideHash)}).");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[ICanShowYouTheWorld] Tide-borne failed: {ex.Message}");
+            }
+        }
+
+        private static void UnapplyTideBorne()
+        {
+            try { Player.m_localPlayer?.GetSEMan()?.RemoveStatusEffect(TideHash, quiet: true); }
+            catch (Exception ex) { Debug.LogWarning($"[ICanShowYouTheWorld] Tide-borne removal failed: {ex.Message}"); }
+        }
     }
 }

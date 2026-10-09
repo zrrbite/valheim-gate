@@ -111,5 +111,13 @@ static class WayRulesTests
         Check.That(WayRules.CrescendoDue(20f, 0f) && !WayRules.CrescendoDue(19.9f, 0f) && WayRules.CrescendoDue(0f, float.NegativeInfinity),
                    "a crescendo at most every twenty seconds; the first is free");
         Check.That(WayRules.SongsAtOnce(5) == 1 && WayRules.SongsAtOnce(6) == 2, "two songs at once after the Queen");
+
+        // The Sæfari at sea.
+        Check.That(WayRules.SaefariPrice(50) == 25 && WayRules.SaefariPrice(200) == 100 && WayRules.SaefariPrice(450) == 225 &&
+                   WayRules.SaefariPrice(25) == 13,
+                   "half price, rounded up");
+        Check.That(WayRules.SeaShipTier(0) == 1 && WayRules.SeaShipTier(2) == 3 && WayRules.SeaShipTier(3) == 3,
+                   "her ship sails a tier above what is fitted, to III");
+        Check.That(WayRules.SaefariCoinFactor == 2, "the sea pays her double");
     }
 }

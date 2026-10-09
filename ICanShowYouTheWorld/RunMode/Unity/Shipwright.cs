@@ -52,10 +52,16 @@ namespace ICanShowYouTheWorld.RunMode
         public string Fitted { get; private set; }
 
         /// <summary>About once a second while a run is live.</summary>
-        public void Tick(ShipFittingState fit, bool offering)
+        /// <param name="fit">What the run OWNS: the helm's hover names it, so it is never inflated.</param>
+        /// <param name="sailing">
+        /// What the ships SAIL as, when that is not what is owned (the Sæfari's ship sails a tier above its fittings);
+        /// null means the owned state. Only the numbers written onto the ships read it.
+        /// </param>
+        public void Tick(ShipFittingState fit, bool offering, ShipFittingState sailing = null)
         {
             Offering = offering;
             Fitted = ShipFittings.Summary(fit);
+            var worn = sailing ?? fit;
 
             try
             {
@@ -68,7 +74,7 @@ namespace ICanShowYouTheWorld.RunMode
                         o = Capture(ship);
                         _ships[id] = o;
                     }
-                    Apply(o, fit);
+                    Apply(o, worn);
                     Label(o, offering);
                 }
 

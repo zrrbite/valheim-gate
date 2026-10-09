@@ -118,32 +118,40 @@ namespace ICanShowYouTheWorld.RunMode
         /// The next tier of each fitting not yet at its top. Fire-tar only once
         /// <paramref name="fireTarTold"/> - the Ashlands act has begun.
         /// <paramref name="wardTold"/> - the raven has said the sea came for you (the Ward, 2026-10-08).
+        /// <paramref name="saefari"/> - the card is the Sæfari's: she pays half, rounded up
+        /// (<see cref="WayRules.SaefariPrice"/>); her ship sails a tier above what is fitted (<see cref="TierAbove"/>), so each
+        /// effect is stated at the tier her ship will sail at, and no tier III is offered for Sail, Hull or Ward - II already
+        /// sails at III, so III would be a purchase that changes nothing on the water.
         /// </summary>
-        public static List<ShipFittingOffer> Offers(ShipFittingState state, bool fireTarTold, bool wardTold = false)
+        public static List<ShipFittingOffer> Offers(ShipFittingState state, bool fireTarTold, bool wardTold = false, bool saefari = false)
         {
             var offers = new List<ShipFittingOffer>();
             state = state ?? new ShipFittingState();
 
-            if (state.Sail < MaxTier(FittingKind.Sail))
+            // The tier an effect is stated at: the one bought, or for the Sæfari the one above it (capped at the top).
+            int Shown(int t) => saefari ? Math.Min(t + 1, 3) : t;
+
+            if (state.Sail < MaxTier(FittingKind.Sail) && !(saefari && state.Sail + 1 == 3))
             {
                 int t = state.Sail + 1;
                 offers.Add(new ShipFittingOffer
                 {
                     Kind = FittingKind.Sail, Tier = t, Price = SailPrices[t - 1],
                     Name = "Sail " + Roman(t),
-                    Effect = $"+{Percent(SailMultiplier(t) - 1f)}% to the sail and the oars",
+                    Effect = $"+{Percent(SailMultiplier(Shown(t)) - 1f)}% to the sail and the oars",
                 });
             }
 
-            if (state.Hull < MaxTier(FittingKind.Hull))
+            if (state.Hull < MaxTier(FittingKind.Hull) && !(saefari && state.Hull + 1 == 3))
             {
                 int t = state.Hull + 1;
+                int d = Shown(t);
                 offers.Add(new ShipFittingOffer
                 {
                     Kind = FittingKind.Hull, Tier = t, Price = HullPrices[t - 1],
                     Name = "Hull " + Roman(t),
-                    Effect = t == 1 ? "the ship takes a quarter less damage"
-                           : t == 2 ? "the ship takes half the damage"
+                    Effect = d == 1 ? "the ship takes a quarter less damage"
+                           : d == 2 ? "the ship takes half the damage"
                            : "the ship takes a quarter of the damage",
                 });
             }
@@ -161,14 +169,14 @@ namespace ICanShowYouTheWorld.RunMode
             }
 
             // The ward: offered once the raven has said the sea came for you, so the player knows what it is for.
-            if (wardTold && state.Ward < MaxTier(FittingKind.Ward))
+            if (wardTold && state.Ward < MaxTier(FittingKind.Ward) && !(saefari && state.Ward + 1 == 3))
             {
                 int t = state.Ward + 1;
                 offers.Add(new ShipFittingOffer
                 {
                     Kind = FittingKind.Ward, Tier = t, Price = WardPrices[t - 1],
                     Name = "Ward " + Roman(t),
-                    Effect = $"aboard: lightning strikes attackers within {WardRadius(t):0} m every {WardPulseSeconds:0} s",
+                    Effect = $"aboard: lightning strikes attackers within {WardRadius(Shown(t)):0} m every {WardPulseSeconds:0} s",
                 });
             }
 
@@ -182,7 +190,27 @@ namespace ICanShowYouTheWorld.RunMode
                 });
             }
 
+            if (saefari)
+                foreach (var o in offers) o.Price = WayRules.SaefariPrice(o.Price);
+
             return offers;
+        }
+
+        /// <summary>
+        /// The state a Sæfari's ship sails as: Sail, Hull and Ward each a tier above what is fitted (to III), Fire-tar and
+        /// the horn as bought. A null state is a bare one.
+        /// </summary>
+        public static ShipFittingState TierAbove(ShipFittingState state)
+        {
+            var s = state ?? new ShipFittingState();
+            return new ShipFittingState
+            {
+                Sail = WayRules.SeaShipTier(s.Sail),
+                Hull = WayRules.SeaShipTier(s.Hull),
+                FireTar = s.FireTar,
+                WindHorn = s.WindHorn,
+                Ward = WayRules.SeaWardTier(s.Ward),
+            };
         }
 
         /// <summary>The state with one more tier of <paramref name="kind"/>, capped at its top.</summary>

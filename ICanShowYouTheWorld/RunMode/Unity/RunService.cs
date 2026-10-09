@@ -6925,6 +6925,16 @@ namespace ICanShowYouTheWorld.RunMode
         private float _fittingCardAge;
         private List<ShipFittingOffer> _fittingCard = new List<ShipFittingOffer>();
 
+        /// <summary>The Sæfari at sea (class balance, 2026-10-08): her fittings cost half, her ship sails a tier above them, the sea pays double.</summary>
+        private bool IsSaefari => _active && _classId == "saefari" && HoldsBoon("seafarer");
+
+        /// <summary>
+        /// What the ships SAIL as. The Sæfari's ship wears a tier above what she bought (Sail, Hull and Ward, to III); every
+        /// other captain's wears what was bought. Read only where the numbers are applied (the shipwright, the ward's pulse) -
+        /// never where fittings are bought, shown as owned, or saved, so losing the way hands back exactly what she paid for.
+        /// </summary>
+        private ShipFittingState EffectiveFittings() => IsSaefari ? ShipFittings.TierAbove(_fittings) : _fittings;
+
         /// <summary>The weapon bonuses held have reached WayRules.WeaponCeiling; the BOONS page says so.</summary>
         public bool WeaponCeilingReached => _active && _boonEffects != null && _boonEffects.WeaponCeilingReached;
 
@@ -6988,7 +6998,7 @@ namespace ICanShowYouTheWorld.RunMode
                     SaveState();
                 }
 
-                _shipwright.Tick(_fittings, revealed);
+                _shipwright.Tick(_fittings, revealed, EffectiveFittings());
             }
             catch (Exception ex) { LogOnce("shipwright", ex); }
         }
@@ -7047,7 +7057,7 @@ namespace ICanShowYouTheWorld.RunMode
                 return true;
             }
 
-            _fittingCard = ShipFittings.Offers(_fittings, FireTarTold, _seaRavenTold);
+            _fittingCard = ShipFittings.Offers(_fittings, FireTarTold, _seaRavenTold, saefari: IsSaefari);
             if (_fittingCard.Count == 0)
             {
                 Message("The ship carries everything gold can fit.");
@@ -7083,13 +7093,13 @@ namespace ICanShowYouTheWorld.RunMode
 
             inv.RemoveItem(CoinsToken, offer.Price);
             _fittings = ShipFittings.Bought(_fittings, offer.Kind);
-            _shipwright.Tick(_fittings, true);   // on the water now, not next second
+            _shipwright.Tick(_fittings, true, EffectiveFittings());   // on the water now, not next second
             Message($"{offer.Name}: {offer.Effect}.");
             Debug.Log($"[ICanShowYouTheWorld] Ship fitted: {offer.Name} for {offer.Price} coins - now {ShipFittings.Summary(_fittings)}.");
             SaveState();
 
             // Stay open for the next tier, with a fresh clock; close when there is nothing left.
-            _fittingCard = ShipFittings.Offers(_fittings, FireTarTold, _seaRavenTold);
+            _fittingCard = ShipFittings.Offers(_fittings, FireTarTold, _seaRavenTold, saefari: IsSaefari);
             _fittingCardAge = 0f;
             if (_fittingCard.Count == 0) _fittingCardOpen = false;
         }
@@ -7122,7 +7132,7 @@ namespace ICanShowYouTheWorld.RunMode
             FullHeat = _cfg.RunSeaFullHeat,
             PeakPerMinute = _cfg.RunSeaPeakPerMinute,
             ActIndex = _actIndex,
-            WardTier = _fittings.Ward,
+            WardTier = EffectiveFittings().Ward,
         };
 
         /// <summary>The raven speaks of the sea once a run, at its first encounter; that also unlocks the Ward.</summary>
@@ -9371,7 +9381,8 @@ namespace ICanShowYouTheWorld.RunMode
                     SeaCreature seaCreature;
                     int seaLevel;
                     if (_sea != null && _sea.IsSent(c, out seaCreature, out seaLevel))
-                        coins += RunCoins.SeaCoins(seaCreature, seaLevel, _cfg.RunSeaCoinMultiplier);
+                        coins += RunCoins.SeaCoins(seaCreature, seaLevel,
+                            _cfg.RunSeaCoinMultiplier * (IsSaefari ? WayRules.SaefariCoinFactor : 1));
                     if (coins > 0) CoinDrops.Drop(c.transform.position, coins);
                 }
                 catch (Exception ex) { LogOnce("run-coins", ex); }
@@ -13768,7 +13779,7 @@ namespace ICanShowYouTheWorld.RunMode
             new BoonDefinition { Id = "bragi",     ClassId = "skald",   Display = "Saga of Bragi",  IsPassive = false, CooldownSeconds = 0f, Description = "Sing it and it stays: you and every ally within 15 m mend 3 a second, more with every god felled." },
 
             // Sæfari - Ragna, who was never once afraid of water.
-            new BoonDefinition { Id = "seafarer",  ClassId = "saefari", Display = "Seafarer",   IsPassive = true,  Description = "Swim skill to 60, spear skill to 50." },
+            new BoonDefinition { Id = "seafarer",  ClassId = "saefari", Display = "Seafarer",   IsPassive = true,  Description = "Swim skill to 60, spear skill to 50. The water never tires you; fittings cost you half, your ship sails a tier above them, and the sea pays you double." },
             new BoonDefinition { Id = "tide",      ClassId = "saefari", Display = "Tide-borne", IsPassive = false, CooldownSeconds = 120f, Description = "Thirty seconds in which the water cannot tire you." },
             new BoonDefinition { Id = "fairwind",  ClassId = "saefari", Display = "Fair Wind",  IsPassive = false, CooldownSeconds = 300f, Description = "For a minute the wind is at your ship’s back." },
             new BoonDefinition { Id = "sealegs",   ClassId = "saefari", Display = "Sea Legs",   IsPassive = false, CooldownSeconds = 300f, Description = "Five minutes in which neither cold nor wet can reach you." },

@@ -106,6 +106,12 @@ namespace ICanShowYouTheWorld.RunMode
             Tempered(gods, TemperSlot.Rung3) ? 9f : Math.Min(6f, 3f + Math.Max(0, gods));
         public static bool CrescendoDue(float now, float last) => now - last >= CrescendoEvery;
         public static int SongsAtOnce(int gods) => Tempered(gods, TemperSlot.Engine) ? 2 : 1;
+
+        // --- The Sæfari ---
+        public const int SaefariCoinFactor = 2;
+        public static int SaefariPrice(int price) => (price + 1) / 2;
+        public static int SeaShipTier(int bought) => Math.Min(3, Math.Max(0, bought) + 1);
+        public static int SeaWardTier(int bought) => SeaShipTier(bought);
     }
 
     /// <summary>What a god tempers: a way's three rungs, then its engine.</summary>

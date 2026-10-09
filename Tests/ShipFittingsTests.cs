@@ -58,6 +58,45 @@ static class ShipFittingsTests
         Check.That(warded.Count == 5 && warded[3].Kind == FittingKind.Ward && warded[3].Tier == 1 && warded[3].Price == 100 &&
                    warded[3].Name == "Ward I" && warded[4].Kind == FittingKind.FireTar,
                    "then Ward I, at a hundred, after the horn and before Fire-tar: five lines at most");
+
+        Check.That(ShipFittings.Offers(new ShipFittingState(), false, true, saefari: true).Select(o => o.Price)
+                       .SequenceEqual(new[] { 25, 25, 100, 50 }),
+                   "a Sæfari pays half: Sail I 25, Hull I 25, the Wind-horn 100, Ward I 50");
+
+        // Her card is hers (task 8 review): her ship sails a tier above what is fitted, so the card states the tier it
+        // will sail at, and never offers a tier III that already sails.
+        var mixed = ShipFittings.TierAbove(new ShipFittingState { Sail = 0, Hull = 1, Ward = 2, FireTar = 1, WindHorn = 1 });
+        Check.That(mixed.Sail == 1 && mixed.Hull == 2 && mixed.Ward == 3 && mixed.FireTar == 1 && mixed.WindHorn == 1,
+                   "a Sæfari's ship sails a tier above each of Sail, Hull and Ward; the rest is as bought");
+        var topped = ShipFittings.TierAbove(new ShipFittingState { Sail = 3, Hull = 3, Ward = 3 });
+        Check.That(topped.Sail == 3 && topped.Hull == 3 && topped.Ward == 3 && topped.FireTar == 0 && topped.WindHorn == 0,
+                   "and stays at III");
+        var bare = ShipFittings.TierAbove(null);
+        Check.That(bare.Sail == 1 && bare.Hull == 1 && bare.Ward == 1 && bare.FireTar == 0 && bare.WindHorn == 0,
+                   "a bare ship's tier above is I; no state is a bare state");
+
+        var holdsSail2 = new ShipFittingState { Sail = 2 };
+        Check.That(!ShipFittings.Offers(holdsSail2, false, saefari: true).Any(o => o.Kind == FittingKind.Sail),
+                   "a Sæfari holding Sail II is offered no Sail: II already sails at III");
+        Check.That(ShipFittings.Offers(holdsSail2, false).Any(o => o.Kind == FittingKind.Sail && o.Tier == 3),
+                   "while anyone else is still offered Sail III");
+        var wardII = new ShipFittingState { Ward = 2 };
+        Check.That(!ShipFittings.Offers(wardII, false, true, saefari: true).Any(o => o.Kind == FittingKind.Ward) &&
+                   !ShipFittings.Offers(new ShipFittingState { Hull = 2 }, false, saefari: true).Any(o => o.Kind == FittingKind.Hull),
+                   "nor Hull III or Ward III");
+        var herSail = ShipFittings.Offers(none, false, saefari: true).First(o => o.Kind == FittingKind.Sail);
+        Check.That(herSail.Tier == 1 && herSail.Price == 25 && herSail.Effect.StartsWith("+30%"),
+                   "her Sail I (25 coins) states tier II's push, +30%, because that is what her ship will sail at");
+        var herSail2 = ShipFittings.Offers(new ShipFittingState { Sail = 1 }, false, saefari: true).First(o => o.Kind == FittingKind.Sail);
+        Check.That(herSail2.Tier == 2 && herSail2.Price == 75 && herSail2.Effect.StartsWith("+50%"),
+                   "her Sail II (half of 150, rounded up) states III's +50%");
+        Check.That(ShipFittings.Offers(none, false, saefari: true).First(o => o.Kind == FittingKind.Hull).Effect == "the ship takes half the damage",
+                   "her Hull I states tier II's half");
+        Check.That(ShipFittings.Offers(none, false, true, saefari: true).First(o => o.Kind == FittingKind.Ward).Effect.Contains("within 25 m"),
+                   "her Ward I states tier II's 25 m");
+        Check.That(ShipFittings.Offers(none, false, true).First(o => o.Kind == FittingKind.Ward).Effect.Contains("within 20 m") &&
+                   ShipFittings.Offers(none, false).First(o => o.Kind == FittingKind.Sail).Effect.StartsWith("+15%"),
+                   "everyone else's card states the tier it sells");
         var ward2 = ShipFittings.Bought(ShipFittings.Bought(none, FittingKind.Ward), FittingKind.Ward);
         Check.That(ward2.Ward == 2 && ShipFittings.Offers(ward2, false, true).First(o => o.Kind == FittingKind.Ward).Price == 450 &&
                    ShipFittings.Bought(full, FittingKind.Ward).Ward == 3 && !ShipFittings.Offers(full, true, true).Any(),

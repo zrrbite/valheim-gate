@@ -486,8 +486,13 @@ namespace ICanShowYouTheWorld.RunMode
                 case "wayfarer":
                 case "steady":
                 case "poet":
-                case "seafarer":
                     ApplySkillBoon(boonId);
+                    break;
+
+                case "seafarer":
+                    // The skill loan, and the water that never tires her: a status effect of ours (2026-10-08).
+                    ApplySkillBoon(boonId);
+                    ApplyTideBorne();
                     break;
 
                 case "hirdman":
@@ -681,6 +686,13 @@ namespace ICanShowYouTheWorld.RunMode
                     UnapplyGuard();
                     break;
 
+                case "seafarer":
+                    // What the default did for it (the field loan), and Tide-borne, which is ours and which nothing else
+                    // would ever take off.
+                    UnapplyFieldBoost(boonId);
+                    UnapplyTideBorne();
+                    break;
+
                 case "glasscannon":
                     UnapplyFieldBoost(boonId);
                     RemoveWeaponMultiplier(boonId);
@@ -851,6 +863,8 @@ namespace ICanShowYouTheWorld.RunMode
                 SafeInvoke(UnapplyHunterHush);
                 // And Guard, likewise: a permanent status effect of ours that nothing else would ever take off.
                 SafeInvoke(UnapplyGuard);
+                // And Tide-borne, the Sæfari's: the same kind of thing, the same reasoning.
+                SafeInvoke(UnapplyTideBorne);
                 // Pugilist is run baseline rather than a held boon, so the held-boon loop above
                 // never reaches it — unwind it here so weapon stamina costs always come back.
                 SafeInvoke(UnapplyPugilist);
