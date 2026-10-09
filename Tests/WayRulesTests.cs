@@ -99,5 +99,17 @@ static class WayRulesTests
         Check.That(WayRules.BashRadius(2) == 4f && WayRules.BashRadius(3) == 6f, "Shield Bash 4 m, 6 after Bonemass");
         Check.That(WayRules.WallSeconds(3) == 20f && WayRules.WallSeconds(4) == 30f, "Shield Wall 20 s, 30 after Moder");
         Check.That(WayRules.LastStandSeconds(4) == 6f && WayRules.LastStandSeconds(5) == 10f, "Last Stand 6 s, 10 after Yagluth");
+
+        // The Skald's songs.
+        Check.That(WayRules.MarchSpeed(2) == 0.2f && WayRules.MarchSpeed(3) == 0.3f, "the Marching Song +20%, +30% after Bonemass");
+        Check.That(WayRules.WarDamage(3) == 1.25f && WayRules.WarDamage(4) == 1.35f, "the War Song +25%, +35% after Moder");
+        Check.That(WayRules.BragiPerSecond(0) == 3f && WayRules.BragiPerSecond(2) == 5f && WayRules.BragiPerSecond(3) == 6f &&
+                   WayRules.BragiPerSecond(4) == 6f,
+                   "Bragi mends 3 a second, +1 per god, to 6");
+        Check.That(WayRules.BragiPerSecond(5) == 9f && WayRules.BragiPerSecond(9) == 9f,
+                   "Yagluth's tempering lifts it to 9 at once - true the moment its line turns green");
+        Check.That(WayRules.CrescendoDue(20f, 0f) && !WayRules.CrescendoDue(19.9f, 0f) && WayRules.CrescendoDue(0f, float.NegativeInfinity),
+                   "a crescendo at most every twenty seconds; the first is free");
+        Check.That(WayRules.SongsAtOnce(5) == 1 && WayRules.SongsAtOnce(6) == 2, "two songs at once after the Queen");
     }
 }

@@ -81,6 +81,12 @@ namespace ICanShowYouTheWorld.Services
         string BowElement { get; }
 
         /// <summary>
+        /// True while the Skald's song (march, warsong or bragi) is being sung: the chosen one, and after the
+        /// Queen the one before it. False for any other id, and with no run. The ability bar marks it.
+        /// </summary>
+        bool IsSung(string boonId);
+
+        /// <summary>
         /// The way's mirror in the Skills window - 0, 33, 66 or 100 by rungs learned - for the HUD's
         /// THE WAY block. 0 with no way held or no run.
         /// </summary>

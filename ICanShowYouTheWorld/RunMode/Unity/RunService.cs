@@ -2052,6 +2052,9 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>What Thor's bow looses now: "lightning", "fire" or "frost". See SagaItems.</summary>
         public string BowElement => SagaItems.ElementName(_items.ThorsBowElement);
 
+        /// <summary>The Skald's standing songs: whether this one is being sung now. See BoonEffects.IsSung.</summary>
+        public bool IsSung(string boonId) => _active && _boonEffects != null && _boonEffects.IsSung(boonId);
+
         /// <summary>
         /// Elemental Arrows' key: the bow one element along (<paramref name="step"/> +1 or -1),
         /// saved at once, and the new element's name for the success line.
@@ -13758,11 +13761,11 @@ namespace ICanShowYouTheWorld.RunMode
 
             // Skald - Ormr, who sang the rest of them onward.
             new BoonDefinition { Id = "poet",      ClassId = "skald",   Display = "Poet",           IsPassive = true,  Description = "Run, jump and swim skill to 50. The road is shorter for a singer." },
-            new BoonDefinition { Id = "march",     ClassId = "skald",   Display = "Marching Song",  IsPassive = false, CooldownSeconds = 120f, Description = "Twenty seconds of a quicker step and breath that does not run out." },
-            // "and so do your companions'" is not on this card: the legacy pet blessing is not a
-            // harder blow and has no timed undo that spares Shepherd's (see BoonEffects.ActivateWarsong).
-            new BoonDefinition { Id = "warsong",   ClassId = "skald",   Display = "War Song",       IsPassive = false, CooldownSeconds = 120f, Description = "Twenty seconds: your blows land harder." },
-            new BoonDefinition { Id = "bragi",     ClassId = "skald",   Display = "Saga of Bragi",  IsPassive = false, CooldownSeconds = 300f, Description = "Rested where you stand, and some of your health back." },
+            // The three songs are standing: the Marching Song starts by itself and a key switches the song (no cooldown); the allies' half is a per-creature
+            // SE_Stats, not the legacy pet blessing (see BoonEffects.Ways.cs, SwitchSong and LayWarSong).
+            new BoonDefinition { Id = "march",     ClassId = "skald",   Display = "Marching Song",  IsPassive = false, CooldownSeconds = 0f, Description = "The song you start on, and it stays: +20% speed, and breath that comes back half again as fast. Switching songs: a crescendo, every 20 s." },
+            new BoonDefinition { Id = "warsong",   ClassId = "skald",   Display = "War Song",       IsPassive = false, CooldownSeconds = 0f, Description = "Sing it and it stays: +25% damage for you and every ally within 15 m." },
+            new BoonDefinition { Id = "bragi",     ClassId = "skald",   Display = "Saga of Bragi",  IsPassive = false, CooldownSeconds = 0f, Description = "Sing it and it stays: you and every ally within 15 m mend 3 a second, more with every god felled." },
 
             // Sæfari - Ragna, who was never once afraid of water.
             new BoonDefinition { Id = "seafarer",  ClassId = "saefari", Display = "Seafarer",   IsPassive = true,  Description = "Swim skill to 60, spear skill to 50." },

@@ -94,8 +94,23 @@ namespace ICanShowYouTheWorld.RunMode
         public static float BashRadius(int gods) => Tempered(gods, TemperSlot.Rung1) ? 6f : 4f;
         public static float WallSeconds(int gods) => Tempered(gods, TemperSlot.Rung2) ? 30f : 20f;
         public static float LastStandSeconds(int gods) => Tempered(gods, TemperSlot.Rung3) ? 10f : 6f;
+
+        // --- The Skald ---
+        public const float CrescendoSeconds = 5f;
+        public const float CrescendoEvery = 20f;
+        public static float MarchSpeed(int gods) => Tempered(gods, TemperSlot.Rung1) ? 0.3f : 0.2f;
+        public static float WarDamage(int gods) => Tempered(gods, TemperSlot.Rung2) ? 1.35f : 1.25f;
+        /// <summary>3 a second, +1 per god, to 6; Yagluth's tempering lifts it to 9 at once, so "Bragi's saga mends up to
+        /// 9 a second" is true the moment its line turns green (3 + gods was 8 at Yagluth).</summary>
+        public static float BragiPerSecond(int gods) =>
+            Tempered(gods, TemperSlot.Rung3) ? 9f : Math.Min(6f, 3f + Math.Max(0, gods));
+        public static bool CrescendoDue(float now, float last) => now - last >= CrescendoEvery;
+        public static int SongsAtOnce(int gods) => Tempered(gods, TemperSlot.Engine) ? 2 : 1;
     }
 
     /// <summary>What a god tempers: a way's three rungs, then its engine.</summary>
     public enum TemperSlot { Rung1 = 0, Rung2 = 1, Rung3 = 2, Engine = 3 }
+
+    /// <summary>The Skald's standing songs, one per rung.</summary>
+    public enum SkaldSong { None, March, War, Bragi }
 }

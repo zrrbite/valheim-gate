@@ -155,25 +155,9 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>Last Stand's close: "half your health back".</summary>
         private const float LastStandHealFraction = 0.5f;
 
-        /// <summary>Marching Song's window: "twenty seconds".</summary>
-        private const float MarchSeconds = 20f;
-
-        /// <summary>
-        /// Marching Song's step, as a fraction of the player's own speed before any loan. A
-        /// fraction rather than Fleet-footed's flat increments, because the song is a window and
-        /// "a quarter faster" is the thing a player can feel in twenty seconds.
-        /// </summary>
-        private const float MarchSpeedFraction = 0.25f;
-
-        /// <summary>Marching Song's breath: +4 stamina a second on the regen field Tireless lends.</summary>
-        private const float MarchStaminaRegen = 4f;
-
-        /// <summary>War Song's window and edge: "twenty seconds", +15% on the weapon product.</summary>
-        private const float WarsongSeconds = 20f;
-        private const float WarsongMultiplier = 1.15f;
-
-        /// <summary>Saga of Bragi's heal: "some of your health back", which is 30%.</summary>
-        private const float BragiHealFraction = 0.3f;
+        /// <summary>The Marching Song's breath: stamina regenerates "half again as fast" - a fraction of the player's own
+        /// regen, lent against the ledger's original like the song's step.</summary>
+        private const float MarchStaminaFraction = 0.5f;
 
         /// <summary>Tide-borne's window and breath: "thirty seconds", +8 stamina a second - more than
         /// swimming or rowing can spend.</summary>
@@ -331,6 +315,12 @@ namespace ICanShowYouTheWorld.RunMode
                 // is for.
                 ["RunSpeed"]          = (p => p.m_runSpeed,          (p, v) => p.m_runSpeed = v),
                 ["WalkSpeed"]         = (p => p.m_walkSpeed,         (p, v) => p.m_walkSpeed = v),
+
+                // The default gait. Character.UpdateWalking moves at m_speed * the jog factor; m_walkSpeed is read only
+                // while walking (toggle or minor-action slowdown) and m_runSpeed only while sprinting, so a speed that
+                // lends those two alone is never felt at the pace a player keeps most of the time. The Marching Song
+                // lends all three; Fleet-footed still lends only the first two (same gap, ledgered separately).
+                ["JogSpeed"]          = (p => p.m_speed,             (p, v) => p.m_speed = v),
             };
 
         /// <summary>
@@ -677,6 +667,13 @@ namespace ICanShowYouTheWorld.RunMode
                     _lastEnemyHits = -1;
                     break;
 
+                case "poet":
+                    // What the default did for it (the field loan), and the standing song, which is ours: the
+                    // allies' half lapses on its own ttl, but the player's step and blows are loans to repay.
+                    UnapplyFieldBoost(boonId);
+                    EndSongs();
+                    break;
+
                 case "hirdman":
                     // What the default did for it (the field loan), and Guard, which is ours and which nothing else
                     // would ever take off.
@@ -701,8 +698,9 @@ namespace ICanShowYouTheWorld.RunMode
                 // and each End is idempotent, because UnapplyAll's finally calls them again.
                 case "bulwark":       EndBulwark(); break;
                 case "laststand":     EndLastStand(heal: false); break;
-                case "march":         EndMarch(); break;
-                case "warsong":       EndWarsong(); break;
+                case "march":
+                case "warsong":
+                case "bragi":         EndSongs(); break;
                 case "tide":          EndTide(); break;
                 case "fairwind":      EndFairWind(); break;
                 case "sealegs":       EndSeaLegs(); break;
@@ -775,9 +773,9 @@ namespace ICanShowYouTheWorld.RunMode
                 case "bash": return ActivateBash();
                 case "bulwark": return ActivateBulwark();
                 case "laststand": return ActivateLastStand();
-                case "march": return ActivateMarch();
-                case "warsong": return ActivateWarsong();
-                case "bragi": return ActivateBragi();
+                case "march": return SwitchSong(SkaldSong.March);
+                case "warsong": return SwitchSong(SkaldSong.War);
+                case "bragi": return SwitchSong(SkaldSong.Bragi);
                 case "tide": return ActivateTide();
                 case "fairwind": return ActivateFairWind();
                 case "sealegs": return ActivateSeaLegs();
@@ -846,8 +844,7 @@ namespace ICanShowYouTheWorld.RunMode
                 SafeInvoke(TakeDownFieldForge);
                 SafeInvoke(EndSeaLegs);
                 SafeInvoke(EndBulwark);
-                SafeInvoke(EndWarsong);
-                SafeInvoke(EndMarch);
+                SafeInvoke(EndSongs);
                 SafeInvoke(EndTide);
                 // The Hunter's hush has no ttl, so a run that ended on a path where the held-boon
                 // loop threw would otherwise leave the player quiet for the rest of the session.
@@ -978,9 +975,9 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
-        /// Lends a FRACTION of the field's pristine value - the Marching Song's "a quarter faster".
+        /// Lends a FRACTION of the field's pristine value - the Marching Song's "+20% speed".
         /// Measured from the ledger's original, never from the live value, so a song sung while
-        /// Fleet-footed is held is a quarter of the player's own pace, not a quarter of the boosted
+        /// Fleet-footed is held is a fraction of the player's own pace, not of the boosted
         /// one, and the result does not depend on which was taken first.
         /// </summary>
         private void LendFieldFraction(Player player, string field, string lender, float fraction)
@@ -2540,140 +2537,7 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         // --- Skald ---
-
-        /// <summary>
-        /// Marching Song: a quarter faster and +4 stamina a second for twenty seconds. All three
-        /// halves are LOANS in the field ledger under the lender "march", so Fleet-footed (lender
-        /// "fleet", the same two speed fields) and Tireless (the same regen field) compose with it,
-        /// and one RepayLender takes the song back without touching either.
-        /// </summary>
-        private bool ActivateMarch()
-        {
-            var held = FindHeld("march");
-            if (held == null || held.CooldownRemaining > 0f) return false;
-
-            if (IsWindowOpen("march"))
-            {
-                LastActivationMessage = "The song is already on your lips.";
-                return false;
-            }
-
-            var player = Player.m_localPlayer;
-            if (player == null) return false;
-
-            try
-            {
-                SyncLoanOwner(player);
-                LendFieldFraction(player, "RunSpeed", "march", MarchSpeedFraction);
-                LendFieldFraction(player, "WalkSpeed", "march", MarchSpeedFraction);
-                LendField(player, "StaminaRegen", "march", MarchStaminaRegen);
-            }
-            catch (Exception ex)
-            {
-                Debug.LogWarning("[ICanShowYouTheWorld] Marching Song failed: " + ex.Message);
-                SafeInvoke(EndMarch);
-                return false;
-            }
-
-            SchedulePending("march", MarchSeconds, EndMarch);
-
-            held.CooldownRemaining = held.Def.CooldownSeconds;
-            return true;
-        }
-
-        private void EndMarch()
-        {
-            RemovePending("march");
-            RepayLender("march");
-        }
-
-        /// <summary>
-        /// War Song: +15% on the weapon product for twenty seconds, Blood Rage without the price.
-        ///
-        /// The player only. The legacy pet blessing Shepherd rides (PetBuff.BuffAllPets) is not a
-        /// "harder blow" at all - it sets tamed max health to 5000, matches their speed to the
-        /// player's and rewrites their weapons from a group baseline - and its only undo,
-        /// ResetPetBuffs, would strip a held Shepherd's blessing along with the song's. A timed
-        /// version is not cheap, so the card promises the player's blows and nothing else.
-        /// </summary>
-        private bool ActivateWarsong()
-        {
-            var held = FindHeld("warsong");
-            if (held == null || held.CooldownRemaining > 0f) return false;
-
-            if (_weaponMultipliers.ContainsKey("warsong"))
-            {
-                LastActivationMessage = "The war song is already sung.";
-                return false;
-            }
-
-            if (Player.m_localPlayer == null) return false;
-
-            try { ApplyWeaponMultiplier(WarsongMultiplier, "warsong"); }
-            catch (Exception ex)
-            {
-                Debug.LogWarning("[ICanShowYouTheWorld] War Song failed: " + ex.Message);
-                SafeInvoke(EndWarsong);
-                return false;
-            }
-
-            RemovePending("warsong");
-            SchedulePending("warsong", WarsongSeconds, EndWarsong);
-
-            held.CooldownRemaining = held.Def.CooldownSeconds;
-            return true;
-        }
-
-        private void EndWarsong()
-        {
-            RemovePending("warsong");
-            RemoveWeaponMultiplier("warsong");
-        }
-
-        /// <summary>
-        /// Saga of Bragi: the game's own Rested, and 30% of max health.
-        ///
-        /// Not a loan, and deliberately: Rested is the character's own status, earned the way a
-        /// fire and a bench earn it, and it runs out on its own clock. SEMan.AddStatusEffect(int,
-        /// resetTime: true) looks the effect up in ObjectDB itself and, when Rested is already on,
-        /// only resets its time. Its length is the game's (SE_Rested.UpdateTTL): 300 s plus 60 s per
-        /// comfort level above 1, from the comfort the player stands in - five minutes in the open,
-        /// more by a hearth - and a reset never shortens what is left. "Rested where you stand"
-        /// is exactly that.
-        /// </summary>
-        private bool ActivateBragi()
-        {
-            var held = FindHeld("bragi");
-            if (held == null || held.CooldownRemaining > 0f) return false;
-
-            var player = Player.m_localPlayer;
-            var seman = player == null ? null : player.GetSEMan();
-            if (seman == null || player.IsDead()) return false;
-
-            try
-            {
-                seman.AddStatusEffect(SEMan.s_statusEffectRested, resetTime: true);
-
-                // AddStatusEffect answers null both for "reset an existing one" and for "could not",
-                // so the check is whether Rested is on now.
-                if (!seman.HaveStatusEffect(SEMan.s_statusEffectRested))
-                {
-                    Debug.LogWarning("[ICanShowYouTheWorld] Saga of Bragi: the Rested status effect did not take.");
-                    LastActivationMessage = "The saga will not come.";
-                    return false;
-                }
-
-                player.Heal(player.GetMaxHealth() * BragiHealFraction);
-            }
-            catch (Exception ex)
-            {
-                Debug.LogWarning("[ICanShowYouTheWorld] Saga of Bragi failed: " + ex.Message);
-                return false;
-            }
-
-            held.CooldownRemaining = held.Def.CooldownSeconds;
-            return true;
-        }
+        // The standing songs (SwitchSong, ApplySongs, TickSongs, EndSongs) live in BoonEffects.Ways.cs.
 
         // --- Sæfari ---
 

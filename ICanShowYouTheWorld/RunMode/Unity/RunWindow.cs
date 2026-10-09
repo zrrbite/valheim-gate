@@ -2444,6 +2444,8 @@ namespace ICanShowYouTheWorld.RunMode
                 {
                     bool ready = !h.Def.IsPassive && h.CooldownRemaining <= 0f &&
                         (h.Def.CooldownSeconds > 0f || h.Charges > 0);
+                    // A song is a switch with neither cooldown nor charges: lit while it is the one being sung.
+                    if (BoonEffects.IsSongBoon(h.Def.Id) && run.IsSung(h.Def.Id)) ready = true;
 
                     GUILayout.BeginHorizontal();
                     GUILayout.Label(new GUIContent("  " + h.Def.Display, h.Def.Description ?? ""), RunTheme.Small,
@@ -2580,8 +2582,11 @@ namespace ICanShowYouTheWorld.RunMode
 
                 // Elemental Arrows has neither a cooldown nor charges - it is a switch - and the
                 // rule below would read that as "spent" and print x0. It is always ready, and its
-                // state is the element it is set to.
-                bool toggle = h.Def.Id == ElementalBoonId;
+                // state is the element it is set to. The Skald's three songs are switches too: always
+                // ready, and the one being sung says so.
+                bool song = BoonEffects.IsSongBoon(h.Def.Id);
+                bool sung = song && run.IsSung(h.Def.Id);
+                bool toggle = h.Def.Id == ElementalBoonId || song;
                 bool ready = toggle || (h.CooldownRemaining <= 0f
                     && (h.Def.CooldownSeconds > 0f || h.Charges > 0));
 
@@ -2604,15 +2609,17 @@ namespace ICanShowYouTheWorld.RunMode
                     RunTheme.Radialish(slot, remaining01);
                 }
 
-                RunTheme.Frame(slot, ready ? RunTheme.AccentGold : RunTheme.PanelBorder);
+                // A song's gold frame and bright label are for the song that is sung; the others wait, plain.
+                RunTheme.Frame(slot, (song ? sung : ready) ? RunTheme.AccentGold : RunTheme.PanelBorder);
 
                 string key = ShortActivationKey(h.Def.Id);
-                string state = toggle ? (run.BowElement ?? "lightning")
+                string state = song ? (sung ? "sung" : "")
+                    : toggle ? (run.BowElement ?? "lightning")
                     : h.CooldownRemaining > 0f
                     ? $"{h.CooldownRemaining:0}s"
                     : h.Def.CooldownSeconds <= 0f ? $"x{h.Charges}" : "";
 
-                var style = ready ? RunTheme.Ready : RunTheme.Small;
+                var style = (song ? sung : ready) ? RunTheme.Ready : RunTheme.Small;
                 GUI.Label(slot, $"{key} {h.Def.Display} {state}".TrimEnd(), style);
             }
 
@@ -2659,6 +2666,7 @@ namespace ICanShowYouTheWorld.RunMode
         private static string BoonStatus(HeldBoon h, IRunService run)
         {
             if (h.Def.Id == ElementalBoonId) return run?.BowElement ?? "lightning";
+            if (run != null && BoonEffects.IsSongBoon(h.Def.Id) && run.IsSung(h.Def.Id)) return "sung";
             return h.Def.IsPassive ? "always on" : "Activated";
         }
 

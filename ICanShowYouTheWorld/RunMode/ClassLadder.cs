@@ -193,9 +193,9 @@ namespace ICanShowYouTheWorld.RunMode
             new ClassDefinition
             {
                 Id = "skald", Display = "Skald", Title = "Ormr",
-                Description = "You sing and the road shortens: a marching song that carries you; later a war song that " +
-                              "sharpens your blows, and after that Bragi’s own saga, which rests you where you stand. His " +
-                              "flask is yours the moment you take his name.",
+                Description = "You sing, and the song stays: first a marching song, later a war song for you and yours, " +
+                              "and after that Bragi’s own saga, which mends all who hear it. Switch songs and it swells. " +
+                              "His flask is yours the moment you take his name.",
                 PassiveBoonIds = new[] { "poet" },
                 Rungs = new[] { new[] { "march" }, new[] { "warsong" }, new[] { "bragi" } },
                 GrantItems = new[] { ("MeadHealthMinor", 3) },
