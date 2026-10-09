@@ -50,6 +50,7 @@ last build you played, and undoes all of it. To install one: `git checkout <tag>
      - `Keys (numpad layout): all 33 resolve` (31 plus the two temporary MacBook keys).
      - `Sea creatures: all 6 resolve` (`...08`), and `The ward's spark: fx_chainlightning_hit` (`...08d`). A
        FALLBACK on the spark names the effect used instead; none at all means the Ward strikes unseen.
+     - `Way effects` and `The Smiðr's watch-post`, both OK, in the build with the class balance (8n).
      - `Quest items can be got: all N resolve` (`...06d`). Every item a quest asks for is something the game
        drops, crafts, sells, mines or converts, or the saga grants. **A MISSING line here names the item and
        who asks for it: paste it back**, since it is either a step that can never finish or a source this
@@ -87,8 +88,157 @@ Make a **new character** for this part: three of these checks only happen on a f
 8e. **Shepherd is one star** (`...08i`). As a Hunter in the Meadows, summon the wolves (`U`/`[7]`).
    **See:** one star on each (a wolf's 80 health doubled), not the old near-immortal 5000; a wild boar still
    dies to a few hits and bites as before; the hearth boar shows one star while you hold Shepherd, and loses it
-   when the way is laid down or the run ends. As a Völva, stand hurt beside the hearth for a minute: Hearthlight
-   now mends every five seconds (it only pulsed when heat changed before).
+   when the way is laid down or the run ends. As a Völva, Hearthlight in `...08i` mends 4 every five seconds (before
+   it, it only pulsed when heat changed); the class-balance build mends every second (8g).
+
+**8f to 8n are for the build that carries the class balance** (`docs/superpowers/plans/2026-10-08-class-balance.md`).
+It is built on the branch but not in a build yet, so they wait for it. Dev keys make them quick: `mod` + `Keypad *`
+takes the next way (Hunter, Völva, Berserker, Húskarl, Skald, Sæfari, Smiðr, then none; laptop `mod` + `Z`),
+`mod` + `Keypad /` learns every rung (laptop `mod` + `0`), and `mod` + `Keypad +` completes the step (laptop
+`mod` + `P`). A way's three rungs are `[7]`, `[0]` and `[Ins]` (laptop `U`, `I`, `O`).
+
+8f. **The Hunter's pack** (class balance). As a Hunter in the Meadows, press `U`/`[7]`, then press it again
+   after each step below.
+   **See:**
+   - the first press brings both wolves at once, one star each (8e), and the key cools for 240 s: pressed during
+     that, it says "Packbrother not ready.";
+   - after the 240 s, with both standing, it says "Your pack is already with you." and does not cool down;
+   - strike one wolf down yourself (or let it fall in a fight): the next press brings back that one, and the one
+     still standing stays. Two stand, never more;
+   - `I`/`[0]` (Menagerie) lends a boar, a hen or a chicken, and nothing else, and cools for 90 s after each lend:
+     press it each time it is ready (each press trades the beast back and rolls again), and no wolf comes before
+     Bonemass falls. A Lox joins the roll after Moder, an Asksvin after the Queen;
+   - summons and Menagerie together never pass four;
+   - after Eikthyr falls, a new wolf has two stars, the most there is.
+
+   Bonemass tempers it: Packbrother calls three, so three wolves stand (the first press after Bonemass brings the
+   third).
+
+8g. **The Völva's aura** (class balance). As a Völva, get hurt, then stand still.
+   **See:**
+   - no green number over your head, at any time (Hearthlight used to print one);
+   - the health bar climbs about 3 a second wherever you stand, so about 30 in ten seconds. No hearth is needed.
+     A hurt wolf beside you climbs too;
+   - after Eikthyr it is 4 a second, one more for each god, to 8;
+   - `U`/`[7]` raises two skeletons from the choice. They follow and fight, with no star in the Meadows. The key
+     then cools for 120 s; after it, with both standing, it says "Your dead already stand with you." and does not
+     cool down, and once one has fallen the next press raises only that one;
+   - Mending is `I`/`[0]` now (after Eikthyr), and Thor's Wrath `O`/`[Ins]` (after the Elder). Neither is on `[7]`.
+
+   Bonemass tempers it: Bonecaller raises three.
+
+8h. **The Berserker's Fury** (class balance). As a Berserker, swing at greylings one after another, then stop.
+   **See:**
+   - the damage numbers over them climb with each blow that lands, about 5% a blow, to half again at ten;
+   - from the fifth blow, each blow also heals you a little, a tenth of the damage it does;
+   - stand still: a second after the last blow it fades one blow a second, and is gone within about ten;
+   - `U`/`[7]` (Rend) sweeps around you, and every foe it hits counts as a blow;
+   - `I`/`[0]` (Blood Rage, after Eikthyr) fills Fury at once and holds it full for 15 s. You take a quarter more
+     while it lasts. It is no longer a x1.5 of its own;
+   - `O`/`[Ins]` (Warcry, after the Elder) staggers every foe within 8 m, but not the gods, and fills half of
+     Fury;
+   - the BOONS page says "your weapon bonuses are at their ceiling (x2.5)" once the bonuses reach it. Sharpened,
+     Glass Cannon and Reckless together already do.
+
+   **Your call:** with those held, does Fury still feel like it matters? It has no meter on screen. Would you
+   want one?
+
+   Bonemass tempers it: Rend reaches half again as far (7.5 m).
+
+8i. **The Húskarl's Guard** (class balance). As a Húskarl, raise your shield against a greyling. Once, try to raise
+   it just as the blow lands (a parry). Compare with a block you made before taking up the way.
+   **See:**
+   - a block costs half the stamina, and your health steps up by 4;
+   - a parry steps it up by 10;
+   - `I`/`[0]` (Shield Wall, after Eikthyr): for its 20 s both are doubled, to 8 and 20;
+   - `U`/`[7]` (Shield Bash) and `O`/`[Ins]` (Last Stand) work as before.
+
+   **The Guard is a status effect the mod defines itself, so this is its first proof in the game.** If health
+   never moves on a block, see 8n.
+
+   Bonemass tempers it: Shield Bash reaches 6 m.
+
+8j. **The Skald's song** (class balance). As a Skald, learn every rung (`mod` + `Keypad /`, laptop `mod` + `0`),
+   then press `I`, `O` and `U` in that order (`[0]`, `[Ins]`, `[7]`).
+   **See:**
+   - the Marching Song is already playing from the choice, with no key pressed: +20% speed, and breath back half
+     again as fast. Pressing `U`/`[7]` now, before any switch, only says "That song is already sung.";
+   - `I`/`[0]` switches to the War Song and says "The song swells.": the first switch always swells, the new song
+     at double strength for 5 s;
+   - `O`/`[Ins]` within 20 s switches to the Saga of Bragi and says "The Saga of Bragi.": no swell, only the name;
+   - `U`/`[7]` within 20 s of the swell switches back and says "The Marching Song.";
+   - a song stays until you switch: no timer, no cooldown on the key. Pressing the one already sung says "That
+     song is already sung.";
+   - 20 s or more after the swell, a switch says "The song swells." again;
+   - the War Song adds a quarter to your damage and to your tames' within 15 m; Bragi mends you and them by 3 a
+     second, one more for each god, to 6.
+
+   Bonemass tempers it: the Marching Song is +30%.
+
+8k. **The Sæfari's Ward on foot** (class balance). As a Sæfari, stay ashore and let a greyling notice you.
+   **See:**
+   - lightning strikes it within 20 m, every 3 s, with a spark where it lands. This is Ward I, and you bought
+     nothing. A grazing deer or a calm boar is never struck;
+   - `U`/`[7]` (Undertow, from the choice) throws everything within 6 m back, staggered and wet. With nobody
+     there it says "Nothing within the wave's reach.";
+   - `I`/`[0]` (Stormcaller, after Eikthyr): for 20 s the Ward strikes every second, twice as far;
+   - `O`/`[Ins]` is Sea Legs (after the Elder).
+
+   Then take a ship (`mod` + `Keypad .`, laptop `mod` + `B`; checks 36 and 41). **See:**
+   - Sail I and Hull I cost 25 (50 for anyone else), the Wind-horn 100 (200). The third tier of Sail, Hull and
+     Ward is never offered, because her ship sails a tier above what is fitted;
+   - swimming does not move the stamina bar;
+   - aboard, Undertow also bursts from the ship.
+
+   Bonemass tempers it: Undertow reaches 9 m.
+
+   **Your call:** her Ward works on land before the raven has said anything about the sea. Does that read as an
+   early reveal?
+
+8l. **The Smiðr's watch-post** (class balance). As a Smiðr on open ground, press `U`/`[7]`, and stay out of its
+   line.
+   **See:**
+   - a loaded ballista rises about 3 m ahead of you. It shoots greylings and deer, and never you or your tames. A
+     stray bolt can still hit anyone;
+   - it shoots every non-player that is not tamed: deer, boars, and a boar you are still taming. **Your call:** is
+     that wanted?
+   - raised inside a hall, it stands on the floor, not on the roof;
+   - it stays until it is destroyed or you raise another: the second press (after the 120 s cooldown) takes the
+     first down;
+   - on a ship or over open water it says "No footing for a ballista here.";
+   - quit to the menu and load again: it is gone;
+   - what you wear and hold never wears: the durability bar does not drop;
+   - `I`/`[0]` (Field Forge) and `O`/`[Ins]` (Master's Minute) work as before.
+
+   **Walls, on a THROWAWAY piece away from your base.** Build a beam out past what its support allows, near you:
+   it stands. Walk 25 m off: it falls. **Do not try this on the base.** What you build past the limits stands only
+   while you are near, and the card now says so.
+
+   Bonemass tempers it: two watch-posts at once.
+
+8m. **A tempering shows only when its god is next** (class balance). Open the BOONS page (`End`, then BOONS).
+   **See:**
+   - with only Eikthyr down, no tempering line at all;
+   - with the Elder down, "after Bonemass: ..." under your way;
+   - when Bonemass falls, the line turns green and reads "tempered: ...", and the number it names is the new one;
+   - Moder, Yagluth and the Queen do the same for the second rung, the third rung and the engine.
+
+   The gods have to fall for real here. The step-skip (`mod` + `Keypad +`, laptop `mod` + `P`) moves the quest,
+   not the world's keys, and `mod` + `Keypad /` (laptop `mod` + `0`) teaches rungs, not tempering. To fell a god:
+   use the step-skip to reach the altar's step, `↓` to hop to the altar, summon or find the god, then press bare
+   `Delete` within 10 m (the same key in both layouts; on a MacBook `fn` + `Backspace`). It kills through the
+   game's own damage, so the world's defeat key is set, as in check 12.
+
+   The god count is the WORLD's keys, not the run's. To test tempering from zero gods, use a fresh world.
+
+8n. **The ways' log lines** (class balance). Start a run, then
+   `Select-String Player.log -Pattern "Saga self-check"`.
+   **See:** "Way effects" and "The Smiðr's watch-post", both OK.
+   Then `Select-String Player.log -Pattern "Guard on|Tide-borne on|Guard failed|Tide-borne failed"`.
+   **See:** "Guard on: SE '...' (True)" when a Húskarl takes up the way or resumes it, and "Tide-borne on: SE '...'
+   (True)" for a Sæfari, once per launch. A "(False)", a "Guard failed" or a "Tide-borne failed" is a bug: paste it
+   back.
+
 8c. **The Gatherer stays ashore** (`...08f`). With its step open at night, sail out to open water.
    **See:** if it is out, "The Gatherer will not follow you onto the sea." and it is gone; nothing comes
    while you are afloat. Land at night: "Something heavy is coming through the trees", over land.
@@ -242,9 +392,12 @@ Make a **new character** for this part: three of these checks only happen on a f
 ## What to bring back
 
 - The **self-check block** (item 4), and any **exception** lines (item 5).
+- The "Guard on" and "Tide-borne on" lines (8n).
 - `Select-String Player.log -Pattern "Hildir accepts"` (item 25).
 - For each item that didn't match: its **number**, and what you saw instead.
-- Your calls on **12** (three abilities by the Elder?) and **39** (boat prices, the cone, the horn's timing).
+- Your calls on **12** (three abilities by the Elder?) and **39** (boat prices, the cone, the horn's timing), and on
+  **8h** (does Fury still matter once the ceiling is reached?) and **8k** (is her Ward on land an early reveal?).
+- Per way (8f to 8l): which engine felt too strong or too weak.
 - Anything that felt wrong, even if it worked. That is half of what this test is for.
 
 ## Not in this test

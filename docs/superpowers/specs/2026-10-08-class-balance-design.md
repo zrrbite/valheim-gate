@@ -229,11 +229,16 @@ where reachable. And one for Shepherd: a wild boar's bite is unchanged while a H
 1. **Shepherd honest, the star rule, Menagerie by biome.** First, because Shepherd's shared-data write is a bug
    that reaches wild creatures today. **Shepherd and the star rule are done** (`...08i`, the owner: "fix
    Shepherd now"): `TameStars`, a ZDO mark per animal, a repair for tames saved at 5000. Menagerie by biome is
-   not. The same build moved Shepherd's and Hearthlight's refresh onto the run's poll: both had run only when
-   heat changed.
-2. **The engines**, one way per task, Hunter-relative numbers.
-3. **Tempering.**
-4. **The wheel's tilt and the damage ceiling.**
+   done too, on the branch and not yet in a build (the plan's Task 2). The same build moved Shepherd's and
+   Hearthlight's refresh onto the run's poll: both had run only when heat changed.
+2. **The engines**, one way per task, Hunter-relative numbers. **Built on the branch, not yet in a build.**
+3. **Tempering.** **Built on the branch, not yet in a build.**
+4. **The wheel's tilt and the damage ceiling.** **Built on the branch, not yet in a build.**
+
+The plan is `docs/superpowers/plans/2026-10-08-class-balance.md`. Where the build departs from this text (the
+ballista's bolts, the Hunter's and the Húskarl's tempering, Reckless and Blood Rage), the plan's "Rulings already
+made" says how and why. The build waits for the owner's play-test of the builds before it; the home test plan has a
+check per way.
 
 ## Out of scope, and left to tuning
 

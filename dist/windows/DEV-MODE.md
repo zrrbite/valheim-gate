@@ -33,9 +33,10 @@ It ships `false` and nothing in the mod ever turns it on by itself.
 **Seven are bare. Five want a modifier.** (Plus two temporary MacBook keys, `↓` and `mod` + `Keypad .`, at the end of the table.) `Keypad +` and `Keypad -` need one
 because those two keys were the player's — **Mending** (then Shaman's Mercy)
 and **Unseen** activated on a bare press. Since the ways (classes, 2026-09-27)
-those two moved to `[7]` and `[Ins]` and the keys are free, but the modifier
-stays: moving a tester's hands twice is worse than a modifier that no longer
-guards anything. `Backspace` needs one for a different reason: it is the only
+those two moved to the ways' rungs (Mending is the Völva's `[0]`, Unseen the
+Hunter's `[Ins]`) and the keys are free, but the modifier stays: moving a
+tester's hands twice is worse than a modifier that no longer guards anything.
+`Backspace` needs one for a different reason: it is the only
 dev key that **builds**. And `Keypad *` and `Keypad /` have a **second layer**
 with a modifier — the ways — while the bare press does what it always did.
 `Shift`, `Ctrl` or `Alt` all count; use whichever hand is free.
@@ -200,8 +201,9 @@ is a grep.
   ordinary Lost path) before choosing the next, which is the only place a way
   is ever taken back.
 - **`mod` + `/` (rungs)** grants every rung of the held way at once — rung 3
-  wants three gods down otherwise. Until Phase 2 the four new abilities (Thor's
-  Wrath, Rend, Blood Rage, Warcry) are held and keyed but answer "not ready".
+  wants two gods down otherwise. The tempering after that (Bonemass to the
+  Queen) is not granted: it follows the gods the world records as fallen, which
+  neither this key nor `mod` + `+` can set (a bare `Delete` on a real god does).
 - **`Enter` (home)** teleports to your claimed bed with no charge and no
   cooldown — the real Homeward's economy is not usually the thing under test.
   Needs a claimed bed, and says so if there is none.

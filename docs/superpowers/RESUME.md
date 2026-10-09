@@ -42,6 +42,14 @@ the mode is still being tuned in play. Valheim 1.0.17, Unity 6000.0.75.
   MacBook testing ("too timeconsuming... ill wait until I have a better setup"); step 3 (the act's god
   beside you) waits for that. All are in `DEV-MODE.md`, tagged `MACBOOK-TEMP`, and come out with one grep
   once testing is back at a full keyboard.
+- **The ways, balanced** (spec `specs/2026-10-08-class-balance-design.md`, plan
+  `plans/2026-10-08-class-balance.md`): **built on `feature/run-mode`, not yet in a build**. It waits for the
+  owner's play-test of the builds before it (Task 13 of the plan is the build, tag and deploy, and only runs
+  when the owner says so). Every way has an engine that is always on and a verb to press; the ladder goes on
+  after the Elder, with one tempering per god from Bonemass to the Queen (shown on the BOONS page once its god
+  is next); the wheel leans toward four favoured boons per way; weapon bonuses stop at x2.5. Rungs moved: the
+  Völva's Bonecaller is first (`[7]`), Mending `[0]`, Thor's Wrath `[Ins]`; Tide-borne, Fair Wind and Reinforce
+  are no longer rungs. **Untested in play.** Checks 8f-8n in the home test plan, one per way.
 - **The sea answers the heat** (`1.0.17-run.2026-10-08`; spec `specs/2026-10-08-sea-danger-design.md`, plan
   `plans/2026-10-08-sea-danger.md`).
   - **What comes:** from Act II, aboard a moving ship at sea, heat 0 is vanilla's sea, and the average gap
@@ -59,10 +67,10 @@ the mode is still being tuned in play. Valheim 1.0.17, Unity 6000.0.75.
 - **Shepherd is one star** (`...08i`): it was the GM mod's pet buff (5000 health, and a damage copy through
   `m_shared` that wild wolves and boars shared). Now one star per animal on your side (`TameStars`), marked in
   its ZDO so it comes off; tames saved at 5000 are repaired on sight. Hearthlight and Shepherd now refresh on the
-  poll; they had run only when heat changed. The rest of the balance is a spec, not built.
+  poll; they had run only when heat changed. The rest of the balance is the bullet above.
 - **The wheel deals no blank cards** (`...08h`): a boon a held one wholly covers is never offered
   (`BoonDefinition.CoveredBy`) - Wayfarer for a Skald (Poet is the same card), Steady Hands for a Húskarl,
-  Miner for a Smiðr. Part of the class-balance review; the rest is a spec.
+  Miner for a Smiðr. Part of the class-balance review; the rest is the bullet above.
 - **A run resumes after a full restart again** (`...08g`). Since 2026-08-23 the Herald's target was restored
   before the herd existed: a cold resume threw and DELETED the save (found in the Mac's log, 2026-10-08), and a
   warm one re-rolled the Herald. A failed resume now keeps a `.failed-<time>.json` copy and says so on screen.

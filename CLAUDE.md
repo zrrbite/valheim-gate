@@ -228,8 +228,9 @@ listeners are never both live:
    and `Insert` are the three RUNGS of whichever class (way) the run took up** — several boon
    ids share each of those keys and the handler fires the HELD one — `Keypad9` is Homeward,
    and `PageDown` gates back to where you died. Since 2026-09-27 `Keypad +` and `-` carry
-   two GENERAL actives (Mending Hands, Farsight): Shaman's Mercy became the Völva's Mending on
-   `Keypad7`, Unseen the Hunter's third rung on `Insert`. Since 2026-09-28 the **arrow keys**
+   two GENERAL actives (Mending Hands, Farsight): Shaman's Mercy became the Völva's Mending (on
+   `Keypad0` since 2026-10-08, when Bonecaller took `Keypad7`), Unseen the Hunter's third rung on
+   `Insert`. Since 2026-09-28 the **arrow keys**
    `←`/`→` cycle Thor's bow's element for a Hunter holding Elemental Arrows — unused by vanilla
    play, and the GM mod's arrow bindings are dead during a run. Since 2026-10-05 **`↑` blows the
    Wind-horn** (a ship fitting bought at the helm), and **Shift+E at a ship's helm** opens the
