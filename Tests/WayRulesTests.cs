@@ -53,6 +53,13 @@ static class WayRulesTests
         Check.That(WayRules.HearthlightPerSecond(6) == 12f && WayRules.HearthlightPerSecond(20) == 12f,
                    "the Queen's tempering lifts it to 12 at once - true the moment its line turns green");
         Check.That(WayRules.BoneCount(2) == 2 && WayRules.BoneCount(3) == 3, "two skeletons, three after Bonemass");
+
+        // Packbrother and Bonecaller top up their ranks (2026-10-08, the final review): the standing stay, the
+        // fallen come, and a full rank is a refusal that spends no cooldown.
+        Check.That(WayRules.RanksToFill(2, 0) == 2 && WayRules.RanksToFill(2, 1) == 1, "a call brings every one missing");
+        Check.That(WayRules.RanksToFill(2, 2) == 0, "a full pack: nobody to call");
+        Check.That(WayRules.RanksToFill(WayRules.PackSize(3), 2) == 1, "Bonemass felled: the next call brings the third");
+        Check.That(WayRules.RanksToFill(2, 3) == 0 && WayRules.RanksToFill(2, -1) == 2, "never a negative call, nor more than the size");
         Check.That(WayRules.MendingCooldown(3) == 90f && WayRules.MendingCooldown(4) == 60f, "Mending every 90 s, 60 after Moder");
         Check.That(WayRules.WrathRadius(4) == 6f && WayRules.WrathRadius(5) == 9f, "Thor's Wrath 6 m, 9 after Yagluth");
 

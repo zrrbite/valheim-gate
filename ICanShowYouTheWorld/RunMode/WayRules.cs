@@ -76,6 +76,14 @@ namespace ICanShowYouTheWorld.RunMode
         public static float HearthlightPerSecond(int gods) =>
             Tempered(gods, TemperSlot.Engine) ? 12f : Math.Min(8f, 3f + Math.Max(0, gods));
         public static int BoneCount(int gods) => Tempered(gods, TemperSlot.Rung1) ? 3 : 2;
+
+        /// <summary>
+        /// How many a Packbrother or Bonecaller call brings: the ranks topped up to <paramref name="size"/> (PackSize,
+        /// BoneCount), the <paramref name="standing"/> left where they are. Zero is a refusal that spends no cooldown
+        /// (2026-10-08, the final review): the cards' 240 s and 120 s were never spent, so a call could be pressed again
+        /// at once.
+        /// </summary>
+        public static int RanksToFill(int size, int standing) => Math.Max(0, size - Math.Max(0, standing));
         public static float MendingCooldown(int gods) => Tempered(gods, TemperSlot.Rung2) ? 60f : 90f;
         public static float WrathRadius(int gods) => Tempered(gods, TemperSlot.Rung3) ? 9f : 6f;
 

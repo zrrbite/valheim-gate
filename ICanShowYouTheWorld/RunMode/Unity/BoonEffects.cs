@@ -224,6 +224,9 @@ namespace ICanShowYouTheWorld.RunMode
 
         /// <summary>Packbrother's wolves, oldest first: two at a time, three after Bonemass (WayRules.PackSize).</summary>
         private readonly List<ZDOID> _pack = new List<ZDOID>();
+
+        /// <summary>Bonecaller's skeletons, oldest first: two at a time, three after Bonemass (WayRules.BoneCount).</summary>
+        private readonly List<ZDOID> _bones = new List<ZDOID>();
         private int _companionNameIndex;
 
         private struct PendingOff
@@ -732,14 +735,20 @@ namespace ICanShowYouTheWorld.RunMode
                     break;
 
                 case "brother":
+                case "bonecaller":
+                case "menagerie":
                     // Losing the boon takes its summons with it — a death that costs you
-                    // Packbrother must not leave the pack fighting on. The held-list check is
-                    // belt and braces: an offer no longer lists a boon the player already holds,
-                    // so a second Packbrother should not arise, and BoonEngine removes the entry
-                    // before raising Lost — anything still held here would be a genuine duplicate.
+                    // Packbrother must not leave the pack fighting on — and only its own: losing the
+                    // wolves must not evict the skeletons or the menagerie beast. Bonecaller and
+                    // Menagerie fell through to the default and did nothing until 2026-10-08, so a
+                    // Hunter who laid down the way (Packbrother revoked first, Menagerie still held)
+                    // kept every wolf and the beast to the run's end.
+                    DismissRanks(boonId);
+                    // Belt and braces: with NO summoning boon left, nothing summoned stays. The
+                    // held-list check is safe because BoonEngine removes the entry before raising
+                    // Lost; an offer no longer lists a boon the player already holds, so anything
+                    // still held here would be a genuine duplicate.
                     var stillHeld = _heldBoons();
-                    // All companions leave only when NO summoning boon remains — losing the
-                    // wolves must not evict the skeletons or the menagerie beast.
                     if (stillHeld == null || !stillHeld.Any(h =>
                             h.Def.Id == "brother" || h.Def.Id == "bonecaller" || h.Def.Id == "menagerie"))
                         DespawnAllCompanions();
@@ -3381,10 +3390,14 @@ namespace ICanShowYouTheWorld.RunMode
         /// which is the whole game of it: the reroll is the player's choice to make, at the cost
         /// of whatever they had (owner: "you can always just respawn it to try for a different
         /// one"). One menagerie beast at a time; it shares the retinue cap with the wolves and
-        /// the skeletons like everything summoned.
+        /// the skeletons like everything summoned. Each lend starts the card's 90 s (2026-10-08, the
+        /// final review): until then it never cooled, and a reroll was one keypress away.
         /// </summary>
         private bool ActivateMenagerie()
         {
+            var held = FindHeld("menagerie");
+            if (held == null || held.CooldownRemaining > 0f) return false;
+
             var player = Player.m_localPlayer;
             var scene = ZNetScene.instance;
             if (player == null || scene == null) return false;
@@ -3408,46 +3421,46 @@ namespace ICanShowYouTheWorld.RunMode
             if (!SummonOne(player, scene.GetPrefab(pick), named: false, 0)) return false;
 
             _menagerie = _companions[_companions.Count - 1];
+            held.CooldownRemaining = held.Def.CooldownSeconds;
             LastActivationMessage = $"The Allfather lends you a {pick}. Cast again to trade it back.";
             return true;
         }
 
         /// <summary>
-        /// One wolf per call, and the pack is at most WayRules.PackSize: the card's "two at a time" was never held to
-        /// (2026-10-08) - only the retinue cap of four was. The oldest wolf goes home for the new one.
+        /// Packbrother: the pack topped up to WayRules.PackSize (2026-10-08, the final review). The wolves at your side
+        /// stay and the fallen come back; a full pack refuses and spends nothing, and the card's 240 s starts only when a
+        /// wolf came. Until then the call never cooled, and each press sent the oldest wolf home for a fresh one.
         /// </summary>
-        private bool ActivateBrother()
-        {
-            var man = ZDOMan.instance;
-            _pack.RemoveAll(id => man == null || man.GetZDO(id) == null || !_companions.Contains(id));
-            while (_pack.Count >= WayRules.PackSize(_defeatedBossCount()))
-            {
-                DespawnCompanion(_pack[0]);
-                _pack.RemoveAt(0);
-            }
-            if (!Summon(CompanionPrefab, 1, named: true)) return false;
-            _pack.Add(_companions[_companions.Count - 1]);
-            return true;
-        }
+        private bool ActivateBrother() =>
+            CallRanks("brother", _pack, CompanionPrefab, WayRules.PackSize(_defeatedBossCount()), named: true,
+                      full: "Your pack is already with you.", several: "Your pack answers the call.");
 
         /// <summary>
         /// Raises skeletons that stay raised — Tameable's own Tame(), so they follow, fight, and
         /// are cleaned up at run end like any other companion.
         ///
         /// Two at a time, because one skeleton is a curiosity and a pair is a shield wall; three after
-        /// Bonemass (<see cref="WayRules.BoneCount"/>).
+        /// Bonemass (<see cref="WayRules.BoneCount"/>). Topped up like the pack since 2026-10-08: each call
+        /// raised a whole new pair, bounded only by the retinue cap, and never spent the card's 120 s.
         /// </summary>
-        private bool ActivateBonecaller() => Summon(BonePrefab, WayRules.BoneCount(_defeatedBossCount()), named: false);
+        private bool ActivateBonecaller() =>
+            CallRanks("bonecaller", _bones, BonePrefab, WayRules.BoneCount(_defeatedBossCount()), named: false,
+                      full: "Your dead already stand with you.", several: "The bones remember.");
 
         /// <summary>
-        /// Spawns <paramref name="count"/> tamed followers of a prefab, within the shared retinue
-        /// cap.
+        /// Tops one summoning boon's <paramref name="ranks"/> up to <paramref name="size"/> tamed followers of a
+        /// prefab (WayRules.RanksToFill), within the shared retinue cap, and starts the boon's cooldown when at least
+        /// one came. A full rank refuses with <paramref name="full"/> and spends no cooldown.
         ///
         /// Non-persistent, exactly as Packbrother's wolves have always been: summoned company must
         /// not outlive the session and accumulate in someone's world. Power is loaned.
         /// </summary>
-        private bool Summon(string prefabName, int count, bool named)
+        private bool CallRanks(string boonId, List<ZDOID> ranks, string prefabName, int size, bool named,
+                               string full, string several)
         {
+            var held = FindHeld(boonId);
+            if (held == null || held.CooldownRemaining > 0f) return false;
+
             var player = Player.m_localPlayer;
             var scene = ZNetScene.instance;
             if (player == null || scene == null) return false;
@@ -3459,18 +3472,53 @@ namespace ICanShowYouTheWorld.RunMode
                 return false;
             }
 
-            bool any = false;
-            for (int i = 0; i < count; i++)
-                any |= SummonOne(player, prefab, named, i);
+            PruneRanks(ranks);
+            int missing = WayRules.RanksToFill(size, ranks.Count);
+            if (missing == 0)
+            {
+                LastActivationMessage = full;
+                return false;
+            }
 
-            return any;
+            int came = 0;
+            for (int i = 0; i < missing; i++)
+            {
+                if (!SummonOne(player, prefab, named, i, keep: ranks)) break;
+                ranks.Add(_companions[_companions.Count - 1]);
+                came++;
+            }
+            if (came == 0) return false;
+
+            // One wolf says its own name (SummonOne's line); a whole pack answering is one line, not the last name.
+            if (came > 1) LastActivationMessage = several;
+            held.CooldownRemaining = held.Def.CooldownSeconds;
+            return true;
         }
 
-        private bool SummonOne(Player player, GameObject prefab, bool named, int index)
+        /// <summary>
+        /// Forgets the ranks' fallen: an id whose ZDO is gone (dead, or despawned by us), or that the retinue no
+        /// longer counts (sent home at the cap).
+        /// </summary>
+        private void PruneRanks(List<ZDOID> ranks)
         {
-            // Oldest out first, so the summon always succeeds rather than refusing at the cap.
+            var man = ZDOMan.instance;
+            ranks.RemoveAll(id => man == null || man.GetZDO(id) == null || !_companions.Contains(id));
+        }
+
+        /// <param name="keep">
+        /// The caller's own ranks, never sent home to make room: a top-up that dismissed its own wolf to call a wolf
+        /// would call nobody. When the cap is all <paramref name="keep"/>, nothing is summoned.
+        /// </param>
+        private bool SummonOne(Player player, GameObject prefab, bool named, int index, ICollection<ZDOID> keep = null)
+        {
+            // Oldest out first, so the summon succeeds rather than refusing at the cap.
             PruneDeadCompanions();
-            while (_companions.Count >= MaxCompanions) DespawnCompanion(_companions[0]);
+            while (_companions.Count >= MaxCompanions)
+            {
+                int oldest = keep == null ? 0 : _companions.FindIndex(id => !keep.Contains(id));
+                if (oldest < 0) return false;
+                DespawnCompanion(_companions[oldest]);
+            }
 
             Vector3 pos = player.transform.position
                         + player.transform.forward * 2f
@@ -3519,10 +3567,27 @@ namespace ICanShowYouTheWorld.RunMode
         /// </summary>
         private int CompanionLevel() => TameStars.SummonLevel(_defeatedBossCount());
 
+        /// <summary>Sends home one summoning boon's own followers - the pack, the bones or the beast - and forgets them.</summary>
+        private void DismissRanks(string boonId)
+        {
+            if (boonId == "menagerie")
+            {
+                if (_menagerie != ZDOID.None) DespawnCompanion(_menagerie);
+                _menagerie = ZDOID.None;
+                return;
+            }
+
+            var ranks = boonId == "brother" ? _pack : boonId == "bonecaller" ? _bones : null;
+            if (ranks == null) return;
+            foreach (var id in ranks) DespawnCompanion(id);
+            ranks.Clear();
+        }
+
         private void DespawnAllCompanions()
         {
             _menagerie = ZDOID.None;
             _pack.Clear();
+            _bones.Clear();
 
             foreach (var id in _companions.ToList()) DespawnCompanion(id);
             _companions.Clear();

@@ -10198,6 +10198,11 @@ namespace ICanShowYouTheWorld.RunMode
 
             _boons.RestoreHeld(Zip(s.heldBoonIds, s.heldBoonCooldowns), BuildRestoreCharges(s));
 
+            // Summoned company is non-persistent and never comes back with a reload, so a call that was cooling when
+            // the run was saved must not leave a Hunter or Völva waiting out its cooldown with nobody beside them.
+            foreach (var h in _boons.Held)
+                if (h.Def.Id == "brother" || h.Def.Id == "bonecaller" || h.Def.Id == "menagerie") h.CooldownRemaining = 0f;
+
             // After the held boons, because the element is only the run's while the switch is held;
             // a save that names fire for a run no longer holding it (a way changed under it) comes
             // back as lightning. Null on an older save, which is lightning too. SagaItems applies it
@@ -13695,7 +13700,7 @@ namespace ICanShowYouTheWorld.RunMode
         {
             new BoonDefinition { Id = "fleet", Display = "Fleet-footed", IsPassive = true,  Description = "Move and run faster." },
             new BoonDefinition { Id = "sharp", Display = "Sharpened",    IsPassive = true,  Description = "Your weapons deal 20% more damage." },
-            new BoonDefinition { Id = "brother", ClassId = "hunter", Display = "Packbrother", IsPassive = false, CooldownSeconds = 240f, Description = "Summon a wolf to fight for you. Two at a time." },
+            new BoonDefinition { Id = "brother", ClassId = "hunter", Display = "Packbrother", IsPassive = false, CooldownSeconds = 240f, Description = "Call your pack: two wolves fight for you, and the next call brings back any that fell." },
             // Testable from Act I: you tame a boar on the hearth track, so this has something to
             // work on long before a boss falls.
             new BoonDefinition { Id = "menagerie", ClassId = "hunter", Display = "Menagerie", IsPassive = false, CooldownSeconds = 90f, Description = "Odin lends a beast \u2014 of the lands you have opened. Cast again to trade it back." },
@@ -13710,7 +13715,7 @@ namespace ICanShowYouTheWorld.RunMode
             // 2026-10-08 (class balance) they are her rung 1, from the choice itself: Hearthlight mends
             // whoever is at her side, so she needs allies from the start. MinBosses only gates the
             // wheel, which never deals a way's boons.
-            new BoonDefinition { Id = "bonecaller", ClassId = "volva", Display = "Bonecaller", IsPassive = false, CooldownSeconds = 120f, Description = "Raise two skeletons to fight for you." },
+            new BoonDefinition { Id = "bonecaller", ClassId = "volva", Display = "Bonecaller", IsPassive = false, CooldownSeconds = 120f, Description = "Raise two skeletons to fight for you; the next call raises any that fell." },
             new BoonDefinition { Id = "mule",  Display = "Packmule",     IsPassive = true,  Description = "Carry 100 more weight." },
             new BoonDefinition { Id = "hearty", Display = "Hearty",      IsPassive = true,  Description = "+15 max health." },
             // Owner, 2026-09-28: "We need another boon. 'stuffed' - food lasts for hours." Meals burn
