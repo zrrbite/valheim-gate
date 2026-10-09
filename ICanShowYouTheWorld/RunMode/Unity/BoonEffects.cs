@@ -159,20 +159,6 @@ namespace ICanShowYouTheWorld.RunMode
         /// regen, lent against the ledger's original like the song's step.</summary>
         private const float MarchStaminaFraction = 0.5f;
 
-        /// <summary>Tide-borne's window and breath: "thirty seconds", +8 stamina a second - more than
-        /// swimming or rowing can spend.</summary>
-        private const float TideSeconds = 30f;
-        private const float TideStaminaRegen = 8f;
-
-        /// <summary>Fair Wind's window: "for a minute".</summary>
-        private const float FairWindSeconds = 60f;
-
-        /// <summary>How near a ship must be to feel Fair Wind: a stone's throw from the shore.</summary>
-        private const float FairWindShipRange = 30f;
-
-        /// <summary>Sea Legs' window: "five minutes".</summary>
-        private const float SeaLegsSeconds = 300f;
-
         /// <summary>Field Forge's window: "ninety seconds".</summary>
         private const float FieldForgeSeconds = 90f;
 
@@ -713,8 +699,7 @@ namespace ICanShowYouTheWorld.RunMode
                 case "march":
                 case "warsong":
                 case "bragi":         EndSongs(); break;
-                case "tide":          EndTide(); break;
-                case "fairwind":      EndFairWind(); break;
+                case "stormcaller":   StormUntil = float.NegativeInfinity; break;
                 case "sealegs":       EndSeaLegs(); break;
                 case "fieldforge":    TakeDownFieldForge(); break;
                 case "mastersminute": EndMastersMinute(); break;
@@ -788,8 +773,8 @@ namespace ICanShowYouTheWorld.RunMode
                 case "march": return SwitchSong(SkaldSong.March);
                 case "warsong": return SwitchSong(SkaldSong.War);
                 case "bragi": return SwitchSong(SkaldSong.Bragi);
-                case "tide": return ActivateTide();
-                case "fairwind": return ActivateFairWind();
+                case "undertow": return ActivateUndertow();
+                case "stormcaller": return ActivateStormcaller();
                 case "sealegs": return ActivateSeaLegs();
                 case "fieldforge": return ActivateFieldForge();
                 case "mastersminute": return ActivateMastersMinute();
@@ -846,18 +831,18 @@ namespace ICanShowYouTheWorld.RunMode
                 // fire or frost is not the bow's to keep.
                 SafeInvoke(_resetBowElement);
                 // The four ways' windows, each provably closed on a path where an earlier step
-                // threw - the same reasoning as Blood Rage above. The two that touch something other
-                // than the player come first: the world's wind and the world's free-building key are
-                // not the character's, and a run must not leave either behind.
+                // threw - the same reasoning as Blood Rage above. Master's Minute is the one that
+                // touches something other than the player: the world's free-building key is not the
+                // character's, and a run must not leave it behind. The storm is a plain reset: it is
+                // only a time that SeaWatch reads, so there is nothing in the game to unwind.
                 SafeInvoke(() => EndLastStand(heal: false));
-                SafeInvoke(EndFairWind);
+                StormUntil = float.NegativeInfinity;
                 SafeInvoke(EndMastersMinute);
                 SafeInvoke(EndReinforce);
                 SafeInvoke(TakeDownFieldForge);
                 SafeInvoke(EndSeaLegs);
                 SafeInvoke(EndBulwark);
                 SafeInvoke(EndSongs);
-                SafeInvoke(EndTide);
                 // The Hunter's hush has no ttl, so a run that ended on a path where the held-boon
                 // loop threw would otherwise leave the player quiet for the rest of the session.
                 SafeInvoke(UnapplyHunterHush);
@@ -905,7 +890,6 @@ namespace ICanShowYouTheWorld.RunMode
             SafeInvoke(HoldLastStand);
             SafeInvoke(HoldSeaLegs);
             HoldStuffed(dt);
-            SafeInvoke(SteerFairWind);
         }
 
         // --- fleet ---
@@ -2554,209 +2538,13 @@ namespace ICanShowYouTheWorld.RunMode
         // The standing songs (SwitchSong, ApplySongs, TickSongs, EndSongs) live in BoonEffects.Ways.cs.
 
         // --- Sæfari ---
-
-        /// <summary>
-        /// Tide-borne: +8 stamina a second for thirty seconds, a field loan under "tide". Swimming
-        /// and rowing drain less than that, so for the window the water cannot tire you - and it
-        /// is the same field Tireless and the Marching Song lend against, so all three compose.
-        /// </summary>
-        private bool ActivateTide()
-        {
-            var held = FindHeld("tide");
-            if (held == null || held.CooldownRemaining > 0f) return false;
-
-            if (IsWindowOpen("tide"))
-            {
-                LastActivationMessage = "The tide is already with you.";
-                return false;
-            }
-
-            var player = Player.m_localPlayer;
-            if (player == null) return false;
-
-            try
-            {
-                SyncLoanOwner(player);
-                LendField(player, "StaminaRegen", "tide", TideStaminaRegen);
-            }
-            catch (Exception ex)
-            {
-                Debug.LogWarning("[ICanShowYouTheWorld] Tide-borne failed: " + ex.Message);
-                SafeInvoke(EndTide);
-                return false;
-            }
-
-            SchedulePending("tide", TideSeconds, EndTide);
-
-            held.CooldownRemaining = held.Def.CooldownSeconds;
-            return true;
-        }
-
-        private void EndTide()
-        {
-            RemovePending("tide");
-            RepayLender("tide");
-        }
-
-        /// <summary>Fair Wind is blowing, on this EnvMan, for this ship, and owes the old wind back.</summary>
-        private bool _fairWindOn;
-        private EnvMan _fairWindEnv;
-        private Ship _fairWindShip;
-        private bool _windWasDebug;
-        private float _windWasAngle;
-        private float _windWasIntensity;
-
-        /// <summary>
-        /// Fair Wind: for a minute the wind blows the way the nearest ship is heading, at full
-        /// strength.
-        ///
-        /// Through the game's own wind override, the one the "wind" console command drives: when
-        /// EnvMan.m_debugWind is set, UpdateWind aims the target wind at (sin a, 0, cos a) for
-        /// a = m_debugWindAngle in degrees, at m_debugWindIntensity (all three public fields,
-        /// verified in the 1.0.16 IL). The ship's heading is re-read every frame (SteerFairWind), so
-        /// the wind follows the helm - it eases toward each new heading over the game's own five
-        /// second transition, as Moder's power does, rather than snapping.
-        ///
-        /// The three fields are snapshotted and put back exactly, so a player who had set the wind
-        /// themselves with the console gets their own wind back, not a cleared one. The wind is
-        /// LOCAL: EnvMan computes it per client, and the sail is pushed by whoever owns the ship -
-        /// which is the player at the helm, the case this is for.
-        /// </summary>
-        private bool ActivateFairWind()
-        {
-            var held = FindHeld("fairwind");
-            if (held == null || held.CooldownRemaining > 0f) return false;
-
-            if (_fairWindOn)
-            {
-                LastActivationMessage = "The wind is already yours.";
-                return false;
-            }
-
-            var player = Player.m_localPlayer;
-            var env = EnvMan.instance;
-            if (player == null || env == null) return false;
-
-            try
-            {
-                var ship = NearestShip(player.transform.position, FairWindShipRange);
-                if (ship == null)
-                {
-                    LastActivationMessage = "No ship near enough to feel it.";
-                    return false;
-                }
-
-                _windWasDebug = env.m_debugWind;
-                _windWasAngle = env.m_debugWindAngle;
-                _windWasIntensity = env.m_debugWindIntensity;
-                _fairWindEnv = env;
-                _fairWindShip = ship;
-                _fairWindOn = true;
-
-                env.m_debugWindAngle = HeadingDegrees(ship.transform.forward);
-                env.m_debugWindIntensity = 1f;
-                env.m_debugWind = true;
-            }
-            catch (Exception ex)
-            {
-                Debug.LogWarning("[ICanShowYouTheWorld] Fair Wind failed: " + ex.Message);
-                SafeInvoke(EndFairWind);
-                return false;
-            }
-
-            RemovePending("fairwind");
-            SchedulePending("fairwind", FairWindSeconds, EndFairWind);
-
-            held.CooldownRemaining = held.Def.CooldownSeconds;
-            return true;
-        }
-
-        /// <summary>
-        /// Per frame while the wind is ours: keeps it at the ship's back. If the ship is gone
-        /// (sunk, unloaded) the wind follows where the player looks for the rest of the minute -
-        /// the minute was paid for, and a wind that dropped dead mid-crossing would be the worse
-        /// surprise.
-        /// </summary>
-        private void SteerFairWind()
-        {
-            if (!_fairWindOn) return;
-
-            var env = _fairWindEnv;
-            if (env == null)
-            {
-                // The world this was cast in has gone (a logout). A fresh EnvMan starts with the
-                // override off, so there is nothing to put back - only the bookkeeping.
-                _fairWindOn = false;
-                _fairWindEnv = null;
-                _fairWindShip = null;
-                RemovePending("fairwind");
-                return;
-            }
-
-            Vector3 heading;
-            if (_fairWindShip != null) heading = _fairWindShip.transform.forward;
-            else
-            {
-                var player = Player.m_localPlayer;
-                if (player == null) return;
-                heading = player.GetLookDir();
-            }
-
-            env.m_debugWindAngle = HeadingDegrees(heading);
-        }
-
-        private void EndFairWind()
-        {
-            RemovePending("fairwind");
-            if (!_fairWindOn) return;
-            _fairWindOn = false;
-
-            var env = _fairWindEnv;
-            _fairWindEnv = null;
-            _fairWindShip = null;
-            if (env == null) return;
-
-            env.m_debugWind = _windWasDebug;
-            env.m_debugWindAngle = _windWasAngle;
-            env.m_debugWindIntensity = _windWasIntensity;
-        }
-
-        /// <summary>The compass angle UpdateWind reads back as (sin a, 0, cos a).</summary>
-        private static float HeadingDegrees(Vector3 direction)
-        {
-            direction.y = 0f;
-            if (direction.sqrMagnitude < 0.0001f) return 0f;
-            return Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg;
-        }
-
-        /// <summary>
-        /// The ship the player is aboard, else the nearest one within range. Ship keeps a static
-        /// list only of ships with the local player aboard (GetLocalShip), so a ship at the jetty
-        /// is found by a scene search - acceptable at a five-minute cooldown.
-        /// </summary>
-        private static Ship NearestShip(Vector3 at, float range)
-        {
-            var aboard = Ship.GetLocalShip();
-            if (aboard != null && Vector3.Distance(aboard.transform.position, at) <= range) return aboard;
-
-            Ship best = null;
-            float bestDistance = range;
-            foreach (var ship in UnityEngine.Object.FindObjectsByType<Ship>(FindObjectsSortMode.None))
-            {
-                if (ship == null) continue;
-                float d = Vector3.Distance(ship.transform.position, at);
-                if (d > bestDistance) continue;
-                best = ship;
-                bestDistance = d;
-            }
-            return best;
-        }
+        // The passive (Tide-borne), Undertow and Stormcaller live in BoonEffects.Ways.cs.
 
         /// <summary>Sea Legs is up: cold and wet are shed every frame until it ends.</summary>
         private bool _seaLegsOn;
 
         /// <summary>
-        /// Sea Legs: five minutes in which neither cold nor wet can reach you.
+        /// Sea Legs: five minutes (ten after Yagluth) in which neither cold nor wet can reach you.
         ///
         /// Cold and Freezing are kept off by the game itself: Player.UpdateEnvStatusEffects never
         /// applies either while the player's frost modifier is Resistant or better (verified in
@@ -2795,7 +2583,7 @@ namespace ICanShowYouTheWorld.RunMode
             }
 
             RemovePending("sealegs");
-            SchedulePending("sealegs", SeaLegsSeconds, EndSeaLegs);
+            SchedulePending("sealegs", WayRules.SeaLegsSeconds(_defeatedBossCount()), EndSeaLegs);
 
             held.CooldownRemaining = held.Def.CooldownSeconds;
             return true;

@@ -199,8 +199,8 @@ namespace ICanShowYouTheWorld.RunMode
                     return "Ormr, then. He sang, and the rest of us kept walking when we should have dropped. The " +
                            "marching song is yours now. The others come as the gods fall. Take his flask.";
                 case "saefari":
-                    return "Ragna, then. She was never once afraid of water, and it never once took her. The tide is " +
-                           "yours now; the wind and the sea-legs come as the gods fall. Take her harpoon.";
+                    return "Ragna, then. She was never once afraid of water, and it never once took her. The water is " +
+                           "yours and your ward walks with you; a wave you throw, and later a storm you call. Take her harpoon.";
                 case "smidr":
                     return "Dvalinn, then. He built the hall they all died in, and it is still standing. The field " +
                            "forge is yours now; the master’s minute and the reinforcing come as the gods fall. Take his tools.";

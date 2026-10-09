@@ -43,8 +43,8 @@ static class ClassLadderTests
         new BoonDefinition { Id = "warsong", ClassId = "skald" },
         new BoonDefinition { Id = "bragi", ClassId = "skald" },
         new BoonDefinition { Id = "seafarer", ClassId = "saefari", IsPassive = true },
-        new BoonDefinition { Id = "tide", ClassId = "saefari" },
-        new BoonDefinition { Id = "fairwind", ClassId = "saefari" },
+        new BoonDefinition { Id = "undertow", ClassId = "saefari" },
+        new BoonDefinition { Id = "stormcaller", ClassId = "saefari" },
         new BoonDefinition { Id = "sealegs", ClassId = "saefari" },
         new BoonDefinition { Id = "craftsman", ClassId = "smidr", IsPassive = true },
         new BoonDefinition { Id = "fieldforge", ClassId = "smidr" },
@@ -193,6 +193,13 @@ static class ClassLadderTests
         Check.That(ClassLadder.Find("volva").Rungs[0].SequenceEqual(new[] { "bonecaller" }) &&
                    ClassLadder.Find("volva").Rungs[1].SequenceEqual(new[] { "shaman" }),
                    "the Völva's dead come first, Mending second (class balance, 2026-10-08)");
+
+        Check.That(ClassLadder.Find("saefari").Rungs[0].SequenceEqual(new[] { "undertow" }) &&
+                   ClassLadder.Find("saefari").Rungs[1].SequenceEqual(new[] { "stormcaller" }),
+                   "the Sæfari's rungs: Undertow, then Stormcaller (Tide-borne is her passive now, Fair Wind the horn's)");
+        Check.That(ClassLadder.Due(ClassLadder.Find("saefari"), 1, new[] { "seafarer", "tide", "fairwind" })
+                       .SequenceEqual(new[] { "undertow", "stormcaller" }),
+                   "a save holding the old rungs is taught the new ones on resume");
 
         // A rung's key follows its place in the ladder: BoonKeys calls RungIndex for every rung boon (KeyLayoutTests
         // covers the index-to-key step).

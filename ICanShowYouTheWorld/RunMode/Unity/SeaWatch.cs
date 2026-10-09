@@ -13,6 +13,13 @@ namespace ICanShowYouTheWorld.RunMode
         public float PeakPerMinute;
         public int ActIndex;
         public int WardTier;
+
+        /// <summary>The Sæfari's Ward walks with her: on land it strikes from the player, at <see cref="LandWardTier"/>.</summary>
+        public bool WardOnFoot;
+        public int LandWardTier;
+
+        /// <summary>When Stormcaller's storm ends (<c>Time.time</c>); until then the Ward strikes each second, twice as far.</summary>
+        public float StormUntil;
     }
 
     /// <summary>
@@ -45,6 +52,7 @@ namespace ICanShowYouTheWorld.RunMode
 
         // The Ward's pulse (Task 5): when it next strikes, and the effect it shows.
         private float _nextPulse;
+        private const float PulseSlack = 0.1f;
         private readonly List<Character> _inRange = new List<Character>();
         private GameObject _spark;
         private bool _sparkResolved;
@@ -133,17 +141,25 @@ namespace ICanShowYouTheWorld.RunMode
         /// The Ward (2026-10-08): every few seconds while the player is aboard, lightning strikes every attacker within
         /// the ward's radius of the ship - through the ordinary damage path, so kills count. Who counts as an attacker
         /// is <see cref="ShipFittings.WardStrikes"/>: an alerted, hostile monster, never a grazing deer.
+        /// The Sæfari's Ward walks with her (class balance): off the ship it strikes from the player, one tier weaker
+        /// (<see cref="SeaSettings.LandWardTier"/>). During Stormcaller's storm it pulses every second, twice as far.
         /// </summary>
         private void Pulse(Player player, SeaSettings s)
         {
-            if (s.WardTier < 1 || Time.time < _nextPulse) return;
             var ship = Ship.GetLocalShip();
-            if (ship == null) return;
-            _nextPulse = Time.time + ShipFittings.WardPulseSeconds;
+            bool storm = Time.time < s.StormUntil;
+            int tier = ship != null ? s.WardTier : (s.WardOnFoot ? s.LandWardTier : 0);
+            // A storm that rises between pulses strikes within the second, not at the end of the ward's three; and the
+            // slack, because a tick can land a hair short of a second after the last, which would cost a storm pulse a
+            // whole second more.
+            if (storm) _nextPulse = Mathf.Min(_nextPulse, Time.time + 1f);
+            if (tier < 1 || Time.time < _nextPulse - PulseSlack) return;
+            Vector3 centre = ship != null ? ship.transform.position : player.transform.position;
+            _nextPulse = Time.time + (storm ? 1f : ShipFittings.WardPulseSeconds);
 
-            float damage = ShipFittings.WardDamage(s.WardTier);
+            float damage = ShipFittings.WardDamage(tier);
             _inRange.Clear();
-            Character.GetCharactersInRange(ship.transform.position, ShipFittings.WardRadius(s.WardTier), _inRange);
+            Character.GetCharactersInRange(centre, ShipFittings.WardRadius(tier) * (storm ? 2f : 1f), _inRange);
             foreach (var c in _inRange)
             {
                 // One target at a time: one that throws is skipped, not the rest (final review, 2026-10-08).

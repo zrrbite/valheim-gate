@@ -96,7 +96,8 @@ namespace ICanShowYouTheWorld.RunMode
 
         /// <summary>
         /// The ward (2026-10-08): while the player is aboard, a lightning pulse every few seconds strikes every hostile
-        /// within this radius of the ship - the sea's answer to the sea danger, passive, so it needs no key.
+        /// within this radius of the ship - the sea's answer to the sea danger, passive, so it needs no key. The Sæfari's
+        /// walks with her: off the ship it strikes from her, a tier weaker (<see cref="WayRules.LandWardTier"/>).
         /// </summary>
         public static float WardRadius(int tier) => WardRadii[Clamp(tier, WardRadii.Length - 1)];
         public static float WardDamage(int tier) => WardDamages[Clamp(tier, WardDamages.Length - 1)];
@@ -176,7 +177,11 @@ namespace ICanShowYouTheWorld.RunMode
                 {
                     Kind = FittingKind.Ward, Tier = t, Price = WardPrices[t - 1],
                     Name = "Ward " + Roman(t),
-                    Effect = $"aboard: lightning strikes attackers within {WardRadius(Shown(t)):0} m every {WardPulseSeconds:0} s",
+                    // Aboard only, but for the Sæfari, whose Ward walks with her a tier weaker (WayRules.LandWardTier). The
+                    // card cannot say "as at sea" after the Queen: it is dealt without the god count.
+                    Effect = saefari
+                        ? $"lightning strikes attackers within {WardRadius(Shown(t)):0} m every {WardPulseSeconds:0} s, a tier weaker on land"
+                        : $"aboard: lightning strikes attackers within {WardRadius(Shown(t)):0} m every {WardPulseSeconds:0} s",
                 });
             }
 

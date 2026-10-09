@@ -429,5 +429,107 @@ namespace ICanShowYouTheWorld.RunMode
             try { Player.m_localPlayer?.GetSEMan()?.RemoveStatusEffect(TideHash, quiet: true); }
             catch (Exception ex) { Debug.LogWarning($"[ICanShowYouTheWorld] Tide-borne removal failed: {ex.Message}"); }
         }
+
+        /// <summary>Undertow's hit: a little blunt, a shove, and a stagger that cannot be refused (the game forces one at 100).</summary>
+        private const float UndertowBlunt = 5f;
+        private const float UndertowPush = 60f;
+        private const float UndertowStagger = 100f;
+
+        /// <summary>When Stormcaller's storm ends (Time.time); SeaWatch reads it through RunService.</summary>
+        public float StormUntil { get; private set; } = float.NegativeInfinity;
+
+        /// <summary>
+        /// Stormcaller: for twenty seconds (thirty after Moder) her Ward strikes every second, twice as far. Nothing is
+        /// lent or written to the game - SeaWatch.Pulse reads the end time and does the rest - so the only thing to take
+        /// down is the time itself (Unapply, UnapplyAll).
+        /// </summary>
+        private bool ActivateStormcaller()
+        {
+            var held = FindHeld("stormcaller");
+            if (held == null || held.CooldownRemaining > 0f) return false;
+            StormUntil = Time.time + WayRules.StormcallerSeconds(_defeatedBossCount());
+            held.CooldownRemaining = held.Def.CooldownSeconds;
+            LastActivationMessage = "The storm gathers in your ward.";
+            return true;
+        }
+
+        /// <summary>
+        /// Undertow: one HitData per foe - a push, a forced stagger (multiplier 100) and Wet - like Rend's path, so
+        /// it all runs on the owner in one RPC (research 2026-10-08, section 5). Bosses are skipped, as for Warcry: a
+        /// boss's animator may have no stagger state - and when only gods are in reach the refusal says so, rather than
+        /// claiming nothing is there. A wave that finds nobody refuses, as Rend does. Aboard a ship it bursts from the
+        /// player AND from the ship (spec: it also strikes what is in the water around her ship): the union of both
+        /// circles, each foe once, thrown back from whichever centre is nearer to it.
+        /// </summary>
+        private bool ActivateUndertow()
+        {
+            var held = FindHeld("undertow");
+            if (held == null || held.CooldownRemaining > 0f) return false;
+            var player = Player.m_localPlayer;
+            if (player == null) return false;
+
+            try
+            {
+                var centres = new List<Vector3> { player.transform.position };
+                var ship = Ship.GetLocalShip();
+                if (ship != null) centres.Add(ship.transform.position);
+
+                float radius = WayRules.UndertowRadius(_defeatedBossCount());
+                var foes = FoesAround(centres, radius, player, skipBosses: true);
+                if (foes.Count == 0)
+                {
+                    LastActivationMessage = FoesAround(centres, radius, player, skipBosses: false).Count > 0
+                        ? "The gods stand against the wave."
+                        : "Nothing within the wave's reach.";
+                    return false;
+                }
+
+                float scale = ClassDamageScale();
+                foreach (var foe in foes)
+                {
+                    var hit = new HitData();
+                    hit.m_damage.m_blunt = UndertowBlunt * scale;
+                    hit.m_pushForce = UndertowPush;
+                    hit.m_staggerMultiplier = UndertowStagger;
+                    hit.m_statusEffectHash = SEMan.s_statusEffectWet;
+                    AimHit(hit, foe.Key, foe.Value, player);
+                    DamageOne(foe.Key, hit, "Undertow");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[ICanShowYouTheWorld] Undertow failed: " + ex.Message);
+                return false;
+            }
+
+            held.CooldownRemaining = held.Def.CooldownSeconds;
+            return true;
+        }
+
+        /// <summary>
+        /// Every hostile within <paramref name="radius"/> of ANY of the centres, once each, paired with the centre nearer
+        /// to it - the point a push should run away from. One centre is HostilesNear with its source attached.
+        /// </summary>
+        private static List<KeyValuePair<Character, Vector3>> FoesAround(IList<Vector3> centres, float radius, Player player, bool skipBosses)
+        {
+            var found = new List<KeyValuePair<Character, Vector3>>();
+            var seen = new HashSet<Character>();
+            foreach (var centre in centres)
+                foreach (var c in HostilesNear(centre, radius, player, skipBosses))
+                {
+                    if (!seen.Add(c)) continue;
+                    Vector3 nearest = centres[0];
+                    float best = float.MaxValue;
+                    foreach (var other in centres)
+                    {
+                        float d = (c.transform.position - other).sqrMagnitude;
+                        if (d >= best) continue;
+                        best = d;
+                        nearest = other;
+                    }
+                    found.Add(new KeyValuePair<Character, Vector3>(c, nearest));
+                }
+            return found;
+        }
     }
 }

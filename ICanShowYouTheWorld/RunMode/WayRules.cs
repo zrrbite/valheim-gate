@@ -112,6 +112,12 @@ namespace ICanShowYouTheWorld.RunMode
         public static int SaefariPrice(int price) => (price + 1) / 2;
         public static int SeaShipTier(int bought) => Math.Min(3, Math.Max(0, bought) + 1);
         public static int SeaWardTier(int bought) => SeaShipTier(bought);
+        /// <summary>On land her Ward is one tier weaker than at sea, never below I; the Queen's tempering lifts the penalty.</summary>
+        public static int LandWardTier(int bought, int gods) =>
+            Tempered(gods, TemperSlot.Engine) ? SeaWardTier(bought) : Math.Max(1, SeaWardTier(bought) - 1);
+        public static float UndertowRadius(int gods) => Tempered(gods, TemperSlot.Rung1) ? 9f : 6f;
+        public static float StormcallerSeconds(int gods) => Tempered(gods, TemperSlot.Rung2) ? 30f : 20f;
+        public static float SeaLegsSeconds(int gods) => Tempered(gods, TemperSlot.Rung3) ? 600f : 300f;
     }
 
     /// <summary>What a god tempers: a way's three rungs, then its engine.</summary>

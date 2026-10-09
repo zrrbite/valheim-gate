@@ -7133,6 +7133,9 @@ namespace ICanShowYouTheWorld.RunMode
             PeakPerMinute = _cfg.RunSeaPeakPerMinute,
             ActIndex = _actIndex,
             WardTier = EffectiveFittings().Ward,
+            WardOnFoot = IsSaefari,
+            LandWardTier = IsSaefari ? WayRules.LandWardTier(_fittings.Ward, DefeatedBosses) : 0,
+            StormUntil = _boonEffects.StormUntil,
         };
 
         /// <summary>The raven speaks of the sea once a run, at its first encounter; that also unlocks the Ward.</summary>
@@ -13779,9 +13782,9 @@ namespace ICanShowYouTheWorld.RunMode
             new BoonDefinition { Id = "bragi",     ClassId = "skald",   Display = "Saga of Bragi",  IsPassive = false, CooldownSeconds = 0f, Description = "Sing it and it stays: you and every ally within 15 m mend 3 a second, more with every god felled." },
 
             // Sæfari - Ragna, who was never once afraid of water.
-            new BoonDefinition { Id = "seafarer",  ClassId = "saefari", Display = "Seafarer",   IsPassive = true,  Description = "Swim skill to 60, spear skill to 50. The water never tires you; fittings cost you half, your ship sails a tier above them, and the sea pays you double." },
-            new BoonDefinition { Id = "tide",      ClassId = "saefari", Display = "Tide-borne", IsPassive = false, CooldownSeconds = 120f, Description = "Thirty seconds in which the water cannot tire you." },
-            new BoonDefinition { Id = "fairwind",  ClassId = "saefari", Display = "Fair Wind",  IsPassive = false, CooldownSeconds = 300f, Description = "For a minute the wind is at your ship’s back." },
+            new BoonDefinition { Id = "seafarer",  ClassId = "saefari", Display = "Seafarer",   IsPassive = true,  Description = "Swim skill to 60, spear skill to 50. The water never tires you; your Ward walks with you on land, a tier weaker but never below I; fittings cost you half, your ship sails a tier above them, and the sea pays you double." },
+            new BoonDefinition { Id = "undertow",    ClassId = "saefari", Display = "Undertow",    IsPassive = false, CooldownSeconds = 20f, Description = "A wave bursts from you - around your ship, at sea: everything within six metres but the gods is staggered, thrown back and soaked." },
+            new BoonDefinition { Id = "stormcaller", ClassId = "saefari", Display = "Stormcaller", IsPassive = false, CooldownSeconds = 120f, Description = "Twenty seconds in which your Ward strikes every second, twice as far." },
             new BoonDefinition { Id = "sealegs",   ClassId = "saefari", Display = "Sea Legs",   IsPassive = false, CooldownSeconds = 300f, Description = "Five minutes in which neither cold nor wet can reach you." },
 
             // Smiðr - Dvalinn, who built the hall they all died in.

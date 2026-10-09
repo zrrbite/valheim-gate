@@ -97,6 +97,13 @@ static class ShipFittingsTests
         Check.That(ShipFittings.Offers(none, false, true).First(o => o.Kind == FittingKind.Ward).Effect.Contains("within 20 m") &&
                    ShipFittings.Offers(none, false).First(o => o.Kind == FittingKind.Sail).Effect.StartsWith("+15%"),
                    "everyone else's card states the tier it sells");
+        // The Ward's line says where it works: aboard for everyone, and for the Sæfari ashore too, a tier weaker.
+        Check.That(ShipFittings.Offers(none, false, true).First(o => o.Kind == FittingKind.Ward).Effect ==
+                   "aboard: lightning strikes attackers within 20 m every 3 s",
+                   "everyone else's Ward works only aboard, and says so");
+        Check.That(ShipFittings.Offers(none, false, true, saefari: true).First(o => o.Kind == FittingKind.Ward).Effect ==
+                   "lightning strikes attackers within 25 m every 3 s, a tier weaker on land",
+                   "hers walks with her: the sea's tier, and a tier weaker on land");
         var ward2 = ShipFittings.Bought(ShipFittings.Bought(none, FittingKind.Ward), FittingKind.Ward);
         Check.That(ward2.Ward == 2 && ShipFittings.Offers(ward2, false, true).First(o => o.Kind == FittingKind.Ward).Price == 450 &&
                    ShipFittings.Bought(full, FittingKind.Ward).Ward == 3 && !ShipFittings.Offers(full, true, true).Any(),

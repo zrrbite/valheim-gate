@@ -203,11 +203,11 @@ namespace ICanShowYouTheWorld.RunMode
             new ClassDefinition
             {
                 Id = "saefari", Display = "Sæfari", Title = "Ragna",
-                Description = "Water is yours: a tide that carries you without tiring; later a fair wind at your ship’s " +
-                              "back, and after that sea-legs that no cold or wet can touch. Her harpoon is yours the " +
-                              "moment you take her name.",
+                Description = "Water is yours, and your ward goes with you onto land. A wave you can throw that breaks " +
+                              "what stands near; later a storm in your ward; after that sea-legs that no cold or wet can " +
+                              "touch. Fittings cost you half. Her harpoon is yours the moment you take her name.",
                 PassiveBoonIds = new[] { "seafarer" },
-                Rungs = new[] { new[] { "tide" }, new[] { "fairwind" }, new[] { "sealegs" } },
+                Rungs = new[] { new[] { "undertow" }, new[] { "stormcaller" }, new[] { "sealegs" } },
                 // The abyssal harpoon - a Mistlands weapon handed over in the Meadows, because it is
                 // the one spear the game makes for pulling things out of the water.
                 GrantItems = new[] { ("SpearChitin", 1) },

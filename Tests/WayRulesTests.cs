@@ -119,5 +119,14 @@ static class WayRulesTests
         Check.That(WayRules.SeaShipTier(0) == 1 && WayRules.SeaShipTier(2) == 3 && WayRules.SeaShipTier(3) == 3,
                    "her ship sails a tier above what is fitted, to III");
         Check.That(WayRules.SaefariCoinFactor == 2, "the sea pays her double");
+
+        // The Sæfari on foot.
+        Check.That(WayRules.LandWardTier(0, 0) == 1 && WayRules.LandWardTier(1, 0) == 1 && WayRules.LandWardTier(2, 0) == 2 &&
+                   WayRules.LandWardTier(3, 0) == 2,
+                   "on land her Ward is one tier weaker than at sea, never below I");
+        Check.That(WayRules.LandWardTier(3, 6) == 3, "after the Queen it is as strong as at sea");
+        Check.That(WayRules.UndertowRadius(2) == 6f && WayRules.UndertowRadius(3) == 9f, "Undertow 6 m, 9 after Bonemass");
+        Check.That(WayRules.StormcallerSeconds(3) == 20f && WayRules.StormcallerSeconds(4) == 30f, "Stormcaller 20 s, 30 after Moder");
+        Check.That(WayRules.SeaLegsSeconds(4) == 300f && WayRules.SeaLegsSeconds(5) == 600f, "Sea Legs 5 min, 10 after Yagluth");
     }
 }
