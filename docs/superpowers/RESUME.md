@@ -49,7 +49,9 @@ the mode is still being tuned in play. Valheim 1.0.17, Unity 6000.0.75.
   after the Elder, with one tempering per god from Bonemass to the Queen (shown on the BOONS page once its god
   is next); the wheel leans toward four favoured boons per way; weapon bonuses stop at x2.5. Rungs moved: the
   Völva's Bonecaller is first (`[7]`), Mending `[0]`, Thor's Wrath `[Ins]`; Tide-borne, Fair Wind and Reinforce
-  are no longer rungs. **Untested in play.** Checks 8f-8n in the home test plan, one per way.
+  are no longer rungs. **Untested in play.** Checks 8f-8n in the home test plan, one per way. The decisions
+  taken on the owner's behalf while it was built, and what was left, are in
+  `notes/2026-10-08-class-balance-rulings.md`; the three questions for the owner are at its "Your calls".
 - **The sea answers the heat** (`1.0.17-run.2026-10-08`; spec `specs/2026-10-08-sea-danger-design.md`, plan
   `plans/2026-10-08-sea-danger.md`).
   - **What comes:** from Act II, aboard a moving ship at sea, heat 0 is vanilla's sea, and the average gap
