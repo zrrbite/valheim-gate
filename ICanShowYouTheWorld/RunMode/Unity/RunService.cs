@@ -3286,7 +3286,8 @@ namespace ICanShowYouTheWorld.RunMode
             // is not worth being precious about, and a dev layer nobody can reach is a worse
             // fault than an over-generous modifier.
             //
-            // The ways freed + and - (Mending and Unseen moved to [7] and [Ins]) and the same day
+            // The ways freed + and - (Mending and Unseen moved into them: Mending is the Völva's [0]
+            // since 2026-10-08, Unseen the Hunter's [Ins]) and the same day
             // they were taken again, by two GENERAL actives - Mending Hands on +, Farsight on - - so
             // the modifier guards what it was written to guard. HandleBoonActivationInput stands
             // down while it is held, which is what keeps Shift+[+] a dev key. And * and / gained a
@@ -13812,8 +13813,8 @@ namespace ICanShowYouTheWorld.RunMode
             new BoonDefinition { Id = "unseen", ClassId = "hunter", Display = "Unseen", IsPassive = false, CooldownSeconds = 150f, Description = "Nothing can see you for 20s. Walk away from anything." },
             // --- The ways' new abilities (classes, 2026-09-27) ---
             //
-            // No effects yet: BoonEffects.Activate answers false for an id it does not know, so
-            // until Phase 2 these are held, keyed and labelled but say "not ready" when pressed.
+            // Held, keyed and labelled before they did anything (they said "not ready" when pressed);
+            // every one has its effect in BoonEffects now.
             new BoonDefinition { Id = "wrath",  ClassId = "volva",     Display = "Thor\u2019s Wrath", IsPassive = false, CooldownSeconds = 60f,  Description = "Call lightning down where you aim. Everything within six metres takes it." },
             new BoonDefinition { Id = "rend",   ClassId = "berserker", Display = "Rend",       IsPassive = false, CooldownSeconds = 20f,  Description = "A sweep of the blade around you: every foe within reach bleeds." },
             new BoonDefinition { Id = "rage",   ClassId = "berserker", Display = "Blood Rage", IsPassive = false, CooldownSeconds = 120f, Description = "Fills your Fury and holds it full for 15 s. You take 25% more while it lasts." },
