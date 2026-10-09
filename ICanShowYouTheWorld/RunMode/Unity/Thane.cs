@@ -202,8 +202,8 @@ namespace ICanShowYouTheWorld.RunMode
                     return "Ragna, then. She was never once afraid of water, and it never once took her. The water is " +
                            "yours and your ward walks with you; a wave you throw, and later a storm you call. Take her harpoon.";
                 case "smidr":
-                    return "Dvalinn, then. He built the hall they all died in, and it is still standing. The field " +
-                           "forge is yours now; the master’s minute and the reinforcing come as the gods fall. Take his tools.";
+                    return "Dvalinn, then. He built the hall they all died in, and it is still standing. He will " +
+                           "lend you his watch-post first, a ballista that fights for you; the bench and forge from nothing come after. Take his tools.";
                 default:
                     return null;
             }

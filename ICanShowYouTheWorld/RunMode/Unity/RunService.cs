@@ -7921,6 +7921,7 @@ namespace ICanShowYouTheWorld.RunMode
             CheckSpeakersAndTraders();
             CheckSea();
             CheckWayEffects();
+            CheckWatchPost();
             CheckGods();
             CheckSagaItems();
             CheckItemsObtainable();
@@ -11725,6 +11726,33 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
+        /// The Smiðr's Watch-post (2026-10-08): the ballista and the three bolts it is loaded with. The bolt names are
+        /// guesses from the catalog (the crossbow's "bone, iron, blackmetal" are not ammunition a ballista takes), so a
+        /// wrong one is a Smiðr whose watch-post stands down, found here rather than at the keypress.
+        /// </summary>
+        private void CheckWatchPost()
+        {
+            if (_selfCheck == null) return;
+            try
+            {
+                var scene = ZNetScene.instance;
+                if (scene == null)
+                {
+                    _selfCheck.Fallback("The Smiðr's watch-post", "the scene was not ready - not checked this run");
+                    return;
+                }
+                var names = new[] { "piece_turret", "TurretBoltWood", "TurretBolt", "TurretBoltFlametal" };
+                var missing = names.Where(n => scene.GetPrefab(n) == null).ToList();
+                _selfCheck.AllOf("The Smiðr's watch-post", names.Length, missing, "the Watch-post stands down");
+            }
+            catch (Exception ex)
+            {
+                _selfCheck.Missing("The Smiðr's watch-post", "the Watch-post may stand down (" + ex.Message + ")");
+                LogOnce("self-check-watchpost", ex);
+            }
+        }
+
+        /// <summary>
         /// The key layout (2026-10-06): a layout name the config does not know falls back to the
         /// numpad, and a key name Unity cannot parse is an action with no key.
         /// </summary>
@@ -13788,10 +13816,10 @@ namespace ICanShowYouTheWorld.RunMode
             new BoonDefinition { Id = "sealegs",   ClassId = "saefari", Display = "Sea Legs",   IsPassive = false, CooldownSeconds = 300f, Description = "Five minutes in which neither cold nor wet can reach you." },
 
             // Smiðr - Dvalinn, who built the hall they all died in.
-            new BoonDefinition { Id = "craftsman",     ClassId = "smidr", Display = "Craftsman",          IsPassive = true,  Description = "Woodcutting and pickaxe skill to 50, and 100 more weight carried." },
+            new BoonDefinition { Id = "craftsman",     ClassId = "smidr", Display = "Craftsman",          IsPassive = true,  Description = "Woodcutting and pickaxe skill to 50, +100 carry. Forge-skin: armour half again; your gear never wears; your walls within 20 m take no wear, and what you build past their limits stands only while you are near." },
+            new BoonDefinition { Id = "watchpost",     ClassId = "smidr", Display = "Watch-post",         IsPassive = false, CooldownSeconds = 120f, Description = "A ballista rises where you stand and shoots what comes, until it falls, you leave it behind, or you raise another." },
             new BoonDefinition { Id = "fieldforge",    ClassId = "smidr", Display = "Field Forge",        IsPassive = false, CooldownSeconds = 300f, Description = "A bench and a forge rise at your feet for ninety seconds." },
             new BoonDefinition { Id = "mastersminute", ClassId = "smidr", Display = "Master’s Minute", IsPassive = false, CooldownSeconds = 600f, Description = "One minute in which building costs nothing." },
-            new BoonDefinition { Id = "reinforce",     ClassId = "smidr", Display = "Reinforce",          IsPassive = false, CooldownSeconds = 600f, Description = "Ten minutes in which your walls within twenty metres take no wear." },
         };
     }
 }

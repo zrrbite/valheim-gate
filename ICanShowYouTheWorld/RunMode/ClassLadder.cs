@@ -215,11 +215,12 @@ namespace ICanShowYouTheWorld.RunMode
             new ClassDefinition
             {
                 Id = "smidr", Display = "Smiðr", Title = "Dvalinn",
-                Description = "You build where you stand: a bench and a forge raised from nothing for a minute and a " +
-                              "half; later the master’s minute, when building costs nothing, and after that walls that " +
-                              "no weather wears. His tools are yours the moment you take his name.",
+                Description = "What you build fights for you: a ballista raised where you stand, later a bench and a " +
+                              "forge from nothing, and after that the master’s minute, when building costs nothing. " +
+                              "Your walls take no wear, and your skin is half again as hard. " +
+                              "His tools are yours the moment you take his name.",
                 PassiveBoonIds = new[] { "craftsman" },
-                Rungs = new[] { new[] { "fieldforge" }, new[] { "mastersminute" }, new[] { "reinforce" } },
+                Rungs = new[] { new[] { "watchpost" }, new[] { "fieldforge" }, new[] { "mastersminute" } },
                 GrantItems = new[] { ("Hoe", 1), ("Cultivator", 1) },
             },
         };

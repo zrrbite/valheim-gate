@@ -159,9 +159,6 @@ namespace ICanShowYouTheWorld.RunMode
         /// regen, lent against the ledger's original like the song's step.</summary>
         private const float MarchStaminaFraction = 0.5f;
 
-        /// <summary>Field Forge's window: "ninety seconds".</summary>
-        private const float FieldForgeSeconds = 90f;
-
         /// <summary>
         /// Where the bench and the forge stand: this far ahead of the player, and this far either
         /// side of that point. Four metres between centres leaves about a metre and a half of clear
@@ -173,11 +170,10 @@ namespace ICanShowYouTheWorld.RunMode
         internal const string FieldBenchPrefab = "piece_workbench";
         internal const string FieldForgePrefab = "forge";
 
-        /// <summary>Master's Minute: "one minute".</summary>
-        private const float MastersMinuteSeconds = 60f;
+        // The Field Forge's and the Master's Minute's windows are WayRules.FieldForgeSeconds / MastersMinuteSeconds
+        // (ninety seconds and a minute; three and two after Moder and Yagluth).
 
-        /// <summary>Reinforce's window and reach: "ten minutes", "within twenty metres".</summary>
-        private const float ReinforceSeconds = 600f;
+        /// <summary>The Smiðr's walls (Reinforce, a passive since 2026-10-08): "within twenty metres".</summary>
         private const float ReinforceRadius = 20f;
 
         // --- The general boons of 2026-09-27 ---
@@ -491,8 +487,11 @@ namespace ICanShowYouTheWorld.RunMode
                 case "craftsman":
                     // Two halves: skills through the host's loan (SkillBoons), and one Player
                     // field through the ledger (FieldLoans). Both are re-run safely on respawn.
+                    // And a third (2026-10-08): Forge-skin, a status effect of ours. His gear and his walls
+                    // are kept by TickSmith, once a second.
                     ApplySkillBoon(boonId);
                     ApplyFieldBoost(boonId);
+                    ApplyForgeSkin();
                     break;
 
                 case "irongut":
@@ -672,6 +671,14 @@ namespace ICanShowYouTheWorld.RunMode
                     UnapplyGuard();
                     break;
 
+                case "craftsman":
+                    // What the default did for it (the field loan), Forge-skin, and every wall he had shored up -
+                    // their flags are per instance and nothing else would ever put them back.
+                    UnapplyFieldBoost(boonId);
+                    UnapplyForgeSkin();
+                    EndReinforce();
+                    break;
+
                 case "seafarer":
                     // What the default did for it (the field loan), and Tide-borne, which is ours and which nothing else
                     // would ever take off.
@@ -703,7 +710,7 @@ namespace ICanShowYouTheWorld.RunMode
                 case "sealegs":       EndSeaLegs(); break;
                 case "fieldforge":    TakeDownFieldForge(); break;
                 case "mastersminute": EndMastersMinute(); break;
-                case "reinforce":     EndReinforce(); break;
+                case "watchpost":     TakeDownWatchPosts(); break;
 
                 // The bow outlives the boon and ships as lightning; losing the switch (the dev
                 // class cycle, or the run's end through UnapplyAll) puts it back there.
@@ -778,7 +785,7 @@ namespace ICanShowYouTheWorld.RunMode
                 case "sealegs": return ActivateSeaLegs();
                 case "fieldforge": return ActivateFieldForge();
                 case "mastersminute": return ActivateMastersMinute();
-                case "reinforce": return ActivateReinforce();
+                case "watchpost": return ActivateWatchPost();
                 default: return false;
             }
         }
@@ -839,6 +846,10 @@ namespace ICanShowYouTheWorld.RunMode
                 StormUntil = float.NegativeInfinity;
                 SafeInvoke(EndMastersMinute);
                 SafeInvoke(EndReinforce);
+                // The Smiðr's ballista and Forge-skin: a networked object and a status effect of ours, which nothing
+                // else would ever take down.
+                SafeInvoke(TakeDownWatchPosts);
+                SafeInvoke(UnapplyForgeSkin);
                 SafeInvoke(TakeDownFieldForge);
                 SafeInvoke(EndSeaLegs);
                 SafeInvoke(EndBulwark);
@@ -2630,7 +2641,8 @@ namespace ICanShowYouTheWorld.RunMode
         private bool _fieldForgeLogged;
 
         /// <summary>
-        /// Field Forge: a workbench and a forge at the player's feet for ninety seconds.
+        /// Field Forge: a workbench and a forge at the player's feet for ninety seconds (WayRules.FieldForgeSeconds:
+        /// three minutes after Moder).
         ///
         /// Raised the way the companions are - Instantiate, non-persistent ZDO, owned, tracked by
         /// ZDOID - so they can never be saved into the world, and are taken down through the ZDO
@@ -2713,11 +2725,13 @@ namespace ICanShowYouTheWorld.RunMode
             }
 
             RemovePending("fieldforge");
-            SchedulePending("fieldforge", FieldForgeSeconds, TakeDownFieldForge);
+            float forgeSeconds = WayRules.FieldForgeSeconds(_defeatedBossCount());
+            SchedulePending("fieldforge", forgeSeconds, TakeDownFieldForge);
 
+            string forgeFor = ", for " + SecondsPhrase(forgeSeconds) + ".";
             LastActivationMessage = bench != null && forge != null
-                ? "A bench and a forge, for ninety seconds."
-                : bench != null ? "A bench, for ninety seconds." : "A forge, for ninety seconds.";
+                ? "A bench and a forge" + forgeFor
+                : bench != null ? "A bench" + forgeFor : "A forge" + forgeFor;
             held.CooldownRemaining = held.Def.CooldownSeconds;
             return true;
         }
@@ -2832,9 +2846,10 @@ namespace ICanShowYouTheWorld.RunMode
 
             _mastersMinuteOn = true;
             RemovePending("mastersminute");
-            SchedulePending("mastersminute", MastersMinuteSeconds, EndMastersMinute);
+            float minuteSeconds = WayRules.MastersMinuteSeconds(_defeatedBossCount());
+            SchedulePending("mastersminute", minuteSeconds, EndMastersMinute);
 
-            LastActivationMessage = "For one minute, building costs nothing.";
+            LastActivationMessage = "For " + SecondsPhrase(minuteSeconds) + ", building costs nothing.";
             held.CooldownRemaining = held.Def.CooldownSeconds;
             return true;
         }
@@ -2848,7 +2863,7 @@ namespace ICanShowYouTheWorld.RunMode
             _setFreeBuild(false);
         }
 
-        /// <summary>A piece Reinforce touched, and the two flags it had before.</summary>
+        /// <summary>A piece the Smiðr's walls touched, and the two flags it had before.</summary>
         private struct Reinforced
         {
             public WearNTear Piece;
@@ -2858,9 +2873,12 @@ namespace ICanShowYouTheWorld.RunMode
 
         private readonly List<Reinforced> _reinforced = new List<Reinforced>();
 
+        /// <summary>The same pieces as <see cref="_reinforced"/>, for "already done?" in constant time: a base is thousands of them.</summary>
+        private readonly HashSet<WearNTear> _reinforcedSet = new HashSet<WearNTear>();
+
         /// <summary>
-        /// Reinforce: for ten minutes, every player-built piece within twenty metres takes neither
-        /// weather wear nor support wear.
+        /// The Smiðr's walls (Reinforce, made a passive 2026-10-08): every player-built piece within twenty metres of
+        /// <paramref name="centre"/> takes neither weather wear nor support wear. TickSmith calls it once a second.
         ///
         /// Mind the names. WearNTear.m_noRoofWear and m_noSupportWear read as "no wear", and mean
         /// the opposite: both default TRUE, and UpdateWear only applies rain damage when
@@ -2870,71 +2888,55 @@ namespace ICanShowYouTheWorld.RunMode
         /// wall and would have added wear to a stone one.
         ///
         /// The flags are per-instance fields, never saved: each touched piece's own values are kept
-        /// and put back. A piece destroyed or unloaded meanwhile is skipped (Unity's ==), and comes
-        /// back from its prefab anyway. One consequence worth knowing: with the support check off,
-        /// a piece whose support is taken away stands until the ten minutes are up, then falls.
+        /// and put back (EndReinforce). A piece is shored up once; one left more than twenty metres behind is let go and
+        /// has its own flags back, so the walls unworn are the ones he is standing near; a piece destroyed or unloaded
+        /// meanwhile is forgotten (Unity's ==), and comes back from its prefab anyway. One consequence worth knowing:
+        /// with the support check off, a piece whose support is taken away stands until he walks away, then falls.
+        /// As a passive it freezes support at its maximum for the pieces near him, so builds past the limits fall when he
+        /// leaves, respawns elsewhere, reloads, or the run ends.
         /// </summary>
-        private bool ActivateReinforce()
+        private void ReinforceAround(Vector3 centre)
         {
-            var held = FindHeld("reinforce");
-            if (held == null || held.CooldownRemaining > 0f) return false;
+            float r2 = ReinforceRadius * ReinforceRadius;
 
-            if (_reinforced.Count > 0)
+            // Let go of what is destroyed, or left behind.
+            _reinforced.RemoveAll(r =>
             {
-                LastActivationMessage = "Your walls are already shored up.";
-                return false;
-            }
-
-            var player = Player.m_localPlayer;
-            if (player == null) return false;
-
-            try
-            {
-                Vector3 centre = player.transform.position;
-                float r2 = ReinforceRadius * ReinforceRadius;
-
-                // A copy, for Mending Hands' reason: the game's list is rearranged when a piece is
-                // destroyed.
-                foreach (var wnt in WearNTear.GetAllInstances().ToList())
+                // Unity's ==, deliberately: here the question IS "is it destroyed", and a destroyed
+                // piece has no flags left to restore.
+                if (r.Piece == null) { _reinforcedSet.Remove(r.Piece); return true; }
+                if ((r.Piece.transform.position - centre).sqrMagnitude <= r2) return false;
+                try
                 {
-                    if (wnt == null) continue;
-                    if ((wnt.transform.position - centre).sqrMagnitude > r2) continue;
-
-                    var piece = wnt.GetComponent<Piece>();
-                    if (piece == null || !piece.IsPlacedByPlayer()) continue;
-
-                    _reinforced.Add(new Reinforced { Piece = wnt, RoofWear = wnt.m_noRoofWear, SupportWear = wnt.m_noSupportWear });
-                    wnt.m_noRoofWear = false;
-                    wnt.m_noSupportWear = false;
+                    r.Piece.m_noRoofWear = r.RoofWear;
+                    r.Piece.m_noSupportWear = r.SupportWear;
                 }
-            }
-            catch (Exception ex)
+                catch { }
+                _reinforcedSet.Remove(r.Piece);
+                return true;
+            });
+
+            // The game's own list, walked in place - this runs once a second, and a base is thousands of pieces. Nothing in
+            // the loop destroys or creates one (it reads, and sets two plain fields), so the list cannot move under it;
+            // Mending Hands copies its list because repairing can destroy a piece, this does not.
+            foreach (var wnt in WearNTear.GetAllInstances())
             {
-                Debug.LogWarning("[ICanShowYouTheWorld] Reinforce failed: " + ex.Message);
-                SafeInvoke(EndReinforce);
-                return false;
+                if (wnt == null) continue;
+                if ((wnt.transform.position - centre).sqrMagnitude > r2) continue;
+                if (_reinforcedSet.Contains(wnt)) continue;
+
+                var piece = wnt.GetComponent<Piece>();
+                if (piece == null || !piece.IsPlacedByPlayer()) continue;
+
+                _reinforced.Add(new Reinforced { Piece = wnt, RoofWear = wnt.m_noRoofWear, SupportWear = wnt.m_noSupportWear });
+                _reinforcedSet.Add(wnt);
+                wnt.m_noRoofWear = false;
+                wnt.m_noSupportWear = false;
             }
-
-            if (_reinforced.Count == 0)
-            {
-                LastActivationMessage = "Nothing of yours to shore up.";
-                return false;
-            }
-
-            RemovePending("reinforce");
-            SchedulePending("reinforce", ReinforceSeconds, EndReinforce);
-
-            LastActivationMessage = _reinforced.Count == 1
-                ? "One piece shored up for ten minutes."
-                : $"{_reinforced.Count} pieces shored up for ten minutes.";
-            held.CooldownRemaining = held.Def.CooldownSeconds;
-            return true;
         }
 
         private void EndReinforce()
         {
-            RemovePending("reinforce");
-
             foreach (var r in _reinforced)
             {
                 // Unity's ==, deliberately: here the question IS "is it destroyed", and a destroyed
@@ -2948,6 +2950,18 @@ namespace ICanShowYouTheWorld.RunMode
                 catch { }
             }
             _reinforced.Clear();
+            _reinforcedSet.Clear();
+        }
+
+        /// <summary>A window's length as the message says it: "ninety seconds", "one minute", "three minutes".</summary>
+        private static string SecondsPhrase(float seconds)
+        {
+            int s = (int)Math.Round(seconds);
+            if (s == 90) return "ninety seconds";
+            if (s == 60) return "one minute";
+            if (s >= 120 && s % 60 == 0 && s <= 600)
+                return new[] { "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten" }[s / 60 - 2] + " minutes";
+            return s + " seconds";
         }
 
         private bool ActivateWay()

@@ -49,7 +49,7 @@ static class ClassLadderTests
         new BoonDefinition { Id = "craftsman", ClassId = "smidr", IsPassive = true },
         new BoonDefinition { Id = "fieldforge", ClassId = "smidr" },
         new BoonDefinition { Id = "mastersminute", ClassId = "smidr" },
-        new BoonDefinition { Id = "reinforce", ClassId = "smidr" },
+        new BoonDefinition { Id = "watchpost", ClassId = "smidr" },
     };
 
     public static void Run()
@@ -200,6 +200,14 @@ static class ClassLadderTests
         Check.That(ClassLadder.Due(ClassLadder.Find("saefari"), 1, new[] { "seafarer", "tide", "fairwind" })
                        .SequenceEqual(new[] { "undertow", "stormcaller" }),
                    "a save holding the old rungs is taught the new ones on resume");
+
+        Check.That(ClassLadder.Find("smidr").Rungs[0].SequenceEqual(new[] { "watchpost" }) &&
+                   ClassLadder.Find("smidr").Rungs[1].SequenceEqual(new[] { "fieldforge" }) &&
+                   ClassLadder.Find("smidr").Rungs[2].SequenceEqual(new[] { "mastersminute" }),
+                   "the Smiðr's rungs: the Watch-post, the Field Forge, the Master's Minute (Reinforce is his passive now)");
+        Check.That(ClassLadder.Due(ClassLadder.Find("smidr"), 2, new[] { "craftsman", "fieldforge", "mastersminute", "reinforce" })
+                       .SequenceEqual(new[] { "watchpost" }),
+                   "a save holding Reinforce is taught the Watch-post on resume");
 
         // A rung's key follows its place in the ladder: BoonKeys calls RungIndex for every rung boon (KeyLayoutTests
         // covers the index-to-key step).

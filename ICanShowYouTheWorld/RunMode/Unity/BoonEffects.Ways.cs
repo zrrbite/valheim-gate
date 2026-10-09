@@ -24,6 +24,8 @@ namespace ICanShowYouTheWorld.RunMode
             catch (Exception e) { Debug.LogWarning("[ICanShowYouTheWorld] Fury: " + e.Message); }
             try { TickSongs(gods); }
             catch (Exception e) { Debug.LogWarning("[ICanShowYouTheWorld] Songs: " + e.Message); }
+            try { TickSmith(gods); }
+            catch (Exception e) { Debug.LogWarning("[ICanShowYouTheWorld] Smith: " + e.Message); }
         }
 
         /// <summary>The Hunter's engine tempered by the Queen: every animal on her side within 30 m mends.</summary>
@@ -530,6 +532,186 @@ namespace ICanShowYouTheWorld.RunMode
                     found.Add(new KeyValuePair<Character, Vector3>(c, nearest));
                 }
             return found;
+        }
+
+        // --- The Smiðr ---
+
+        private const string ForgeSkinName = "ICSYTW_ForgeSkin";
+        private static readonly int ForgeSkinHash = ForgeSkinName.GetStableHashCode();
+
+        /// <summary>One template per armour factor (x1.5, x2), keyed by the factor to 0.01, made once and kept (the War Song's
+        /// pattern): SEMan clones what it is handed, and an unreferenced ScriptableObject made per apply would never be
+        /// collected.</summary>
+        private static readonly Dictionary<int, SE_Stats> ForgeSkinTemplates = new Dictionary<int, SE_Stats>();
+
+        /// <summary>The factor Forge-skin was last laid at, as a template key; -1 when it is not on.</summary>
+        private int _forgeSkinKey = -1;
+
+        private readonly List<ZDOID> _watchPosts = new List<ZDOID>();
+
+        /// <summary>The cached template for one armour factor; recreated if Unity has let go of it.</summary>
+        private static SE_Stats ForgeSkinTemplate(float factor)
+        {
+            int key = (int)Math.Round(factor * 100f);
+            if (ForgeSkinTemplates.TryGetValue(key, out var cached) && cached != null) return cached;
+
+            var se = ScriptableObject.CreateInstance<SE_Stats>();
+            se.hideFlags = HideFlags.DontUnloadUnusedAsset;
+            se.name = ForgeSkinName;
+            se.m_name = "Forge-skin";
+            se.m_tooltip = key >= 200
+                ? "Your armour is twice as hard, and your gear never wears."
+                : "Your armour is half again as hard, and your gear never wears.";
+            se.m_ttl = 0f;
+            // SE_Stats.ModifyArmorMods: armor = (armor + add) * (1 + mult), for the player only (research 2026-10-08, section 3).
+            se.m_armorMultiplier = key / 100f - 1f;
+            ForgeSkinTemplates[key] = se;
+            return se;
+        }
+
+        /// <summary>
+        /// Forge-skin: armour x1.5 (x2 after the Queen), the game's own m_armorMultiplier. Idempotent: it is re-laid
+        /// (removed, then added) only when the factor has changed or the effect is missing - a death takes it, and the
+        /// respawn's Apply puts it back.
+        /// </summary>
+        private void ApplyForgeSkin()
+        {
+            try
+            {
+                var seman = Player.m_localPlayer?.GetSEMan();
+                if (seman == null) return;
+                float f = WayRules.ArmourFactor(_defeatedBossCount());
+                int key = (int)Math.Round(f * 100f);
+                if (_forgeSkinKey == key && seman.HaveStatusEffect(ForgeSkinHash)) return;
+                seman.RemoveStatusEffect(ForgeSkinHash, quiet: true);
+                seman.AddStatusEffect(ForgeSkinTemplate(f));
+                _forgeSkinKey = key;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[ICanShowYouTheWorld] Forge-skin failed: {ex.Message}");
+            }
+        }
+
+        private void UnapplyForgeSkin()
+        {
+            _forgeSkinKey = -1;
+            try { Player.m_localPlayer?.GetSEMan()?.RemoveStatusEffect(ForgeSkinHash, quiet: true); }
+            catch (Exception ex) { Debug.LogWarning($"[ICanShowYouTheWorld] Forge-skin removal failed: {ex.Message}"); }
+        }
+
+        /// <summary>Once a second while "craftsman" is held: armour current, gear whole, walls within 20 m unworn.</summary>
+        private void TickSmith(int gods)
+        {
+            if (!Holds("craftsman")) return;
+            ApplyForgeSkin();
+            var player = Player.m_localPlayer;
+            if (player == null) return;
+
+            // His gear never wears: the item INSTANCE's durability, never m_shared (that one is every copy's).
+            var equipped = player.GetInventory()?.GetEquippedItems();
+            if (equipped != null)
+                foreach (var item in equipped)
+                {
+                    if (item == null || item.m_shared == null || !item.m_shared.m_useDurability) continue;
+                    float max = item.GetMaxDurability();
+                    if (item.m_durability < max) item.m_durability = max;
+                }
+
+            ReinforceAround(player.transform.position);
+        }
+
+        /// <summary>
+        /// Watch-post: raises a ballista where the Smiðr stands - loaded for good, blind to players and tames, never saved.
+        /// Raised the way the Field Forge's stations are (RaiseStation): Instantiate, a non-persistent ZDO, owned, tracked by
+        /// ZDOID, so it can never be saved into the world and is taken down through the ZDO even from an unloaded zone.
+        /// Per instance, never the prefab:
+        ///
+        ///  - Turret.m_targetPlayers and m_targetTamed go false (both default true): the turret has no faction check, so
+        ///    without this it would shoot him and his pack. It still shoots every awake untamed non-player it can see, deer
+        ///    included (research 2026-10-08, section 4). Its bolts have no owner, so a stray one can hit anyone (vanilla).
+        ///  - m_maxAmmo = 0 with m_defaultAmmo set is the game's infinite ammunition; m_returnAmmoOnDestroy goes false.
+        ///  - Piece.m_canBeRemoved goes false and m_resources is emptied, so breaking it drops nothing.
+        ///
+        /// At most WayRules.WatchPosts stand at once: raising another takes the oldest down.
+        /// </summary>
+        private bool ActivateWatchPost()
+        {
+            var held = FindHeld("watchpost");
+            if (held == null || held.CooldownRemaining > 0f) return false;
+            var player = Player.m_localPlayer;
+            var scene = ZNetScene.instance;
+            var prefab = scene != null ? scene.GetPrefab("piece_turret") : null;
+            int gods = _defeatedBossCount();
+            var bolt = scene != null ? scene.GetPrefab(WayRules.WatchPostBolt(gods))?.GetComponent<ItemDrop>() : null;
+            if (player == null || prefab == null || bolt == null) { LastActivationMessage = "No ballista answers."; return false; }
+
+            // Footing first, before anything is spent or raised. A ballista is a static piece with nothing under it but the
+            // ground height the game finds: raised at sea (aboard a ship, or over open water) it sank to the seabed and
+            // shot at nothing. So no ship, no open water, and ground that is really there - no cooldown spent on a refusal.
+            // GetSolidHeight raises the point by its last argument and casts straight down to the first solid it meets. From
+            // 2 m above his feet, not 5: inside a hall with a roof lower than that, the ray met the roof first and the
+            // ballista stood on it. The price: a slope rising more than 2 m in three paces is out of the ray's reach.
+            Vector3 at = player.transform.position + player.transform.forward * 3f;
+            float ground = 0f;
+            if (Ship.GetLocalShip() != null || SeaWatch.OverOpenWater(at) ||
+                ZoneSystem.instance == null || !ZoneSystem.instance.GetSolidHeight(at, out ground, 2))
+            {
+                LastActivationMessage = "No footing for a ballista here.";
+                return false;
+            }
+            at.y = ground;
+
+            var man = ZDOMan.instance;
+            _watchPosts.RemoveAll(id => man == null || man.GetZDO(id) == null);
+
+            var inst = UnityEngine.Object.Instantiate(prefab, at, Quaternion.LookRotation(player.transform.forward));
+            if (inst == null) { LastActivationMessage = "The watch-post would not stand."; return false; }
+            var view = inst.GetComponent<ZNetView>();
+            var zdo = view != null && view.IsValid() ? view.GetZDO() : null;
+            if (zdo == null)
+            {
+                // Untrackable without a ZDO, and so impossible to take down - never leave one.
+                UnityEngine.Object.Destroy(inst);
+                LastActivationMessage = "The watch-post would not stand.";
+                return false;
+            }
+            zdo.Persistent = false;
+            if (!view.IsOwner()) view.ClaimOwnership();
+
+            var piece = inst.GetComponent<Piece>();
+            if (piece != null) { piece.m_canBeRemoved = false; piece.m_resources = new Piece.Requirement[0]; }
+            var turret = inst.GetComponent<Turret>();
+            if (turret != null)
+            {
+                turret.m_targetPlayers = false;
+                turret.m_targetTamed = false;
+                turret.m_maxAmmo = 0;
+                turret.m_defaultAmmo = bolt;
+                turret.m_returnAmmoOnDestroy = false;
+            }
+            _watchPosts.Add(zdo.m_uid);
+
+            // The new one first, then the oldest down: a failed raising leaves the old one standing.
+            while (_watchPosts.Count > WayRules.WatchPosts(gods))
+            {
+                DestroyByZdo(_watchPosts[0]);
+                _watchPosts.RemoveAt(0);
+            }
+
+            held.CooldownRemaining = held.Def.CooldownSeconds;
+            LastActivationMessage = "The watch-post stands.";
+            return true;
+        }
+
+        private void TakeDownWatchPosts()
+        {
+            foreach (var id in _watchPosts.ToList())
+            {
+                try { DestroyByZdo(id); }
+                catch (Exception ex) { Debug.LogWarning("[ICanShowYouTheWorld] Watch-post cleanup: " + ex.Message); }
+            }
+            _watchPosts.Clear();
         }
     }
 }

@@ -118,6 +118,13 @@ namespace ICanShowYouTheWorld.RunMode
         public static float UndertowRadius(int gods) => Tempered(gods, TemperSlot.Rung1) ? 9f : 6f;
         public static float StormcallerSeconds(int gods) => Tempered(gods, TemperSlot.Rung2) ? 30f : 20f;
         public static float SeaLegsSeconds(int gods) => Tempered(gods, TemperSlot.Rung3) ? 600f : 300f;
+
+        // --- The Smiðr ---
+        public static float ArmourFactor(int gods) => Tempered(gods, TemperSlot.Engine) ? 2f : 1.5f;
+        public static int WatchPosts(int gods) => Tempered(gods, TemperSlot.Rung1) ? 2 : 1;
+        public static string WatchPostBolt(int gods) => gods >= 6 ? "TurretBoltFlametal" : gods >= 3 ? "TurretBolt" : "TurretBoltWood";
+        public static float FieldForgeSeconds(int gods) => Tempered(gods, TemperSlot.Rung2) ? 180f : 90f;
+        public static float MastersMinuteSeconds(int gods) => Tempered(gods, TemperSlot.Rung3) ? 120f : 60f;
     }
 
     /// <summary>What a god tempers: a way's three rungs, then its engine.</summary>

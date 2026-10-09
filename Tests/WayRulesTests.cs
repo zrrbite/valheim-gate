@@ -128,5 +128,14 @@ static class WayRulesTests
         Check.That(WayRules.UndertowRadius(2) == 6f && WayRules.UndertowRadius(3) == 9f, "Undertow 6 m, 9 after Bonemass");
         Check.That(WayRules.StormcallerSeconds(3) == 20f && WayRules.StormcallerSeconds(4) == 30f, "Stormcaller 20 s, 30 after Moder");
         Check.That(WayRules.SeaLegsSeconds(4) == 300f && WayRules.SeaLegsSeconds(5) == 600f, "Sea Legs 5 min, 10 after Yagluth");
+
+        // The Smiðr.
+        Check.That(WayRules.ArmourFactor(5) == 1.5f && WayRules.ArmourFactor(6) == 2f, "armour half again, doubled after the Queen");
+        Check.That(WayRules.WatchPosts(2) == 1 && WayRules.WatchPosts(3) == 2, "one watch-post, two after Bonemass");
+        Check.That(WayRules.WatchPostBolt(2) == "TurretBoltWood" && WayRules.WatchPostBolt(3) == "TurretBolt" &&
+                   WayRules.WatchPostBolt(6) == "TurretBoltFlametal",
+                   "wooden missiles, black metal from Bonemass, flametal from the Queen (the ballista's own bolts)");
+        Check.That(WayRules.FieldForgeSeconds(3) == 90f && WayRules.FieldForgeSeconds(4) == 180f, "the Field Forge 90 s, 3 min after Moder");
+        Check.That(WayRules.MastersMinuteSeconds(4) == 60f && WayRules.MastersMinuteSeconds(5) == 120f, "the Master's Minute, 2 after Yagluth");
     }
 }
