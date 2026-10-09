@@ -52,6 +52,17 @@ static class ClassLadderTests
         new BoonDefinition { Id = "watchpost", ClassId = "smidr" },
     };
 
+    /// <summary>
+    /// The pool plus the general boons the ways favour, which the real pool has and this synthetic one does not
+    /// carry by default: the validator reports a favoured id the pool is missing (class balance, 2026-10-08).
+    /// </summary>
+    static List<BoonDefinition> WithFavoured(List<BoonDefinition> pool)
+    {
+        foreach (var id in ClassLadder.Catalog().SelectMany(c => c.Favoured ?? new string[0]))
+            if (!pool.Any(b => b.Id == id)) pool.Add(new BoonDefinition { Id = id, IsPassive = true });
+        return pool;
+    }
+
     public static void Run()
     {
         var hunter = ClassLadder.Find("hunter");
@@ -104,7 +115,7 @@ static class ClassLadderTests
         Check.That(catalog.All(c => c.Rungs.Length == ClassLadder.Thresholds.Length),
             "every way has one rung per threshold");
 
-        var problems = ClassLadder.Validate(catalog, Pool()).ToList();
+        var problems = ClassLadder.Validate(catalog, WithFavoured(Pool())).ToList();
         foreach (var p in problems) Console.WriteLine("       " + p);
         Check.That(problems.Count == 0, "the catalog agrees with a pool tagged like the real one");
 
@@ -225,5 +236,14 @@ static class ClassLadderTests
             for (int i = 0; i < way.Rungs.Length; i++)
                 foreach (var id in way.Rungs[i])
                     Check.That(ClassLadder.RungIndex(id) == i, $"{way.Id}: {id} reads rung {i} (a boon id sits on one rung only)");
+
+        // The wheel's tilt (class balance, 2026-10-08): each way favours four general boons, drawn at double weight.
+        Check.That(ClassLadder.Catalog().All(c => c.Favoured != null && c.Favoured.Length == 4),
+                   "every way favours four general boons");
+        var withFavoured = WithFavoured(Pool());
+        Check.That(!ClassLadder.Validate(ClassLadder.Catalog(), withFavoured).Any(), "favoured ids the pool has pass the validator");
+        var noBounty = withFavoured.Where(b => b.Id != "bounty").ToList();
+        Check.That(ClassLadder.Validate(ClassLadder.Catalog(), noBounty).Any(p => p.Contains("favours 'bounty'")),
+                   "a favoured id missing from the pool is caught at run start");
     }
 }

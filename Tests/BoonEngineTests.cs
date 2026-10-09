@@ -120,6 +120,26 @@ static class BoonEngineTests
             Check.That(Math.Abs(c.Held[0].CooldownRemaining - 6f) < 0.001f, "cooldown ticks");
         }
 
+        // The wheel's tilt: a favoured boon draws at double weight (class balance, 2026-10-08). Four boons and a
+        // three-boon offer: the first slot is a: 2 in 5 against 1 in 4, so the lead is about 1.6x, not 2x.
+        Func<List<BoonDefinition>> four = () => new List<BoonDefinition>
+        {
+            new BoonDefinition { Id = "a", IsPassive = true }, new BoonDefinition { Id = "b", IsPassive = true },
+            new BoonDefinition { Id = "c", IsPassive = true }, new BoonDefinition { Id = "d", IsPassive = true },
+        };
+        int favouredFirst = 0, plainFirst = 0;
+        for (int i = 0; i < 400; i++)
+        {
+            var tilted = new BoonEngine(four(), new Random(i), 45f);
+            tilted.Favoured.Add("a");
+            tilted.CreateOffer();
+            if (tilted.CurrentOffer[0].Id == "a") favouredFirst++;
+            var plain = new BoonEngine(four(), new Random(i), 45f);
+            plain.CreateOffer();
+            if (plain.CurrentOffer[0].Id == "a") plainFirst++;
+        }
+        Check.That(favouredFirst > plainFirst * 1.3, $"a favoured boon leads the offer far more often ({favouredFirst} vs {plainFirst})");
+
         RestoreHeldTests();
     }
 

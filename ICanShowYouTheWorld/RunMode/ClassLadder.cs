@@ -149,6 +149,7 @@ namespace ICanShowYouTheWorld.RunMode
                 // Elemental Arrows beside Menagerie (owner, 2026-09-28): the Hunter is the bow's way,
                 // and the saga's bow is Thor's - so her second rung teaches it fire and frost.
                 Rungs = new[] { new[] { "brother" }, new[] { "menagerie", "elemental" }, new[] { "unseen" } },
+                Favoured = new[] { "fleet", "farsight", "wayfarer", "bounty" },
             },
             new ClassDefinition
             {
@@ -159,6 +160,7 @@ namespace ICanShowYouTheWorld.RunMode
                 PassiveBoonIds = new[] { "hearthlight" },
                 // Her dead first (class balance, 2026-10-08): the aura needs allies to mend from the start.
                 Rungs = new[] { new[] { "bonecaller" }, new[] { "shaman" }, new[] { "wrath" } },
+                Favoured = new[] { "hearty", "kindling", "wind", "study" },
             },
             new ClassDefinition
             {
@@ -169,6 +171,7 @@ namespace ICanShowYouTheWorld.RunMode
                               " Ulfr’s axes are yours the moment you take his name.",
                 PassiveBoonIds = new[] { "warrior" },
                 Rungs = new[] { new[] { "rend" }, new[] { "rage" }, new[] { "warcry" } },
+                Favoured = new[] { "bloodthirst", "relentless", "sharp", "reckless" },
                 // The way made visible. Owner, after three milestones as a Berserker: "I wasn't
                 // quite sure what the class benefits were" - and could he dual-wield from the
                 // start? Two arbitrary one-handers cannot share the hands without hooking the
@@ -188,6 +191,7 @@ namespace ICanShowYouTheWorld.RunMode
                               "shield comes back to you as health. His shield and spear are yours the moment you take his name.",
                 PassiveBoonIds = new[] { "hirdman" },
                 Rungs = new[] { new[] { "bash" }, new[] { "bulwark" }, new[] { "laststand" } },
+                Favoured = new[] { "thickskin", "hardshell", "hearty", "tireless" },
                 GrantItems = new[] { ("ShieldWood", 1), ("SpearFlint", 1) },
             },
             new ClassDefinition
@@ -198,6 +202,7 @@ namespace ICanShowYouTheWorld.RunMode
                               "His flask is yours the moment you take his name.",
                 PassiveBoonIds = new[] { "poet" },
                 Rungs = new[] { new[] { "march" }, new[] { "warsong" }, new[] { "bragi" } },
+                Favoured = new[] { "tireless", "fleet", "stuffed", "wind" },
                 GrantItems = new[] { ("MeadHealthMinor", 3) },
             },
             new ClassDefinition
@@ -208,6 +213,7 @@ namespace ICanShowYouTheWorld.RunMode
                               "touch. Fittings cost you half. Her harpoon is yours the moment you take her name.",
                 PassiveBoonIds = new[] { "seafarer" },
                 Rungs = new[] { new[] { "undertow" }, new[] { "stormcaller" }, new[] { "sealegs" } },
+                Favoured = new[] { "wayfarer", "fleet", "coldblood", "farsight" },
                 // The abyssal harpoon - a Mistlands weapon handed over in the Meadows, because it is
                 // the one spear the game makes for pulling things out of the water.
                 GrantItems = new[] { ("SpearChitin", 1) },
@@ -221,6 +227,7 @@ namespace ICanShowYouTheWorld.RunMode
                               "His tools are yours the moment you take his name.",
                 PassiveBoonIds = new[] { "craftsman" },
                 Rungs = new[] { new[] { "watchpost" }, new[] { "fieldforge" }, new[] { "mastersminute" } },
+                Favoured = new[] { "woodsman", "mule", "mend", "bounty" },
                 GrantItems = new[] { ("Hoe", 1), ("Cultivator", 1) },
             },
         };
@@ -273,6 +280,12 @@ namespace ICanShowYouTheWorld.RunMode
             var known = new HashSet<string>(classList.Select(c => c.Id));
             foreach (var def in poolList.Where(b => b.ClassId != null && !known.Contains(b.ClassId)))
                 yield return $"boon '{def.Id}' has ClassId '{def.ClassId}', which is no class";
+
+            // A favoured id the pool lacks tilts nothing, and nothing says so in play (class balance, 2026-10-08).
+            foreach (var cls in classList)
+                foreach (var id in cls.Favoured ?? new string[0])
+                    if (!byId.ContainsKey(id))
+                        yield return $"class '{cls.Id}' favours '{id}', which is not in the pool";
 
             // A cover that names nothing covers nothing, and the blank card stays on the wheel (2026-10-08).
             foreach (var def in poolList.Where(b => b.CoveredBy != null))

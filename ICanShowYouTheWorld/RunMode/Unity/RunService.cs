@@ -2094,6 +2094,18 @@ namespace ICanShowYouTheWorld.RunMode
             return ClassLadder.Due(cls, defeatedBosses, _boons.Held.Select(h => h.Def.Id)).ToList();
         }
 
+        /// <summary>
+        /// Points the wheel's tilt at the held way: its favoured boons draw at double weight (class balance,
+        /// 2026-10-08). Follow every write of <c>_classId</c> with it, and every new <see cref="BoonEngine"/>,
+        /// which starts with none; a null way (or no engine) leaves the wheel even.
+        /// </summary>
+        private void SetFavoured()
+        {
+            if (_boons == null) return;
+            _boons.Favoured.Clear();
+            foreach (var id in ClassLadder.Find(_classId)?.Favoured ?? new string[0]) _boons.Favoured.Add(id);
+        }
+
         public void ChooseClass(string classId)
         {
             if (!_active || _boons == null) return;
@@ -2110,6 +2122,7 @@ namespace ICanShowYouTheWorld.RunMode
             }
 
             _classId = cls.Id;
+            SetFavoured();
             _classChoicePending = false;
             LearnDueClassBoons();
             Message($"You take up the way of the {cls.Display}, as {cls.Title} walked it.");
@@ -2452,6 +2465,7 @@ namespace ICanShowYouTheWorld.RunMode
                 _taskHealthReward = 0f;
                 _homewardCharges = 0;
                 _classId = null;
+                SetFavoured();
                 _classChoicePending = false;
                 _boonOfferOwed = false;
                 // Nobody holds Elemental Arrows at a run's first second, so the bow is its own.
@@ -3055,6 +3069,7 @@ namespace ICanShowYouTheWorld.RunMode
                 _items.SetThorsBowElement(ICanShowYouTheWorld.RunMode.BowElement.Lightning);
 
             _classId = null;
+            SetFavoured();
             _classChoicePending = false;
             return revoked;
         }
@@ -7405,6 +7420,7 @@ namespace ICanShowYouTheWorld.RunMode
             // The way goes with the run. Its boons were unapplied with the rest above; a resumed
             // run reads the id back from the save.
             _classId = null;
+            SetFavoured();   // the engine is null by now, so this does nothing; it keeps every write of the way followed by it
             _classChoicePending = false;
 
             // Run state, so it goes with the run. The paths that END a run call RestoreLoanedSkills
@@ -7899,6 +7915,7 @@ namespace ICanShowYouTheWorld.RunMode
             RefreshAct(announce: false);
 
             _boons = new BoonEngine(DefaultBoons(), _rng, _cfg.RunBoonOfferTimeoutSeconds);
+            SetFavoured();   // a new engine starts with none; the way (if any) is read back after, on a resume
             if (freshRun) _boons.FirstOfferPin = FirstBoonPin;
             if (freshRun) ForgetAfterword();
             _boons.Gained += OnBoonGained;
@@ -10034,6 +10051,7 @@ namespace ICanShowYouTheWorld.RunMode
             ResetOutageTracking();
             HudNotice = null;
             _classId = null;              // read back from the save below, before the held boons
+            SetFavoured();
             _classChoicePending = false;
             _boonOfferOwed = false;
 
@@ -10170,6 +10188,10 @@ namespace ICanShowYouTheWorld.RunMode
             _classId = ClassLadder.Find(s.classId) != null ? s.classId : null;
             if (s.classId != null && _classId == null)
                 Debug.LogWarning($"[ICanShowYouTheWorld] Saved way '{s.classId}' is no longer in the table; resuming with none.");
+
+            // The engine exists by now (BuildEngines ran earlier in this method) and so does the way, so the wheel's
+            // tilt is set before anything is dealt: RestoreWaiting below draws an offer.
+            SetFavoured();
 
             _boons.RestoreHeld(Zip(s.heldBoonIds, s.heldBoonCooldowns), BuildRestoreCharges(s));
 

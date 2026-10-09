@@ -174,6 +174,15 @@ namespace ICanShowYouTheWorld.RunMode
             this.offerTimeout = offerTimeoutSeconds;
         }
 
+        /// <summary>
+        /// Boon ids the held way favours: each draws at double weight (the wheel's tilt, class balance, 2026-10-08).
+        /// Empty until the host sets it from the way, so an engine with no way draws as it always did.
+        /// </summary>
+        public ICollection<string> Favoured { get; } = new HashSet<string>();
+
+        /// <summary>A boon's weight in the draw: its own, doubled when the way favours it.</summary>
+        private int WeightOf(BoonDefinition d) => Math.Max(1, d.Weight) * (Favoured.Contains(d.Id) ? 2 : 1);
+
         public void CreateOffer()
         {
             // One already waits: this one is owed, not lost, and a stowed card comes back with the news.
@@ -216,13 +225,13 @@ namespace ICanShowYouTheWorld.RunMode
                 // Weighted, without replacement. A linear walk over summed weights: the pool is
                 // tens of entries, not thousands, and obvious beats clever here.
                 int total = 0;
-                foreach (var o in options) total += Math.Max(1, o.Weight);
+                foreach (var o in options) total += WeightOf(o);
 
                 int roll = rng.Next(total);
                 BoonDefinition pick = options[options.Count - 1];
                 foreach (var o in options)
                 {
-                    roll -= Math.Max(1, o.Weight);
+                    roll -= WeightOf(o);
                     if (roll < 0) { pick = o; break; }
                 }
 

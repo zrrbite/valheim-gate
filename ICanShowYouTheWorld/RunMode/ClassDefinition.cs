@@ -28,6 +28,12 @@ namespace ICanShowYouTheWorld.RunMode
         public string[][] Rungs;
 
         /// <summary>
+        /// Four general boons this way's wheel draws at double weight (class balance, 2026-10-08). A tilt, not a gift:
+        /// they are still dealt, and still picked, like any card from the pool; the way only makes them likelier.
+        /// </summary>
+        public string[] Favoured;
+
+        /// <summary>
         /// Items handed over ONCE, at the moment the way is taken up at the graves, as
         /// (prefab, count). Empty for a way that gives nothing to hold.
         /// </summary>
