@@ -447,6 +447,9 @@ namespace ICanShowYouTheWorld.RunMode
                 // would otherwise resume the bow on whatever the last autosave caught.
                 stepBowElement: StepBowElement,
                 resetBowElement: () => _items.SetThorsBowElement(ICanShowYouTheWorld.RunMode.BowElement.Lightning));
+            // Thor's bow is a weapon the damage boons multiply: its element and tempering are written through their
+            // originals, or their next refresh writes the old element back (the final review, 2026-10-08).
+            _items.RebaseWeapon = _boonEffects.RebaseWeapon;
             ApplyBoonEffect = _boonEffects.Apply;
             UnapplyBoonEffect = _boonEffects.Unapply;
             UnapplyAllBoonEffects = _boonEffects.UnapplyAll;

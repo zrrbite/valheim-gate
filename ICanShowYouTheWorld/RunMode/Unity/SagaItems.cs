@@ -1118,6 +1118,13 @@ namespace ICanShowYouTheWorld.RunMode
         public BowElement ThorsBowElement => _bowElement;
 
         /// <summary>
+        /// How the bow's numbers reach its shared block: through the weapon boons' originals
+        /// (BoonEffects.RebaseWeapon, wired by RunService), so a refresh of the boons' product cannot write the old
+        /// element back. Unwired, the change is simply written.
+        /// </summary>
+        internal Action<ItemDrop.ItemData.SharedData, Action> RebaseWeapon = (shared, change) => change();
+
+        /// <summary>
         /// Switches Thor's bow to <paramref name="element"/>: the damage on the item now, and the
         /// hit effect on every arrow armed from here on. Safe before the bow exists - the clone
         /// picks the element up when it is made (see EnsureClones).
@@ -1134,7 +1141,8 @@ namespace ICanShowYouTheWorld.RunMode
                 {
                     if (!_clones.TryGetValue(prefab, out var clone) || clone == null) continue;
                     var shared = clone.GetComponent<ItemDrop>()?.m_itemData?.m_shared;
-                    if (shared != null) ApplyBowElement(shared, element, prefab == LastLightPrefab);
+                    bool lastLight = prefab == LastLightPrefab;
+                    if (shared != null) RebaseWeapon(shared, () => ApplyBowElement(shared, element, lastLight));
                 }
             }
             catch (Exception ex)
@@ -1146,16 +1154,18 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
-        /// Exactly one elemental damage on the bow, at the lightning's own numbers, and the pierce
-        /// left as Tune set it.
+        /// Exactly one elemental damage on the bow, at the lightning's own numbers x <see cref="ElementScale"/>,
+        /// and the pierce left as Tune set it.
         /// </summary>
         /// <remarks>
-        /// The element is a CHOICE of damage type, not a bonus: fire does what the lightning did, no
-        /// more, so the switch trades what the damage does to a target (fire burns on, frost slows -
+        /// The SWITCH is a choice of damage type, not a bonus: fire does what the lightning did, no
+        /// more, so it trades what the damage does to a target (fire burns on, frost slows -
         /// both the game's own status effects, applied by <c>Character</c> whenever that damage
-        /// type lands) rather than how much there is. Writing the SHARED data is what makes it the
-        /// bow's rather than one copy's: every Thor's bow in the pack points at this block, and so
-        /// does the tooltip the player reads.
+        /// type lands) rather than how much there is. The amount moves only with the Hunter's Moder
+        /// tempering, which scales whichever element is chosen by half again. Writing the SHARED data
+        /// is what makes it the bow's rather than one copy's: every Thor's bow in the pack points at
+        /// this block, and so does the tooltip the player reads. The weapon boons multiply this same
+        /// block, which is why a live bow is written through <see cref="RebaseWeapon"/>.
         /// </remarks>
         private static void ApplyBowElement(ItemDrop.ItemData.SharedData shared, BowElement element, bool lastLight = false)
         {

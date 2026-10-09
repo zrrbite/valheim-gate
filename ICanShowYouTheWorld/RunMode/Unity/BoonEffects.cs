@@ -355,8 +355,14 @@ namespace ICanShowYouTheWorld.RunMode
         // to 1.44x, with Unapply later stomping the prefab's true original with whichever
         // snapshot happened to restore last. Keying by the shared block itself makes "already
         // boosted" a property of the block, not the transient instance pointing at it.
-        private readonly Dictionary<ItemDrop.ItemData.SharedData, HitData.DamageTypes> _sharpSnapshots =
-            new Dictionary<ItemDrop.ItemData.SharedData, HitData.DamageTypes>();
+        //
+        // The ONE owner of a held block's damage (2026-10-08): anything else that writes a held block - Thor's bow's
+        // element and its Moder tempering - writes through RebaseWeapon, or the next refresh undoes it.
+        private readonly WeaponOriginals<ItemDrop.ItemData.SharedData, HitData.DamageTypes> _weaponOriginals =
+            new WeaponOriginals<ItemDrop.ItemData.SharedData, HitData.DamageTypes>(
+                shared => DamageHelpers.Copy(shared.m_damages),
+                (shared, damages) => shared.m_damages = damages,
+                DamageHelpers.Scaled);
 
         private struct PugilistSnapshot
         {
@@ -1104,9 +1110,9 @@ namespace ICanShowYouTheWorld.RunMode
         /// call as often as we like, and is what lets Forge-fed change with heat rather than
         /// ratcheting upward.
         ///
-        /// Also run on the poll tick, so a weapon crafted or equipped after the boon was taken is
-        /// covered. Sharpened did not do that before alpha34: it applied once at pick time, and a
-        /// sword forged afterwards quietly missed out.
+        /// Run whenever a factor is set or dropped: a weapon boon picked or lost, a respawn re-applying a held one,
+        /// every Forge-fed heat change, and Fury and the War Song as they rise and fall. NOT on the poll tick: a
+        /// weapon first drawn after the last of those carries no factor until the next one.
         /// </summary>
         internal void RefreshWeaponDamage()
         {
@@ -1128,10 +1134,9 @@ namespace ICanShowYouTheWorld.RunMode
                 if (shared == null) continue;
 
                 // Snapshot on first sight only. Keyed by the SHARED block rather than the ItemData
-                // instance for the reason documented on _sharpSnapshots: m_shared is per-prefab, and
+                // instance for the reason documented on _weaponOriginals: m_shared is per-prefab, and
                 // a fresh instance after respawn points at the same already-boosted block.
-                if (!_sharpSnapshots.ContainsKey(shared))
-                    _sharpSnapshots[shared] = DamageHelpers.Copy(shared.m_damages);
+                _weaponOriginals.Remember(shared);
             }
 
             // Then write every block we have touched — the ones in hand, and the ones no longer in
@@ -1141,11 +1146,24 @@ namespace ICanShowYouTheWorld.RunMode
             // that visible: sheathe the axe mid-rage, draw it after, and the first swings before the
             // next poll would still land at x1.5. One product for every block we have touched keeps
             // "original times the live multipliers" true of all of them, not just the equipped ones.
-            foreach (var kvp in _sharpSnapshots)
-            {
-                if (kvp.Key == null) continue;
-                kvp.Key.m_damages = DamageHelpers.Scaled(kvp.Value, product);
-            }
+            _weaponOriginals.ApplyAll(product);
+        }
+
+        /// <summary>
+        /// Writes a weapon's OWN numbers under the weapon boons: <paramref name="change"/> runs on the block's
+        /// original, the result becomes the original, and the block is written back as that x the live product.
+        /// With no original held - no weapon boon has seen this block - the change is simply written.
+        /// </summary>
+        /// <remarks>
+        /// Thor's bow's element switch and the Hunter's Moder tempering come through here (SagaItems.SetThorsBowElement,
+        /// wired by RunService), since 2026-10-08. Written straight into the block, they lasted only until the next
+        /// refresh, which put back the original the boons first saw: the HUD said "fire" while the bow dealt lightning,
+        /// and a x1.5 caught in the original outlived the tempering.
+        /// </remarks>
+        internal void RebaseWeapon(ItemDrop.ItemData.SharedData shared, Action change)
+        {
+            if (change == null) return;
+            _weaponOriginals.Rebase(shared, change, WayRules.WeaponProduct(_weaponMultipliers.Values));
         }
 
         // --- Damage modifiers: resistances, and Reckless's cost ---
@@ -1474,13 +1492,7 @@ namespace ICanShowYouTheWorld.RunMode
         /// <summary>Puts every weapon back and forgets every multiplier. The full unwind.</summary>
         private void UnapplyWeaponMultipliers()
         {
-            foreach (var kvp in _sharpSnapshots)
-            {
-                var shared = kvp.Key;
-                if (shared == null) continue; // guard: no longer reachable, nothing to restore
-                shared.m_damages = kvp.Value;
-            }
-            _sharpSnapshots.Clear();
+            _weaponOriginals.RestoreAll();
             _weaponMultipliers.Clear();
             WeaponCeilingReached = false;
         }

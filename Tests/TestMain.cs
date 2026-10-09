@@ -47,6 +47,7 @@ static class TestMain
         LandSpotTests.Run();
         TameStarsTests.Run();
         WayRulesTests.Run();
+        WeaponOriginalsTests.Run();
         RunCoinsTests.Run();
         Console.WriteLine(Check.Failures == 0 ? "ALL PASS" : $"{Check.Failures} FAILURES");
         return Check.Failures == 0 ? 0 : 1;
