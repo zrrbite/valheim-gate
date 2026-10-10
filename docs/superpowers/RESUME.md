@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, restructured and last updated 2026-10-08 at `1.0.17-run.2026-10-08b`. This is the
+Written 2026-08-23, restructured and last updated 2026-10-10 at `1.0.17-run.2026-10-10`. This is the
 "pick it back up without re-deriving anything" page: where the work stands, the loop it moves in, the
 landmines, and the decisions not to re-open. Its history (the dated status bullets, the alpha era, the
 "Done" write-ups) moved verbatim to [`RESUME-history.md`](RESUME-history.md) on 2026-10-06.
@@ -21,9 +21,27 @@ Everything below is what that file tells it.
 If the owner has been through the home test plan, start from what it brought back: the self-check
 block first, then the numbered items that did not match.
 
+## What's next, in order (agreed with the owner 2026-10-10)
+
+1. **The home play-test of `1.0.17-run.2026-10-10`** (`saga/ways-balanced`), which holds everything through
+   `...08j` plus the class balance, so one session tests it all: the home test plan in order, checks 8f-8n for
+   the ways. Windows needs a FULL install (1.0.17). Bring back what its "bring back" list asks.
+2. **The owner's three calls**, answered from play (`notes/2026-10-08-class-balance-rulings.md`, "Your
+   calls"): a Fury meter (8h); the Sæfari's land Ward before the raven tells it (8k); whether the ballista
+   spares deer and boars (8l).
+3. **Tune from the report.** Every number in the class-balance spec is a first guess.
+4. **Then the queued work:** the hall (gods' heads and the tally; plan `plans/2026-10-06-the-hall-slices-0-1.md`);
+   the run window's UI cleanup (a design session first); the `MACBOOK-TEMP` keys out once testing is at a full
+   keyboard.
+5. **Housekeeping, any time:** delete `backup/feature-run-mode-20261008` (the branch is pushed); re-patch the
+   Steam Deck; check Thrymberg's world rates; tune the heat curve (a full play-through); decide Act VIII /
+   the Deep North's story.
+
+The same list, with dates, is in the owner's cross-project todo (`~/Development/todo/TODO.md`).
+
 ## Where things stand
 
-**2026-10-08, `1.0.17-run.2026-10-08b` (dev)**, on `feature/run-mode`: not merged, deliberately, since
+**2026-10-10, `1.0.17-run.2026-10-10` (dev, `saga/ways-balanced`)**, on `feature/run-mode`: not merged, deliberately, since
 the mode is still being tuned in play. Valheim 1.0.17, Unity 6000.0.75.
 
 - **Seven acts, all built and voiced, and the saga ends at Fader** (the `runFinalBossKey` default since
@@ -43,9 +61,8 @@ the mode is still being tuned in play. Valheim 1.0.17, Unity 6000.0.75.
   beside you) waits for that. All are in `DEV-MODE.md`, tagged `MACBOOK-TEMP`, and come out with one grep
   once testing is back at a full keyboard.
 - **The ways, balanced** (spec `specs/2026-10-08-class-balance-design.md`, plan
-  `plans/2026-10-08-class-balance.md`): **built on `feature/run-mode`, not yet in a build**. It waits for the
-  owner's play-test of the builds before it (Task 13 of the plan is the build, tag and deploy, and only runs
-  when the owner says so). Every way has an engine that is always on and a verb to press; the ladder goes on
+  `plans/2026-10-08-class-balance.md`): **built as `1.0.17-run.2026-10-10` (`saga/ways-balanced`)**, on the
+  owner's word (2026-10-10, so one home session tests it with everything before it). Every way has an engine that is always on and a verb to press; the ladder goes on
   after the Elder, with one tempering per god from Bonemass to the Queen (shown on the BOONS page once its god
   is next); the wheel leans toward four favoured boons per way; weapon bonuses stop at x2.5. Rungs moved: the
   Völva's Bonecaller is first (`[7]`), Mending `[0]`, Thor's Wrath `[Ins]`; Tide-borne, Fair Wind and Reinforce
