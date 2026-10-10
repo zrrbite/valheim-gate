@@ -17,6 +17,28 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-10-10 - TASK: the ways balanced (`1.0.17-run.2026-10-10`, `saga/ways-balanced`)
+
+**Staged.** Badge `1.0.17-run.2026-10-10 · DEV`. It holds every fix since `...08` as well. Do the FULL install if
+1.0.17's (`...06`) was never done here; otherwise `-ModOnly` is enough.
+
+- **Test it with** the home test plan (`docs/superpowers/2026-10-06-home-test-plan.md`), in order. Checks 8f-8n are
+  this build's, one per way.
+- **Self-check:** "Way effects" and "The Smiðr's watch-post" should read OK. A Húskarl's run logs "Guard on: SE
+  '...' (True)", and a Sæfari's logs "Tide-borne on: ... (True)".
+- **This supersedes the older entries below.**
+  - Blood Rage is no longer x1.5 for 15 s: it fills Fury and holds it.
+  - Tide-borne, Fair Wind and Reinforce are no longer rungs. The Sæfari's rungs are Undertow, Stormcaller and Sea
+    Legs; the Smiðr's are Watch-post, Field Forge and Master's Minute.
+  - The Völva's rungs are Bonecaller `[7]`, Mending `[0]` and Thor's Wrath `[Ins]`.
+- **The owner's three calls** (8h, 8k, 8l) are theirs to answer. Record what they say under RESULTS.
+
+### RESULTS (Windows side appends here)
+
+*(pending)*
+
+---
+
 ## 2026-10-08 - TASK: the sea answers the heat, the Ward, and coins (`1.0.17-run.2026-10-08`)
 
 **Staged.** Badge `1.0.17-run.2026-10-08 · DEV`. Mod-only is enough once the full 1.0.17 install (`...06`) is done.
