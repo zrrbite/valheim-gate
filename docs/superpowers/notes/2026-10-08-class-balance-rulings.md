@@ -113,27 +113,20 @@ wrong, and every finding parked rather than fixed. The ledger itself was scratch
   - The War Song claims any tame within 15 m.
 
 ### Code, docs, tests
-- **Duplication:**
-  - The ceiling rule is computed twice (`RefreshWeaponDamage` and `WeaponProduct`), and its "reached" check is
-    untested.
-  - Tempering numbers live twice: the BOONS-page strings and the effect constants. Change both together.
-  - `MenagerieBeasts` and `MenagerieRoster` are two lists, intersected.
-- **Stale or loose docs:**
-  - A few stale doc comments: "THREE boons multiply", `PollCompanionPassives`' "few-second pace", and
-    `DespawnCompanion`'s note about unloaded ZDOs.
-  - The "ward"/"Ward" capitalisation is mixed.
-  - Tempering text uses straight apostrophes.
-- **Loose structure:**
-  - `TemperGods` is a public mutable array.
-  - `SagaItems.ElementScale` is a public mutable static.
-  - `SeaShipTier` hard-codes 3.
-  - A fourth rung would land on rung 3 silently.
-  - `elemental` is a magic string in `BoonKeys`.
-  - `ClassLadder.Validate` would pass a favoured boon that belongs to a way (it would tilt nothing).
-- **Test gaps:**
-  - the x2.5 boundary;
-  - `TemperShown` for the Queen;
-  - the Wolf's 2-god boundary;
-  - FuryMeter's `AddHalf` at 15, a hit during a hold, and catch-up after a long gap;
-  - the pack trim;
-  - the wheel-tilt draw beyond the first slot.
+Still open:
+- Tempering numbers live twice: the BOONS-page strings and the effect constants. Change both together.
+- `MenagerieBeasts` and `MenagerieRoster` are two lists, intersected.
+- The "ward"/"Ward" capitalisation is mixed, and tempering text uses straight apostrophes (player-visible text).
+- `elemental` is a magic string in `BoonKeys`.
+
+Cleaned up on 2026-10-11, while the play-test waits (no build; each commit tested, built and reference-checked):
+- `5f51ded` tests for the gaps: the x2.5 boundary, `TemperShown` for the Queen, the Wolf's 2-god boundary, Fury
+  (`AddHalf` at 15, a hit during a hold, catch-up after a long gap) and the wheel's tilt past the first card. Each was
+  seen to fail against a deliberately broken rule.
+- `9982588` one ceiling rule: `WayRules.WeaponCeilingReached`, tested, replaces `RefreshWeaponDamage`'s own product.
+- `4a36a08` `ClassLadder.Validate` refuses a way favouring another way's boon.
+- `5788f2b` the pack trim (who goes home at the cap) is `WayRules.SendHomeIndex`, pure and tested.
+- `b412727` `TemperGods` is read-only; `SagaItems.ElementScale` is written only through `SetElementScale`.
+- `989eade` `SeaShipTier` and the fitting card read `ShipFittings.MaxTier`, not a bare 3.
+- `6eba9dc` the three stale comments ("THREE boons multiply", "few-second pace", the unloaded-ZDO notes).
+- A fourth rung landing on rung 3 needed nothing: `KeyLayoutTests` already fails on it.
