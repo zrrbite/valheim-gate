@@ -104,7 +104,7 @@ wrong, and every finding parked rather than fixed. The ledger itself was scratch
   - Her Ward card says "a tier weaker on land" even after the Queen lifts that.
 - **The Smiðr:**
   - The Field Forge still checks the ground from 5 m above the spot, so it can land on a roof (pre-existing).
-  - The ballista's bolt upgrades appear on no card (no-spoiler policy).
+  - The ballista's bolt upgrades appear on no card. The owner ruled on 2026-10-11 to keep it so (no spoilers), so this is settled, not open.
 - **Respec:** laying the way down leaves the bow's x1.5 for up to a second.
 - **8n's self-check** can read FALLBACK instead of OK on a slow start.
 - **Multiplayer:**
