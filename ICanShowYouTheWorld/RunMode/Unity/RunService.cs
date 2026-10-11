@@ -13845,7 +13845,7 @@ namespace ICanShowYouTheWorld.RunMode
 
             // Smiðr - Dvalinn, who built the hall they all died in.
             new BoonDefinition { Id = "craftsman",     ClassId = "smidr", Display = "Craftsman",          IsPassive = true,  Description = "Woodcutting and pickaxe skill to 50, +100 carry. Forge-skin: armour half again; your gear never wears; your walls within 20 m take no wear, and what you build past their limits stands only while you are near." },
-            new BoonDefinition { Id = "watchpost",     ClassId = "smidr", Display = "Watch-post",         IsPassive = false, CooldownSeconds = 120f, Description = "A ballista rises where you stand and shoots what comes, until it falls, you leave it behind, or you raise another." },
+            new BoonDefinition { Id = "watchpost",     ClassId = "smidr", Display = "Watch-post",         IsPassive = false, CooldownSeconds = 60f,  Description = "A ballista rises where you stand and shoots what comes, until it falls, you leave it behind, or you raise another." },
             new BoonDefinition { Id = "fieldforge",    ClassId = "smidr", Display = "Field Forge",        IsPassive = false, CooldownSeconds = 300f, Description = "A bench and a forge rise at your feet for ninety seconds." },
             new BoonDefinition { Id = "mastersminute", ClassId = "smidr", Display = "Master’s Minute", IsPassive = false, CooldownSeconds = 600f, Description = "One minute in which building costs nothing." },
         };
