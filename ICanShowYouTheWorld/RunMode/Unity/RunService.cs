@@ -6160,9 +6160,10 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
-        /// The shepherd's star and Hearthlight's pulse, each at its own few-second pace (2026-10-08). Both rode
-        /// OnHeatChanged until then, so they ran only when heat moved - on a completion or a death - and
-        /// Hearthlight's "slow mending pulse" every five seconds almost never pulsed.
+        /// The run's living passives, on every poll (once a second): the shepherd's star, which refreshes every 5 s,
+        /// Hearthlight, which pulses every second (each gated in BoonEffects), the ways' engines, and the bow's
+        /// tempering. The first two rode OnHeatChanged until 2026-10-08, so they ran only when heat moved - on a
+        /// completion or a death - and Hearthlight's "slow mending pulse" almost never pulsed.
         /// </summary>
         private void PollCompanionPassives()
         {

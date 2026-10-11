@@ -1077,10 +1077,11 @@ namespace ICanShowYouTheWorld.RunMode
         // --- sharp ---
 
         /// <summary>
-        /// Every live weapon-damage multiplier, by boon id. THREE boons multiply weapon damage now
-        /// — Sharpened, Glass Cannon and Forge-fed — and they must compose, so each registers a
-        /// factor here and the actual damage is always recomputed from the pristine snapshot as
-        /// the PRODUCT of them all.
+        /// Every live weapon-damage multiplier, by boon id. Several boons multiply weapon damage —
+        /// Sharpened, Glass Cannon, Reckless, Stoker and Forge-fed, and the ways' Fury and War Song —
+        /// and they must compose, so each registers a factor here and the actual damage is always
+        /// recomputed from the pristine snapshot as the PRODUCT of them all, capped at
+        /// WayRules.WeaponCeiling.
         ///
         /// The alternative, each boon scaling whatever it found, is the compounding bug the sharp
         /// snapshot was written to avoid: two boons applying in an order nobody controls, and the
@@ -3592,9 +3593,9 @@ namespace ICanShowYouTheWorld.RunMode
         }
 
         /// <summary>
-        /// Removes one companion and forgets it. Destroying the loaded object is not enough on its
-        /// own: a companion whose zone has unloaded has no object but keeps its ZDO, and would be
-        /// re-instantiated on the player's return, so the ZDO goes too.
+        /// Removes one companion and forgets it, through <see cref="DestroyByZdo"/>: the loaded object if there
+        /// is one, otherwise the ZDO. Our own companion's ZDO goes with its zone (the game destroys an owned
+        /// non-persistent ZDO on unload, ZNetScene.RemoveObjects), so the ZDO path is for one another peer owns.
         ///
         /// Both paths must claim ownership first. <c>ZDOMan.DestroyZDO</c> returns immediately
         /// unless the calling peer owns the ZDO, so on a hosted world an unloaded companion whose
@@ -3610,9 +3611,10 @@ namespace ICanShowYouTheWorld.RunMode
 
         /// <summary>
         /// Takes a networked object out of the world by its ZDOID, loaded or not - the companions'
-        /// dismissal, shared since 2026-09-28 with the Field Forge's bench and forge, which have the
-        /// same problem: a station whose zone unloaded keeps its ZDO and would come back from the
-        /// PREFAB, a real bench, on the player's return.
+        /// dismissal, shared since 2026-09-28 with the Field Forge's bench and forge and the Watch-post.
+        /// All are non-persistent, so an unloaded one we own is already gone with its zone; one whose
+        /// ownership moved to another peer keeps its ZDO and would come back from the PREFAB, a real
+        /// bench, on the player's return.
         /// </summary>
         internal static void DestroyByZdo(ZDOID id)
         {
