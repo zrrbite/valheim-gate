@@ -13,12 +13,18 @@ namespace ICanShowYouTheWorld.RunMode
         public const float WeaponCeiling = 2.5f;
 
         /// <summary>The product of the live weapon factors, capped at <see cref="WeaponCeiling"/>.</summary>
-        public static float WeaponProduct(IEnumerable<float> factors)
+        public static float WeaponProduct(IEnumerable<float> factors) => Math.Min(WeaponCeiling, RawProduct(factors));
+
+        /// <summary>True when the live weapon factors multiply PAST the ceiling, so the BOONS page can say a further
+        /// damage card adds nothing.</summary>
+        public static bool WeaponCeilingReached(IEnumerable<float> factors) => RawProduct(factors) > WeaponCeiling;
+
+        private static float RawProduct(IEnumerable<float> factors)
         {
             float p = 1f;
             if (factors != null)
                 foreach (var f in factors) p *= f;
-            return Math.Min(WeaponCeiling, p);
+            return p;
         }
 
         /// <summary>Gods felled for each tempering: Bonemass, Moder, Yagluth, the Queen (spec, "Tempering").</summary>

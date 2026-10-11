@@ -1130,9 +1130,7 @@ namespace ICanShowYouTheWorld.RunMode
 
             // Capped (2026-10-08): Sharpened, Glass Cannon, Stoker, Reckless, Forge-fed and Fury held together
             // reached about x4.5. See WayRules.WeaponCeiling.
-            float raw = 1f;
-            foreach (var m in _weaponMultipliers.Values) raw *= m;
-            WeaponCeilingReached = raw > WayRules.WeaponCeiling;
+            WeaponCeilingReached = WayRules.WeaponCeilingReached(_weaponMultipliers.Values);
             float product = WayRules.WeaponProduct(_weaponMultipliers.Values);
 
             foreach (var item in inventory.GetEquippedItems())

@@ -18,6 +18,10 @@ static class WayRulesTests
         Check.That(WayRules.WeaponProduct(null) == 1f, "nothing at all is x1, not an error");
         Check.That(WayRules.WeaponProduct(new[] { 1.25f, 2f }) == 2.5f && WayRules.WeaponProduct(new[] { 2.5f, 1.01f }) == 2.5f,
                    "exactly x2.5 stands, and a hair past it stops there");
+        Check.That(!WayRules.WeaponCeilingReached(new[] { 1.25f, 2f }) && WayRules.WeaponCeilingReached(new[] { 2.5f, 1.01f }),
+                   "the BOONS page's ceiling line: not at exactly x2.5, only past it");
+        Check.That(!WayRules.WeaponCeilingReached(null) && !WayRules.WeaponCeilingReached(new float[0]),
+                   "no weapon bonus is no ceiling");
 
         // Tempering: one per god from Bonemass to the Queen.
         Check.That(!WayRules.Tempered(2, TemperSlot.Rung1) && WayRules.Tempered(3, TemperSlot.Rung1) &&
