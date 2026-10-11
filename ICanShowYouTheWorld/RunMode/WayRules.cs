@@ -138,7 +138,8 @@ namespace ICanShowYouTheWorld.RunMode
         // --- The Sæfari ---
         public const int SaefariCoinFactor = 2;
         public static int SaefariPrice(int price) => (price + 1) / 2;
-        public static int SeaShipTier(int bought) => Math.Min(3, Math.Max(0, bought) + 1);
+        /// <summary>Her ship sails a tier above what is fitted, to the top tier.</summary>
+        public static int SeaShipTier(int bought) => Math.Min(ShipFittings.MaxTier(FittingKind.Sail), Math.Max(0, bought) + 1);
         public static int SeaWardTier(int bought) => SeaShipTier(bought);
         /// <summary>On land her Ward is one tier weaker than at sea, never below I; the Queen's tempering lifts the penalty.</summary>
         public static int LandWardTier(int bought, int gods) =>

@@ -130,9 +130,9 @@ namespace ICanShowYouTheWorld.RunMode
             state = state ?? new ShipFittingState();
 
             // The tier an effect is stated at: the one bought, or for the Sæfari the one above it (capped at the top).
-            int Shown(int t) => saefari ? Math.Min(t + 1, 3) : t;
+            int Shown(int t) => saefari ? WayRules.SeaShipTier(t) : t;
 
-            if (state.Sail < MaxTier(FittingKind.Sail) && !(saefari && state.Sail + 1 == 3))
+            if (state.Sail < MaxTier(FittingKind.Sail) && !(saefari && state.Sail + 1 == MaxTier(FittingKind.Sail)))
             {
                 int t = state.Sail + 1;
                 offers.Add(new ShipFittingOffer
@@ -143,7 +143,7 @@ namespace ICanShowYouTheWorld.RunMode
                 });
             }
 
-            if (state.Hull < MaxTier(FittingKind.Hull) && !(saefari && state.Hull + 1 == 3))
+            if (state.Hull < MaxTier(FittingKind.Hull) && !(saefari && state.Hull + 1 == MaxTier(FittingKind.Hull)))
             {
                 int t = state.Hull + 1;
                 int d = Shown(t);
@@ -170,7 +170,7 @@ namespace ICanShowYouTheWorld.RunMode
             }
 
             // The ward: offered once the raven has said the sea came for you, so the player knows what it is for.
-            if (wardTold && state.Ward < MaxTier(FittingKind.Ward) && !(saefari && state.Ward + 1 == 3))
+            if (wardTold && state.Ward < MaxTier(FittingKind.Ward) && !(saefari && state.Ward + 1 == MaxTier(FittingKind.Ward)))
             {
                 int t = state.Ward + 1;
                 offers.Add(new ShipFittingOffer
