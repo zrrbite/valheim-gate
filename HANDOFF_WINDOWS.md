@@ -17,6 +17,18 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-10-11 - TASK: the Watch-post at 60 s (`1.0.17-run.2026-10-11`)
+
+**Staged.** Badge `1.0.17-run.2026-10-11 · DEV`. It is `...10-10` (the entry below) with two changes, so test
+it exactly as that entry says; `-ModOnly` is enough if `...10-10`'s install was done here.
+
+- **The Smiðr's Watch-post cools down in 60 s**, not 120 (the owner's call after raising one on the MacBook).
+- **A code cleanup with no change in play:** new tests, one damage-ceiling rule, a stricter class validator
+  (`docs/superpowers/notes/2026-10-08-class-balance-rulings.md`, "Cleaned up on 2026-10-11").
+- **This supersedes `...10-10`'s staged DLL.**
+
+---
+
 ## 2026-10-10 - TASK: the ways balanced (`1.0.17-run.2026-10-10`, `saga/ways-balanced`)
 
 **Staged.** Badge `1.0.17-run.2026-10-10 · DEV`. It holds every fix since `...08` as well. Do the FULL install if

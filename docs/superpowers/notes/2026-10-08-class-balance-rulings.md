@@ -78,6 +78,9 @@ wrong, and every finding parked rather than fixed. The ledger itself was scratch
 - **8k:** the Sæfari's land Ward works before the raven has told it. Does that read as an early reveal?
 - **8l:** should the ballista spare deer and boars?
 
+Settled from play on the MacBook (2026-10-11, built as `...10-11`): the Watch-post cools down in 60 s, not 120
+("Cooldown is a bit long"); the posts stay one, two after Bonemass.
+
 ## Deferred minors (found, judged not worth a fix now)
 
 ### Behaviour

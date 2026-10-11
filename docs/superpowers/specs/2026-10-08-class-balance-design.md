@@ -162,7 +162,7 @@ His engine is **what he builds fights back**.
   - **His walls within 20 m take no weather or support wear** (Reinforce's effect, always on).
   - Woodcutting and pickaxe 50, +100 carry, stay.
 - **Rungs, reordered:**
-  - Choice: **Watch-post** (new, 120 s): a ballista (the game's `piece_turret`) rises where he stands, loaded,
+  - Choice: **Watch-post** (new, 60 s; 120 s until the owner raised one, 2026-10-11): a ballista (the game's `piece_turret`) rises where he stands, loaded,
     and shoots his enemies until destroyed or until he raises another; one at a time; never saved (a
     non-persistent ZDO, removed at run end). Its bolts improve per god (bone, then iron, then blackmetal). His
     answer to a raid, and his "two allies" stand in one place.
