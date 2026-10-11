@@ -16,6 +16,8 @@ static class WayRulesTests
                    "Sharpened, Glass Cannon, Stoker, Reckless and Fury together stop at x2.5, not x4.5");
         Check.That(Math.Abs(WayRules.WeaponProduct(new[] { 0.8f }) - 0.8f) < 0.001f, "a factor below one still applies");
         Check.That(WayRules.WeaponProduct(null) == 1f, "nothing at all is x1, not an error");
+        Check.That(WayRules.WeaponProduct(new[] { 1.25f, 2f }) == 2.5f && WayRules.WeaponProduct(new[] { 2.5f, 1.01f }) == 2.5f,
+                   "exactly x2.5 stands, and a hair past it stops there");
 
         // Tempering: one per god from Bonemass to the Queen.
         Check.That(!WayRules.Tempered(2, TemperSlot.Rung1) && WayRules.Tempered(3, TemperSlot.Rung1) &&
@@ -26,6 +28,8 @@ static class WayRulesTests
         Check.That(!WayRules.TemperShown(1, TemperSlot.Rung1) && WayRules.TemperShown(2, TemperSlot.Rung1) &&
                    !WayRules.TemperShown(2, TemperSlot.Rung2),
                    "a tempering is shown only once its god is the next to fall - no names from later acts");
+        Check.That(!WayRules.TemperShown(4, TemperSlot.Engine) && WayRules.TemperShown(5, TemperSlot.Engine),
+                   "the Queen's tempering is named only after Yagluth, when she is the next to fall");
         foreach (var way in ClassLadder.Catalog())
             foreach (TemperSlot slot in Enum.GetValues(typeof(TemperSlot)))
                 Check.That(!string.IsNullOrEmpty(WayRules.TemperLine(way.Id, slot)), $"{way.Id} has a {slot} tempering line");
@@ -34,6 +38,7 @@ static class WayRulesTests
         // Menagerie's beasts by biome.
         Check.That(WayRules.MenagerieBeasts(0).SequenceEqual(new[] { "Boar", "Hen", "Chicken" }),
                    "the Meadows' beasts at first - no Lox to reroll for in Act II");
+        Check.That(!WayRules.MenagerieBeasts(2).Contains("Wolf"), "no wolf before Bonemass");
         Check.That(WayRules.MenagerieBeasts(3).Contains("Wolf") && !WayRules.MenagerieBeasts(3).Contains("Lox"),
                    "the wolf after Bonemass, when the Mountains open");
         Check.That(WayRules.MenagerieBeasts(4).Contains("Lox") && !WayRules.MenagerieBeasts(5).Contains("Asksvin") &&
@@ -93,6 +98,20 @@ static class WayRulesTests
         Check.That(open.Stacks == 9, "then fades from the release");
         var half = new FuryMeter(); half.SetMax(10); half.AddHalf(0f);
         Check.That(half.Stacks == 5, "Warcry fills half");
+        var fifteen = new FuryMeter(); fifteen.SetMax(WayRules.FuryMax(6)); fifteen.AddHalf(0f);
+        Check.That(fifteen.Stacks == 8, "after the Queen, Warcry fills half of fifteen, rounded up");
+        var during = new FuryMeter(); during.SetMax(10); during.Fill(0f, 10f); during.Hit(1, 5f);
+        during.Tick(10.5f);
+        Check.That(during.Stacks == 10, "a hit during Blood Rage does not start the fade early: the second's grace runs from the rage's end");
+        during.Tick(11.5f);
+        Check.That(during.Stacks == 9, "and the fade starts from there");
+        var late = new FuryMeter(); late.SetMax(10); late.Hit(10, 0f);
+        var steady = new FuryMeter(); steady.SetMax(10); steady.Hit(10, 0f);
+        for (float t = 0.5f; t <= 4.5f; t += 0.5f) steady.Tick(t);
+        late.Tick(4.5f);
+        Check.That(late.Stacks == 6 && steady.Stacks == 6, "one late tick catches up: the same as ticking every half second");
+        late.Tick(1000f);
+        Check.That(late.Stacks == 0, "and a long gap empties it, never below nothing");
         Check.That(WayRules.FuryMax(5) == 10 && WayRules.FuryMax(6) == 15, "fifteen hits, +75%, after the Queen");
         Check.That(WayRules.RageSeconds(3) == 15f && WayRules.RageSeconds(4) == 25f, "Blood Rage 15 s, 25 after Moder");
         Check.That(WayRules.RendRadius(2) == 5f && WayRules.RendRadius(3) == 7.5f, "Rend 5 m, half again after Bonemass");

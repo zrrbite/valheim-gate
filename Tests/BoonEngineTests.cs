@@ -140,6 +140,23 @@ static class BoonEngineTests
         }
         Check.That(favouredFirst > plainFirst * 1.3, $"a favoured boon leads the offer far more often ({favouredFirst} vs {plainFirst})");
 
+        // And past the first slot: the tilt holds for the whole draw. Eight boons, three slots: a favoured boon fills the
+        // second or third about 36 times in 100 against 25, and would fill them only 22 times if the tilt stopped after
+        // the first card.
+        Func<List<BoonDefinition>> eight = () => "abcdefgh".Select(ch => new BoonDefinition { Id = ch.ToString(), IsPassive = true }).ToList();
+        int favouredLater = 0, plainLater = 0;
+        for (int i = 0; i < 1000; i++)
+        {
+            var tilted = new BoonEngine(eight(), new Random(i), 45f);
+            tilted.Favoured.Add("a");
+            tilted.CreateOffer();
+            if (tilted.CurrentOffer.Skip(1).Any(b => b.Id == "a")) favouredLater++;
+            var plain = new BoonEngine(eight(), new Random(i), 45f);
+            plain.CreateOffer();
+            if (plain.CurrentOffer.Skip(1).Any(b => b.Id == "a")) plainLater++;
+        }
+        Check.That(favouredLater > plainLater * 1.2, $"the tilt reaches the second and third cards too ({favouredLater} vs {plainLater})");
+
         RestoreHeldTests();
     }
 
