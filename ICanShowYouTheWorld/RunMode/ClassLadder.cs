@@ -281,11 +281,14 @@ namespace ICanShowYouTheWorld.RunMode
             foreach (var def in poolList.Where(b => b.ClassId != null && !known.Contains(b.ClassId)))
                 yield return $"boon '{def.Id}' has ClassId '{def.ClassId}', which is no class";
 
-            // A favoured id the pool lacks tilts nothing, and nothing says so in play (class balance, 2026-10-08).
+            // A favoured id the pool lacks tilts nothing, and nothing says so in play (class balance, 2026-10-08). Nor does
+            // one that belongs to a way: the wheel never deals a way's boon, so there is nothing to tilt.
             foreach (var cls in classList)
                 foreach (var id in cls.Favoured ?? new string[0])
-                    if (!byId.ContainsKey(id))
+                    if (!byId.TryGetValue(id, out var fav))
                         yield return $"class '{cls.Id}' favours '{id}', which is not in the pool";
+                    else if (fav.ClassId != null)
+                        yield return $"class '{cls.Id}' favours '{id}', a way's boon the wheel never deals";
 
             // A cover that names nothing covers nothing, and the blank card stays on the wheel (2026-10-08).
             foreach (var def in poolList.Where(b => b.CoveredBy != null))

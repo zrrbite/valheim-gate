@@ -245,5 +245,12 @@ static class ClassLadderTests
         var noBounty = withFavoured.Where(b => b.Id != "bounty").ToList();
         Check.That(ClassLadder.Validate(ClassLadder.Catalog(), noBounty).Any(p => p.Contains("favours 'bounty'")),
                    "a favoured id missing from the pool is caught at run start");
+        // A way's boon is never dealt from the wheel, so favouring one tilts nothing; it would pass as "in the pool".
+        var volva = ClassLadder.Find("volva");
+        var poacher = new ClassDefinition { Id = "volva", PassiveBoonIds = volva.PassiveBoonIds, Rungs = volva.Rungs,
+                                            Favoured = new[] { "hearty", "kindling", "wind", "brother" } };
+        var poaching = ClassLadder.Catalog().Select(c => c.Id == "volva" ? poacher : c).ToList();
+        Check.That(ClassLadder.Validate(poaching, withFavoured).Any(p => p.Contains("favours 'brother'")),
+                   "a way favouring another way's boon is caught at run start");
     }
 }
