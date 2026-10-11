@@ -1184,8 +1184,17 @@ namespace ICanShowYouTheWorld.RunMode
             shared.m_damagesPerLevel.m_frost = element == BowElement.Frost ? ep : 0f;
         }
 
-        /// <summary>The Hunter's Moder tempering (2026-10-08): the element x1.5. Set by RunService; 1 otherwise.</summary>
-        public static float ElementScale = 1f;
+        /// <summary>The Hunter's Moder tempering (2026-10-08): the element x1.5 (WayRules.BowElementScale); 1 otherwise.
+        /// Written only through <see cref="SetElementScale"/>.</summary>
+        public static float ElementScale { get; private set; } = 1f;
+
+        /// <summary>Sets the element's scale. True when it changed, so the caller re-applies the bow's element.</summary>
+        internal static bool SetElementScale(float scale)
+        {
+            if (Math.Abs(ElementScale - scale) <= 0.001f) return false;
+            ElementScale = scale;
+            return true;
+        }
 
         /// <summary>The element as the HUD and the save spell it: "lightning", "fire", "frost".</summary>
         public static string ElementName(BowElement element)

@@ -27,8 +27,9 @@ namespace ICanShowYouTheWorld.RunMode
             return p;
         }
 
-        /// <summary>Gods felled for each tempering: Bonemass, Moder, Yagluth, the Queen (spec, "Tempering").</summary>
-        public static readonly int[] TemperGods = { 3, 4, 5, 6 };
+        /// <summary>Gods felled for each tempering: Bonemass, Moder, Yagluth, the Queen (spec, "Tempering"). Read-only,
+        /// since every tempering reads it.</summary>
+        public static readonly IReadOnlyList<int> TemperGods = Array.AsReadOnly(new[] { 3, 4, 5, 6 });
 
         public static bool Tempered(int gods, TemperSlot slot) => gods >= TemperGods[(int)slot];
 

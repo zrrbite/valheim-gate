@@ -6179,11 +6179,7 @@ namespace ICanShowYouTheWorld.RunMode
             try
             {
                 float scale = _classId == "hunter" ? WayRules.BowElementScale(DefeatedBosses) : 1f;
-                if (Math.Abs(SagaItems.ElementScale - scale) > 0.001f)
-                {
-                    SagaItems.ElementScale = scale;
-                    _items.SetThorsBowElement(_items.ThorsBowElement);
-                }
+                if (SagaItems.SetElementScale(scale)) _items.SetThorsBowElement(_items.ThorsBowElement);
             }
             catch (Exception ex) { LogOnce("bow-scale", ex); }
         }
@@ -7349,7 +7345,7 @@ namespace ICanShowYouTheWorld.RunMode
             // The saga's recipes, dreams and raids are run-only: outside a run the game is vanilla.
             _recipes.Remove();
             _shipwright.Restore();
-            SagaItems.ElementScale = 1f;   // the bow ships unscaled; the SetThorsBowElement below re-applies it
+            SagaItems.SetElementScale(1f);   // the bow ships unscaled; the SetThorsBowElement below re-applies it
             _fittingCardOpen = false;
             _winds.Clear(Player.m_localPlayer);
             CreatureDressing.Forget();
