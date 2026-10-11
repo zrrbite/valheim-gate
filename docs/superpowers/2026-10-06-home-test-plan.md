@@ -1,7 +1,8 @@
 # Home test plan: everything from 2026-10-05 and 2026-10-06
 
 For the owner, at home on the Windows machine. It covers every build from `1.0.16-run.2026-10-05`
-to `1.0.17-run.2026-10-06f`: about 85 commits, **none of which has been played**. It is in the order
+to `1.0.17-run.2026-10-06f`, and since then everything through `1.0.17-run.2026-10-10` (the class balance):
+**none of it has been played**. It is in the order
 that tests the most with the least: setup, then a new character through Act I, then act by act.
 
 Each item says **do**, then what you should **see**. When something does not match, note the item
@@ -31,7 +32,7 @@ last build you played, and undoes all of it. To install one: `git checkout <tag>
    - Nothing is needed to reach Acts VI and VII: since `...06d` the saga ends at **Fader** by default. If
      your config still has `"runFinalBossKey": "defeated_goblinking"` from before, delete that line.
    - Leave `runKeyLayout` out: Windows keeps the numpad.
-3. **Launch.** The main menu's version line has a gold **`SAGA v1.0.17-run.2026-10-08 · DEV`** under it.
+3. **Launch.** The main menu's version line has a gold **`SAGA v1.0.17-run.2026-10-10 · DEV`** under it.
    Anything else means the wrong build is installed.
 
 ## 1. The first minute of a run (10 minutes)
@@ -372,7 +373,7 @@ takes the next way (Hunter, Völva, Berserker, Húskarl, Skald, Sæfari, Smiðr,
 
 ## 6. On the MacBook (whenever you have it)
 
-41. The Mac already has `1.0.17-run.2026-10-08` and `"runKeyLayout": "laptop"` (the old config is
+41. The Mac already has `1.0.17-run.2026-10-10` and `"runKeyLayout": "laptop"` (the old config is
     beside it as `.bak-2026-10-06`).
     - **Choosing:** `J K L` choose on every card (`H U I O` for the fourth to seventh lines), or press
       TAB and click.
@@ -389,9 +390,48 @@ takes the next way (Hunter, Völva, Berserker, Húskarl, Skald, Sæfari, Smiðr,
       it's far. If it says to take the helm yourself: walk to the rudder, look at it, `E`. That covers checks 36–38 without building:
       `Z` for coins, take them from the stash, then Shift + E at the helm.
 
+41b. **The ways, without a fight** (class balance, `...10-10`). Most of 8f-8n needs only key presses, so this part
+    can be done on the MacBook, keyboard and trackpad only. Bare `0` turns god mode on, so nothing can kill you
+    while you look around.
+    - **Self-check.** Start a run, then in Terminal:
+      `grep "Saga self-check" -A40 ~/Library/Logs/IronGate/Valheim/Player.log`.
+      **See:** "Way effects" OK and "The Smiðr's watch-post" OK.
+    - **Getting a way.** `Shift` + `Z` cycles through the ways, and the message names each one. `Shift` + `0` learns
+      all three of its rungs without the gods. `End` (fn + →) then BOONS shows its kit.
+    - **Hunter.**
+      - `U`: **see** two wolves, one star each.
+      - `U` again: **see** "Your pack is already with you.", with no cooldown started.
+      - `I`: **see** a boar, hen or chicken on loan (a fresh world opens no other beasts).
+    - **Völva.** `U`: **see** two skeletons. `U` again: **see** "Your dead already stand with you."
+    - **Skald.** The Marching Song plays by itself; run, and **see** yourself faster.
+      - `U`: **see** "That song is already sung."
+      - `I`: **see** "The song swells."
+      - `O` within 20 s: **see** "The Saga of Bragi."
+    - **Smiðr.**
+      - `U` inside a building: **see** a ballista 3 m ahead, standing on the floor, not on the roof.
+      - Drop a deer's light (bare `B`) and watch whether the ballista shoots the wildlife it brings (your 8l call).
+      - TAB: **see** your armour half again higher (Forge-skin).
+    - **Sæfari.**
+      - `Shift` + `B` puts you at a ship's helm at sea. `Shift` + `E` there: **see** the fittings at half price, and no
+        tier III of Sail, Hull or Ward.
+      - `U` (Undertow): with nothing near, **see** "Nothing within the wave's reach."
+      - `I` (Stormcaller): **see** "The storm gathers in your ward."
+    - **Thor's bow (a fix from the final review).**
+      1. As a Hunter with every rung, `Shift` + fn + `Backspace` puts the bow in your pack. Equip it from the hotbar.
+      2. Hover it in TAB: **see** lightning. `→`: **see** fire.
+      3. `Shift` + `P` completes a step and deals a boon offer (`J`/`K`/`L` to pick). If Sharpened comes, take it, then
+         switch the element again.
+      4. **See** the NEW element, about a fifth higher. Before the fix it snapped back to the old one.
+    - **Still for home**, because it needs real fights or real gods:
+      - the Berserker's Fury (8h);
+      - the Húskarl's Guard, which needs a raised shield (8i);
+      - Hearthlight under real damage (8g);
+      - every tempering line (8m).
+
 ## What to bring back
 
-- The **self-check block** (item 4), and any **exception** lines (item 5).
+- The **self-check block** (item 4), and any **exception** lines (item 5). From the MacBook (41b), the Mac's
+  self-check block, and each 41b line that didn't match.
 - The "Guard on" and "Tide-borne on" lines (8n).
 - `Select-String Player.log -Pattern "Hildir accepts"` (item 25).
 - For each item that didn't match: its **number**, and what you saw instead.
