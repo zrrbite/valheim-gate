@@ -90,6 +90,19 @@ namespace ICanShowYouTheWorld.RunMode
         /// at once.
         /// </summary>
         public static int RanksToFill(int size, int standing) => Math.Max(0, size - Math.Max(0, standing));
+
+        /// <summary>
+        /// Which follower goes home to make room at the retinue's cap: the oldest one not in <paramref name="keep"/> (the
+        /// caller's own ranks), or -1 when there is none. A top-up that sent its own wolf home to call a wolf would call
+        /// nobody, so a retinue that is all the caller's own refuses instead.
+        /// </summary>
+        public static int SendHomeIndex<T>(IList<T> retinue, ICollection<T> keep)
+        {
+            if (retinue == null) return -1;
+            for (int i = 0; i < retinue.Count; i++)
+                if (keep == null || !keep.Contains(retinue[i])) return i;
+            return -1;
+        }
         public static float MendingCooldown(int gods) => Tempered(gods, TemperSlot.Rung2) ? 60f : 90f;
         public static float WrathRadius(int gods) => Tempered(gods, TemperSlot.Rung3) ? 9f : 6f;
 

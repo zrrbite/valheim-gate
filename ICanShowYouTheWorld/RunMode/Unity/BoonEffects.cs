@@ -3513,7 +3513,7 @@ namespace ICanShowYouTheWorld.RunMode
             PruneDeadCompanions();
             while (_companions.Count >= MaxCompanions)
             {
-                int oldest = keep == null ? 0 : _companions.FindIndex(id => !keep.Contains(id));
+                int oldest = WayRules.SendHomeIndex(_companions, keep);
                 if (oldest < 0) return false;
                 DespawnCompanion(_companions[oldest]);
             }

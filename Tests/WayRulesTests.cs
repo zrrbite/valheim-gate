@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using ICanShowYouTheWorld.RunMode;
 
@@ -69,6 +70,15 @@ static class WayRulesTests
         Check.That(WayRules.RanksToFill(2, 2) == 0, "a full pack: nobody to call");
         Check.That(WayRules.RanksToFill(WayRules.PackSize(3), 2) == 1, "Bonemass felled: the next call brings the third");
         Check.That(WayRules.RanksToFill(2, 3) == 0 && WayRules.RanksToFill(2, -1) == 2, "never a negative call, nor more than the size");
+        // Room at the retinue's cap: the oldest follower goes home, but never one of the caller's own ranks.
+        var wolves = new List<string> { "wolf1", "wolf2" };
+        Check.That(WayRules.SendHomeIndex(new List<string> { "boar", "wolf1", "wolf2" }, null) == 0, "the oldest goes home");
+        Check.That(WayRules.SendHomeIndex(new List<string> { "wolf1", "boar", "wolf2" }, wolves) == 1,
+                   "a call topping up its pack sends the oldest of the others home, not its own wolf");
+        Check.That(WayRules.SendHomeIndex(new List<string> { "wolf1", "wolf2" }, wolves) == -1,
+                   "when the whole retinue is the caller's own, nobody goes home (and nobody comes)");
+        Check.That(WayRules.SendHomeIndex(new List<string>(), null) == -1 && WayRules.SendHomeIndex<string>(null, null) == -1,
+                   "an empty retinue sends nobody");
         Check.That(WayRules.MendingCooldown(3) == 90f && WayRules.MendingCooldown(4) == 60f, "Mending every 90 s, 60 after Moder");
         Check.That(WayRules.WrathRadius(4) == 6f && WayRules.WrathRadius(5) == 9f, "Thor's Wrath 6 m, 9 after Yagluth");
 
