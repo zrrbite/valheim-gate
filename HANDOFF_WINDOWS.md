@@ -17,6 +17,21 @@ Standing context for the Windows side:
 
 ---
 
+## 2026-10-15 - TASK: Valheim 1.0.20 - FULL install (`1.0.20-run.2026-10-15`)
+
+**Staged.** Badge `1.0.20-run.2026-10-15 · DEV`. Steam moved the game from 1.0.17 to 1.0.20, which replaces the patched
+game file, so run **`.\dist\windows\Install-Mod.ps1` without `-ModOnly`**. If it refuses with a version
+mismatch, Steam has not finished updating here: let it finish and run it again.
+
+- **No change in play.** It is `...10-11` (the entry below) rebuilt against 1.0.20: every type and member the
+  mod uses still exists (check_refs 0 of 900 missing), Unity is still 6000.0.75, and the game's default key
+  bindings are identical, so the saga's keys are as before.
+- **Self-check:** the first run's `Saga self-check` block should have no new MISSING line. A MISSING there is
+  the one thing 1.0.20 could have moved that the reference check cannot see (a prefab or asset name).
+- **This supersedes `...10-11`'s staged DLL**, which the installer refuses on 1.0.20.
+
+---
+
 ## 2026-10-11 - TASK: the Watch-post at 60 s (`1.0.17-run.2026-10-11`)
 
 **Staged.** Badge `1.0.17-run.2026-10-11 · DEV`. It is `...10-10` (the entry below) with two changes, so test

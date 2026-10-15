@@ -1,7 +1,7 @@
 # Home test plan: everything from 2026-10-05 and 2026-10-06
 
 For the owner, at home on the Windows machine. It covers every build from `1.0.16-run.2026-10-05`
-to `1.0.17-run.2026-10-06f`, and since then everything through `1.0.17-run.2026-10-11` (the class balance, then the Watch-post at 60 s):
+to `1.0.17-run.2026-10-06f`, and since then everything through `1.0.20-run.2026-10-15` (the class balance, then the Watch-post at 60 s, then Valheim 1.0.20):
 **none of it has been played**. It is in the order
 that tests the most with the least: setup, then a new character through Act I, then act by act.
 
@@ -18,7 +18,7 @@ last build you played, and undoes all of it. To install one: `git checkout <tag>
 ## 0. Setup (5 minutes)
 
 1. **Install.** `git pull`, then **`.\dist\windows\Install-Mod.ps1` without `-ModOnly`**. Steam moved the
-   game to 1.0.17, which replaced the patched game file, so the full install has to re-patch it. If it
+   game to 1.0.20 (from 1.0.17), which replaced the patched game file, so the full install has to re-patch it. If it
    refuses with a version mismatch, Steam has not finished updating: let it finish and run it again.
 2. **Config** (`%USERPROFILE%\AppData\LocalLow\IronGate\Valheim\ICanShowYouTheWorld.json`):
    - `"runDevMode": true` gives the shortcuts. `mod` means Shift, Ctrl or Alt held:
@@ -32,7 +32,7 @@ last build you played, and undoes all of it. To install one: `git checkout <tag>
    - Nothing is needed to reach Acts VI and VII: since `...06d` the saga ends at **Fader** by default. If
      your config still has `"runFinalBossKey": "defeated_goblinking"` from before, delete that line.
    - Leave `runKeyLayout` out: Windows keeps the numpad.
-3. **Launch.** The main menu's version line has a gold **`SAGA v1.0.17-run.2026-10-11 · DEV`** under it.
+3. **Launch.** The main menu's version line has a gold **`SAGA v1.0.20-run.2026-10-15 · DEV`** under it.
    Anything else means the wrong build is installed.
 
 ## 1. The first minute of a run (10 minutes)
@@ -374,7 +374,7 @@ takes the next way (Hunter, Völva, Berserker, Húskarl, Skald, Sæfari, Smiðr,
 
 ## 6. On the MacBook (whenever you have it)
 
-41. The Mac already has `1.0.17-run.2026-10-11` and `"runKeyLayout": "laptop"` (the old config is
+41. The Mac already has `1.0.20-run.2026-10-15` and `"runKeyLayout": "laptop"` (the old config is
     beside it as `.bak-2026-10-06`).
     - **Choosing:** `J K L` choose on every card (`H U I O` for the fourth to seventh lines), or press
       TAB and click.

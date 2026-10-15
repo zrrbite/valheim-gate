@@ -5,7 +5,7 @@ using ICanShowYouTheWorld.RunMode;
 /// <summary>
 /// The saga's keys, per layout (2026-10-06). The owner's MacBook has no numpad and no Insert, so
 /// boons could not be chosen at all. A "laptop" layout maps every saga action to keys the laptop has
-/// and Valheim leaves free - read from 1.0.17's own ZInput defaults, not remembered.
+/// and Valheim leaves free - read from 1.0.17's own ZInput defaults, not remembered (identical in 1.0.20).
 /// </summary>
 static class KeyLayoutTests
 {

@@ -1,6 +1,6 @@
 # Resuming Run Mode work
 
-Written 2026-08-23, restructured and last updated 2026-10-11 at `1.0.17-run.2026-10-11`. This is the
+Written 2026-08-23, restructured and last updated 2026-10-15 at `1.0.20-run.2026-10-15`. This is the
 "pick it back up without re-deriving anything" page: where the work stands, the loop it moves in, the
 landmines, and the decisions not to re-open. Its history (the dated status bullets, the alpha era, the
 "Done" write-ups) moved verbatim to [`RESUME-history.md`](RESUME-history.md) on 2026-10-06.
@@ -23,9 +23,9 @@ block first, then the numbered items that did not match.
 
 ## What's next, in order (agreed with the owner 2026-10-10)
 
-1. **The home play-test of `1.0.17-run.2026-10-11`** (`saga/ways-balanced` plus the Watch-post at 60 s and a
+1. **The home play-test of `1.0.20-run.2026-10-15`** (Valheim 1.0.20) (`saga/ways-balanced` plus the Watch-post at 60 s and a
    code cleanup with no change in play), which holds everything through `...08j` plus the class balance, so one session tests it all: the home test plan in order, checks 8f-8n for
-   the ways. Windows needs a FULL install (1.0.17). Bring back what its "bring back" list asks.
+   the ways. Windows needs a FULL install (1.0.20). Bring back what its "bring back" list asks.
 2. **The owner's three calls**, answered from play (`notes/2026-10-08-class-balance-rulings.md`, "Your
    calls"): a Fury meter (8h); the Sæfari's land Ward before the raven tells it (8k); whether the ballista
    spares deer and boars (8l).
@@ -41,8 +41,8 @@ The same list, with dates, is in the owner's cross-project todo (`~/Development/
 
 ## Where things stand
 
-**2026-10-11, `1.0.17-run.2026-10-11` (dev; the milestone is `saga/ways-balanced`, `...10-10`)**, on `feature/run-mode`: not merged, deliberately, since
-the mode is still being tuned in play. Valheim 1.0.17, Unity 6000.0.75.
+**2026-10-15, `1.0.20-run.2026-10-15` (dev; the milestone is `saga/ways-balanced`, `...10-10`)**, on `feature/run-mode`: not merged, deliberately, since
+the mode is still being tuned in play. Valheim 1.0.20 (from 1.0.17 on 2026-10-15, no source change), Unity 6000.0.75.
 
 - **Seven acts, all built and voiced, and the saga ends at Fader** (the `runFinalBossKey` default since
   `...06d`; a config that already names a boss keeps it, so delete a `defeated_goblinking` line). **The
@@ -115,7 +115,7 @@ the mode is still being tuned in play. Valheim 1.0.17, Unity 6000.0.75.
 - **First read of any build: `grep "Saga self-check" Player.log`** (OK / FALLBACK / MISSING, worst
   first). Its first reading found Haldor asking for a trophy no troll drops (fixed in `...06c`), so since
   `...06d` a line, **Quest items can be got**, checks that everything the saga asks for can be had.
-- **Machines:** the Mac is current (`...08`, laptop keys). Windows needs a **full** install for 1.0.17.
+- **Machines:** the Mac is current (`1.0.20-run.2026-10-15`, laptop keys). Windows needs a **full** install for 1.0.20.
   The Steam Deck has an old patched assembly.
 - **Written up where it lives:** laptop keys and clickable cards (CLAUDE.md); the hall
   ([spec](specs/2026-10-06-the-hall-design.md), [slices 0–1 plan](plans/2026-10-06-the-hall-slices-0-1.md));
