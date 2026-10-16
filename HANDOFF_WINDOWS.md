@@ -28,6 +28,8 @@ mismatch, Steam has not finished updating here: let it finish and run it again.
   bindings are identical, so the saga's keys are as before.
 - **Self-check:** the first run's `Saga self-check` block should have no new MISSING line. A MISSING there is
   the one thing 1.0.20 could have moved that the reference check cannot see (a prefab or asset name).
+- **Let Steam finish updating before you launch.** 1.0.20 moved the save formats on: a world or character it saves
+  no longer opens in 1.0.17.
 - **This supersedes `...10-11`'s staged DLL**, which the installer refuses on 1.0.20.
 
 ---

@@ -430,7 +430,24 @@ member the built mod uses that the new assemblies no longer have. For 1.0.17 tha
 The update itself is commit `65c2159`'s recipe: copy the four game assemblies (`assembly_valheim`,
 `assembly_utils`, `assembly_guiutils`, `Splatform`) into `libraries/`, re-patch the reference assembly, move
 the version prefix in `Version.cs`, then tag, build, stage, and deploy everywhere. Windows needs a FULL
-install, since its game assembly was replaced.
+install, since its game assembly was replaced. Then decompile the new version and read its diff against the
+last (below): check_refs says whether every name still exists, the diff says what the game now DOES.
+
+### Reading the game's code
+
+`bash Scripts/decompile_game.sh` turns the four game assemblies in `libraries/` into readable C# with ILSpy's
+`ilspycmd` (about 10 s; install once with `dotnet tool install -g ilspycmd`), one folder per game version at
+`~/Development/valheim-decompiled/<version>/`. Read `Turret.cs` there rather than an IL dump. Since 2026-10-15.
+
+- `decompile_game.sh <rev>` does a past version from git (`libraries/` at that commit; `c4f6756` holds 1.0.17).
+- `decompile_game.sh --diff 1.0.17 1.0.20` lists the files that changed and writes the whole diff beside them.
+- **It is Iron Gate's code: it lives outside every repo and is never committed.** The script refuses a target
+  inside a git work tree. It reads `libraries/`, which holds the VANILLA assemblies, so it reads as the game ships.
+
+1.0.20's diff (33 files, most of it one generated file) touched nothing the saga calls: drop and upgrade luck are
+saved per player, the cheated-item flag was reworked (an item still counts as cheated above 10,000 total damage,
+far past the saga's x2.5 ceiling), and the save and network formats moved on, so a world or character saved in
+1.0.20 no longer opens in 1.0.17.
 
 ### Complex scenario: Unity version change
 Check https://valheim.fandom.com/wiki/Version_History for Unity version updates
